@@ -1,0 +1,129 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-teal: #0c6e5f;
+  --color-indigo: #2f2d4e;
+  --color-sand: #f3f7f0;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 4.5rem;
+}
+
+body {
+  background-color: #ffffff;
+  color: var(--color-indigo);
+  font-feature-settings: 'ss01', 'ss02';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background-color: var(--color-teal);
+  color: #ffffff;
+}
+
+/* Headings — Montserrat bold, espacés */
+h1, h2, h3, h4 {
+  font-family: var(--font-montserrat), sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+/* Eyebrows / kickers — petites majuscules très espacées */
+.eyebrow {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+}
+
+/* Boutons CTS */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.875rem 1.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.8125rem;
+  border-radius: 0;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+
+.btn-primary {
+  background-color: var(--color-teal);
+  color: #ffffff;
+  border-color: var(--color-teal);
+}
+.btn-primary:hover {
+  background-color: #085044;
+  border-color: #085044;
+  transform: translateY(-2px);
+}
+
+.btn-outline {
+  background-color: transparent;
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.7);
+}
+.btn-outline:hover {
+  background-color: #ffffff;
+  color: var(--color-indigo);
+  transform: translateY(-2px);
+}
+
+.btn-outline-dark {
+  background-color: transparent;
+  color: var(--color-indigo);
+  border-color: var(--color-indigo);
+}
+.btn-outline-dark:hover {
+  background-color: var(--color-indigo);
+  color: #ffffff;
+}
+
+/* Photo treatment — un peu de grain & contraste */
+.photo-treatment {
+  filter: contrast(1.05) saturate(1.05);
+}
+
+/* Overlay réutilisable */
+.overlay-indigo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-color: rgba(47, 45, 78, 0.65);
+  pointer-events: none;
+}
+
+/* Scroll bar plus discrète */
+@media (min-width: 768px) {
+  ::-webkit-scrollbar {
+    width: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--color-sand);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-indigo);
+  }
+}
+
+/* Reveal helper — au cas où Framer n'est pas chargé */
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+.reveal.in {
+  opacity: 1;
+  transform: translateY(0);
+}
