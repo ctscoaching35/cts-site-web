@@ -25,6 +25,7 @@ export default function Nav() {
   }, [open]);
 
   return (
+    <>
     <header
       className={clsx(
         'fixed top-0 left-0 right-0 z-50 transition-all duration-500',
@@ -97,43 +98,44 @@ export default function Nav() {
           </div>
         </button>
       </div>
-
-      {/* Mobile menu — fond opaque indigo, items sur fond plein indigo-soft */}
-      <div
-        className={clsx(
-          'md:hidden fixed inset-x-0 top-[72px] bottom-0 z-40 bg-indigo-dark transition-opacity duration-300',
-          open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-        )}
-      >
-        <nav className="flex flex-col gap-3 px-6 py-8 h-full overflow-y-auto">
-          {nav.map((item) => (
-            <a
-              key={item.href}
-              href={item.href}
-              onClick={() => setOpen(false)}
-              className="flex items-center justify-between bg-indigo-soft hover:bg-indigo active:scale-[0.98] border-l-4 border-teal text-white text-base font-extrabold tracking-cts uppercase py-5 px-5 transition-all"
-            >
-              <span>{item.label}</span>
-              <span aria-hidden="true" className="text-teal-light text-xl leading-none">
-                →
-              </span>
-            </a>
-          ))}
-
-          {/* CTA Commencer — fond teal plein, pleine largeur */}
-          <a
-            href="#contact"
-            onClick={() => setOpen(false)}
-            className="flex items-center justify-center bg-teal hover:bg-teal-dark active:scale-[0.98] text-white font-extrabold tracking-cts uppercase text-sm py-5 px-5 mt-3 transition-all"
-          >
-            Commencer mon coaching →
-          </a>
-
-          <p className="text-white/40 text-[10px] tracking-cts uppercase mt-8 text-center">
-            CTS Coaching · Annecy · Rennes
-          </p>
-        </nav>
-      </div>
     </header>
+
+    {/* Mobile menu — sorti du <header> pour éviter le containing-block créé par backdrop-blur */}
+    <div
+      className={clsx(
+        'md:hidden fixed inset-x-0 top-[72px] bottom-0 z-40 bg-indigo-dark transition-opacity duration-300',
+        open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+      )}
+    >
+      <nav className="flex flex-col gap-3 px-6 py-8 h-full overflow-y-auto">
+        {nav.map((item) => (
+          <a
+            key={item.href}
+            href={item.href}
+            onClick={() => setOpen(false)}
+            className="flex items-center justify-between bg-indigo-soft hover:bg-indigo active:scale-[0.98] border-l-4 border-teal text-white text-base font-extrabold tracking-cts uppercase py-5 px-5 transition-all"
+          >
+            <span>{item.label}</span>
+            <span aria-hidden="true" className="text-teal-light text-xl leading-none">
+              →
+            </span>
+          </a>
+        ))}
+
+        {/* CTA Commencer — fond teal plein, pleine largeur */}
+        <a
+          href="#contact"
+          onClick={() => setOpen(false)}
+          className="flex items-center justify-center bg-teal hover:bg-teal-dark active:scale-[0.98] text-white font-extrabold tracking-cts uppercase text-sm py-5 px-5 mt-3 transition-all"
+        >
+          Commencer mon coaching →
+        </a>
+
+        <p className="text-white/40 text-[10px] tracking-cts uppercase mt-8 text-center">
+          CTS Coaching · Annecy · Rennes
+        </p>
+      </nav>
+    </div>
+    </>
   );
 }
