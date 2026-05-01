@@ -85,7 +85,7 @@ export const about = {
   stats: [
     { value: '10+', label: 'années de pratique' },
     { value: '100%', label: 'individualisé' },
-    { value: 'À distance', label: 'partout en France' },
+    { value: '100%', label: 'à distance' },
   ],
 };
 
