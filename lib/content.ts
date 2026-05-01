@@ -12,6 +12,8 @@ export const site = {
   instagramUrl: 'https://instagram.com/cts.coaching',
   // Implantation : Juliette à Annecy, Romain à Rennes — coaching à distance partout
   cities: 'Annecy · Rennes',
+  // Endpoint Formspree pour les soumissions du formulaire (envoie vers email ci-dessus)
+  formspreeEndpoint: 'https://formspree.io/f/xgodvykb',
 };
 
 export const nav = [

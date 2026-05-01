@@ -3,35 +3,92 @@
 import { useState } from 'react';
 import { contact, site } from '@/lib/content';
 
+type Status = 'idle' | 'submitting' | 'success' | 'error';
+
 export default function ContactForm() {
-  const [submitting, setSubmitting] = useState(false);
+  const [status, setStatus] = useState<Status>('idle');
+  const [errorMsg, setErrorMsg] = useState<string>('');
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setSubmitting(true);
-    const fd = new FormData(e.currentTarget);
-    const name = fd.get('name')?.toString() ?? '';
-    const email = fd.get('email')?.toString() ?? '';
-    const city = fd.get('city')?.toString() ?? '';
-    const objective = fd.get('objective')?.toString() ?? '';
-    const message = fd.get('message')?.toString() ?? '';
+    setStatus('submitting');
+    setErrorMsg('');
 
-    const subject = `[CTS Coaching] Demande de ${name}`;
-    const body = [
-      `Prénom : ${name}`,
-      `Email : ${email}`,
-      `Ville : ${city}`,
-      `Objectif : ${objective}`,
-      ``,
-      `Message :`,
-      message,
-    ].join('\n');
+    const form = e.currentTarget;
+    const fd = new FormData(form);
 
-    window.location.href = `mailto:${site.email}?subject=${encodeURIComponent(
-      subject
-    )}&body=${encodeURIComponent(body)}`;
+    // Honeypot — un bot remplira ce champ caché, on jette
+    if (fd.get('_gotcha')) {
+      setStatus('success');
+      return;
+    }
 
-    setTimeout(() => setSubmitting(false), 1500);
+    try {
+      const res = await fetch(site.formspreeEndpoint, {
+        method: 'POST',
+        body: fd,
+        headers: { Accept: 'application/json' },
+      });
+
+      if (res.ok) {
+        setStatus('success');
+        form.reset();
+      } else {
+        const data = await res.json().catch(() => null);
+        const msg =
+          data?.errors?.[0]?.message ||
+          'Le formulaire n’a pas pu être envoyé. Réessaie ou écris-nous directement à ' +
+            site.email +
+            '.';
+        setErrorMsg(msg);
+        setStatus('error');
+      }
+    } catch {
+      setErrorMsg(
+        'Connexion impossible. Vérifie ton réseau, ou écris-nous directement à ' +
+          site.email +
+          '.'
+      );
+      setStatus('error');
+    }
+  }
+
+  // Écran de succès
+  if (status === 'success') {
+    return (
+      <div className="text-center py-8">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-teal/20 border-2 border-teal mb-6">
+          <svg
+            width="28"
+            height="28"
+            viewBox="0 0 28 28"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+          >
+            <path
+              d="M5 14L11 20L23 8"
+              stroke="#138F7C"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+        <h3 className="text-white text-2xl font-extrabold mb-3">Message envoyé.</h3>
+        <p className="text-white/70 leading-relaxed">
+          Merci pour ta confiance. Juliette ou Romain te répond personnellement
+          sous 48h, à l’adresse indiquée.
+        </p>
+        <button
+          type="button"
+          onClick={() => setStatus('idle')}
+          className="mt-8 text-teal-light hover:text-white text-xs font-semibold tracking-cts uppercase underline underline-offset-4"
+        >
+          Envoyer un autre message
+        </button>
+      </div>
+    );
   }
 
   const inputCls =
@@ -41,6 +98,19 @@ export default function ContactForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
+      {/* Honeypot — caché, les bots le rempliront */}
+      <input
+        type="text"
+        name="_gotcha"
+        tabIndex={-1}
+        autoComplete="off"
+        aria-hidden="true"
+        className="hidden"
+      />
+
+      {/* Sujet pré-rempli pour Formspree */}
+      <input type="hidden" name="_subject" value="Nouvelle demande — CTS Coaching" />
+
       <div className="grid md:grid-cols-2 gap-8">
         <div>
           <label htmlFor="name" className={labelCls}>
@@ -110,13 +180,22 @@ export default function ContactForm() {
         />
       </div>
 
+      {status === 'error' && (
+        <div
+          role="alert"
+          className="border-l-4 border-red-400 bg-red-400/10 px-4 py-3 text-sm text-red-100"
+        >
+          {errorMsg}
+        </div>
+      )}
+
       <div className="pt-4">
         <button
           type="submit"
-          disabled={submitting}
-          className="btn btn-primary w-full sm:w-auto disabled:opacity-60"
+          disabled={status === 'submitting'}
+          className="btn btn-primary w-full sm:w-auto disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          {submitting ? 'Envoi en cours…' : `${contact.form.submit} →`}
+          {status === 'submitting' ? 'Envoi en cours…' : `${contact.form.submit} →`}
         </button>
       </div>
     </form>
