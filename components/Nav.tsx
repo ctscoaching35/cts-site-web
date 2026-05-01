@@ -105,37 +105,38 @@ export default function Nav() {
           open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         )}
       >
-        {/* Fond plein, bien démarqué, pas de transparence */}
+        {/* Fond plein indigo + dégradé pour démarcation claire */}
         <div className="absolute inset-0 bg-indigo-dark" />
         <div className="absolute inset-0 bg-gradient-to-b from-indigo to-indigo-dark" />
 
-        <nav className="relative flex flex-col h-full px-6 pt-8 pb-12 overflow-y-auto">
-          <ul className="flex flex-col divide-y divide-white/10 border-y border-white/10">
-            {nav.map((item) => (
-              <li key={item.href}>
-                <a
-                  href={item.href}
-                  onClick={() => setOpen(false)}
-                  className="flex items-center justify-between text-white text-xl font-extrabold tracking-cts uppercase py-5 px-2 active:bg-white/5 transition-colors"
-                >
-                  <span>{item.label}</span>
-                  <span aria-hidden="true" className="text-teal-light text-2xl leading-none">
-                    →
-                  </span>
-                </a>
-              </li>
+        <nav className="relative flex flex-col items-stretch h-full px-6 pt-10 pb-12 overflow-y-auto">
+          <div className="flex flex-col gap-3">
+            {nav.map((item, i) => (
+              <a
+                key={item.href}
+                href={item.href}
+                onClick={() => setOpen(false)}
+                className="flex items-center justify-between bg-white/[0.06] hover:bg-white/[0.12] active:bg-white/[0.18] border-l-4 border-teal text-white text-lg font-extrabold tracking-cts uppercase py-5 px-5 transition-all"
+                style={{ transitionDelay: `${i * 40}ms` }}
+              >
+                <span>{item.label}</span>
+                <span aria-hidden="true" className="text-teal-light text-xl leading-none">
+                  →
+                </span>
+              </a>
             ))}
-          </ul>
+          </div>
 
+          {/* CTA Commencer — pleine largeur, bg teal plein */}
           <a
             href="#contact"
             onClick={() => setOpen(false)}
-            className="btn btn-primary w-full mt-10"
+            className="btn btn-primary w-full mt-6 !py-5 text-sm"
           >
             Commencer mon coaching →
           </a>
 
-          <p className="text-white/50 text-xs tracking-cts uppercase mt-auto pt-12 text-center">
+          <p className="text-white/50 text-xs tracking-cts uppercase mt-auto pt-10 text-center">
             CTS Coaching · Annecy · Rennes
           </p>
         </nav>
