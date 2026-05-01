@@ -80,7 +80,7 @@ export const about = {
   },
   credential: {
     title: 'Kinés sur l’UTMB Mont-Blanc',
-    body: 'Nous accompagnons les coureurs sur la course à pied la plus exigeante du monde. Cette expérience irrigue chaque plan que nous écrivons pour toi.',
+    body: 'Nous accompagnons les coureurs sur un des trails les plus exigeants du monde. Cette expérience irrigue chaque plan que nous écrivons pour toi.',
   },
   stats: [
     { value: '10+', label: 'années de pratique' },
