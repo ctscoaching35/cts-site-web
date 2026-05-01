@@ -12,9 +12,9 @@ const montserrat = Montserrat({
 
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
-  title: 'CTS Coaching — Coaching Trail Scientifique | Rennes',
+  title: 'CTS Coaching — City to Summit | Coaching Trail Scientifique',
   description:
-    'Coaching trail running personnalisé par des kinésithérapeutes du sport. Juliette & Romain, kinés officiels UTMB Mont-Blanc. 80€/mois sans engagement.',
+    'Coaching trail 100% individualisé à distance par des kinésithérapeutes du sport. Juliette (Annecy) & Romain (Rennes), kinés sur l’UTMB Mont-Blanc. 80€/mois sans engagement.',
   keywords: [
     'coaching trail',
     'coach trail Rennes',
@@ -34,9 +34,9 @@ export const metadata: Metadata = {
     locale: 'fr_FR',
     url: site.url,
     siteName: 'CTS Coaching',
-    title: 'CTS Coaching — Du bitume au sommet',
+    title: 'CTS Coaching — City to Summit',
     description:
-      'Coaching trail scientifique pour traileurs citadins. Par des kinés officiels UTMB Mont-Blanc.',
+      'Coaching trail scientifique pour traileurs citadins. Atteignez vos sommets, par des kinés sur l’UTMB Mont-Blanc.',
     images: [
       {
         url: '/photos/DSC_8334.jpg',
@@ -48,9 +48,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'CTS Coaching — Du bitume au sommet',
+    title: 'CTS Coaching — City to Summit',
     description:
-      'Coaching trail scientifique pour traileurs citadins. Par des kinés officiels UTMB Mont-Blanc.',
+      'Coaching trail scientifique pour traileurs citadins. Atteignez vos sommets, par des kinés sur l’UTMB Mont-Blanc.',
     images: ['/photos/DSC_8334.jpg'],
   },
   robots: { index: true, follow: true },

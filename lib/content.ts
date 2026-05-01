@@ -22,9 +22,9 @@ export const nav = [
 ];
 
 export const hero = {
-  badge: 'Kinés officiels de l’UTMB Mont-Blanc',
-  title: 'Du bitume',
-  titleAccent: 'au sommet.',
+  badge: 'Atteignez vos sommets',
+  title: 'City to',
+  titleAccent: 'Summit.',
   subtitle:
     'Coaching trail 100% individualisé, à distance. Par des kinésithérapeutes du sport. Une approche scientifique, pour des objectifs concrets — du premier trail à l’ultra.',
   ctaPrimary: { label: 'Parle-nous de ton projet', href: '#contact' },
@@ -39,7 +39,7 @@ export const problem = {
   items: [
     {
       title: 'Pas de dénivelé à disposition',
-      body: 'Bitume, parcs urbains, chemin forestier. La montagne n’est jamais à ta porte — mais ton objectif est en altitude.',
+      body: 'Bitume, parcs urbains, chemin forestier. Tu dois faire face aux contraintes d’une vie citadine, loin des sentiers.',
     },
     {
       title: 'Entraînements non structurés',
@@ -79,7 +79,7 @@ export const about = {
     ],
   },
   credential: {
-    title: 'Kinés officiels de l’UTMB Mont-Blanc',
+    title: 'Kinés sur l’UTMB Mont-Blanc',
     body: 'Nous accompagnons les coureurs sur la course à pied la plus exigeante du monde. Cette expérience irrigue chaque plan que nous écrivons pour toi.',
   },
   stats: [
