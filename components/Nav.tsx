@@ -98,45 +98,38 @@ export default function Nav() {
         </button>
       </div>
 
-      {/* Mobile menu */}
+      {/* Mobile menu — fond opaque indigo, items sur fond plein indigo-soft */}
       <div
         className={clsx(
-          'md:hidden fixed inset-x-0 top-[72px] bottom-0 z-40 transition-all duration-500',
+          'md:hidden fixed inset-x-0 top-[72px] bottom-0 z-40 bg-indigo-dark transition-opacity duration-300',
           open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         )}
       >
-        {/* Fond plein indigo + dégradé pour démarcation claire */}
-        <div className="absolute inset-0 bg-indigo-dark" />
-        <div className="absolute inset-0 bg-gradient-to-b from-indigo to-indigo-dark" />
+        <nav className="flex flex-col gap-3 px-6 py-8 h-full overflow-y-auto">
+          {nav.map((item) => (
+            <a
+              key={item.href}
+              href={item.href}
+              onClick={() => setOpen(false)}
+              className="flex items-center justify-between bg-indigo-soft hover:bg-indigo active:scale-[0.98] border-l-4 border-teal text-white text-base font-extrabold tracking-cts uppercase py-5 px-5 transition-all"
+            >
+              <span>{item.label}</span>
+              <span aria-hidden="true" className="text-teal-light text-xl leading-none">
+                →
+              </span>
+            </a>
+          ))}
 
-        <nav className="relative flex flex-col items-stretch h-full px-6 pt-10 pb-12 overflow-y-auto">
-          <div className="flex flex-col gap-3">
-            {nav.map((item, i) => (
-              <a
-                key={item.href}
-                href={item.href}
-                onClick={() => setOpen(false)}
-                className="flex items-center justify-between bg-white/[0.06] hover:bg-white/[0.12] active:bg-white/[0.18] border-l-4 border-teal text-white text-lg font-extrabold tracking-cts uppercase py-5 px-5 transition-all"
-                style={{ transitionDelay: `${i * 40}ms` }}
-              >
-                <span>{item.label}</span>
-                <span aria-hidden="true" className="text-teal-light text-xl leading-none">
-                  →
-                </span>
-              </a>
-            ))}
-          </div>
-
-          {/* CTA Commencer — pleine largeur, bg teal plein */}
+          {/* CTA Commencer — fond teal plein, pleine largeur */}
           <a
             href="#contact"
             onClick={() => setOpen(false)}
-            className="btn btn-primary w-full mt-6 !py-5 text-sm"
+            className="flex items-center justify-center bg-teal hover:bg-teal-dark active:scale-[0.98] text-white font-extrabold tracking-cts uppercase text-sm py-5 px-5 mt-3 transition-all"
           >
             Commencer mon coaching →
           </a>
 
-          <p className="text-white/50 text-xs tracking-cts uppercase mt-auto pt-10 text-center">
+          <p className="text-white/40 text-[10px] tracking-cts uppercase mt-8 text-center">
             CTS Coaching · Annecy · Rennes
           </p>
         </nav>
