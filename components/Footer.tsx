@@ -65,7 +65,7 @@ export default function Footer() {
                   @{site.instagram}
                 </a>
               </li>
-              <li className="text-white/60">{site.city}, France</li>
+              <li className="text-white/60">{site.cities}</li>
             </ul>
           </div>
         </div>
