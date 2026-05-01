@@ -82,16 +82,16 @@ export default function About() {
 
         {/* Stats */}
         <Reveal delay={0.2}>
-          <div className="grid grid-cols-3 gap-4 mt-16 lg:mt-20">
+          <div className="grid grid-cols-3 gap-3 sm:gap-6 mt-16 lg:mt-20">
             {about.stats.map((stat) => (
               <div
                 key={stat.label}
-                className="text-center border-t-2 border-teal pt-6"
+                className="text-center border-t-2 border-teal pt-5 sm:pt-6 min-w-0"
               >
-                <div className="text-indigo text-5xl lg:text-7xl font-black leading-none mb-2">
+                <div className="text-indigo text-3xl sm:text-5xl lg:text-7xl font-black leading-none mb-2 truncate">
                   {stat.value}
                 </div>
-                <div className="text-indigo/60 text-xs lg:text-sm font-semibold tracking-cts uppercase">
+                <div className="text-indigo/60 text-[10px] sm:text-xs lg:text-sm font-semibold tracking-cts uppercase">
                   {stat.label}
                 </div>
               </div>

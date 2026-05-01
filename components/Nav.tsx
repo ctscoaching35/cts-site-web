@@ -101,29 +101,43 @@ export default function Nav() {
       {/* Mobile menu */}
       <div
         className={clsx(
-          'md:hidden fixed inset-x-0 top-[72px] bottom-0 bg-indigo transition-all duration-500',
+          'md:hidden fixed inset-x-0 top-[72px] bottom-0 z-40 transition-all duration-500',
           open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         )}
       >
-        <nav className="flex flex-col items-center justify-center gap-8 h-full px-6">
-          {nav.map((item, i) => (
-            <a
-              key={item.href}
-              href={item.href}
-              onClick={() => setOpen(false)}
-              className="text-white text-2xl font-extrabold tracking-cts uppercase"
-              style={{ transitionDelay: `${i * 50}ms` }}
-            >
-              {item.label}
-            </a>
-          ))}
+        {/* Fond plein, bien démarqué, pas de transparence */}
+        <div className="absolute inset-0 bg-indigo-dark" />
+        <div className="absolute inset-0 bg-gradient-to-b from-indigo to-indigo-dark" />
+
+        <nav className="relative flex flex-col h-full px-6 pt-8 pb-12 overflow-y-auto">
+          <ul className="flex flex-col divide-y divide-white/10 border-y border-white/10">
+            {nav.map((item) => (
+              <li key={item.href}>
+                <a
+                  href={item.href}
+                  onClick={() => setOpen(false)}
+                  className="flex items-center justify-between text-white text-xl font-extrabold tracking-cts uppercase py-5 px-2 active:bg-white/5 transition-colors"
+                >
+                  <span>{item.label}</span>
+                  <span aria-hidden="true" className="text-teal-light text-2xl leading-none">
+                    →
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+
           <a
             href="#contact"
             onClick={() => setOpen(false)}
-            className="btn btn-primary mt-4"
+            className="btn btn-primary w-full mt-10"
           >
-            Commencer
+            Commencer mon coaching →
           </a>
+
+          <p className="text-white/50 text-xs tracking-cts uppercase mt-auto pt-12 text-center">
+            CTS Coaching · Annecy · Rennes
+          </p>
         </nav>
       </div>
     </header>
