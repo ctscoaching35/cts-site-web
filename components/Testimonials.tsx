@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import clsx from 'clsx';
 import Reveal from './Reveal';
 import { testimonials } from '@/lib/content';
 
@@ -24,16 +25,18 @@ export default function Testimonials() {
           </Reveal>
         </div>
 
-        {/* Grille asymétrique — décalage vertical pour casser la symétrie */}
-        <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
+        {/* Grille asymétrique — décalage vertical (desktop uniquement) pour casser la symétrie */}
+        <div className="grid gap-8 md:grid-cols-3 md:gap-6 lg:gap-8">
           {testimonials.items.map((t, i) => (
             <Reveal key={t.initial + t.meta} delay={0.1 + i * 0.1}>
               <article
-                className="group relative h-full flex flex-col bg-white p-8 lg:p-10 transition-transform duration-500 hover:-translate-y-2"
-                style={{
-                  // Décalage subtil pour briser l'alignement parfait (taste-skill rule)
-                  transform: i === 1 ? 'translateY(24px)' : undefined,
-                }}
+                className={clsx(
+                  'group relative h-full flex flex-col bg-white p-8 lg:p-10 transition-transform duration-500 hover:-translate-y-2',
+                  // Le décalage ne s'applique qu'à partir de md (grille 3 colonnes) —
+                  // sur mobile la grille est empilée en 1 colonne, un translateY inconditionnel
+                  // ferait chevaucher cet item sur le suivant.
+                  i === 1 && 'md:translate-y-6'
+                )}
               >
                 {/* En-tête : avatar silhouette + meta */}
                 <header className="flex items-center gap-4 mb-8 pb-6 border-b border-indigo/10">
