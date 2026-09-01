@@ -167,7 +167,7 @@ export const contact = {
   eyebrow: 'On en parle ?',
   title: 'Parlons de ton prochain défi',
   subtitle:
-    'Réponse sous 48h. Pas de bot, pas de tunnel commercial — Juliette ou Romain te répond directement.',
+    'Réponse sous 48h. Juliette ou Romain te répond directement.',
   form: {
     nameLabel: 'Prénom',
     emailLabel: 'Email',
