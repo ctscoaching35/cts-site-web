@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(site.url),
   title: 'CTS Coaching — City to Summit | Coaching Trail Scientifique',
   description:
-    'Coaching trail 100% individualisé à distance par des kinésithérapeutes du sport. Juliette (Annecy) & Romain (Rennes), kinés sur l’UTMB Mont-Blanc. 80€/mois sans engagement.',
+    'Coaching trail 100% individualisé à distance par des kinésithérapeutes du sport. Juliette (Annecy) & Romain (Rennes), kinés sur l’UTMB Mont-Blanc. 89€/mois sans engagement.',
   keywords: [
     'coaching trail',
     'coach trail Rennes',

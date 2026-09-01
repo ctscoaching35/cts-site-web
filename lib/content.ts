@@ -98,7 +98,7 @@ export const offer = {
     'Une formule unique. Pas de paliers, pas d’options cachées. Un suivi 100% individualisé, scientifique, à distance.',
   card: {
     label: 'CTS COACHING',
-    price: '80€',
+    price: '89€',
     pricePeriod: '/ mois',
     commitment: 'Sans engagement',
     features: [
