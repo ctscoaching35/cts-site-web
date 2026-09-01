@@ -22,7 +22,7 @@ export default function Footer() {
             </a>
             <p className="text-white/60 leading-relaxed text-sm max-w-sm">
               On accompagne des personnes, pas des kilomètres. Coaching trail
-              scientifique par des kinésithérapeutes du sport, depuis Rennes.
+              scientifique par des kinésithérapeutes du sport, depuis Annecy et Rennes.
             </p>
           </div>
 
