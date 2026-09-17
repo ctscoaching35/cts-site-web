@@ -10,3 +10,6 @@ build
 .netlify
 next-env.d.ts
 *.tsbuildinfo
+
+# Outils locaux
+.claude/
