@@ -1,0 +1,192 @@
+/* CTS Coaching — fiches de la bibliothèque (www.cts-coaching.com/bibliotheque)
+   Identité du site : Montserrat, bleu nuit #2F2D4E, teal #0C6E5F, blanc cassé #F3F7F0.
+   Une seule apparence, claire, comme le site. */
+
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap");
+
+:root {
+  --navy: #2f2d4e;
+  --navy-dark: #1f1d38;
+  --teal: #0c6e5f;
+  --teal-light: #8fd1c3;
+  --teal-wash: #e1efea;
+  --cream: #f3f7f0;
+  --line: rgba(47, 45, 78, 0.12);
+  --muted: #6f6d85;
+}
+
+* { box-sizing: border-box; }
+
+html { color-scheme: light; }
+
+body {
+  margin: 0;
+  background: #ffffff;
+  color: var(--navy);
+  font-family: Montserrat, "Helvetica Neue", Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--teal); text-underline-offset: 3px; }
+a:focus-visible { outline: 2px solid var(--teal); outline-offset: 3px; }
+
+/* En-tête */
+.entete {
+  background: var(--navy);
+  color: #fff;
+  padding: 1.1rem 1.5rem;
+}
+.entete-inner {
+  max-width: 60rem;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.marque {
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  color: #fff;
+  text-decoration: none;
+}
+.retour {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--teal-light);
+  text-decoration: none;
+}
+
+/* Titre de fiche */
+.titre {
+  background: var(--navy);
+  color: #fff;
+  padding: 2.6rem 1.5rem 3rem;
+  border-bottom: 5px solid var(--teal);
+}
+.titre-inner { max-width: 44rem; margin: 0 auto; }
+.surtitre {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--teal-light);
+  margin-bottom: 0.8rem;
+}
+h1 {
+  margin: 0;
+  font-size: clamp(2rem, 5vw, 3rem);
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+.chapeau {
+  margin: 1rem 0 0;
+  font-size: 1.05rem;
+  color: #d8d9e6;
+  max-width: 38rem;
+}
+.lecture { margin-top: 1.2rem; font-size: 0.78rem; color: var(--teal-light); letter-spacing: 0.06em; }
+
+/* Corps */
+main { max-width: 44rem; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
+
+.essentiel {
+  background: var(--cream);
+  border-top: 3px solid var(--teal);
+  padding: 1.3rem 1.5rem 1.1rem;
+  margin: 0 0 2.6rem;
+}
+.essentiel h2 { margin-top: 0; font-size: 0.78rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--teal); }
+.essentiel ul { margin: 0; padding-left: 1.1rem; }
+.essentiel li { margin-bottom: 0.45rem; }
+
+h2 {
+  font-size: 1.45rem;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  margin: 2.6rem 0 0.8rem;
+  text-wrap: balance;
+}
+h3 { font-size: 1.02rem; font-weight: 700; margin: 1.6rem 0 0.4rem; color: var(--teal); }
+p { margin: 0 0 1rem; }
+ul, ol { padding-left: 1.2rem; margin: 0 0 1rem; }
+li { margin-bottom: 0.35rem; }
+strong { font-weight: 700; }
+
+/* Tableaux */
+.tableau { overflow-x: auto; margin: 1rem 0 1.6rem; }
+table { width: 100%; border-collapse: collapse; font-size: 0.92rem; font-variant-numeric: tabular-nums; }
+th {
+  background: var(--navy);
+  color: #fff;
+  text-align: left;
+  font-weight: 600;
+  padding: 0.6rem 0.8rem;
+}
+td { padding: 0.55rem 0.8rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:nth-child(even) td { background: var(--cream); }
+
+/* Encadré d'alerte */
+.attention {
+  border-left: 4px solid var(--navy);
+  background: #ecebf2;
+  padding: 0.9rem 1.2rem;
+  margin: 1.4rem 0;
+}
+.attention p:last-child { margin-bottom: 0; }
+
+/* Sources */
+.sources {
+  margin-top: 3rem;
+  padding-top: 1.4rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.sources h2 { font-size: 0.78rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); margin: 0 0 0.6rem; }
+.sources ol { padding-left: 1.2rem; }
+
+.pied {
+  background: var(--navy-dark);
+  color: #b9b8cc;
+  font-size: 0.78rem;
+  padding: 1.6rem 1.5rem;
+}
+.pied-inner { max-width: 44rem; margin: 0 auto; }
+
+/* Index */
+.grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 1rem; margin-top: 1.5rem; }
+.carte {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  border-top: 3px solid var(--teal);
+  background: var(--cream);
+  padding: 1.1rem 1.2rem 1.2rem;
+  text-decoration: none;
+  color: var(--navy);
+}
+.carte:hover, .carte:focus-visible { background: var(--teal-wash); }
+.carte-titre { font-weight: 800; font-size: 1.05rem; line-height: 1.25; }
+.carte-texte { font-size: 0.88rem; color: var(--muted); }
+
+@media print {
+  @page { size: A4; margin: 14mm; }
+  body { font-size: 11pt; }
+  .entete, .pied { display: none; }
+  .titre { padding: 1.2rem 1rem 1.4rem; }
+  main { padding: 1rem 0; }
+  a { color: var(--navy); }
+}
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

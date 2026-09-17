@@ -7,6 +7,16 @@ const nextConfig = {
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     qualities: [75, 85, 90],
   },
+  // Bibliothèque : les fiches sont des pages HTML statiques (public/bibliotheque/),
+  // servies à une adresse sans extension — celle qu'impriment les QR codes des plans
+  // (https://www.cts-coaching.com/bibliotheque/<slug>). Les fichiers réels
+  // (fiche.css) passent avant ces réécritures.
+  async rewrites() {
+    return [
+      { source: '/bibliotheque', destination: '/bibliotheque/index.html' },
+      { source: '/bibliotheque/:slug', destination: '/bibliotheque/:slug.html' },
+    ];
+  },
   // Décommente la ligne ci-dessous pour un export statique pur (Netlify, GitHub Pages, etc.)
   // Sur Vercel, laisser commenté pour bénéficier de l'optimisation d'images.
   // output: 'export',
