@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import {
-  API_URL, avertissements, champsVides, intakePourApi, reperesChrono, textes,
+  API_URL, avertissements, champsVides, intakePourApi, plancherSeances, reperesChrono, textes,
   type Champs, type ConfigPlan,
 } from '@/lib/plan';
 
@@ -93,7 +93,8 @@ export default function Questionnaire() {
   const formatsOuverts = config && c.niveau ? config.formats.filter((f) => config.formats_par_niveau[c.niveau]?.includes(f.code)) : [];
   const durees = config && c.format ? config.durees_par_format[c.format] ?? [] : [];
   const joursCoches = (config?.jours ?? []).filter((j) => c.jours_disponibles.includes(j));
-  const freqMin = config && c.format ? config.freq_min_par_format[c.format] : 3;
+  const plancher = config ? plancherSeances(c, config) : null;
+  const freqMin = plancher?.min ?? 3;
   const reperes = config ? reperesChrono(c, config) : null;
   const alertes = useMemo(() => (config ? avertissements(c, config) : []), [c, config]);
 
@@ -184,6 +185,7 @@ export default function Questionnaire() {
   if (etape === 'recap') {
     const lignes: [string, string][] = [
       ['Nom', c.nom], ['E-mail', c.email], ['Niveau', nomNiveau],
+      ['En ce moment', `${c.volume_hebdo_actuel} de course par semaine · plus longue sortie ${c.sortie_longue_actuelle}`],
       ['Formule', `${nomFormat} — ${c.duree_mois} mois`],
       ['Course', `${c.course_nom}, le ${new Date(`${c.date_course}T00:00:00`).toLocaleDateString('fr-FR')}`],
       ['Parcours', `${c.distance_km} km, ${c.dplus_m} m D+${c.dmoins_m ? `, ${c.dmoins_m} m D−` : ''}${gpx ? ` · trace ${gpx.name}` : ' · sans trace GPX'}`],
@@ -267,6 +269,21 @@ export default function Questionnaire() {
           ))}
         </div>
         <p className="text-sm text-indigo/60 italic">{textes.niveau.note}</p>
+        <div>
+          <p className="font-bold text-indigo mb-2">{textes.charge.titre}</p>
+          <p className="text-sm text-indigo/60 leading-relaxed mb-4">{textes.charge.aide}</p>
+          <div className="grid sm:grid-cols-2 gap-6">
+            <div>
+              <label className={labelCls} htmlFor="volume">{textes.charge.volume}</label>
+              <input id="volume" className={inputCls} required placeholder="ex. 4h ou 4h30" value={c.volume_hebdo_actuel} onChange={(e) => maj('volume_hebdo_actuel')(e.target.value)} />
+            </div>
+            <div>
+              <label className={labelCls} htmlFor="sortie_longue">{textes.charge.sortieLongue}</label>
+              <input id="sortie_longue" className={inputCls} required placeholder="ex. 1h30 ou 90min" value={c.sortie_longue_actuelle} onChange={(e) => maj('sortie_longue_actuelle')(e.target.value)} />
+            </div>
+          </div>
+          <p className={aideCls}>{textes.charge.note}</p>
+        </div>
       </Section>
 
       <Section numero={3} titre="Ta formule">
@@ -374,10 +391,7 @@ export default function Questionnaire() {
             <label className={labelCls} htmlFor="freq">Séances par semaine</label>
             <input id="freq" type="number" min={freqMin} max={Math.max(freqMin, Math.min(7, joursCoches.length))} className={inputCls} required
               value={c.freq_hebdo} onChange={(e) => maj('freq_hebdo')(e.target.value)} />
-            <p className={aideCls}>
-              {c.format ? `Minimum ${freqMin} sur ce format, 4 pour une course de 6h et plus. ` : ''}
-              Pas plus que de jours cochés.
-            </p>
+            <p className={aideCls}>{plancher?.note}</p>
           </div>
         </div>
       </Section>
