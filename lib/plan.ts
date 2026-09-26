@@ -186,10 +186,12 @@ export function reperesChrono(c: Champs, config: ConfigPlan): string | null {
 }
 
 /**
- * Plancher de séances par semaine (CONTRAT_API_CTS.md §5, 24/09/2026) : celui du format,
- * et au moins 4 dès 30 km-effort — la difficulté réelle de la course, pas son étiquette.
- * Seuils lus dans /v1/config ; l'API reste seule juge (refus 5 et 5 bis). La note dit
- * le motif et le coût réel, pour que l'athlète ne découvre pas son plancher dans un refus.
+ * Plancher de séances par semaine (CONTRAT_API_CTS.md §5) : celui du format, et au moins
+ * 4 dès le seuil de km-effort (50 depuis le 26/09/2026) — la difficulté réelle de la
+ * course, pas son étiquette. Seuils lus dans /v1/config ; l'API reste seule juge (refus
+ * 5 et 5 bis). La note dit le motif mesuré, pour que l'athlète ne découvre pas son
+ * plancher dans un refus : au-delà du seuil, la plus grosse semaine d'un plan à 3
+ * séances est plus courte que la course.
  */
 export function plancherSeances(c: Champs, config: ConfigPlan): { min: number; note: string } {
   const parFormat = config.freq_min_par_format[c.format] ?? 0;
@@ -200,19 +202,18 @@ export function plancherSeances(c: Champs, config: ConfigPlan): { min: number; n
   const ke = km > 0 ? km + dp / 100 : null;
   const parDifficulte = ke !== null && ke >= seuil ? auDela : 0;
   const min = Math.max(parFormat, parDifficulte, 3);
-  const bornes = 'Bornée aussi par le nombre de jours disponibles cochés ci-dessus.';
-  if (!c.format) return { min, note: 'Bornée automatiquement par le nombre de jours disponibles cochés ci-dessus.' };
+  const bornes = 'Pas plus que de jours cochés.';
+  if (!c.format) return { min, note: bornes };
   if (ke !== null && parDifficulte >= parFormat && parDifficulte > 0) {
-    const k = Math.round(ke);
     return {
       min,
-      note: `Ta course vaut ${k} km-effort (distance + D+/100), l’équivalent d’un ${k} km plat. Sur ce type de course, ${min} séances par semaine sont un minimum : à 3, ta sortie longue pèse déjà six heures sur dix de ta semaine, et plus la course est dure, plus elle pèse. La séance en plus est un footing facile de 45 minutes qui rééquilibre la semaine, pas une sortie longue de plus. ${bornes}`,
+      note: `Ta course vaut ${Math.round(ke)} km-effort (distance + D+/100). À partir de ${seuil}, le plan demande au moins ${min} séances par semaine : à 3, ta plus grosse semaine d’entraînement resterait plus courte que ta course. La 4e séance ajoute environ une heure par semaine. ${bornes}`,
     };
   }
   const passage = parFormat < auDela
-    ? ` À partir de ${seuil} km-effort (distance + D+/100), le minimum passe à ${auDela} : c’est le point où la sortie longue prend trop de place dans une semaine de trois séances.`
+    ? ` À partir de ${seuil} km-effort (distance + D+/100), le minimum passe à ${auDela}.`
     : '';
-  return { min, note: `Minimum ${min} séances/semaine sur ce format.${passage} ${bornes}` };
+  return { min, note: `Minimum ${min} séances par semaine sur ce format.${passage} ${bornes}` };
 }
 
 /** L'intake envoyé à l'API : tous les champs sauf la santé. */
