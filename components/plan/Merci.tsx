@@ -78,7 +78,10 @@ export default function Merci() {
         <h1 className="text-3xl sm:text-4xl mb-4">Ton plan est prêt{resume ? `, ${resume.athlete.split(' ')[0]}` : ''}.</h1>
         {resume && (
           <p className="text-white/80 leading-relaxed">
-            {resume.course}, le {dateFr(resume.date_course)}. Ta préparation de {resume.duree_mois} mois commence
+            {resume.course}, le {dateFr(resume.date_course)}. Ta préparation de {resume.duree_mois} mois{' '}
+            {new Date(`${resume.date_debut_plan}T00:00:00`) < new Date(new Date().toDateString())
+              ? 'a commencé'
+              : 'commence'}{' '}
             le {dateFr(resume.date_debut_plan)}.
           </p>
         )}
