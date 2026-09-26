@@ -11,6 +11,8 @@ type Resume = {
   date_course: string;
   date_debut_plan: string;
   duree_mois: number;
+  // Trace GPX inexploitable, mise de côté au checkout (décision coach du 26/09/2026).
+  trace_ignoree?: boolean;
 };
 
 const dateFr = (iso: string) =>
@@ -83,6 +85,11 @@ export default function Merci() {
               ? 'a commencé'
               : 'commence'}{' '}
             le {dateFr(resume.date_debut_plan)}.
+          </p>
+        )}
+        {resume?.trace_ignoree && (
+          <p className="text-white/80 leading-relaxed mt-3">
+            Ta trace GPX n’a pas pu être lue : ton plan est construit sur le dénivelé déclaré.
           </p>
         )}
         <a href={pdfUrl} className="btn btn-primary mt-8">Télécharger mon plan (PDF) →</a>
