@@ -49,7 +49,14 @@ export default function Merci() {
         }
       })
       .catch((e: Error) => {
-        setMessage(e.message || 'Le service de génération ne répond pas.');
+        // Une coupure réseau fait rejeter fetch avec un TypeError au message technique du
+        // navigateur (« Failed to fetch », « Load failed ») : on ne montre que les messages
+        // écrits par l'API (audit du 27/09/2026, C20).
+        setMessage(
+          e instanceof TypeError
+            ? 'Le service de génération ne répond pas. Vérifie ta connexion et recharge cette page.'
+            : e.message || 'Le service de génération ne répond pas.',
+        );
         setEtat('erreur');
       });
   }, [sessionId]);
