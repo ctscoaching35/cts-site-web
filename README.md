@@ -172,6 +172,13 @@ Aucune config supplémentaire requise. Vercel détecte Next.js automatiquement.
 
 ### Option 3 — Export statique (GitHub Pages, OVH, etc.)
 
+> ⚠️ **Casse les adresses des fiches.** Les QR codes des plans PDF déjà livrés impriment
+> `https://www.cts-coaching.com/bibliotheque/<fiche>`, sans extension. Ces adresses
+> reposent sur les réécritures de `next.config.mjs`, qu'un export statique ignore : il
+> faudrait que l'hébergeur serve `<fiche>.html` à l'adresse sans extension, sans quoi
+> chaque QR code mène à une page introuvable. Le questionnaire `/plan` a aussi besoin de
+> l'API. À n'utiliser qu'en connaissance de cause (audit du 27/09/2026, C30).
+
 1. Décommente la ligne `output: 'export'` dans `next.config.mjs`.
 2. Lance `npm run build`.
 3. Le dossier `out/` contient le site statique à déposer sur ton hébergement.
