@@ -205,7 +205,7 @@ Pour tester : `npm run build && npm run start`, puis Lighthouse sur Chrome DevTo
 ## Notes éditoriales
 
 - Le formulaire de contact est en `mailto:` — pas de backend, le client mail s'ouvre avec le contenu pré-rempli. Pour passer à un service hébergé, voir **Formspree** (`<form action="https://formspree.io/f/xxxx" method="POST">`) ou **Resend** (route API).
-- Les **témoignages** sont fictifs (M., L., A. — anonymisés). À remplacer par de vrais cas dès que le consentement est obtenu.
+- Les **témoignages** sont de vrais retours de coachés, anonymisés (M., L., A.).
 - Les **6 posts Instagram** affichés sont des photos terrain en placeholder. Quand de vraies captures de posts seront disponibles, dépose-les dans `public/instagram/` et met à jour `instagram.posts` dans `lib/content.ts`.
 
 ---
