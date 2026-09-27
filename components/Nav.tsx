@@ -41,7 +41,7 @@ export default function Nav() {
           aria-label={site.name}
         >
           <Image
-            src="/logo/cts-logo.png"
+            src="/logo/cts-logo-rond-navy.png"
             alt="CTS Coaching"
             width={48}
             height={48}
