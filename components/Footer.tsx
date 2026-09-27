@@ -10,7 +10,7 @@ export default function Footer() {
           <div>
             <a href="#hero" className="inline-flex items-center gap-3 mb-6">
               <Image
-                src="/logo/cts-logo.png"
+                src="/logo/cts-logo-rond-navy.png"
                 alt="CTS Coaching"
                 width={56}
                 height={56}
