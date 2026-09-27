@@ -20,6 +20,7 @@ export const nav = [
   { label: 'Accueil', href: '#hero' },
   { label: 'À propos', href: '#about' },
   { label: "L'offre", href: '#offre' },
+  { label: 'Bibliothèque', href: '/bibliotheque' },
   { label: 'Contact', href: '#contact' },
 ];
 
