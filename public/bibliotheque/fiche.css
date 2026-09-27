@@ -153,6 +153,21 @@ th {
 }
 td { padding: 0.55rem 0.8rem; border-bottom: 1px solid var(--line); vertical-align: top; }
 tr:nth-child(even) td { background: var(--cream); }
+/* Sur téléphone, les tableaux tiennent dans l'écran au lieu de défiler sans le dire : à
+   390 px, la fiche zones cachait 2 colonnes sur 5 et la colonne « Verdict » de la fiche
+   récupération était coupée en plein mot (audit du 27/09/2026, C24). La césure suit la
+   langue de la page (lang="fr"), sur les mots de 7 lettres et plus, jamais moins de 3
+   de chaque côté : « Do-maine » ou « Modé-ré » se lisaient mal. Tout tient à 390 px ; à
+   360 px, seul le tableau des zones (5 colonnes) défile encore, de quelques pixels. */
+@media (max-width: 480px) {
+  table { font-size: 0.82rem; }
+  th, td {
+    padding: 0.45rem 0.5rem;
+    -webkit-hyphens: auto;
+    hyphens: auto;
+    hyphenate-limit-chars: 7 3 3;
+  }
+}
 
 /* Encadré d'alerte */
 .attention {
