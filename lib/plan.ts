@@ -189,9 +189,9 @@ export function reperesChrono(c: Champs, config: ConfigPlan): string | null {
  * Plancher de séances par semaine (CONTRAT_API_CTS.md §5) : celui du format, et au moins
  * 4 dès le seuil de km-effort (50 depuis le 26/09/2026) — la difficulté réelle de la
  * course, pas son étiquette. Seuils lus dans /v1/config ; l'API reste seule juge (refus
- * 5 et 5 bis). La note dit le motif mesuré, pour que l'athlète ne découvre pas son
- * plancher dans un refus : au-delà du seuil, la plus grosse semaine d'un plan à 3
- * séances est plus courte que la course.
+ * 5 et 5 bis). La note annonce le plancher en direct, pour que l'athlète ne le découvre
+ * pas dans un refus, et dit son coût mesuré. Pas de motif (décision coach du 27/09/2026) :
+ * aucun motif court n'est vrai pour tous les formats et tous les niveaux.
  */
 export function plancherSeances(c: Champs, config: ConfigPlan): { min: number; note: string } {
   const parFormat = config.freq_min_par_format[c.format] ?? 0;
@@ -207,7 +207,7 @@ export function plancherSeances(c: Champs, config: ConfigPlan): { min: number; n
   if (ke !== null && parDifficulte >= parFormat && parDifficulte > 0) {
     return {
       min,
-      note: `Ta course vaut ${Math.round(ke)} km-effort (distance + D+/100). À partir de ${seuil}, le plan demande au moins ${min} séances par semaine : à 3, ta plus grosse semaine d’entraînement resterait plus courte que ta course. La 4e séance ajoute environ une heure par semaine. ${bornes}`,
+      note: `Ta course vaut ${Math.round(ke)} km-effort (distance + D+/100). À partir de ${seuil}, le plan demande au moins ${min} séances par semaine. La 4e séance ajoute environ une heure par semaine. ${bornes}`,
     };
   }
   const passage = parFormat < auDela
