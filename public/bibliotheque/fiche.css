@@ -2,7 +2,19 @@
    Identité du site : Montserrat, bleu nuit #2F2D4E, teal #0C6E5F, blanc cassé #F3F7F0.
    Une seule apparence, claire, comme le site. */
 
-@import url("https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap");
+/* Montserrat servie par le site, comme sur le reste de cts-coaching.com : plus aucune
+   requête vers Google, qui recevait l'adresse IP de chaque lecteur. Sous-ensemble latin,
+   licence OFL (polices/OFL.txt). */
+@font-face { font-family: Montserrat; font-style: normal; font-weight: 400; font-display: swap;
+  src: url("/bibliotheque/polices/montserrat-400.woff") format("woff"); }
+@font-face { font-family: Montserrat; font-style: italic; font-weight: 400; font-display: swap;
+  src: url("/bibliotheque/polices/montserrat-400i.woff") format("woff"); }
+@font-face { font-family: Montserrat; font-style: normal; font-weight: 600; font-display: swap;
+  src: url("/bibliotheque/polices/montserrat-600.woff") format("woff"); }
+@font-face { font-family: Montserrat; font-style: normal; font-weight: 700; font-display: swap;
+  src: url("/bibliotheque/polices/montserrat-700.woff") format("woff"); }
+@font-face { font-family: Montserrat; font-style: normal; font-weight: 800; font-display: swap;
+  src: url("/bibliotheque/polices/montserrat-800.woff") format("woff"); }
 
 :root {
   --navy: #2f2d4e;
@@ -47,8 +59,11 @@ a:focus-visible { outline: 2px solid var(--teal); outline-offset: 3px; }
   gap: 1rem;
 }
 .marque {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
   font-weight: 800;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
   font-size: 0.85rem;
   color: #fff;
@@ -62,6 +77,9 @@ a:focus-visible { outline: 2px solid var(--teal); outline-offset: 3px; }
   color: var(--teal-light);
   text-decoration: none;
 }
+
+/* Logo : le même que l'en-tête du site et de /plan, à la même taille. */
+.marque img { width: 2.5rem; height: 2.5rem; object-fit: contain; }
 
 /* Titre de fiche */
 .titre {
