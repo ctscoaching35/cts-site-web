@@ -17,6 +17,12 @@ const inputCls =
   'w-full bg-white border border-indigo/20 focus:border-teal px-4 py-3 text-indigo outline-none transition-colors';
 const labelCls = 'block text-xs font-semibold tracking-cts uppercase text-indigo/70 mb-2';
 const aideCls = 'text-sm text-indigo/60 leading-relaxed mt-2';
+// Nombres à la française dans le récapitulatif : « 13,3 km », « 2 706 m », pas la saisie
+// brute « 13.3 » (audit du 27/09/2026, K1).
+const nombreFr = (v: string) => {
+  const n = parseFloat(v.replace(',', '.'));
+  return Number.isFinite(n) ? n.toLocaleString('fr-FR', { maximumFractionDigits: 1 }) : v;
+};
 
 function Section({ numero, titre, children }: { numero: number; titre: string; children: React.ReactNode }) {
   return (
@@ -188,7 +194,7 @@ export default function Questionnaire() {
       ['En ce moment', `${c.volume_hebdo_actuel} de course par semaine · plus longue sortie ${c.sortie_longue_actuelle}`],
       ['Formule', `${nomFormat} — ${c.duree_mois} mois`],
       ['Course', `${c.course_nom}, le ${new Date(`${c.date_course}T00:00:00`).toLocaleDateString('fr-FR')}`],
-      ['Parcours', `${c.distance_km} km, ${c.dplus_m} m D+${c.dmoins_m ? `, ${c.dmoins_m} m D−` : ''}${gpx ? ` · trace ${gpx.name}` : ' · sans trace GPX'}`],
+      ['Parcours', `${nombreFr(c.distance_km)} km, ${nombreFr(c.dplus_m)} m D+${c.dmoins_m ? `, ${nombreFr(c.dmoins_m)} m D−` : ''}${gpx ? ` · trace ${gpx.name}` : ' · sans trace GPX'}`],
       ['Temps cible', c.temps_cible], ['Ambition', nomAmbition], ['Terrain', nomTerrain],
       ['Disponibilité', `${c.freq_hebdo} séances par semaine · ${joursCoches.map((j) => NOMS_JOURS[j]).join(', ')} · sortie longue le ${c.jour_sl}`],
     ];
