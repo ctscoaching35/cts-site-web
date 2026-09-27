@@ -40,6 +40,14 @@ export default function Footer() {
                   </a>
                 </li>
               ))}
+              <li>
+                <a
+                  href="/bibliotheque"
+                  className="text-white/80 hover:text-teal-light transition-colors text-sm"
+                >
+                  Bibliothèque
+                </a>
+              </li>
             </ul>
           </div>
 
