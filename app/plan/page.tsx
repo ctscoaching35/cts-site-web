@@ -22,7 +22,7 @@ export default function PagePlan() {
           <div className="eyebrow text-teal mb-3">Plan d’entraînement trail</div>
           <h1 className="text-3xl sm:text-5xl text-indigo leading-tight mb-4">Ton plan, construit sur ta course</h1>
           <p className="text-indigo/70 text-lg leading-relaxed">
-            Sept questions sur ta course, ton niveau, ton terrain et tes disponibilités. Chaque semaine et chaque séance
+            Sept rubriques sur ta course, ton niveau, ton terrain et tes disponibilités. Chaque semaine et chaque séance
             de ton plan en découlent, jusqu’au jour J. Tu le reçois en PDF.
           </p>
         </div>

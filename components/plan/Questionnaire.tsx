@@ -314,7 +314,7 @@ export default function Questionnaire() {
             <input id="date_course" type="date" className={inputCls} required value={c.date_course} onChange={(e) => maj('date_course')(e.target.value)} />
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-4 items-end">
           <div>
             <label className={labelCls} htmlFor="distance">Distance (km)</label>
             <input id="distance" type="number" step="0.1" min="0.1" inputMode="decimal" className={inputCls} required value={c.distance_km} onChange={(e) => maj('distance_km')(e.target.value)} />

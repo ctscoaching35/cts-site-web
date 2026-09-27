@@ -15,8 +15,11 @@ type Resume = {
   trace_ignoree?: boolean;
 };
 
+// « le 1er février », jamais « le 1 février » (audit du 27/09/2026, K2).
 const dateFr = (iso: string) =>
-  new Date(`${iso}T00:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+  new Date(`${iso}T00:00:00`)
+    .toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+    .replace(/^1 /, '1er ');
 
 export default function Merci() {
   const sessionId = useSearchParams().get('session_id') || '';

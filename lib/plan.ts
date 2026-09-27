@@ -91,13 +91,13 @@ export const textes = {
   charge: {
     titre: 'Ce que tu cours en ce moment',
     aide:
-      'Ces deux durées décident d’où ton plan démarre. C’est la seule chose qui distingue deux coureurs du même niveau : l’un tient déjà 2h30, l’autre plafonne à 1h, et ils n’ont pas à recevoir la même première semaine. Le risque de blessure monte quand une sortie dépasse nettement la plus longue des 30 derniers jours — c’est le résultat le mieux établi de tout l’entraînement, et il ne sert à rien si on ne sait pas d’où tu pars.',
+      'Ta plus longue sortie décide d’où ton plan démarre. C’est la seule chose qui distingue deux coureurs du même niveau : l’un tient déjà 2h30, l’autre plafonne à 1h, et ils n’ont pas à recevoir la même première semaine. Le risque de blessure monte quand une sortie dépasse nettement la plus longue des 4 dernières semaines — c’est le résultat le mieux établi de tout l’entraînement, et il ne sert à rien si on ne sait pas d’où tu pars.',
     volume: 'Volume de course par semaine, en ce moment',
     sortieLongue: 'Ta plus longue sortie des 4 dernières semaines',
     note: 'En durée de course, pas en kilomètres. Si tu n’as pas couru du tout ces 4 semaines, mets ta dernière sortie régulière.',
   },
   gpx:
-    'Le profil réel du parcours (répartition des pentes) affine tout le plan. Sans trace, le plan est construit sur le D+/D− déclaré ci-dessus, et le profil affiché dans le PDF est schématique.',
+    'Le profil réel du parcours (répartition des pentes) affine tout le plan. Sans trace, le plan est construit sur le D+/D− déclaré ci-dessus, et le PDF n’affiche pas de profil.',
   tempsCible: 'Même une estimation large vaut mieux que rien — c’est ce qui calibre l’intensité de tout le plan.',
   ambition: {
     intro:
@@ -162,8 +162,12 @@ export function avertissements(c: Champs, config: ConfigPlan, aujourdhui = new D
     const semainesPassees = Math.floor((jour.getTime() - lundiS1.getTime()) / (7 * 86400000));
     if (semainesPassees >= 1) {
       const dans = Math.max(Math.floor((course.getTime() - jour.getTime()) / (7 * 86400000)), 0);
+      // Accord et arrondi (audit du 27/09/2026, K3) : « dans 1 semaines », et « il y a 3
+      // semaines » pour un plan commencé depuis 27 jours.
+      const ilYa = Math.round((jour.getTime() - lundiS1.getTime()) / (7 * 86400000));
+      const semaines = (n: number) => (n === 0 ? 'moins d’une semaine' : `${n} semaine${n > 1 ? 's' : ''}`);
       out.push(
-        `Ta course est dans ${dans} semaines : ton plan de ${c.duree_mois} mois a commencé le ${lundiS1.toLocaleDateString('fr-FR')}, il y a ${semainesPassees} semaine${semainesPassees > 1 ? 's' : ''}. Tu le reçois en entier et tu rejoins la semaine en cours ; pour le suivre depuis le début, choisis une formule plus courte si ta course le permet.`
+        `Ta course est dans ${semaines(dans)} : ton plan de ${c.duree_mois} mois a commencé le ${lundiS1.toLocaleDateString('fr-FR')}, il y a ${semaines(ilYa)}. Tu le reçois en entier et tu rejoins la semaine en cours ; pour le suivre depuis le début, choisis une formule plus courte si ta course le permet.`
       );
     }
   }
