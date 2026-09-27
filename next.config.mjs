@@ -19,6 +19,8 @@ const nextConfig = {
   },
   // Décommente la ligne ci-dessous pour un export statique pur (Netlify, GitHub Pages, etc.)
   // Sur Vercel, laisser commenté pour bénéficier de l'optimisation d'images.
+  // ATTENTION : un export statique ignore les réécritures ci-dessus, donc les adresses
+  // /bibliotheque/<fiche> imprimées dans les QR codes des PDF (voir README, option 3).
   // output: 'export',
 };
 
