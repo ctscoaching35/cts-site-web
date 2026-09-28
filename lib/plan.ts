@@ -162,12 +162,15 @@ export function avertissements(c: Champs, config: ConfigPlan, aujourdhui = new D
     const semainesPassees = Math.floor((jour.getTime() - lundiS1.getTime()) / (7 * 86400000));
     if (semainesPassees >= 1) {
       const dans = Math.max(Math.floor((course.getTime() - jour.getTime()) / (7 * 86400000)), 0);
+      // Le plan repart de la semaine rejointe (audit du 27/09/2026, B4 ; décision coach du
+      // 28/09/2026) : plus de « choisis une formule plus courte », qui n'existait pas
+      // toujours (Trail Marathon de 3 mois) et que le site ne peut pas vérifier.
       // Accord et arrondi (audit du 27/09/2026, K3) : « dans 1 semaines », et « il y a 3
       // semaines » pour un plan commencé depuis 27 jours.
       const ilYa = Math.round((jour.getTime() - lundiS1.getTime()) / (7 * 86400000));
       const semaines = (n: number) => (n === 0 ? 'moins d’une semaine' : `${n} semaine${n > 1 ? 's' : ''}`);
       out.push(
-        `Ta course est dans ${semaines(dans)} : ton plan de ${c.duree_mois} mois a commencé le ${lundiS1.toLocaleDateString('fr-FR')}, il y a ${semaines(ilYa)}. Tu le reçois en entier et tu rejoins la semaine en cours ; pour le suivre depuis le début, choisis une formule plus courte si ta course le permet.`
+        `Ta course est dans ${semaines(dans)} : ton plan de ${c.duree_mois} mois a commencé le ${lundiS1.toLocaleDateString('fr-FR')}, il y a ${semaines(ilYa)}. Tu le reçois en entier et tu le rejoins cette semaine : ta sortie longue repart de ta plus longue sortie récente, sans jamais la dépasser de plus d’une petite marche.`
       );
     }
   }
