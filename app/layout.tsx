@@ -36,7 +36,7 @@ export const metadata: Metadata = {
     siteName: 'CTS Coaching',
     title: 'CTS Coaching — City to Summit',
     description:
-      'Coaching trail scientifique pour traileurs citadins. Atteignez vos sommets, par des kinés sur l’UTMB Mont-Blanc.',
+      'Coaching trail scientifique pour traileurs citadins. Atteins tes sommets, par des kinés sur l’UTMB Mont-Blanc.',
     images: [
       {
         url: '/photos/DSC_8334.jpg',
@@ -50,7 +50,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'CTS Coaching — City to Summit',
     description:
-      'Coaching trail scientifique pour traileurs citadins. Atteignez vos sommets, par des kinés sur l’UTMB Mont-Blanc.',
+      'Coaching trail scientifique pour traileurs citadins. Atteins tes sommets, par des kinés sur l’UTMB Mont-Blanc.',
     images: ['/photos/DSC_8334.jpg'],
   },
   robots: { index: true, follow: true },
