@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import {
   API_URL, avertissements, champsVides, intakePourApi, plancherSeances, reperesChrono, textes,
@@ -68,6 +68,10 @@ export default function Questionnaire() {
   const [erreurConfig, setErreurConfig] = useState('');
   const [c, setC] = useState<Champs>(champsVides);
   const [gpx, setGpx] = useState<File | null>(null);
+  // Trace vérifiée dès son choix, sans rien bloquer (audit du 27/09/2026, T3 ; décision coach
+  // du 28/09/2026) : l'athlète apprenait après avoir payé qu'elle était illisible.
+  const [avisTrace, setAvisTrace] = useState('');
+  const traceDemandee = useRef(0);
   const [etape, setEtape] = useState<'formulaire' | 'recap'>('formulaire');
   const [confirme, setConfirme] = useState(false);
   const [envoi, setEnvoi] = useState(false);
@@ -153,6 +157,22 @@ export default function Questionnaire() {
     setConfirme(false);
     setEtape('recap');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function choisirTrace(fichier: File | null) {
+    setGpx(fichier);
+    setAvisTrace('');
+    const demande = ++traceDemandee.current;
+    if (!fichier) return;
+    const donnees = new FormData();
+    donnees.append('gpx', fichier);
+    // En cas d'échec réseau, rien à dire : le paiement revérifie la trace, en filet.
+    fetch(`${API_URL}/v1/trace`, { method: 'POST', body: donnees })
+      .then((r) => r.json())
+      .then((corps) => {
+        if (demande === traceDemandee.current) setAvisTrace(corps?.message || '');
+      })
+      .catch(() => {});
   }
 
   async function generer() {
@@ -337,7 +357,10 @@ export default function Questionnaire() {
         <p className="text-sm text-indigo/60 -mt-3">D− facultatif : laissé vide, on suppose D− = D+ et le PDF le signale.</p>
         <div>
           <label className={labelCls} htmlFor="gpx">Trace GPX de la course — facultatif</label>
-          <input id="gpx" type="file" accept=".gpx" className="block text-sm text-indigo" onChange={(e) => setGpx(e.target.files?.[0] ?? null)} />
+          <input id="gpx" type="file" accept=".gpx" className="block text-sm text-indigo" onChange={(e) => choisirTrace(e.target.files?.[0] ?? null)} />
+          {avisTrace && (
+            <p role="status" className="bg-white border-l-4 border-teal px-4 py-3 mt-2 text-sm text-indigo leading-relaxed">{avisTrace}</p>
+          )}
           <p className={aideCls}>{textes.gpx}</p>
         </div>
         <div>
