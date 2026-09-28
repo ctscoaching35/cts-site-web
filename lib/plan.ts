@@ -188,8 +188,19 @@ export function reperesChrono(c: Champs, config: ConfigPlan): string | null {
     const t = Math.round(h * 12) * 5;
     return `${Math.floor(t / 60)}h${String(t % 60).padStart(2, '0')}`;
   };
-  const [rapide, moyenne, prudente] = vitesses.map((v) => fmt(ke / v));
-  return `Ta course fait ${Math.round(ke)} km-effort (km + D+/100). Repères de chrono sur ce format : allure rapide ${rapide}, allure moyenne ${moyenne}, allure prudente ${prudente}. Choisis d’après ta propre expérience de course.`;
+  // Un repère au-delà du plafond du format le dit, au lieu de proposer un chrono que le
+  // formulaire refusera ensuite (audit du 27/09/2026, C21 ; décision coach du 28/09/2026 :
+  // « dire la vérité au bon endroit »). UTMB : allure prudente 54h10, plafond 45h.
+  const plafond = config.temps_max_par_format[c.format];
+  const heures = vitesses.map((v) => ke / v);
+  const depasse = plafond !== undefined && heures.some((h) => h > plafond);
+  const [rapide, moyenne, prudente] = heures.map((h) =>
+    plafond !== undefined && h > plafond ? `plus de ${plafond}h` : fmt(h)
+  );
+  const fin = depasse
+    ? ` Au-delà de ${plafond}h, c’est hors du plafond de ce plan : un coaching individualisé est plus adapté.`
+    : ' Choisis d’après ta propre expérience de course.';
+  return `Ta course fait ${Math.round(ke)} km-effort (km + D+/100). Repères de chrono sur ce format : allure rapide ${rapide}, allure moyenne ${moyenne}, allure prudente ${prudente}.${fin}`;
 }
 
 /**
