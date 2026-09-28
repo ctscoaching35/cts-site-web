@@ -96,7 +96,7 @@ export const offer = {
   eyebrow: 'L’offre',
   title: 'Un coaching pensé pour ta réalité',
   subtitle:
-    'Une formule unique. Pas de paliers, pas d’options cachées. Un suivi 100% individualisé, scientifique, à distance.',
+    'Pour le coaching, une formule unique. Pas de paliers, pas d’options cachées. Un suivi 100% individualisé, scientifique, à distance.',
   card: {
     label: 'CTS COACHING',
     price: '89€',
@@ -108,7 +108,7 @@ export const offer = {
       'Suivi sur la plateforme Nolio',
       'Échanges illimités sur WhatsApp',
       'Double expertise kiné du sport + coach trail',
-      'Fiches techniques exclusives (allure, nutrition, gestion de course)',
+      'Fiches techniques CTS (allure, nutrition, préparation de course)',
       'Programme de renforcement spécifique avec vidéos à l’appui',
     ],
     cta: { label: 'Commencer mon coaching', href: '#contact' },
