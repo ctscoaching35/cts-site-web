@@ -25,7 +25,7 @@ export const nav = [
 ];
 
 export const hero = {
-  badge: 'Atteignez vos sommets',
+  badge: 'Atteins tes sommets',
   title: 'City to',
   titleAccent: 'Summit.',
   subtitle:
