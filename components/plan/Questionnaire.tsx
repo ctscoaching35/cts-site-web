@@ -84,7 +84,8 @@ export default function Questionnaire() {
       .catch(() => setErreurConfig('Le service de génération ne répond pas. Réessaie dans quelques minutes.'));
     try {
       const brouillon = localStorage.getItem(CLE_BROUILLON);
-      if (brouillon) setC({ ...champsVides, ...JSON.parse(brouillon) });
+      // Les réponses de santé ne sont jamais reprises d'un brouillon, même ancien.
+      if (brouillon) setC({ ...champsVides, ...JSON.parse(brouillon), blessure: '', coupure: '' });
     } catch {
       /* brouillon illisible : on repart de zéro */
     }
@@ -92,7 +93,10 @@ export default function Questionnaire() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(CLE_BROUILLON, JSON.stringify(c));
+      // Les deux réponses de santé restent hors du brouillon (audit du 27/09/2026, T4 ;
+      // décision coach du 28/09/2026) : « elles restent sur ta page » devient vrai au pied
+      // de la lettre, rien ne les garde sur l'ordinateur d'un athlète qui ne va pas au bout.
+      localStorage.setItem(CLE_BROUILLON, JSON.stringify({ ...c, blessure: undefined, coupure: undefined }));
     } catch {
       /* stockage indisponible : sans conséquence */
     }
