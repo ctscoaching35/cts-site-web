@@ -117,7 +117,7 @@ export const textes = {
         valeur: 'performer',
         titre: 'Performer',
         description:
-          'Viser le meilleur jour J possible. Tu démarres plus haut et tu atteins ta dose maximale plus tôt, sans jamais dépasser le plafond de ton niveau.',
+          'Viser le meilleur jour J possible. Tu montes plus vite et tu atteins ta dose maximale plus tôt, sans jamais dépasser le plafond de ton niveau.',
       },
     ],
   },
