@@ -109,6 +109,7 @@ export default function Questionnaire() {
   const joursCoches = (config?.jours ?? []).filter((j) => c.jours_disponibles.includes(j));
   const plancher = config ? plancherSeances(c, config) : null;
   const freqMin = plancher?.min ?? 3;
+  const freqMax = plancher?.max ?? 7;
   const reperes = config ? reperesChrono(c, config) : null;
   const alertes = useMemo(() => (config ? avertissements(c, config) : []), [c, config]);
 
@@ -120,6 +121,9 @@ export default function Questionnaire() {
       if (n.format && !(config.formats_par_niveau[n.niveau] ?? []).includes(n.format)) n.format = '';
       if (n.duree_mois && !(config.durees_par_format[n.format] ?? []).map(String).includes(n.duree_mois)) n.duree_mois = '';
       if (n.jour_sl && !n.jours_disponibles.includes(n.jour_sl)) n.jour_sl = '';
+      // Plafond du niveau (second audit, D4) : passer en débutant avec 5 séances ou plus
+      // vide le champ, comme les autres réponses devenues invalides.
+      if (n.freq_hebdo && Number(n.freq_hebdo) > (config.freq_max_par_niveau?.[n.niveau] ?? 7)) n.freq_hebdo = '';
       return JSON.stringify(n) === JSON.stringify(p) ? p : n;
     });
   }, [config, c.niveau, c.format, c.jours_disponibles, c.jour_sl, c.duree_mois]);
@@ -422,7 +426,7 @@ export default function Questionnaire() {
           </div>
           <div>
             <label className={labelCls} htmlFor="freq">Séances par semaine</label>
-            <input id="freq" type="number" min={freqMin} max={Math.max(freqMin, Math.min(7, joursCoches.length))} className={inputCls} required
+            <input id="freq" type="number" min={freqMin} max={Math.max(freqMin, Math.min(7, joursCoches.length, freqMax))} className={inputCls} required
               value={c.freq_hebdo} onChange={(e) => maj('freq_hebdo')(e.target.value)} />
             <p className={aideCls}>{plancher?.note}</p>
           </div>

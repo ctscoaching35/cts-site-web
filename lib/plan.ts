@@ -16,6 +16,7 @@ export type ConfigPlan = {
   freq_min_par_format: Record<string, number>;
   freq_min_km_effort_seuil: number;
   freq_min_au_dela_du_seuil: number;
+  freq_max_par_niveau: Record<string, number>;
   temps_max_par_format: Record<string, number>;
   reperes_km_effort_h: Record<string, [number, number, number]>;
   semaines_par_formule: Record<string, number>;
@@ -211,7 +212,7 @@ export function reperesChrono(c: Champs, config: ConfigPlan): string | null {
  * pas dans un refus, et dit son coût mesuré. Pas de motif (décision coach du 27/09/2026) :
  * aucun motif court n'est vrai pour tous les formats et tous les niveaux.
  */
-export function plancherSeances(c: Champs, config: ConfigPlan): { min: number; note: string } {
+export function plancherSeances(c: Champs, config: ConfigPlan): { min: number; max: number; note: string } {
   const parFormat = config.freq_min_par_format[c.format] ?? 0;
   const seuil = config.freq_min_km_effort_seuil;
   const auDela = config.freq_min_au_dela_du_seuil;
@@ -220,18 +221,23 @@ export function plancherSeances(c: Champs, config: ConfigPlan): { min: number; n
   const ke = km > 0 ? km + dp / 100 : null;
   const parDifficulte = ke !== null && ke >= seuil ? auDela : 0;
   const min = Math.max(parFormat, parDifficulte, 3);
-  const bornes = 'Pas plus que de jours cochés.';
-  if (!c.format) return { min, note: bornes };
+  // Plafond du niveau (second audit du 28/09/2026, D4) : le débutant, 4 séances au plus.
+  // Lu dans /v1/config ; l'API reste seule juge (refus 5 ter).
+  const max = config.freq_max_par_niveau?.[c.niveau] ?? 7;
+  const bornes = 'Pas plus que de jours cochés.'
+    + (max < 7 ? ` En débutant, ${max} séances par semaine au plus.` : '');
+  if (!c.format) return { min, max, note: bornes };
   if (ke !== null && parDifficulte >= parFormat && parDifficulte > 0) {
     return {
       min,
+      max,
       note: `Ta course vaut ${Math.round(ke)} km-effort (distance + D+/100). À partir de ${seuil}, le plan demande au moins ${min} séances par semaine. La 4e séance ajoute environ une heure par semaine. ${bornes}`,
     };
   }
   const passage = parFormat < auDela
     ? ` À partir de ${seuil} km-effort (distance + D+/100), le minimum passe à ${auDela}.`
     : '';
-  return { min, note: `Minimum ${min} séances par semaine sur ce format.${passage} ${bornes}` };
+  return { min, max, note: `Minimum ${min} séances par semaine sur ce format.${passage} ${bornes}` };
 }
 
 /** L'intake envoyé à l'API : tous les champs sauf la santé. */
