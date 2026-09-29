@@ -101,13 +101,17 @@ export const textes = {
     'Le profil réel du parcours (répartition des pentes) affine tout le plan. Sans trace, le plan est construit sur le D+/D− déclaré ci-dessus, et le PDF n’affiche pas de profil.',
   tempsCible: 'Même une estimation large vaut mieux que rien — c’est ce qui calibre l’intensité de tout le plan.',
   ambition: {
+    // Ce que l'ambition change vraiment, mesuré (second audit du moteur, D13) : ni volume, ni
+    // sortie longue, ni nombre de séances dures ; « découverte » plafonne plus bas le travail
+    // rapide, « performer » ajoute de l'allure de course, atteinte plus tôt.
     intro:
-      'Le plafond de ton plan ne bouge pas : c’est ton niveau qui le fixe, et il est le même pour les trois réponses. Ce que tu choisis ici, c’est la vitesse à laquelle tu montes vers ce plafond.',
+      'Ce choix ne change ni ton volume, ni ta sortie longue, ni le nombre de séances dures. Il règle la dose de travail rapide, toujours sous le plafond de ton niveau.',
     options: [
       {
         valeur: 'decouverte',
         titre: 'La découvrir et la finir',
-        description: 'Arriver au départ en forme, franchir la ligne. La montée en intensité est la plus progressive des trois.',
+        description:
+          'Arriver au départ en forme, franchir la ligne. Tes séances les plus rapides plafonnent plus bas : le même plan, un cran plus doux au plus fort de la préparation.',
       },
       {
         valeur: 'progresser',
@@ -118,7 +122,7 @@ export const textes = {
         valeur: 'performer',
         titre: 'Performer',
         description:
-          'Viser le meilleur jour J possible. Tu montes plus vite et tu atteins ta dose maximale plus tôt, sans jamais dépasser le plafond de ton niveau.',
+          'Viser le meilleur jour J possible. Plus de travail à ton allure de course, atteint plus tôt dans le bloc spécifique.',
       },
     ],
   },
