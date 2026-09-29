@@ -84,8 +84,8 @@ export default function Questionnaire() {
       .catch(() => setErreurConfig('Le service de génération ne répond pas. Réessaie dans quelques minutes.'));
     try {
       const brouillon = localStorage.getItem(CLE_BROUILLON);
-      // Les réponses de santé ne sont jamais reprises d'un brouillon, même ancien.
-      if (brouillon) setC({ ...champsVides, ...JSON.parse(brouillon), blessure: '', coupure: '' });
+      // La réponse de santé n'est jamais reprise d'un brouillon, même ancien.
+      if (brouillon) setC({ ...champsVides, ...JSON.parse(brouillon), blessure: '' });
     } catch {
       /* brouillon illisible : on repart de zéro */
     }
@@ -93,10 +93,12 @@ export default function Questionnaire() {
 
   useEffect(() => {
     try {
-      // Les deux réponses de santé restent hors du brouillon (audit du 27/09/2026, T4 ;
-      // décision coach du 28/09/2026) : « elles restent sur ta page » devient vrai au pied
-      // de la lettre, rien ne les garde sur l'ordinateur d'un athlète qui ne va pas au bout.
-      localStorage.setItem(CLE_BROUILLON, JSON.stringify({ ...c, blessure: undefined, coupure: undefined }));
+      // La réponse de santé reste hors du brouillon (audit du 27/09/2026, T4 ; décision
+      // coach du 28/09/2026) : « elle reste sur ta page » devient vrai au pied de la
+      // lettre, rien ne la garde sur l'ordinateur d'un athlète qui ne va pas au bout.
+      // L'arrêt récent, donnée d'entraînement depuis le second audit (D16), y reste
+      // comme la charge actuelle.
+      localStorage.setItem(CLE_BROUILLON, JSON.stringify({ ...c, blessure: undefined }));
     } catch {
       /* stockage indisponible : sans conséquence */
     }
@@ -318,6 +320,18 @@ export default function Questionnaire() {
           </div>
           <p className={aideCls}>{textes.charge.note}</p>
         </div>
+        <div>
+          <p className="font-bold text-indigo mb-3">{textes.charge.coupure}</p>
+          <div className="flex gap-3">
+            {['non', 'oui'].map((v) => (
+              <label key={v} className={clsx('flex items-center gap-2 px-5 py-2 border cursor-pointer',
+                c.coupure === v ? 'border-teal bg-teal/5' : 'border-indigo/15')}>
+                <input type="radio" name="coupure" value={v} checked={c.coupure === v} required onChange={() => maj('coupure')(v)} className="accent-teal" />
+                <span className="text-indigo capitalize">{v}</span>
+              </label>
+            ))}
+          </div>
+        </div>
       </Section>
 
       <Section numero={3} titre="Ta formule">
@@ -434,7 +448,7 @@ export default function Questionnaire() {
       </Section>
 
       <Section numero={7} titre="Avant de commencer">
-        {(['blessure', 'coupure'] as const).map((q) => (
+        {(['blessure'] as const).map((q) => (
           <div key={q}>
             <p className="font-bold text-indigo mb-3">{textes.sante[q]}</p>
             <div className="flex gap-3">
@@ -448,7 +462,7 @@ export default function Questionnaire() {
             </div>
           </div>
         ))}
-        <p className="text-sm text-indigo/60">Ces deux réponses restent sur ta page : elles servent seulement à t’afficher un conseil avant de générer ton plan.</p>
+        <p className="text-sm text-indigo/60">Cette réponse reste sur ta page : elle sert seulement à t’afficher un conseil avant de générer ton plan.</p>
       </Section>
 
       {refus && (

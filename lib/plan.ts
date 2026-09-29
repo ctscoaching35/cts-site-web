@@ -44,8 +44,10 @@ export type Champs = {
   jours_disponibles: string[];
   jour_sl: string;
   freq_hebdo: string;
-  // Section 7 : ne quittent jamais le navigateur (avertissements seulement).
+  // Section 7 : la blessure ne quitte jamais le navigateur (avertissement seulement).
   blessure: string;
+  // Section 2 : l'arrêt récent part avec le plan, comme la charge actuelle (second audit
+  // du moteur, D16) : il fait démarrer le plan par deux semaines sans séance dure.
   coupure: string;
 };
 
@@ -96,6 +98,7 @@ export const textes = {
     volume: 'Volume de course par semaine, en ce moment',
     sortieLongue: 'Ta plus longue sortie des 4 dernières semaines',
     note: 'En durée de course, pas en kilomètres. Si tu n’as pas couru du tout ces 4 semaines, mets ta dernière sortie régulière.',
+    coupure: 'As-tu arrêté de courir plus de 4 semaines au cours des 2 derniers mois ?',
   },
   gpx:
     'Le profil réel du parcours (répartition des pentes) affine tout le plan. Sans trace, le plan est construit sur le D+/D− déclaré ci-dessus, et le PDF n’affiche pas de profil.',
@@ -138,7 +141,6 @@ export const textes = {
   },
   sante: {
     blessure: 'Une blessure ou une douleur t’empêche-t-elle de courir normalement en ce moment ?',
-    coupure: 'As-tu arrêté de courir plus de 4 semaines au cours des 2 derniers mois ?',
   },
 };
 
@@ -154,7 +156,7 @@ export function avertissements(c: Champs, config: ConfigPlan, aujourdhui = new D
     out.push(
       c.niveau === 'debutant'
         ? 'Après plus de 4 semaines sans courir, le plan débutant reste le bon choix : il démarre au plus bas. Écoute tes sensations les premières semaines, et allège si une douleur apparaît.'
-        : 'Après plus de 4 semaines sans courir, reprends avec le niveau en dessous de celui que tu as coché, si ton format y reste ouvert : le plan démarre plus bas, et tes muscles et tendons en ont besoin.'
+        : 'Après plus de 4 semaines sans courir, tes deux premières semaines de plan se font sans séance dure, puis la vitesse revient par un Seuil 2 au plus bas : tes muscles et tes tendons se réhabituent avant la vitesse. Écoute tes sensations, et allège si une douleur apparaît.'
     );
   }
   const n = config.semaines_par_formule[`${c.format}-${c.duree_mois}`];
@@ -244,10 +246,9 @@ export function plancherSeances(c: Champs, config: ConfigPlan): { min: number; m
   return { min, max, note: `Minimum ${min} séances par semaine sur ce format.${passage} ${bornes}` };
 }
 
-/** L'intake envoyé à l'API : tous les champs sauf la santé. */
+/** L'intake envoyé à l'API : tous les champs sauf la blessure, qui reste sur la page. */
 export function intakePourApi(c: Champs) {
-  const { blessure, coupure, ...reste } = c;
+  const { blessure, ...reste } = c;
   void blessure;
-  void coupure;
   return reste;
 }
