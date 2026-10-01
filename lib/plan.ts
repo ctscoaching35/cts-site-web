@@ -11,6 +11,7 @@ export const API_URL = (process.env.NEXT_PUBLIC_CTS_API_URL || 'http://localhost
 
 export type ConfigPlan = {
   formats_par_niveau: Record<string, string[]>;
+  ambitions_par_niveau?: Record<string, string[]>;
   formats: { code: string; nom: string; bornes: string }[];
   durees_par_format: Record<string, number[]>;
   freq_min_par_format: Record<string, number>;
@@ -209,6 +210,17 @@ export function reperesChrono(c: Champs, config: ConfigPlan): string | null {
     ? ` Au-delà de ${plafond}h, c’est hors du plafond de ce plan : un coaching individualisé est plus adapté.`
     : ' Choisis d’après ta propre expérience de course.';
   return `Ta course fait ${Math.round(ke)} km-effort (km + D+/100). Repères de chrono sur ce format : allure rapide ${rapide}, allure moyenne ${moyenne}, allure prudente ${prudente}.${fin}`;
+}
+
+/**
+ * Ambitions ouvertes au niveau déclaré (CONTRAT_API_CTS.md §4 ; audit du questionnaire du
+ * 01/10/2026, F3) : en débutant, « Performer » donne le plan de « Progresser » (112 plans sur
+ * 112) et n'est plus proposé. Lu dans /v1/config ; sans la table (API plus ancienne) ou sans
+ * niveau choisi, les trois.
+ */
+export function ambitionsOuvertes(c: Champs, config: ConfigPlan) {
+  const ouvertes = config.ambitions_par_niveau?.[c.niveau];
+  return textes.ambition.options.filter((o) => !ouvertes || ouvertes.includes(o.valeur));
 }
 
 /** Temps saisi -> heures, la même lecture que l'API (cts_intake.parse_temps_cible) ; null si illisible. */

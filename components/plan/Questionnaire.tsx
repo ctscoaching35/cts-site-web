@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import {
-  API_URL, avertissements, bandeTempsCible, champsVides, intakePourApi, plancherSeances, reperesChrono, textes,
+  API_URL, ambitionsOuvertes, avertissements, bandeTempsCible, champsVides, intakePourApi, plancherSeances, reperesChrono, textes,
   type Champs, type ConfigPlan,
 } from '@/lib/plan';
 
@@ -122,6 +122,8 @@ export default function Questionnaire() {
     setC((p) => {
       const n = { ...p };
       if (n.format && !(config.formats_par_niveau[n.niveau] ?? []).includes(n.format)) n.format = '';
+      // Passer en débutant efface « Performer », qu'il ne propose pas (F3, 01/10/2026).
+      if (n.ambition && !ambitionsOuvertes(n, config).some((o) => o.valeur === n.ambition)) n.ambition = '';
       if (n.duree_mois && !(config.durees_par_format[n.format] ?? []).map(String).includes(n.duree_mois)) n.duree_mois = '';
       if (n.jour_sl && !n.jours_disponibles.includes(n.jour_sl)) n.jour_sl = '';
       // Plafond du niveau (second audit, D4) : passer en débutant avec 5 séances ou plus
@@ -403,7 +405,7 @@ export default function Questionnaire() {
           <p className="font-bold text-indigo mb-2">Qu’est-ce que tu vises sur cette course ?</p>
           <p className="text-sm text-indigo/60 leading-relaxed mb-4">{textes.ambition.intro}</p>
           <div className="space-y-3">
-            {textes.ambition.options.map((o) => (
+            {ambitionsOuvertes(c, config).map((o) => (
               <Choix key={o.valeur} nom="ambition" valeur={o.valeur} courant={c.ambition} onChange={maj('ambition')}
                 titre={o.titre} description={o.description} />
             ))}
