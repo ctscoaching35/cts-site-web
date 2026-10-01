@@ -19,6 +19,7 @@ export type ConfigPlan = {
   freq_max_par_niveau: Record<string, number>;
   temps_max_par_format: Record<string, number>;
   reperes_km_effort_h: Record<string, [number, number, number]>;
+  bandes_temps_cible?: { bornes_h: number[]; libelles: string[]; phrases_bornes: string[]; marge_min: number };
   semaines_par_formule: Record<string, number>;
   jours: string[];
   prix_eur_par_mois: Record<string, number>;
@@ -208,6 +209,36 @@ export function reperesChrono(c: Champs, config: ConfigPlan): string | null {
     ? ` Au-delà de ${plafond}h, c’est hors du plafond de ce plan : un coaching individualisé est plus adapté.`
     : ' Choisis d’après ta propre expérience de course.';
   return `Ta course fait ${Math.round(ke)} km-effort (km + D+/100). Repères de chrono sur ce format : allure rapide ${rapide}, allure moyenne ${moyenne}, allure prudente ${prudente}.${fin}`;
+}
+
+/** Temps saisi -> heures, la même lecture que l'API (cts_intake.parse_temps_cible) ; null si illisible. */
+export function lireTemps(brut: string): number | null {
+  const s = brut.trim().toLowerCase();
+  let m = s.match(/^([-+]?\d+)\s*(?:h|:)\s*(\d{1,2})\s*(?:min|mn)?$/);
+  if (m) return Number(m[2]) < 60 ? Number(m[1]) + Number(m[2]) / 60 : null;
+  m = s.match(/^([-+]?\d+(?:[.,]\d+)?)\s*(?:min|mn)$/);
+  if (m) return Number(m[1].replace(',', '.')) / 60;
+  m = s.match(/^([-+]?\d+(?:[.,]\d+)?)\s*h?$/);
+  if (m) return Number(m[1].replace(',', '.'));
+  return null;
+}
+
+/**
+ * Bande du temps cible (CONTRAT_API_CTS.md §4 ; audit du questionnaire du 01/10/2026, F1) :
+ * pour quelle durée de course le plan sera construit et, à moins de `marge_min` minutes
+ * d'une borne, ce qui change de l'autre côté. Bornes, noms et phrases lus dans /v1/config.
+ */
+export function bandeTempsCible(c: Champs, config: ConfigPlan): { annonce: string; alerte: string | null } | null {
+  const bandes = config.bandes_temps_cible;
+  const h = lireTemps(c.temps_cible);
+  if (!bandes || h === null || !(h > 0)) return null;
+  const i = bandes.bornes_h.filter((b) => h >= b).length;
+  const j = bandes.bornes_h.findIndex((b) => Math.abs(h - b) * 60 < bandes.marge_min);
+  return {
+    annonce: `Ton plan sera construit pour une course de ${bandes.libelles[i]}.`,
+    alerte: j < 0 ? null
+      : `Tu es à moins de ${bandes.marge_min} min de ${bandes.bornes_h[j]}h, une frontière du plan. ${bandes.phrases_bornes[j]} Mets le temps que tu crois le plus probable.`,
+  };
 }
 
 /**

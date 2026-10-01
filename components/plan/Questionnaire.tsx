@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import {
-  API_URL, avertissements, champsVides, intakePourApi, plancherSeances, reperesChrono, textes,
+  API_URL, avertissements, bandeTempsCible, champsVides, intakePourApi, plancherSeances, reperesChrono, textes,
   type Champs, type ConfigPlan,
 } from '@/lib/plan';
 
@@ -113,6 +113,7 @@ export default function Questionnaire() {
   const freqMin = plancher?.min ?? 3;
   const freqMax = plancher?.max ?? 7;
   const reperes = config ? reperesChrono(c, config) : null;
+  const bande = config ? bandeTempsCible(c, config) : null;
   const alertes = useMemo(() => (config ? avertissements(c, config) : []), [c, config]);
 
   // Cohérence des menus filtrés quand une réponse amont change.
@@ -389,6 +390,10 @@ export default function Questionnaire() {
           <label className={labelCls} htmlFor="temps">Temps cible</label>
           <input id="temps" className={inputCls} required placeholder="ex. 5h30" value={c.temps_cible} onChange={(e) => maj('temps_cible')(e.target.value)} />
           {reperes && <p className="text-sm text-teal mt-2 leading-relaxed">{reperes}</p>}
+          {bande && <p className="text-sm text-teal mt-2 leading-relaxed">{bande.annonce}</p>}
+          {bande?.alerte && (
+            <p role="status" className="bg-white border-l-4 border-teal px-4 py-3 mt-2 text-sm text-indigo leading-relaxed">{bande.alerte}</p>
+          )}
           <p className={aideCls}>
             {textes.tempsCible}
             {c.format && ` Sur ce format, le temps cible ne peut pas dépasser ${config.temps_max_par_format[c.format]}h.`}
