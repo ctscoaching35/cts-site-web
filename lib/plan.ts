@@ -22,6 +22,7 @@ export type ConfigPlan = {
   temps_max_par_format: Record<string, number>;
   reperes_km_effort_h: Record<string, [number, number, number]>;
   bandes_temps_cible?: { bornes_h: number[]; libelles: string[]; phrases_bornes: string[]; marge_min: number };
+  sortie_longue_min?: { h: number; message: string };
   semaines_par_formule: Record<string, number>;
   jours: string[];
   prix_eur_par_mois: Record<string, number>;
@@ -269,6 +270,19 @@ export function lireTemps(brut: string): number | null {
   m = s.match(/^([-+]?\d+(?:[.,]\d+)?)\s*h?$/);
   if (m) return Number(m[1].replace(',', '.'));
   return null;
+}
+
+/**
+ * Plancher de la plus longue sortie (CONTRAT_API_CTS.md §4 et refus 6 quinquies ; audit du
+ * questionnaire du 01/10/2026) : sous 45 min, la phrase du refus de l'API, dite dès la saisie
+ * au lieu d'à la vérification. Seuil et phrase lus dans /v1/config ; la saisie se lit comme
+ * l'API la lit ; rien tant qu'elle est vide ou illisible.
+ */
+export function alerteSortieLongue(c: Champs, config: ConfigPlan): string | null {
+  const plancher = config.sortie_longue_min;
+  const h = lireTemps(c.sortie_longue_actuelle);
+  if (!plancher || h === null || !(h > 0)) return null;
+  return h < plancher.h - 1e-9 ? plancher.message : null;
 }
 
 /**

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import {
-  API_URL, ambitionsOuvertes, avertissements, bandeTempsCible, champsVides, formatDepuisDistance, formatOuvert,
+  API_URL, alerteSortieLongue, ambitionsOuvertes, avertissements, bandeTempsCible, champsVides, formatDepuisDistance, formatOuvert,
   intakePourApi, noteFormat, plancherSeances, reperesChrono, textes,
   type Champs, type ConfigPlan,
 } from '@/lib/plan';
@@ -117,6 +117,7 @@ export default function Questionnaire() {
   const freqMax = plancher?.max ?? 7;
   const reperes = config ? reperesChrono(c, config) : null;
   const bande = config ? bandeTempsCible(c, config) : null;
+  const alerteSl = config ? alerteSortieLongue(c, config) : null;
   const alertes = useMemo(() => (config ? avertissements(c, config) : []), [c, config]);
 
   // Cohérence des menus filtrés quand une réponse amont change.
@@ -326,6 +327,9 @@ export default function Questionnaire() {
             </div>
           </div>
           <p className={aideCls}>{textes.charge.note}</p>
+          {alerteSl && (
+            <p role="status" className="bg-white border-l-4 border-teal px-4 py-3 mt-2 text-sm text-indigo leading-relaxed">{alerteSl}</p>
+          )}
         </div>
         <div>
           <p className="font-bold text-indigo mb-3">{textes.charge.coupure}</p>
