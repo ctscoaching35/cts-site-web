@@ -13,6 +13,7 @@ export type ConfigPlan = {
   formats_par_niveau: Record<string, string[]>;
   ambitions_par_niveau?: Record<string, string[]>;
   formats: { code: string; nom: string; bornes: string }[];
+  formats_par_distance?: [string, number | null, boolean][];
   durees_par_format: Record<string, number[]>;
   freq_min_par_format: Record<string, number>;
   freq_min_km_effort_seuil: number;
@@ -210,6 +211,41 @@ export function reperesChrono(c: Champs, config: ConfigPlan): string | null {
     ? ` Au-delà de ${plafond}h, c’est hors du plafond de ce plan : un coaching individualisé est plus adapté.`
     : ' Choisis d’après ta propre expérience de course.';
   return `Ta course fait ${Math.round(ke)} km-effort (km + D+/100). Repères de chrono sur ce format : allure rapide ${rapide}, allure moyenne ${moyenne}, allure prudente ${prudente}.${fin}`;
+}
+
+/**
+ * Format de la course, déduit de la distance (CONTRAT_API_CTS.md §4 ; audit du questionnaire du
+ * 01/10/2026, F4) : la question du format n'avait qu'une réponse possible. Bornes lues dans
+ * /v1/config (formats_par_distance : code, borne haute en km ou null, borne incluse) ; '' tant
+ * que la distance n'est pas lisible ou que l'API ne fournit pas les bornes.
+ */
+export function formatDepuisDistance(distance: string, config: ConfigPlan): string {
+  const km = parseFloat(distance.replace(',', '.'));
+  if (!(km > 0) || !config.formats_par_distance) return '';
+  for (const [code, borne, incluse] of config.formats_par_distance) {
+    if (borne === null || km < borne || (incluse && km === borne)) return code;
+  }
+  return '';
+}
+
+/** Le format déduit est-il ouvert au niveau déclaré ? Sans niveau, oui (l'API reste juge). */
+export function formatOuvert(c: Champs, config: ConfigPlan): boolean {
+  return !!c.format && (!c.niveau || (config.formats_par_niveau[c.niveau] ?? []).includes(c.format));
+}
+
+/**
+ * Ce que le formulaire dit sous la distance : le format de la course, ou, s'il n'est pas ouvert
+ * au niveau, la phrase du refus 0 de l'API (cts_intake.valider_champs), avant de la recevoir.
+ */
+export function noteFormat(c: Champs, config: ConfigPlan): string | null {
+  if (!c.format) return null;
+  const nom = (code: string) => {
+    const f = config.formats.find((x) => x.code === code);
+    return f ? `${f.nom} (${f.bornes})` : code;
+  };
+  if (formatOuvert(c, config)) return `Ta course est un ${nom(c.format)}.`;
+  const ouverts = config.formats_par_niveau[c.niveau] ?? [];
+  return `Une course de ${c.distance_km.replace('.', ',')} km est un ${nom(c.format)} : ce format n’est pas ouvert à ton niveau. Choisis une course ${ouverts.map((f) => `de ${nom(f)}`).join(' ou ')}, ou oriente-toi vers un coaching individualisé.`;
 }
 
 /**

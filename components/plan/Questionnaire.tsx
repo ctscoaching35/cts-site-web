@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import {
-  API_URL, ambitionsOuvertes, avertissements, bandeTempsCible, champsVides, intakePourApi, plancherSeances, reperesChrono, textes,
+  API_URL, ambitionsOuvertes, avertissements, bandeTempsCible, champsVides, formatDepuisDistance, formatOuvert,
+  intakePourApi, noteFormat, plancherSeances, reperesChrono, textes,
   type Champs, type ConfigPlan,
 } from '@/lib/plan';
 
@@ -106,8 +107,10 @@ export default function Questionnaire() {
 
   const maj = (champ: keyof Champs) => (v: string) => setC((p) => ({ ...p, [champ]: v }));
 
-  const formatsOuverts = config && c.niveau ? config.formats.filter((f) => config.formats_par_niveau[c.niveau]?.includes(f.code)) : [];
-  const durees = config && c.format ? config.durees_par_format[c.format] ?? [] : [];
+  // Le format se déduit de la distance (F4) : un format que le niveau n'ouvre pas ne propose
+  // aucune durée, et la note sous la distance dit pourquoi.
+  const durees = config && formatOuvert(c, config) ? config.durees_par_format[c.format] ?? [] : [];
+  const notePourFormat = config ? noteFormat(c, config) : null;
   const joursCoches = (config?.jours ?? []).filter((j) => c.jours_disponibles.includes(j));
   const plancher = config ? plancherSeances(c, config) : null;
   const freqMin = plancher?.min ?? 3;
@@ -121,17 +124,18 @@ export default function Questionnaire() {
     if (!config) return;
     setC((p) => {
       const n = { ...p };
-      if (n.format && !(config.formats_par_niveau[n.niveau] ?? []).includes(n.format)) n.format = '';
+      // Le format suit la distance (audit du questionnaire du 01/10/2026, F4).
+      n.format = formatDepuisDistance(n.distance_km, config);
       // Passer en débutant efface « Performer », qu'il ne propose pas (F3, 01/10/2026).
       if (n.ambition && !ambitionsOuvertes(n, config).some((o) => o.valeur === n.ambition)) n.ambition = '';
-      if (n.duree_mois && !(config.durees_par_format[n.format] ?? []).map(String).includes(n.duree_mois)) n.duree_mois = '';
+      if (n.duree_mois && !(formatOuvert(n, config) ? config.durees_par_format[n.format] ?? [] : []).map(String).includes(n.duree_mois)) n.duree_mois = '';
       if (n.jour_sl && !n.jours_disponibles.includes(n.jour_sl)) n.jour_sl = '';
       // Plafond du niveau (second audit, D4) : passer en débutant avec 5 séances ou plus
       // vide le champ, comme les autres réponses devenues invalides.
       if (n.freq_hebdo && Number(n.freq_hebdo) > (config.freq_max_par_niveau?.[n.niveau] ?? 7)) n.freq_hebdo = '';
       return JSON.stringify(n) === JSON.stringify(p) ? p : n;
     });
-  }, [config, c.niveau, c.format, c.jours_disponibles, c.jour_sl, c.duree_mois]);
+  }, [config, c.niveau, c.format, c.distance_km, c.jours_disponibles, c.jour_sl, c.duree_mois]);
 
   function basculerJour(j: string) {
     setC((p) => ({
@@ -339,16 +343,14 @@ export default function Questionnaire() {
 
       <Section numero={3} titre="Ta formule">
         <div>
-          <label className={labelCls} htmlFor="format">Format de course</label>
-          <select id="format" className={inputCls} required value={c.format} onChange={(e) => maj('format')(e.target.value)} disabled={!c.niveau}>
-            <option value="">{c.niveau ? '— choisir —' : 'Choisis d’abord ton niveau'}</option>
-            {formatsOuverts.map((f) => <option key={f.code} value={f.code}>{f.nom} ({f.bornes})</option>)}
-          </select>
+          <label className={labelCls} htmlFor="distance">Distance de ta course (km)</label>
+          <input id="distance" type="number" step="0.1" min="0.1" inputMode="decimal" className={inputCls} required value={c.distance_km} onChange={(e) => maj('distance_km')(e.target.value)} />
+          <p className="text-sm text-teal mt-2 leading-relaxed">{notePourFormat ?? 'Le format de ta course se déduit de sa distance.'}</p>
         </div>
         <div>
           <label className={labelCls} htmlFor="duree">Durée du plan</label>
-          <select id="duree" className={inputCls} required value={c.duree_mois} onChange={(e) => maj('duree_mois')(e.target.value)} disabled={!c.format}>
-            <option value="">{c.format ? '— choisir —' : 'Choisis d’abord ton format'}</option>
+          <select id="duree" className={inputCls} required value={c.duree_mois} onChange={(e) => maj('duree_mois')(e.target.value)} disabled={!durees.length}>
+            <option value="">{durees.length ? '— choisir —' : c.format ? 'Aucune durée : ce format n’est pas ouvert à ton niveau' : 'Indique d’abord la distance de ta course'}</option>
             {durees.map((d) => <option key={d} value={String(d)}>{d} mois — {config.prix_eur_par_mois[String(d)]} €</option>)}
           </select>
         </div>
@@ -365,11 +367,7 @@ export default function Questionnaire() {
             <input id="date_course" type="date" className={inputCls} required value={c.date_course} onChange={(e) => maj('date_course')(e.target.value)} />
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-4 items-end">
-          <div>
-            <label className={labelCls} htmlFor="distance">Distance (km)</label>
-            <input id="distance" type="number" step="0.1" min="0.1" inputMode="decimal" className={inputCls} required value={c.distance_km} onChange={(e) => maj('distance_km')(e.target.value)} />
-          </div>
+        <div className="grid grid-cols-2 gap-4 items-end">
           <div>
             <label className={labelCls} htmlFor="dplus">D+ (m)</label>
             <input id="dplus" type="number" step="1" min="0" inputMode="numeric" className={inputCls} required value={c.dplus_m} onChange={(e) => maj('dplus_m')(e.target.value)} />
