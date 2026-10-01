@@ -143,6 +143,10 @@ export const textes = {
       { valeur: 'tres_pentu', titre: 'Très pentu', description: 'Côtes de plus de 10 min de montée.' },
     ],
   },
+  disponibilite: {
+    aide:
+      'Ton plan se cale sur ta semaine : tes séances sur tes jours disponibles, ta sortie longue sur le jour que tu choisis, et jamais deux séances dures d’affilée.',
+  },
   sante: {
     blessure: 'Une blessure ou une douleur t’empêche-t-elle de courir normalement en ce moment ?',
   },

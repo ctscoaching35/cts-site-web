@@ -426,6 +426,7 @@ export default function Questionnaire() {
       </Section>
 
       <Section numero={6} titre="Ta disponibilité">
+        <p className={aideCls}>{textes.disponibilite.aide}</p>
         <div>
           <span className={labelCls}>Jours disponibles pour t’entraîner</span>
           <div className="flex flex-wrap gap-2">
