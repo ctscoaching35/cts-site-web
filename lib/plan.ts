@@ -11,7 +11,6 @@ export const API_URL = (process.env.NEXT_PUBLIC_CTS_API_URL || 'http://localhost
 
 export type ConfigPlan = {
   formats_par_niveau: Record<string, string[]>;
-  ambitions_par_niveau?: Record<string, string[]>;
   formats: { code: string; nom: string; bornes: string }[];
   formats_par_distance?: [string, number | null, boolean][];
   durees_par_format: Record<string, number[]>;
@@ -43,7 +42,6 @@ export type Champs = {
   dplus_m: string;
   dmoins_m: string;
   temps_cible: string;
-  ambition: string;
   terrain: string;
   jours_disponibles: string[];
   jour_sl: string;
@@ -58,7 +56,7 @@ export type Champs = {
 export const champsVides: Champs = {
   nom: '', email: '', niveau: '', volume_hebdo_actuel: '', sortie_longue_actuelle: '',
   format: '', duree_mois: '', course_nom: '', date_course: '',
-  distance_km: '', dplus_m: '', dmoins_m: '', temps_cible: '', ambition: '', terrain: '',
+  distance_km: '', dplus_m: '', dmoins_m: '', temps_cible: '', terrain: '',
   jours_disponibles: [], jour_sl: '', freq_hebdo: '', blessure: '', coupure: '',
 };
 
@@ -107,32 +105,6 @@ export const textes = {
   gpx:
     'Le profil réel du parcours (répartition des pentes) affine tout le plan. Sans trace, le plan est construit sur le D+/D− déclaré ci-dessus, et le PDF n’affiche pas de profil.',
   tempsCible: 'Même une estimation large vaut mieux que rien — c’est ce qui calibre l’intensité de tout le plan.',
-  ambition: {
-    // Ce que l'ambition change vraiment, mesuré (second audit du moteur, D13) : ni volume, ni
-    // sortie longue, ni nombre de séances dures ; « découverte » plafonne plus bas le travail
-    // rapide, « performer » ajoute de l'allure de course, atteinte plus tôt.
-    intro:
-      'Ce choix ne change ni ton volume, ni ta sortie longue, ni le nombre de séances dures. Il règle la dose de travail rapide, toujours sous le plafond de ton niveau.',
-    options: [
-      {
-        valeur: 'decouverte',
-        titre: 'La découvrir et la finir',
-        description:
-          'Arriver au départ en forme, franchir la ligne. Tes séances les plus rapides plafonnent plus bas : le même plan, un cran plus doux au plus fort de la préparation.',
-      },
-      {
-        valeur: 'progresser',
-        titre: 'Progresser',
-        description: 'Franchir un cap sur ce format, sans en faire une obsession de chrono. L’équilibre par défaut.',
-      },
-      {
-        valeur: 'performer',
-        titre: 'Performer',
-        description:
-          'Viser le meilleur jour J possible. Plus de travail à ton allure de course, atteint plus tôt dans le bloc spécifique.',
-      },
-    ],
-  },
   terrain: {
     aide:
       'Réponds sur la plus longue côte que tu peux vraiment enchaîner près de chez toi, pas sur le paysage. C’est cette longueur qui décide si ton travail au seuil se fera en côte ou sur terrain roulant.',
@@ -251,17 +223,6 @@ export function noteFormat(c: Champs, config: ConfigPlan): string | null {
   if (formatOuvert(c, config)) return `Ta course est un ${nom(c.format)}.`;
   const ouverts = config.formats_par_niveau[c.niveau] ?? [];
   return `Une course de ${c.distance_km.replace('.', ',')} km est un ${nom(c.format)} : ce format n’est pas ouvert à ton niveau. Choisis une course ${ouverts.map((f) => `de ${nom(f)}`).join(' ou ')}, ou oriente-toi vers un coaching individualisé.`;
-}
-
-/**
- * Ambitions ouvertes au niveau déclaré (CONTRAT_API_CTS.md §4 ; audit du questionnaire du
- * 01/10/2026, F3) : en débutant, « Performer » donne le plan de « Progresser » (112 plans sur
- * 112) et n'est plus proposé. Lu dans /v1/config ; sans la table (API plus ancienne) ou sans
- * niveau choisi, les trois.
- */
-export function ambitionsOuvertes(c: Champs, config: ConfigPlan) {
-  const ouvertes = config.ambitions_par_niveau?.[c.niveau];
-  return textes.ambition.options.filter((o) => !ouvertes || ouvertes.includes(o.valeur));
 }
 
 /** Temps saisi -> heures, la même lecture que l'API (cts_intake.parse_temps_cible) ; null si illisible. */

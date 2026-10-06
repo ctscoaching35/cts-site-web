@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import {
-  API_URL, alerteSortieLongue, ambitionsOuvertes, avertissements, bandeTempsCible, champsVides, formatDepuisDistance, formatOuvert,
+  API_URL, alerteSortieLongue, avertissements, bandeTempsCible, champsVides, formatDepuisDistance, formatOuvert,
   intakePourApi, noteFormat, plancherSeances, reperesChrono, textes,
   type Champs, type ConfigPlan,
 } from '@/lib/plan';
@@ -127,11 +127,6 @@ export default function Questionnaire() {
       const n = { ...p };
       // Le format suit la distance (audit du questionnaire du 01/10/2026, F4).
       n.format = formatDepuisDistance(n.distance_km, config);
-      // Passer en débutant efface « Performer », qu'il ne propose pas (F3, 01/10/2026). Une seule
-      // ambition ouverte (le débutant depuis le 06/10/2026) : elle est retenue d'office.
-      const ambitions = ambitionsOuvertes(n, config);
-      if (ambitions.length === 1) n.ambition = ambitions[0].valeur;
-      else if (n.ambition && !ambitions.some((o) => o.valeur === n.ambition)) n.ambition = '';
       if (n.duree_mois && !(formatOuvert(n, config) ? config.durees_par_format[n.format] ?? [] : []).map(String).includes(n.duree_mois)) n.duree_mois = '';
       if (n.jour_sl && !n.jours_disponibles.includes(n.jour_sl)) n.jour_sl = '';
       // Plafond du niveau (second audit, D4) : passer en débutant avec 5 séances ou plus
@@ -226,7 +221,6 @@ export default function Questionnaire() {
   const prix = c.duree_mois ? config.prix_eur_par_mois[c.duree_mois] : undefined;
   const nomFormat = config.formats.find((f) => f.code === c.format)?.nom ?? '';
   const nomNiveau = textes.niveau.options.find((o) => o.valeur === c.niveau)?.titre ?? '';
-  const nomAmbition = textes.ambition.options.find((o) => o.valeur === c.ambition)?.titre ?? '';
   const nomTerrain = textes.terrain.options.find((o) => o.valeur === c.terrain)?.titre ?? '';
 
   if (etape === 'recap') {
@@ -236,7 +230,7 @@ export default function Questionnaire() {
       ['Formule', `${nomFormat} — ${c.duree_mois} mois`],
       ['Course', `${c.course_nom}, le ${new Date(`${c.date_course}T00:00:00`).toLocaleDateString('fr-FR')}`],
       ['Parcours', `${nombreFr(c.distance_km)} km, ${nombreFr(c.dplus_m)} m D+${c.dmoins_m ? `, ${nombreFr(c.dmoins_m)} m D−` : ''}${gpx ? ` · trace ${gpx.name}` : ' · sans trace GPX'}`],
-      ['Temps cible', c.temps_cible], ['Ambition', nomAmbition], ['Terrain', nomTerrain],
+      ['Temps cible', c.temps_cible], ['Terrain', nomTerrain],
       ['Disponibilité', `${c.freq_hebdo} séances par semaine · ${joursCoches.map((j) => NOMS_JOURS[j]).join(', ')} · sortie longue le ${c.jour_sl}`],
     ];
     const bloque = alertes.length > 0 && !confirme;
@@ -406,18 +400,6 @@ export default function Questionnaire() {
             {c.format && ` Sur ce format, le temps cible ne peut pas dépasser ${config.temps_max_par_format[c.format]}h.`}
           </p>
         </div>
-        {ambitionsOuvertes(c, config).length > 1 && (
-        <div>
-          <p className="font-bold text-indigo mb-2">Qu’est-ce que tu vises sur cette course ?</p>
-          <p className="text-sm text-indigo/60 leading-relaxed mb-4">{textes.ambition.intro}</p>
-          <div className="space-y-3">
-            {ambitionsOuvertes(c, config).map((o) => (
-              <Choix key={o.valeur} nom="ambition" valeur={o.valeur} courant={c.ambition} onChange={maj('ambition')}
-                titre={o.titre} description={o.description} />
-            ))}
-          </div>
-        </div>
-        )}
       </Section>
 
       <Section numero={5} titre="Ton terrain d’entraînement">
