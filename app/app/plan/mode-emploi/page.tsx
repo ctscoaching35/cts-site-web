@@ -4,10 +4,11 @@ import RetourPlan from '@/components/app/RetourPlan';
 import TexteRiche from '@/components/app/TexteRiche';
 import { Avertissement, Partie, Puces, Tableau } from '@/components/app/Texte';
 import { contexte, type Recherche } from '@/lib/app/demonstration';
+import { FAMILLES } from '@/lib/app/charte';
 import { cheminFiche } from '@/lib/app/plan';
 
-// Le mode d'emploi (cts_contenu.contenu_mode_emploi). « Lire une semaine » décrit la page du
-// PDF (la bannière, le tableau) : sa version pour l'app attend la décision du coach.
+// Le mode d'emploi (cts_contenu.contenu_mode_emploi), dans l'ordre du PDF. « Lire une semaine »
+// est le même texte sur le papier et à l'écran (décision coach du 07/10/2026, moteur v8.304).
 export default async function ModeEmploi({ searchParams }: { searchParams: Recherche }) {
   const ctx = await contexte(searchParams);
   const { plan } = ctx;
@@ -23,6 +24,23 @@ export default async function ModeEmploi({ searchParams }: { searchParams: Reche
           <p>{m.effort.intro}</p>
           <Tableau lignes={m.effort.zones} />
           <p className="text-sm text-indigo/70">{m.effort.note}</p>
+        </Partie>
+
+        <Partie titre={m.lire_semaine.titre}>
+          <p>
+            <TexteRiche texte={m.lire_semaine.texte} />
+          </p>
+          <ul className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-indigo/75">
+            {m.lire_semaine.familles.map(([f, libelle]) => (
+              <li key={f} className="flex items-center gap-1.5">
+                <span
+                  className={f === 'course' ? 'w-3.5 h-3.5' : 'w-4 h-1.5 rounded-full'}
+                  style={{ backgroundColor: FAMILLES[f].filet }}
+                />
+                {libelle}
+              </li>
+            ))}
+          </ul>
         </Partie>
 
         <Partie titre={m.lire_seance.titre}>
