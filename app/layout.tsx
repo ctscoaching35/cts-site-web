@@ -69,7 +69,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr" className={montserrat.variable}>
+    // data-scroll-behavior : Next 16 coupe le défilement doux pendant un changement de page
+    // (sinon une page de l'app s'ouvre en glissant) et le garde pour les ancres du site.
+    <html lang="fr" className={montserrat.variable} data-scroll-behavior="smooth">
       <body className="font-sans antialiased">{children}</body>
     </html>
   );
