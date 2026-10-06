@@ -72,6 +72,7 @@ export default async function ModeEmploi({ searchParams }: { searchParams: Reche
         <Partie titre={m.renforcement.titre}>
           <p>{m.renforcement.texte}</p>
           <LienFiche
+            ctx={ctx}
             href={cheminFiche(plan, 'renforcement')}
             libelle={plan.pour_aller_plus_loin.fiches.find((f) => f.cle === 'renforcement')?.titre ?? ''}
           />

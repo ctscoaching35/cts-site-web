@@ -4,7 +4,8 @@ import Link from 'next/link';
 import clsx from 'clsx';
 import { usePathname, useSearchParams } from 'next/navigation';
 
-// Les cinq onglets du cadrage (section 3) : en bas sur téléphone, comme une app.
+// Les cinq onglets du cadrage (section 3) : en bas sur téléphone, comme une app. Hauteur fixe
+// (h-16, plus la zone sûre de l'iPhone) : la fiche ouverte dans l'app s'accroche juste au-dessus.
 const trait = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
 const ONGLETS = [
   {
@@ -55,7 +56,7 @@ export default function BarreOnglets() {
               href={`${o.chemin}${suite}`}
               aria-current={actif(o.chemin) ? 'page' : undefined}
               className={clsx(
-                'flex flex-col items-center gap-1 py-2.5 text-[0.65rem] font-semibold',
+                'flex flex-col items-center justify-center gap-1 h-16 text-[0.65rem] font-semibold',
                 actif(o.chemin) ? 'text-teal' : 'text-indigo/50 hover:text-indigo'
               )}
             >

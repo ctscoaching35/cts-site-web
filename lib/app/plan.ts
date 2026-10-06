@@ -120,17 +120,25 @@ export type Plan = {
     parties: Partie[];
     fiche_ultra: [string, string] | null;
   };
-  pour_aller_plus_loin: { titre: string; intro: string; qr: string; fiches: { cle: string; titre: string; url: string }[] };
+  pour_aller_plus_loin: {
+    titre: string;
+    intro: string;
+    qr: string;
+    app: string;
+    fiches: { cle: string; titre: string; url: string }[];
+  };
   semaines: Semaine[];
 };
 
 export type JourDuPlan = Jour & { semaine: Semaine };
 
-// L'adresse d'une fiche de la bibliothèque citée par le plan, dans le site (/bibliotheque/…) :
-// la même en local et en ligne.
+// Le nom de page d'une fiche citée par le plan (« renforcement »), tiré de son adresse sur le site.
+export const slugFiche = (url: string) => new URL(url).pathname.split('/').pop() ?? '';
+
+// Une fiche citée par le plan s'ouvre dans l'app, dans la bibliothèque.
 export const cheminFiche = (plan: Plan, cle: string) => {
   const fiche = plan.pour_aller_plus_loin.fiches.find((f) => f.cle === cle);
-  return fiche ? new URL(fiche.url).pathname : null;
+  return fiche ? `/app/bibliotheque/${slugFiche(fiche.url)}` : null;
 };
 
 export const tousLesJours = (plan: Plan): JourDuPlan[] =>

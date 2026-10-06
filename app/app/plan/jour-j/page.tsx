@@ -20,14 +20,14 @@ export default async function JourJ({ searchParams }: { searchParams: Recherche 
         <h1 className="text-2xl text-indigo leading-tight">{j.titre}</h1>
         <Partie titre={j.nutrition.titre}>
           <Lignes lignes={j.nutrition.lignes} />
-          <LienFiche href={cheminFiche(plan, j.nutrition.fiche[0])} libelle={j.nutrition.fiche[1]} />
+          <LienFiche ctx={ctx} href={cheminFiche(plan, j.nutrition.fiche[0])} libelle={j.nutrition.fiche[1]} />
         </Partie>
         {j.parties.map((p) => (
           <Fragment key={p.titre}>
             {/* La fiche ultra se lit après la course, comme sur le PDF. */}
             {p.titre === 'Après' && j.fiche_ultra && (
               <div className="px-1">
-                <LienFiche href={cheminFiche(plan, j.fiche_ultra[0])} libelle={j.fiche_ultra[1]} />
+                <LienFiche ctx={ctx} href={cheminFiche(plan, j.fiche_ultra[0])} libelle={j.fiche_ultra[1]} />
               </div>
             )}
             <Partie titre={p.titre}>
