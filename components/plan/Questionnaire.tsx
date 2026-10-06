@@ -127,8 +127,11 @@ export default function Questionnaire() {
       const n = { ...p };
       // Le format suit la distance (audit du questionnaire du 01/10/2026, F4).
       n.format = formatDepuisDistance(n.distance_km, config);
-      // Passer en débutant efface « Performer », qu'il ne propose pas (F3, 01/10/2026).
-      if (n.ambition && !ambitionsOuvertes(n, config).some((o) => o.valeur === n.ambition)) n.ambition = '';
+      // Passer en débutant efface « Performer », qu'il ne propose pas (F3, 01/10/2026). Une seule
+      // ambition ouverte (le débutant depuis le 06/10/2026) : elle est retenue d'office.
+      const ambitions = ambitionsOuvertes(n, config);
+      if (ambitions.length === 1) n.ambition = ambitions[0].valeur;
+      else if (n.ambition && !ambitions.some((o) => o.valeur === n.ambition)) n.ambition = '';
       if (n.duree_mois && !(formatOuvert(n, config) ? config.durees_par_format[n.format] ?? [] : []).map(String).includes(n.duree_mois)) n.duree_mois = '';
       if (n.jour_sl && !n.jours_disponibles.includes(n.jour_sl)) n.jour_sl = '';
       // Plafond du niveau (second audit, D4) : passer en débutant avec 5 séances ou plus
@@ -403,6 +406,7 @@ export default function Questionnaire() {
             {c.format && ` Sur ce format, le temps cible ne peut pas dépasser ${config.temps_max_par_format[c.format]}h.`}
           </p>
         </div>
+        {ambitionsOuvertes(c, config).length > 1 && (
         <div>
           <p className="font-bold text-indigo mb-2">Qu’est-ce que tu vises sur cette course ?</p>
           <p className="text-sm text-indigo/60 leading-relaxed mb-4">{textes.ambition.intro}</p>
@@ -413,6 +417,7 @@ export default function Questionnaire() {
             ))}
           </div>
         </div>
+        )}
       </Section>
 
       <Section numero={5} titre="Ton terrain d’entraînement">
