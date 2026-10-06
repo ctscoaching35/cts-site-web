@@ -1,6 +1,6 @@
 import type { Plan } from '@/lib/app/plan';
 import { COULEURS_TYPE_SEMAINE } from '@/lib/app/charte';
-import { lien, type Contexte } from '@/lib/app/demonstration';
+import { lien, type Contexte } from '@/lib/app/contexte';
 
 // « Ton plan en un coup d'œil » (cts_pdf_slim._graphique_macro_blocs) : une barre par semaine,
 // sa hauteur le volume, sa couleur le type ; un trait entre deux blocs, l'étoile marque la

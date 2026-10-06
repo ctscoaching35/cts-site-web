@@ -5,7 +5,7 @@ import EnTeteApp from '@/components/app/EnTeteApp';
 import FriseBlocs from '@/components/app/FriseBlocs';
 import GrilleMois from '@/components/app/GrilleMois';
 import JoursSemaine from '@/components/app/JoursSemaine';
-import { contexte, lien, type Recherche } from '@/lib/app/demonstration';
+import { contexte, lien, type Recherche } from '@/lib/app/contexte';
 import { moisLong, semaineDeDate } from '@/lib/app/plan';
 import { BANNIERE, FAMILLES } from '@/lib/app/charte';
 

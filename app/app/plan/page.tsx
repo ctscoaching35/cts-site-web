@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import EnTeteApp from '@/components/app/EnTeteApp';
 import { Avertissement } from '@/components/app/Texte';
-import { contexte, lien, type Recherche } from '@/lib/app/demonstration';
+import { contexte, lien, type Recherche } from '@/lib/app/contexte';
 
 // Mon plan (cadrage, 3.4) : ce que dit la couverture du PDF — repères, date de début, sur
 // quoi le plan se construit —, puis ses quatre parties, et l'avertissement santé.

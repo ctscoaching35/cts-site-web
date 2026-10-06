@@ -3,7 +3,7 @@ import ProfilCourse from '@/components/app/ProfilCourse';
 import RepartitionPentes from '@/components/app/RepartitionPentes';
 import RetourPlan from '@/components/app/RetourPlan';
 import { Lignes, Partie, Puces, Tableau } from '@/components/app/Texte';
-import { contexte, type Recherche } from '@/lib/app/demonstration';
+import { contexte, type Recherche } from '@/lib/app/contexte';
 
 // Ta course (cadrage, 3.4) : la fiche, le profil et ses pentes, ton terrain, les tronçons,
 // les déterminants de la performance (cts_contenu).

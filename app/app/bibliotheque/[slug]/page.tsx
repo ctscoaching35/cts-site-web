@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { lireBibliotheque, ficheParSlug } from '@/lib/app/bibliotheque';
-import { contexte, lien, type Recherche } from '@/lib/app/demonstration';
+import { contexte, lien, type Recherche } from '@/lib/app/contexte';
 
 // Une fiche ouverte dans l'app : la page du site elle-même (une seule source), dans un cadre,
 // sous la barre d'onglets. Seules les fiches de l'index de la bibliothèque s'ouvrent ici.

@@ -4,7 +4,7 @@ import RetourPlan from '@/components/app/RetourPlan';
 import TexteRiche from '@/components/app/TexteRiche';
 import { Partie, Puces } from '@/components/app/Texte';
 import { COULEURS_TYPE_SEMAINE } from '@/lib/app/charte';
-import { contexte, type Recherche } from '@/lib/app/demonstration';
+import { contexte, type Recherche } from '@/lib/app/contexte';
 
 // « Ton plan en un coup d'œil » et « Ton point de départ » (cts_contenu).
 export default async function VueEnsemble({ searchParams }: { searchParams: Recherche }) {

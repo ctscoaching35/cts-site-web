@@ -30,9 +30,13 @@ const ONGLETS = [
   },
 ];
 
+// Pas d'onglets avant d'avoir un plan à lire.
+const SANS_ONGLETS = ['/app/connexion', '/app/sans-plan'];
+
 export default function BarreOnglets() {
   const chemin = usePathname();
   const params = useSearchParams();
+  if (SANS_ONGLETS.includes(chemin)) return null;
   // Les onglets gardent le plan et le jour de la démonstration.
   const garde = new URLSearchParams();
   for (const cle of ['plan', 'jour']) {

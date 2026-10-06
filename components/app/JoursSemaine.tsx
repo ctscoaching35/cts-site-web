@@ -2,7 +2,7 @@ import Link from 'next/link';
 import clsx from 'clsx';
 import type { Semaine } from '@/lib/app/plan';
 import { FAMILLES } from '@/lib/app/charte';
-import { lien, type Contexte } from '@/lib/app/demonstration';
+import { lien, type Contexte } from '@/lib/app/contexte';
 
 // Les sept jours d'une semaine, comme le tableau du PDF : date, séance, terrain, durée, RPE,
 // à la couleur de leur famille. Chaque séance ouvre sa fiche ; le repos reste en retrait.

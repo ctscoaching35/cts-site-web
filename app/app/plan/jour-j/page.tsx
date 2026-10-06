@@ -3,7 +3,7 @@ import EnTeteApp from '@/components/app/EnTeteApp';
 import LienFiche from '@/components/app/LienFiche';
 import RetourPlan from '@/components/app/RetourPlan';
 import { Lignes, Partie, Puces } from '@/components/app/Texte';
-import { contexte, type Recherche } from '@/lib/app/demonstration';
+import { contexte, type Recherche } from '@/lib/app/contexte';
 import { cheminFiche } from '@/lib/app/plan';
 
 // Ton jour J (cts_contenu.contenu_jour_j) : la stratégie nutritionnelle chiffrée, puis la

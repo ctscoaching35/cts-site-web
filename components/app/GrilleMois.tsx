@@ -2,7 +2,7 @@ import Link from 'next/link';
 import clsx from 'clsx';
 import { ajouterJours, jourDuMois, jourParDate, rangDansSemaine, semaineDeDate, type Plan } from '@/lib/app/plan';
 import { BANNIERE, FAMILLES } from '@/lib/app/charte';
-import { lien, type Contexte } from '@/lib/app/demonstration';
+import { lien, type Contexte } from '@/lib/app/contexte';
 
 const ENTETES = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 

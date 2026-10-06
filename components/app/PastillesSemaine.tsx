@@ -2,7 +2,7 @@ import Link from 'next/link';
 import clsx from 'clsx';
 import type { Semaine } from '@/lib/app/plan';
 import { FAMILLES } from '@/lib/app/charte';
-import { lien, type Contexte } from '@/lib/app/demonstration';
+import { lien, type Contexte } from '@/lib/app/contexte';
 
 const INITIALES = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 

@@ -3,7 +3,7 @@ import LienFiche from '@/components/app/LienFiche';
 import RetourPlan from '@/components/app/RetourPlan';
 import TexteRiche from '@/components/app/TexteRiche';
 import { Avertissement, Partie, Puces, Tableau } from '@/components/app/Texte';
-import { contexte, type Recherche } from '@/lib/app/demonstration';
+import { contexte, type Recherche } from '@/lib/app/contexte';
 import { FAMILLES } from '@/lib/app/charte';
 import { cheminFiche } from '@/lib/app/plan';
 

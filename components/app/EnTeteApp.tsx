@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import BarreDemonstration from './BarreDemonstration';
-import { EXEMPLES, demonstrationOuverte, type Contexte } from '@/lib/app/demonstration';
+import { EXEMPLES, demonstrationOuverte } from '@/lib/app/demonstration';
+import { type Contexte } from '@/lib/app/contexte';
 
 export default function EnTeteApp({ ctx }: { ctx: Contexte }) {
   return (
@@ -14,7 +15,7 @@ export default function EnTeteApp({ ctx }: { ctx: Contexte }) {
           </div>
         </div>
       </header>
-      {demonstrationOuverte() && (
+      {ctx.demonstration && demonstrationOuverte() && (
         <BarreDemonstration
           exemples={Object.entries(EXEMPLES).map(([cle, x]) => ({ cle, titre: x.titre }))}
           cle={ctx.cle}

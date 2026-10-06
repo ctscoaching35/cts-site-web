@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import CarteSeance from '@/components/app/CarteSeance';
 import EnTeteApp from '@/components/app/EnTeteApp';
 import TexteRiche from '@/components/app/TexteRiche';
-import { contexte, lien, type Recherche } from '@/lib/app/demonstration';
+import { contexte, lien, type Recherche } from '@/lib/app/contexte';
 import { dateLongue, jourParId, tousLesJours } from '@/lib/app/plan';
 
 // La fiche d'une séance (cadrage, 3.3) : la carte en codes, ce qu'est la séance (le glossaire

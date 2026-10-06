@@ -4,7 +4,7 @@ import CarteSeance from '@/components/app/CarteSeance';
 import EnTeteApp from '@/components/app/EnTeteApp';
 import JoursSemaine from '@/components/app/JoursSemaine';
 import PastillesSemaine from '@/components/app/PastillesSemaine';
-import { contexte, lien, type Recherche } from '@/lib/app/demonstration';
+import { contexte, lien, type Recherche } from '@/lib/app/contexte';
 import { ajouterJours, dateLongue, jourParDate, joursEntre, moment, semaineDeDate } from '@/lib/app/plan';
 
 // Aujourd'hui (cadrage, 3.1) : le compte à rebours, la séance du jour, demain, la semaine en

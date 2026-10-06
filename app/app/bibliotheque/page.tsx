@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import EnTeteApp from '@/components/app/EnTeteApp';
 import { lireBibliotheque, ficheParSlug } from '@/lib/app/bibliotheque';
-import { contexte, lien, type Contexte, type Recherche } from '@/lib/app/demonstration';
+import { contexte, lien, type Contexte, type Recherche } from '@/lib/app/contexte';
 import { slugFiche } from '@/lib/app/plan';
 
 // La bibliothèque (cadrage, 3.5 ; décision coach du 07/10/2026) : les fiches de ton plan
