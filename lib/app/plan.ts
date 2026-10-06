@@ -45,6 +45,9 @@ export type Semaine = {
   jours: Jour[];
 };
 
+// Une partie de texte : un titre et ses puces (Jour J, mode d'emploi, déterminants).
+export type Partie = { titre: string; puces: string[] };
+
 export type Plan = {
   schema: number;
   version_moteur: string | null;
@@ -67,22 +70,68 @@ export type Plan = {
     rejoint: { semaine: number; lundi: string } | null;
   };
   couverture: { surtitre: string; reperes: [string, string][]; debut: string; rendez_vous: string };
+  demarche: { titre: string; piliers: [string, string][] };
+  avertissement: { surtitre: string; paragraphes: string[] };
+  ta_course: { titre: string; lignes: [string, string][] };
+  profil: {
+    titre: string;
+    sans_trace: string | null;
+    pentes: [cle: string, libelle: string, pourcentage: number][] | null;
+    troncons: { titre: string; sous_titre: string; homogene: string | null; tableau: string[][] | null } | null;
+    points: {
+      pas_km: number | null;
+      km: number[] | null;
+      altitude_m: number[] | null;
+      plages: [debut: number, fin: number, categorie: string][] | null;
+      secteurs: { distance_km: number; dplus_m: number; dmoins_m: number; type: string; categorie: string }[] | null;
+    } | null;
+  };
+  determinants: {
+    titre: string;
+    physio: Partie;
+    mecanique: Partie | null;
+    secteurs_cles: Partie | null;
+    sans_trace: string | null;
+  };
+  terrain: { titre: string; texte: string } | null;
   architecture: {
     titre: string;
+    types_semaine: [string, string][];
+    legende_graphique: string;
     tableau: string[][];
+    note: string;
+    roles: { titre: string; blocs: [string, string][] };
     semaines: { numero: number; type: string; nature: string; bloc: number; volume_h: number }[];
   };
+  point_de_depart: { titre: string; texte: string | null; puces: string[] } | null;
   mode_emploi: {
     titre: string;
+    effort: { titre: string; intro: string; zones: string[][]; note: string };
     lire_semaine: { titre: string; texte: string; familles: [Famille, string][] };
     lire_seance: { titre: string; texte: string; codes: [string, string][] };
     seances: { titre: string; glossaire: [string, string][] };
+    adapter: Partie;
+    fatigue: Partie;
+    renforcement: { titre: string; texte: string };
   };
-  jour_j: { titre: string };
+  jour_j: {
+    titre: string;
+    nutrition: { titre: string; lignes: [string, string][]; fiche: [string, string] };
+    parties: Partie[];
+    fiche_ultra: [string, string] | null;
+  };
+  pour_aller_plus_loin: { titre: string; intro: string; qr: string; fiches: { cle: string; titre: string; url: string }[] };
   semaines: Semaine[];
 };
 
 export type JourDuPlan = Jour & { semaine: Semaine };
+
+// L'adresse d'une fiche de la bibliothèque citée par le plan, dans le site (/bibliotheque/…) :
+// la même en local et en ligne.
+export const cheminFiche = (plan: Plan, cle: string) => {
+  const fiche = plan.pour_aller_plus_loin.fiches.find((f) => f.cle === cle);
+  return fiche ? new URL(fiche.url).pathname : null;
+};
 
 export const tousLesJours = (plan: Plan): JourDuPlan[] =>
   plan.semaines.flatMap((semaine) => semaine.jours.map((j) => ({ ...j, semaine })));

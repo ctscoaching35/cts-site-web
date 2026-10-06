@@ -103,7 +103,7 @@ function Pendant({ ctx }: { ctx: Awaited<ReturnType<typeof contexte>> }) {
         </section>
       )}
       {semaineDeCourse && (
-        <Link href={lien('/app/plan', ctx)} className="block bg-teal text-white p-4 shadow-sm">
+        <Link href={lien('/app/plan/jour-j', ctx)} className="block bg-teal text-white p-4 shadow-sm">
           <span className="eyebrow text-white/70 block mb-1">Semaine de course</span>
           <span className="font-bold text-lg">{plan.jour_j.titre} ›</span>
         </Link>

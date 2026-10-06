@@ -32,3 +32,21 @@ export const PASTILLES: Record<string, [string, string]> = {
 
 // Libellés de la carte : la consigne et le ravito en ocre, le reste en teal (cts_base).
 export const ENCRE_LIBELLE: Record<string, string> = { 'À retenir': '#9A6A12', Ravito: '#8A5A00' };
+
+// Catégories de pente du profil (cts_pdf_slim._COULEURS_PENTE) : bleu nuit pour la descente
+// raide, teal pour la montée raide, crème pour le vallonné.
+export const COULEURS_PENTE: Record<string, string> = {
+  descente_raide: '#2F2D4E',
+  descente: '#8DADCE',
+  vallonne: '#E3DCC4',
+  montee: '#BEE4DE',
+  montee_raide: '#0C6E5F',
+};
+
+// Barres du graphique des semaines, par type (cts_pdf_slim._COULEURS_TYPE_SEMAINE).
+export const COULEURS_TYPE_SEMAINE: Record<string, string> = {
+  charge: '#2F2D4E',
+  assimilation: '#8A94A8',
+  affutage_actif: '#0C6E5F',
+  affutage_decharge: '#0D5A4E',
+};
