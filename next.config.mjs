@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // L'indicateur de développement de Next couvrait l'onglet « Aujourd'hui » de l'app (/app),
+  // dont la barre d'onglets occupe le bas de l'écran. Développement seulement.
+  devIndicators: false,
   images: {
     formats: ['image/avif', 'image/webp'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
