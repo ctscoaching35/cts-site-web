@@ -4,6 +4,10 @@ const nextConfig = {
   // L'indicateur de développement de Next couvrait l'onglet « Aujourd'hui » de l'app (/app),
   // dont la barre d'onglets occupe le bas de l'écran. Développement seulement.
   devIndicators: false,
+  // Essayer l'app sur un téléphone du même Wi-Fi pendant le développement : Next 16 refuse par
+  // défaut les appareils qui arrivent par le nom du Mac sur le réseau (MonMac.local) ou son
+  // adresse locale (192.168.x.x). Développement seulement ; sans effet en production.
+  allowedDevOrigins: ['*.local', '192.168.*.*'],
   images: {
     formats: ['image/avif', 'image/webp'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
