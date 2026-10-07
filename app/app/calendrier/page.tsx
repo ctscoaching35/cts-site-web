@@ -11,6 +11,10 @@ import { BANNIERE, FAMILLES } from '@/lib/app/charte';
 
 // Le calendrier (cadrage, 3.2) : la semaine, comme une page du PDF, ou le mois d'un coup d'œil ;
 // la frise des blocs mène à chacun. Lecture seule (D8).
+// Les boutons semaine précédente / suivante (et mois) : une vraie cible au doigt, 44 px de haut.
+const BOUTON_SEMAINE =
+  'inline-flex items-center gap-2 min-h-11 min-w-11 justify-center px-4 bg-white border border-indigo/15 shadow-sm text-base font-bold text-teal';
+
 export default async function Calendrier({ searchParams }: { searchParams: Recherche }) {
   const ctx = await contexte(searchParams);
   const { plan, jour } = ctx;
@@ -76,15 +80,17 @@ export default async function Calendrier({ searchParams }: { searchParams: Reche
 
         {vue === 'semaine' ? (
           <section className="space-y-2">
-            <div className="flex items-center justify-between text-sm font-semibold">
+            {/* Semaine précédente, suivante : de vrais boutons, à l'échelle du bandeau (retour du coach
+                du 07/10/2026 : « trop petits »). */}
+            <div className="flex items-center justify-between">
               {rang > 0 ? (
-                <Link href={lien('/app/calendrier', ctx, { s: plan.semaines[rang - 1].numero })} className="text-teal">
-                  ‹ {plan.semaines[rang - 1].numero}
+                <Link href={lien('/app/calendrier', ctx, { s: plan.semaines[rang - 1].numero })} className={BOUTON_SEMAINE}>
+                  <span aria-hidden>‹</span> {plan.semaines[rang - 1].numero}
                 </Link>
               ) : <span />}
               {rang < plan.semaines.length - 1 ? (
-                <Link href={lien('/app/calendrier', ctx, { s: plan.semaines[rang + 1].numero })} className="text-teal">
-                  {plan.semaines[rang + 1].numero} ›
+                <Link href={lien('/app/calendrier', ctx, { s: plan.semaines[rang + 1].numero })} className={BOUTON_SEMAINE}>
+                  {plan.semaines[rang + 1].numero} <span aria-hidden>›</span>
                 </Link>
               ) : <span />}
             </div>
@@ -93,13 +99,13 @@ export default async function Calendrier({ searchParams }: { searchParams: Reche
           </section>
         ) : (
           <section className="space-y-2">
-            <div className="flex items-center justify-between text-sm font-semibold">
+            <div className="flex items-center justify-between">
               {mois > moisMin ? (
-                <Link href={lien('/app/calendrier', ctx, { vue: 'mois', m: moisVoisin(-1) })} className="text-teal">‹</Link>
+                <Link href={lien('/app/calendrier', ctx, { vue: 'mois', m: moisVoisin(-1) })} className={BOUTON_SEMAINE} aria-label="Mois précédent">‹</Link>
               ) : <span />}
-              <span className="text-indigo capitalize">{moisLong(`${mois}-01`)}</span>
+              <span className="text-lg font-bold text-indigo capitalize">{moisLong(`${mois}-01`)}</span>
               {mois < moisMax ? (
-                <Link href={lien('/app/calendrier', ctx, { vue: 'mois', m: moisVoisin(1) })} className="text-teal">›</Link>
+                <Link href={lien('/app/calendrier', ctx, { vue: 'mois', m: moisVoisin(1) })} className={BOUTON_SEMAINE} aria-label="Mois suivant">›</Link>
               ) : <span />}
             </div>
             <GrilleMois plan={plan} mois={mois} ctx={ctx} />

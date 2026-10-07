@@ -52,6 +52,9 @@ export default function BarreOnglets() {
     <nav
       aria-label="Navigation de l’app"
       className="fixed bottom-0 inset-x-0 z-20 bg-white border-t border-indigo/10 pb-[env(safe-area-inset-bottom)]"
+      // Une marge sur les côtés : les coins arrondis de l'iPhone coupaient le « A » d'« Aujourd'hui »
+      // (retour du coach du 07/10/2026).
+      style={{ paddingLeft: 'max(10px, env(safe-area-inset-left))', paddingRight: 'max(10px, env(safe-area-inset-right))' }}
     >
       <ul className="mx-auto max-w-2xl grid grid-cols-5">
         {ONGLETS.map((o) => (
@@ -60,7 +63,7 @@ export default function BarreOnglets() {
               href={`${o.chemin}${suite}`}
               aria-current={actif(o.chemin) ? 'page' : undefined}
               className={clsx(
-                'flex flex-col items-center justify-center gap-1 h-16 text-[0.65rem] font-semibold',
+                'flex flex-col items-center justify-center gap-1 h-16 text-[0.625rem] tracking-tight whitespace-nowrap font-semibold',
                 actif(o.chemin) ? 'text-teal' : 'text-indigo/50 hover:text-indigo'
               )}
             >

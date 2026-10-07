@@ -21,7 +21,7 @@ export default function FriseBlocs({ blocs }: { blocs: { cle: string; titre: str
           href={b.href}
           aria-current={b.actif ? 'true' : undefined}
           className={clsx(
-            'shrink-0 px-3 py-1.5 text-xs border whitespace-nowrap',
+            'shrink-0 px-4 py-2.5 text-sm border whitespace-nowrap',
             b.actif ? 'bg-teal text-white border-teal' : 'bg-white text-indigo/70 border-indigo/15'
           )}
         >
