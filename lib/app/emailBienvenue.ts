@@ -1,7 +1,8 @@
 /**
  * L'e-mail de bienvenue (cadrage de l'app, D9 : le PDF joint ; texte validé par le coach le
  * 07/10/2026). Envoyé par Brevo (API transactionnelle) une fois par plan rangé, depuis
- * lib/app/rangement.ts. Côté serveur seulement. Sans BREVO_API_KEY, rien ne part.
+ * lib/app/rangement.ts. Côté serveur seulement. Sans BREVO_API_KEY, rien ne part. La phrase de la
+ * connexion sur un autre appareil est reprise sur décision du coach (07/10/2026, « option 1 »).
  *
  * Les phrases du plan viennent du moteur (cadrage, D3) : la date de début dite par la couverture
  * (« Ta préparation commence le… », ou la semaine rejointe).
@@ -26,8 +27,8 @@ export function contenuBienvenue(plan: Plan, lienApp: string) {
     `Ton plan pour ${course.nom}, le ${course.date_lettres}, est prêt. ${sansBalises(plan.couverture.debut)}`,
     'Chaque séance t’y attend au jour le jour, avec le calendrier, ton parcours et les fiches de la bibliothèque. ' +
       'Pour y revenir facilement, ajoute l’app à l’écran d’accueil de ton téléphone : elle te montre comment à ' +
-      'la première ouverture. Pour te connecter sur un autre appareil, entre cet e-mail : tu reçois un code à ' +
-      '6 chiffres.',
+      'la première ouverture. Sur un autre appareil, l’app te demande l’adresse e-mail qui reçoit ce message, ' +
+      'puis t’y envoie un code à 6 chiffres pour te connecter.',
     'Ton plan est aussi joint en PDF, à garder ou à imprimer.',
     'Une question sur ton plan ? Réponds simplement à cet e-mail.',
   ];
