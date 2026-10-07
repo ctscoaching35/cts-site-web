@@ -7,9 +7,12 @@
  *    ensuite par code, comme tout compte. Supabase fabrique un lien de connexion, sans l'envoyer.
  * 3. L'achat (unique par session de paiement), puis le plan figé et son PDF sont rangés une seule
  *    fois : une page rechargée ne range rien de plus, et un rangement interrompu se reprend.
+ * 4. L'e-mail de bienvenue part avec le PDF, par l'appel qui a rangé le plan, donc une fois.
  */
 import type { EmailOtpType } from '@supabase/supabase-js';
 import { API_URL } from '@/lib/plan';
+import { envoyerBienvenue } from './emailBienvenue';
+import type { Plan } from './plan';
 import { clientService } from './supabase';
 
 // La connexion sans code ne vaut que dans l'heure qui suit l'achat : un lien de retour de paiement
@@ -31,7 +34,12 @@ async function lire(chemin: string | null) {
   return reponse;
 }
 
-export async function rangerLePlan(sessionId: string) {
+// Le nom du PDF donné par l'API (« CTS_Plan_<nom>.pdf »).
+const nomDuPdf = (reponse: Response) =>
+  /filename="?([^";]+)"?/.exec(reponse.headers.get('content-disposition') ?? '')?.[1] ?? 'CTS_Plan.pdf';
+
+// origine : l'adresse du site (https://cts-coaching.com), pour le lien de l'e-mail de bienvenue.
+export async function rangerLePlan(sessionId: string, origine: string) {
   const reponse = await fetch(`${API_URL}/v1/plans`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -69,8 +77,9 @@ export async function rangerLePlan(sessionId: string) {
   const { data: plans, error: erreurPlans } = await service.from('plans').select('id, achat_id').eq('compte_id', compteId);
   if (erreurPlans) throw new Error(`plans : ${erreurPlans.message}`);
   if (!plans.some((p) => p.achat_id === achat.id)) {
-    const donnees = await (await lire(corps.donnees_url)).json();
-    const pdf = await (await lire(corps.pdf_url)).arrayBuffer();
+    const donnees: Plan = await (await lire(corps.donnees_url)).json();
+    const reponsePdf = await lire(corps.pdf_url);
+    const pdf = await reponsePdf.arrayBuffer();
     const { data: plan, error } = await service
       .from('plans')
       .insert({
@@ -93,6 +102,12 @@ export async function rangerLePlan(sessionId: string) {
       .upload(chemin, pdf, { contentType: 'application/pdf', upsert: true });
     if (erreurPdf) throw new Error(`PDF : ${erreurPdf.message}`);
     await service.from('plans').update({ pdf_chemin: chemin }).eq('id', plan.id);
+    // Le plan est rangé : un e-mail qui échoue ne le défait pas, il se signale dans le journal.
+    try {
+      await envoyerBienvenue(email, donnees, `${origine}/app`, { nom: nomDuPdf(reponsePdf), contenu: pdf });
+    } catch (e) {
+      console.error(`E-mail de bienvenue de l'achat ${sessionId} :`, e);
+    }
   }
 
   // SANS CODE, SEULEMENT DANS UN COMPTE QUE CET ACHAT VIENT D'OUVRIR. L'e-mail du questionnaire n'est
