@@ -71,7 +71,9 @@ export default function RootLayout({
   return (
     // data-scroll-behavior : Next 16 coupe le défilement doux pendant un changement de page
     // (sinon une page de l'app s'ouvre en glissant) et le garde pour les ancres du site.
-    <html lang="fr" className={montserrat.variable} data-scroll-behavior="smooth">
+    // suppressHydrationWarning : les navigateurs ajoutent leurs propres attributs à <html> avant
+    // que React démarre (Chrome sur iPhone : __gcrremoteframetoken) ; ce n'est pas une erreur.
+    <html lang="fr" className={montserrat.variable} data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className="font-sans antialiased">{children}</body>
     </html>
   );

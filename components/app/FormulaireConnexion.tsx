@@ -43,10 +43,13 @@ export default function FormulaireConnexion() {
   }
 
   return etape === 'email' ? (
-    <form onSubmit={demanderCode} className="space-y-4">
+    <form suppressHydrationWarning onSubmit={demanderCode} className="space-y-4">
       <label className="block">
         <span className="block text-xs font-semibold tracking-cts uppercase text-indigo/70 mb-2">Ton e-mail</span>
         <input
+          // Le remplissage automatique des navigateurs marque ses champs (Chrome sur iPhone :
+          // __gcruniqueid) avant que React démarre : ce n'est pas une erreur.
+          suppressHydrationWarning
           type="email" required autoComplete="email" value={email}
           onChange={(e) => setEmail(e.target.value)} className={champCls}
         />
@@ -56,7 +59,7 @@ export default function FormulaireConnexion() {
       </button>
     </form>
   ) : (
-    <form onSubmit={verifierCode} className="space-y-4">
+    <form suppressHydrationWarning onSubmit={verifierCode} className="space-y-4">
       <p className="text-sm text-indigo/70 leading-relaxed">
         Si un plan CTS est rattaché à <strong className="text-indigo">{email}</strong>, tu vas recevoir un code à
         6 chiffres.
@@ -64,6 +67,7 @@ export default function FormulaireConnexion() {
       <label className="block">
         <span className="block text-xs font-semibold tracking-cts uppercase text-indigo/70 mb-2">Le code reçu</span>
         <input
+          suppressHydrationWarning
           inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required
           value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
           className={`${champCls} text-center text-2xl tracking-[0.5em] font-bold`}
