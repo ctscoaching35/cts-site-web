@@ -9,7 +9,17 @@ import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 
-const URL_SUPABASE = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+// L'adresse du projet sans rien derrière : copiée depuis « Data API », elle finit souvent par
+// /rest/v1/, et la connexion répond alors « Invalid path specified in request URL ».
+export const origineSupabase = (adresse: string | undefined) => {
+  try {
+    return adresse ? new URL(adresse.trim()).origin : '';
+  } catch {
+    return '';
+  }
+};
+
+const URL_SUPABASE = origineSupabase(process.env.NEXT_PUBLIC_SUPABASE_URL);
 const CLE_PUBLIQUE = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
 
 export const supabaseConfigure = () => Boolean(URL_SUPABASE && CLE_PUBLIQUE);

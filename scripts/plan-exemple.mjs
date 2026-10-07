@@ -19,7 +19,13 @@ if (!email) {
   console.error('Usage : npm run app:plan-exemple -- <e-mail> [L4|L1]');
   process.exit(1);
 }
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+// L'adresse du projet sans chemin derrière (copiée depuis « Data API », elle finit souvent par /rest/v1/).
+let url;
+try {
+  url = new URL((process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').trim()).origin;
+} catch {
+  url = '';
+}
 const cleService = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!url || !cleService) {
   console.error('NEXT_PUBLIC_SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY manque dans .env.local (supabase/README.md).');

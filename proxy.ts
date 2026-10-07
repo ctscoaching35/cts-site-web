@@ -4,7 +4,13 @@ import { NextResponse, type NextRequest } from 'next/server';
 // Le proxy de Next 16 (l'ancien middleware) : avant chaque page de l'app, il rafraîchit la
 // session Supabase et réécrit ses cookies. Sans Supabase configuré (démonstration), il ne fait rien.
 export async function proxy(request: NextRequest) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  // L'adresse du projet sans chemin derrière (voir origineSupabase, lib/app/supabase.ts).
+  let url = '';
+  try {
+    url = new URL((process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').trim()).origin;
+  } catch {
+    url = '';
+  }
   const cle = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !cle) return NextResponse.next();
   let reponse = NextResponse.next({ request });
