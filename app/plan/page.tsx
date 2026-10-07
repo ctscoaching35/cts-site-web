@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Ton plan d’entraînement trail — CTS Coaching',
-  description: 'Un plan trail construit sur ta course, ton niveau, ton terrain et tes disponibilités, livré en PDF.',
+  description: 'Un plan trail construit sur ta course, ton niveau, ton terrain et tes disponibilités, dans ton app.',
   robots: { index: false, follow: false },
 };
 
@@ -24,7 +24,7 @@ export default async function PagePlan() {
           <p className="text-indigo/70 text-lg leading-relaxed">
             Sept rubriques sur ta course, ton niveau, ton terrain et tes disponibilités. Ton plan s’appuie sur les
             dernières données en sciences de l’entraînement : chaque semaine et chaque séance en découlent, jusqu’au
-            jour J. Tu le reçois en PDF.
+            jour J. Tu le retrouves dans ton app, séance par séance, avec un PDF en complément.
           </p>
         </div>
         <Questionnaire />

@@ -26,6 +26,8 @@ export type ConfigPlan = {
   jours: string[];
   prix_eur_par_mois: Record<string, number>;
   mode_paiement: 'test' | 'stripe';
+  // L'avertissement santé du PDF, mot pour mot (cts_contenu.avertissement_sante(), 07/10/2026).
+  avertissement?: { surtitre: string; paragraphes: string[] };
 };
 
 export type Champs = {
@@ -96,7 +98,7 @@ export const textes = {
   charge: {
     titre: 'Ce que tu cours en ce moment',
     aide:
-      'Ta plus longue sortie décide d’où ton plan démarre. C’est la seule chose qui distingue deux coureurs du même niveau : l’un tient déjà 2h30, l’autre plafonne à 1h, et ils n’ont pas à recevoir la même première semaine. Le risque de blessure monte quand une sortie dépasse nettement la plus longue des 4 dernières semaines — c’est le résultat le mieux établi de tout l’entraînement, et il ne sert à rien si on ne sait pas d’où tu pars.',
+      'Ta plus longue sortie décide d’où ton plan démarre. C’est la seule chose qui distingue deux coureurs du même niveau : l’un tient déjà 2h30, l’autre plafonne à 1h, et ils n’ont pas à recevoir la même première semaine. Le risque de blessure monte quand une sortie dépasse nettement la plus longue des 4 dernières semaines : c’est l’un des faits les mieux établis en prévention des blessures en course à pied.',
     volume: 'Volume de course par semaine, en ce moment',
     sortieLongue: 'Ta plus longue sortie des 4 dernières semaines',
     note: 'En durée de course, pas en kilomètres. Si tu n’as pas couru du tout ces 4 semaines, mets ta dernière sortie régulière.',

@@ -233,7 +233,9 @@ export default function Questionnaire() {
       ['Temps cible', c.temps_cible], ['Terrain', nomTerrain],
       ['Disponibilité', `${c.freq_hebdo} séances par semaine · ${joursCoches.map((j) => NOMS_JOURS[j]).join(', ')} · sortie longue le ${c.jour_sl}`],
     ];
-    const bloque = alertes.length > 0 && !confirme;
+    // L'avertissement santé se lit et se coche à chaque fois (décision coach du 07/10/2026), avec
+    // les points propres à l'athlète au-dessus quand il y en a.
+    const bloque = !confirme;
     return (
       <div className="space-y-6">
         <section className="bg-white border border-indigo/10 p-6 sm:p-8">
@@ -251,18 +253,26 @@ export default function Questionnaire() {
           </button>
         </section>
 
-        {alertes.length > 0 && (
-          <section className="bg-white border-l-4 border-teal p-6 sm:p-8">
-            <h2 className="text-lg text-indigo mb-4">Avant de générer ton plan, lis ces points</h2>
-            <ul className="space-y-3 text-indigo/80 leading-relaxed list-disc pl-5">
-              {alertes.map((a) => <li key={a}>{a}</li>)}
-            </ul>
-            <label className="flex gap-3 items-start mt-6 cursor-pointer">
-              <input type="checkbox" checked={confirme} onChange={(e) => setConfirme(e.target.checked)} className="mt-1 accent-teal" />
-              <span className="text-indigo font-semibold">J’ai lu ces points et je veux générer mon plan.</span>
-            </label>
-          </section>
-        )}
+        <section className="bg-white border-l-4 border-teal p-6 sm:p-8">
+          {alertes.length > 0 && (
+            <>
+              <h2 className="text-lg text-indigo mb-4">Avant de générer ton plan, lis ces points</h2>
+              <ul className="space-y-3 text-indigo/80 leading-relaxed list-disc pl-5 mb-6">
+                {alertes.map((a) => <li key={a}>{a}</li>)}
+              </ul>
+            </>
+          )}
+          {config.avertissement && (
+            <div className="space-y-3 text-indigo/80 leading-relaxed">
+              <div className="eyebrow text-teal">{config.avertissement.surtitre}</div>
+              {config.avertissement.paragraphes.map((p) => <p key={p}>{p}</p>)}
+            </div>
+          )}
+          <label className="flex gap-3 items-start mt-6 cursor-pointer">
+            <input type="checkbox" checked={confirme} onChange={(e) => setConfirme(e.target.checked)} className="mt-1 accent-teal" />
+            <span className="text-indigo font-semibold">J’ai lu cet avertissement et je veux générer mon plan.</span>
+          </label>
+        </section>
 
         {refus && (
           <p role="alert" className="bg-white border-l-4 border-red-400 p-5 text-indigo leading-relaxed">{refus}</p>
