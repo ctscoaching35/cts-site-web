@@ -12,8 +12,8 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function PagePlan() {
-  if (!planOuvert()) notFound();
+export default async function PagePlan() {
+  if (!(await planOuvert())) notFound();
   return (
     <div className="min-h-screen bg-sand">
       <EnTetePlan />

@@ -81,7 +81,31 @@ Si le code n'arrive pas : les indésirables, puis la limite d'envoi de Supabase 
 par heure) — attendre un peu. Si « Ce code ne fonctionne pas » : la longueur du code (6), le modèle
 d'e-mail (`{{ .Token }}`), un code plus récent demandé entre-temps (seul le dernier vaut).
 
+## 6. Le plan rangé au paiement
+
+La page de retour du paiement (`/plan/merci?session_id=…`) demande le plan à l'API, puis le range
+(`lib/app/rangement.ts`) : le compte de l'e-mail du questionnaire, retrouvé ou créé confirmé ;
+l'achat ; le plan figé, ses réponses gardées, son PDF dans `plans-pdf`. Une page rechargée ne range
+rien de plus. L'athlète arrive dans l'app SANS CODE seulement si le compte vient d'être ouvert par
+cet achat, dans l'heure : l'e-mail tapé au questionnaire n'est pas prouvé, un compte qui portait déjà
+un plan s'ouvre avec le code (« Ton nouveau plan est rangé dans ton compte »).
+
+Essai en local, sans Stripe : l'API lancée en mode test (`./.venv/bin/python3 api.py`, dépôt du
+moteur) prend chaque questionnaire pour payé.
+
+## 7. La bêta privée : le lien d'invitation
+
+Le questionnaire (`/plan`) répond 404 sauf `CTS_PLAN_OUVERT=1` (ouvert à tous) ou, pour la bêta, sur
+invitation : avec dans `.env.local`
+
+```
+CTS_INVITATION=un-mot-a-toi
+```
+
+le lien `…/plan?invitation=un-mot-a-toi` ouvre le questionnaire et la page de retour du paiement
+dans ce navigateur, 90 jours (un cookie). Changer le mot referme les liens déjà donnés.
+
 ## Ce qui viendra ensuite
 
-- Le compte et le plan créés au paiement (Stripe, phase 0), le PDF rangé dans `plans-pdf`.
+- Stripe en mode test, puis sa confirmation de paiement (webhook) et l'e-mail de bienvenue.
 - La suppression des comptes restés 3 ans sans connexion, après un e-mail d'avertissement (D4).
