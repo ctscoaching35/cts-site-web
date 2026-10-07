@@ -90,8 +90,20 @@ rien de plus. L'athlète arrive dans l'app SANS CODE seulement si le compte vien
 cet achat, dans l'heure : l'e-mail tapé au questionnaire n'est pas prouvé, un compte qui portait déjà
 un plan s'ouvre avec le code (« Ton nouveau plan est rangé dans ton compte »).
 
-Essai en local, sans Stripe : l'API lancée en mode test (`./.venv/bin/python3 api.py`, dépôt du
-moteur) prend chaque questionnaire pour payé.
+Essai en local : l'API lancée (`./.venv/bin/python3 api.py`, dépôt du moteur) ; avec la clé Stripe
+de test dans son `.env`, le paiement passe par Stripe (carte 4242 4242 4242 4242) ; sans clé, chaque
+questionnaire est pris pour payé.
+
+L'e-mail de bienvenue (`lib/app/emailBienvenue.ts`, texte validé par le coach le 07/10/2026) part
+avec le PDF, une fois par plan rangé, par l'API transactionnelle de Brevo : une clé d'API (pas la
+clé SMTP), dans `.env.local`
+
+```
+BREVO_API_KEY=xkeysib-…
+```
+
+Brevo › profil › SMTP et API › Clés API › Générer. Sans elle, rien ne part (un avertissement dans
+le journal du serveur). Expéditeur : ctscoaching35@gmail.com, ou `CTS_EMAIL_EXPEDITEUR`.
 
 ## 7. La bêta privée : le lien d'invitation
 
@@ -107,5 +119,5 @@ dans ce navigateur, 90 jours (un cookie). Changer le mot referme les liens déj�
 
 ## Ce qui viendra ensuite
 
-- Stripe en mode test, puis sa confirmation de paiement (webhook) et l'e-mail de bienvenue.
+- La confirmation de paiement de Stripe (webhook), une fois le site en ligne.
 - La suppression des comptes restés 3 ans sans connexion, après un e-mail d'avertissement (D4).
