@@ -76,7 +76,8 @@ export async function rangerLePlan(sessionId: string, origine: string) {
 
   const { data: plans, error: erreurPlans } = await service.from('plans').select('id, achat_id').eq('compte_id', compteId);
   if (erreurPlans) throw new Error(`plans : ${erreurPlans.message}`);
-  if (!plans.some((p) => p.achat_id === achat.id)) {
+  let planId = plans.find((p) => p.achat_id === achat.id)?.id;
+  if (!planId) {
     const donnees: Plan = await (await lire(corps.donnees_url)).json();
     const reponsePdf = await lire(corps.pdf_url);
     const pdf = await reponsePdf.arrayBuffer();
@@ -96,6 +97,7 @@ export async function rangerLePlan(sessionId: string, origine: string) {
       .select('id')
       .single();
     if (error || !plan) throw new Error(`plans : ${error?.message}`);
+    planId = plan.id;
     const chemin = `${compteId}/${plan.id}.pdf`;
     const { error: erreurPdf } = await service.storage
       .from('plans-pdf')
@@ -115,6 +117,7 @@ export async function rangerLePlan(sessionId: string, origine: string) {
   // quelqu'un d'autre tapé au questionnaire) s'ouvre avec le code reçu sur cette adresse.
   const compteNeuf = plans.every((p) => p.achat_id === achat.id);
   return {
+    planId,
     jeton: lien.properties.hashed_token,
     type: lien.properties.verification_type as EmailOtpType,
     sansCode: compteNeuf && Date.now() - Date.parse(achat.paye_le) < SANS_CODE_PENDANT_MS,

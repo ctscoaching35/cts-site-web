@@ -5,8 +5,10 @@
  * - Sinon, la démonstration (développement seulement) : un plan du corpus (?plan=) et un jour
  *   simulé (?jour=).
  */
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { EXEMPLES, jourParDefaut } from './demonstration';
+import { COOKIE_PLAN } from './planChoisi';
 import { SCHEMA_PLAN, aujourdhuiIso, type Plan } from './plan';
 import { clientServeur, supabaseConfigure } from './supabase';
 
@@ -33,10 +35,13 @@ export async function contexte(recherche: Recherche): Promise<Contexte> {
   const supabase = await clientServeur();
   const { data: session } = await supabase.auth.getClaims();
   if (!session?.claims?.sub) redirect('/app/connexion');
-  // Un plan par course (cadrage, 3.6) : celui de la prochaine course, sinon le dernier couru.
+  // Un plan par course (cadrage, 3.6) : celui que l'athlète a choisi sur cet appareil (« Tes plans »,
+  // ou le dernier acheté), sinon celui de la prochaine course, sinon le dernier couru.
   const aujourdhui = aujourdhuiIso();
   const { data: plans } = await supabase.from('plans').select('id, course_date').order('course_date');
-  const choisi = plans?.find((p) => p.course_date >= aujourdhui) ?? plans?.[plans.length - 1];
+  const voulu = (await cookies()).get(COOKIE_PLAN)?.value;
+  const choisi = plans?.find((p) => p.id === voulu)
+    ?? plans?.find((p) => p.course_date >= aujourdhui) ?? plans?.[plans.length - 1];
   if (!choisi) redirect('/app/sans-plan');
   const { data: ligne, error } = await supabase.from('plans').select('donnees').eq('id', choisi.id).single();
   if (error || !ligne) throw new Error(`Plan ${choisi.id} illisible : ${error?.message ?? 'introuvable'}`);
