@@ -29,7 +29,8 @@ function Section({ numero, titre, children }: { numero: number; titre: string; c
   return (
     <section id={`section-${numero}`} className="bg-white border border-indigo/10 p-6 sm:p-8 scroll-mt-6">
       <div className="flex items-baseline gap-3 mb-6">
-        <span className="text-teal font-extrabold text-sm">{String(numero).padStart(2, '0')}</span>
+        {/* Le numéro à la taille du titre (retour du coach du 07/10/2026 : trop petit à côté). */}
+        <span className="text-teal font-extrabold text-xl sm:text-2xl">{String(numero).padStart(2, '0')}</span>
         <h2 className="text-xl sm:text-2xl text-indigo">{titre}</h2>
       </div>
       <div className="space-y-6">{children}</div>
@@ -447,7 +448,7 @@ export default function Questionnaire() {
             <label className={labelCls} htmlFor="freq">Séances par semaine</label>
             <input id="freq" type="number" min={freqMin} max={Math.max(freqMin, Math.min(7, joursCoches.length, freqMax))} className={inputCls} required
               value={c.freq_hebdo} onChange={(e) => maj('freq_hebdo')(e.target.value)} />
-            <p className={aideCls}>{plancher?.note}</p>
+            {plancher?.note && <p className={aideCls}>{plancher.note}</p>}
           </div>
         </div>
       </Section>

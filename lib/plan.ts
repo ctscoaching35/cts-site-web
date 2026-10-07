@@ -274,7 +274,7 @@ export function bandeTempsCible(c: Champs, config: ConfigPlan): { alerte: string
  * 4 dès le seuil de km-effort (50 depuis le 26/09/2026) — la difficulté réelle de la
  * course, pas son étiquette. Seuils lus dans /v1/config ; l'API reste seule juge (refus
  * 5 et 5 bis). La note annonce le plancher en direct, pour que l'athlète ne le découvre
- * pas dans un refus, et dit son coût mesuré. Pas de motif (décision coach du 27/09/2026) :
+ * pas dans un refus. Pas de motif (décision coach du 27/09/2026) :
  * aucun motif court n'est vrai pour tous les formats et tous les niveaux.
  */
 export function plancherSeances(c: Champs, config: ConfigPlan): { min: number; max: number; note: string } {
@@ -289,20 +289,21 @@ export function plancherSeances(c: Champs, config: ConfigPlan): { min: number; m
   // Plafond du niveau (second audit du 28/09/2026, D4) : le débutant, 4 séances au plus.
   // Lu dans /v1/config ; l'API reste seule juge (refus 5 ter).
   const max = config.freq_max_par_niveau?.[c.niveau] ?? 7;
-  const bornes = 'Pas plus que de jours cochés.'
-    + (max < 7 ? ` En débutant, ${max} séances par semaine au plus.` : '');
+  // Sans « Pas plus que de jours cochés. » ni le coût de la 4e séance (décision coach du
+  // 07/10/2026 : « ça n'apporte rien ») ; le plafond du débutant reste, il évite un refus.
+  const bornes = max < 7 ? `En débutant, ${max} séances par semaine au plus.` : '';
   if (!c.format) return { min, max, note: bornes };
   if (ke !== null && parDifficulte >= parFormat && parDifficulte > 0) {
     return {
       min,
       max,
-      note: `Ta course vaut ${Math.round(ke)} km-effort (distance + D+/100). À partir de ${seuil}, le plan demande au moins ${min} séances par semaine. La 4e séance ajoute environ une heure par semaine. ${bornes}`,
+      note: `Ta course vaut ${Math.round(ke)} km-effort (distance + D+/100). À partir de ${seuil}, le plan demande au moins ${min} séances par semaine. ${bornes}`.trim(),
     };
   }
   const passage = parFormat < auDela
     ? ` À partir de ${seuil} km-effort (distance + D+/100), le minimum passe à ${auDela}.`
     : '';
-  return { min, max, note: `Minimum ${min} séances par semaine sur ce format.${passage} ${bornes}` };
+  return { min, max, note: `Minimum ${min} séances par semaine sur ce format.${passage} ${bornes}`.trim() };
 }
 
 /** L'intake envoyé à l'API : tous les champs sauf la blessure, qui reste sur la page. */
