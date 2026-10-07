@@ -23,7 +23,10 @@ export default async function FicheSeance({
   const rang = seances.findIndex((j) => j.id === jour.id);
   const avant = seances[rang - 1];
   const apres = seances[rang + 1];
-  const definition = plan.mode_emploi.seances.glossaire.find(([nom]) => nom === jour.definition);
+  // La définition propre à la séance du jour quand le moteur la donne (EF, sortie longue), sinon
+  // celle du glossaire, qui vise déjà une seule séance (décision coach du 07/10/2026).
+  const glossaire = plan.mode_emploi.seances.glossaire.find(([nom]) => nom === jour.definition);
+  const definition = glossaire ? ([glossaire[0], jour.definition_du_jour ?? glossaire[1]] as const) : null;
   const lecture = plan.mode_emploi.lire_seance;
   return (
     <>
@@ -41,8 +44,10 @@ export default async function FicheSeance({
         {definition && (
           <section className="bg-white shadow-sm p-4 text-sm text-indigo/80 leading-relaxed">
             <h2 className="eyebrow text-indigo/60 mb-2">Cette séance</h2>
-            <p>
-              <strong className="font-bold text-indigo">{definition[0]}</strong> — <TexteRiche texte={definition[1]} />
+            <p className="font-bold text-indigo">{definition[0]}</p>
+            {/* Une phrase sous son titre : la majuscule, que le glossaire n'a pas (il suit un tiret). */}
+            <p className="mt-1">
+              <TexteRiche texte={definition[1].charAt(0).toUpperCase() + definition[1].slice(1)} />
             </p>
           </section>
         )}

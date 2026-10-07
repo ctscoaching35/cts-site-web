@@ -29,6 +29,9 @@ export type Jour = {
   terrain_detail: string | null;
   carte: { entete: Record<string, string>; parties: PartieCarte[] } | null;
   definition: string | null;
+  // La définition propre à la séance du jour (EF, sortie longue ; moteur v8.306) : sans elle, celle
+  // du glossaire, qui présente toute la famille. Absente d'un plan plus ancien.
+  definition_du_jour?: string | null;
 };
 
 export type Semaine = {
