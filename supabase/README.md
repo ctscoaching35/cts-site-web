@@ -70,7 +70,9 @@ npm run app:plan-exemple -- ton@email.fr L4
 ```
 
 crée le compte de cet e-mail s'il n'existe pas et y range le plan d'exemple de l'OCC (`L1` pour
-GRF18) ; il répond « Plan L4 (OCC) rattaché à … ». Ensuite : http://localhost:3000/app → ton
+GRF18) ; il répond « Plan L4 (OCC) rattaché à … ». Un plan est figé à sa génération : après une
+correction de texte du moteur (plans d'exemple régénérés), `--remplacer` à la fin de la commande
+supprime d'abord les plans d'essai du compte. Ensuite : http://localhost:3000/app → ton
 e-mail → le code reçu → ton plan. La course de l'OCC est le 5 juin 2027 : aujourd'hui, l'app
 montre « Ta préparation commence le 21 décembre 2026 » ; en développement, `?jour=2027-03-30`
 simule un autre jour.

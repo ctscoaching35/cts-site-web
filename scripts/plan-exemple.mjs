@@ -3,8 +3,10 @@
  * Rattache un plan d'exemple du corpus de lecture à un compte, pour essayer l'app connectée
  * avant le paiement (étape 1b ; au lancement, le plan se range au paiement).
  *
- *   npm run app:plan-exemple -- <e-mail> [L4|L1]
+ *   npm run app:plan-exemple -- <e-mail> [L4|L1] [--remplacer]
  *
+ * --remplacer : les plans déjà rangés dans ce compte sont d'abord supprimés. Un plan est figé à
+ * sa génération (cadrage 5.5) : pour voir un texte corrigé du moteur, on remplace le plan d'essai.
  * Lit les clés de .env.local (sans les afficher). Crée le compte s'il n'existe pas, confirmé :
  * on s'y connecte ensuite par code, sur /app/connexion.
  */
@@ -14,9 +16,10 @@ import nextEnv from '@next/env';
 import { createClient } from '@supabase/supabase-js';
 
 nextEnv.loadEnvConfig(process.cwd());
-const [email, cle = 'L4'] = process.argv.slice(2);
+const remplacer = process.argv.includes('--remplacer');
+const [email, cle = 'L4'] = process.argv.slice(2).filter((a) => a !== '--remplacer');
 if (!email) {
-  console.error('Usage : npm run app:plan-exemple -- <e-mail> [L4|L1]');
+  console.error('Usage : npm run app:plan-exemple -- <e-mail> [L4|L1] [--remplacer]');
   process.exit(1);
 }
 // L'adresse du projet sans chemin derrière (copiée depuis « Data API », elle finit souvent par /rest/v1/).
@@ -49,6 +52,12 @@ if (!utilisateur) {
 }
 const { error: erreurCompte } = await supabase.from('comptes').upsert({ id: utilisateur.id, nom: plan.athlete.nom });
 if (erreurCompte) throw erreurCompte;
+if (remplacer) {
+  const { data: anciens, error: erreurSuppression } = await supabase
+    .from('plans').delete().eq('compte_id', utilisateur.id).select('id');
+  if (erreurSuppression) throw erreurSuppression;
+  console.log(`${anciens.length} plan(s) d'essai supprimé(s) de ${email}`);
+}
 const { data: ligne, error: erreurPlan } = await supabase
   .from('plans')
   .insert({
