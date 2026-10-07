@@ -38,7 +38,10 @@ au lancement, par Brevo (cadrage, phase 0).
 
 ## 4. Les clés
 
-**Project Settings › API**, dans `.env.local` (le fichier n'est jamais versionné) :
+**Project Settings › API Keys** (et **Data API** pour l'URL), dans `.env.local` (le fichier n'est
+jamais versionné). Selon l'âge du projet, Supabase nomme les clés `anon` / `service_role` (onglet
+*Legacy API Keys*) ou `publishable` / `secret` (`sb_publishable_…`, `sb_secret_…`) : les deux
+conviennent, la publique dans la deuxième ligne, la secrète dans la troisième.
 
 ```
 NEXT_PUBLIC_SUPABASE_URL=…          (Project URL)
@@ -56,7 +59,14 @@ npm run app:plan-exemple -- ton@email.fr L4
 ```
 
 crée le compte de cet e-mail s'il n'existe pas et y range le plan d'exemple de l'OCC (`L1` pour
-GRF18). Ensuite : http://localhost:3000/app → ton e-mail → le code reçu → ton plan.
+GRF18) ; il répond « Plan L4 (OCC) rattaché à … ». Ensuite : http://localhost:3000/app → ton
+e-mail → le code reçu → ton plan. La course de l'OCC est le 5 juin 2027 : aujourd'hui, l'app
+montre « Ta préparation commence le 21 décembre 2026 » ; en développement, `?jour=2027-03-30`
+simule un autre jour.
+
+Si le code n'arrive pas : les indésirables, puis la limite d'envoi de Supabase (quelques e-mails
+par heure) — attendre un peu. Si « Ce code ne fonctionne pas » : la longueur du code (6), le modèle
+d'e-mail (`{{ .Token }}`), un code plus récent demandé entre-temps (seul le dernier vaut).
 
 ## Ce qui viendra ensuite
 
