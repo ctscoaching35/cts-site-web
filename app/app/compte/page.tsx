@@ -1,6 +1,7 @@
 import EnTeteApp from '@/components/app/EnTeteApp';
 import { Avertissement } from '@/components/app/Texte';
-import { seDeconnecter, supprimerCompte } from '@/lib/app/actionsCompte';
+import { Deconnexion, Suppression } from '@/components/app/BoutonsCompte';
+import Installation from '@/components/app/Installation';
 import { contexte, type Recherche } from '@/lib/app/contexte';
 import { dateLongue } from '@/lib/app/plan';
 import { clientServeur } from '@/lib/app/supabase';
@@ -16,6 +17,10 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
         <main className="mx-auto max-w-2xl px-4 py-5 space-y-6">
           <h1 className="text-2xl text-indigo">Compte</h1>
           <p className="text-sm text-indigo/60">Démonstration : le compte n’existe qu’avec Supabase configuré.</p>
+          <section className="bg-white shadow-sm p-4 space-y-2">
+            <h2 className="eyebrow text-indigo/60">Ton plan sur ton écran d’accueil</h2>
+            <Installation />
+          </section>
           <Avertissement avertissement={ctx.plan.avertissement} />
         </main>
       </>
@@ -44,20 +49,12 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
             ))}
           </ul>
         </section>
-        <form action={seDeconnecter}>
-          <button type="submit" className="w-full bg-white shadow-sm p-4 text-left font-semibold text-indigo">
-            Me déconnecter
-          </button>
-        </form>
-        <form action={supprimerCompte} className="bg-white shadow-sm p-4 space-y-3">
-          <h2 className="font-bold text-indigo">Supprimer mon compte</h2>
-          <p className="text-sm text-indigo/70">Ton compte, tes plans et leurs PDF sont effacés, sans retour possible.</p>
-          <label className="flex items-center gap-2 text-sm text-indigo">
-            <input type="checkbox" name="confirmation" value="oui" required className="accent-[#9A3B2C]" />
-            Je veux supprimer mon compte
-          </label>
-          <button type="submit" className="text-sm font-bold text-[#9A3B2C]">Supprimer définitivement</button>
-        </form>
+        <section className="bg-white shadow-sm p-4 space-y-2">
+          <h2 className="eyebrow text-indigo/60">Ton plan sur ton écran d’accueil</h2>
+          <Installation />
+        </section>
+        <Deconnexion />
+        <Suppression />
         <Avertissement avertissement={ctx.plan.avertissement} />
       </main>
     </>

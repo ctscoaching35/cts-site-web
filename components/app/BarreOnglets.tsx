@@ -31,7 +31,7 @@ const ONGLETS = [
 ];
 
 // Pas d'onglets avant d'avoir un plan à lire.
-const SANS_ONGLETS = ['/app/connexion', '/app/sans-plan'];
+const SANS_ONGLETS = ['/app/connexion', '/app/sans-plan', '/app/bienvenue'];
 
 export default function BarreOnglets() {
   const chemin = usePathname();

@@ -1,9 +1,12 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 import BanniereSemaine from '@/components/app/BanniereSemaine';
 import CarteSeance from '@/components/app/CarteSeance';
 import EnTeteApp from '@/components/app/EnTeteApp';
 import JoursSemaine from '@/components/app/JoursSemaine';
 import PastillesSemaine from '@/components/app/PastillesSemaine';
+import { COOKIE_BIENVENUE } from '@/lib/app/bienvenue';
 import { contexte, lien, type Recherche } from '@/lib/app/contexte';
 import { ajouterJours, dateLongue, jourParDate, joursEntre, moment, semaineDeDate } from '@/lib/app/plan';
 
@@ -11,6 +14,8 @@ import { ajouterJours, dateLongue, jourParDate, joursEntre, moment, semaineDeDat
 // cours ; avant le début, la date de départ et la première semaine ; après, le plan reste là.
 export default async function Aujourdhui({ searchParams }: { searchParams: Recherche }) {
   const ctx = await contexte(searchParams);
+  // La première fois sur cet appareil : l'écran de bienvenue (cadrage, 2.6), lu avant d'entrer.
+  if (!(await cookies()).get(COOKIE_BIENVENUE)) redirect(lien('/app/bienvenue', ctx));
   const { plan, jour } = ctx;
   const etape = moment(plan, jour);
   const restants = joursEntre(jour, plan.course.date);
