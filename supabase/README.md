@@ -33,8 +33,19 @@ qui ne laissent chacun lire que ce qui est à lui.
 - **Authentication › URL Configuration › Site URL** : `http://localhost:3000` pendant la
   construction (l'adresse du site au lancement).
 
-L'envoi des e-mails passe d'abord par Supabase (quelques e-mails par heure, assez pour essayer) ;
-au lancement, par Brevo (cadrage, phase 0).
+**Le modèle n'est modifiable qu'avec un serveur d'envoi à soi** (constaté le 07/10/2026 : les
+nouveaux projets gratuits sur le service intégré de Supabase envoient le modèle par défaut, un
+lien, et seulement aux membres de l'organisation). D'où Brevo, prévu au cadrage (D7) :
+- Brevo, **SMTP et API › SMTP** : serveur `smtp-relay.brevo.com`, port `587`, identifiant
+  `…@smtp-brevo.com` (pas l'e-mail du compte), et une clé SMTP générée pour Supabase (affichée
+  une seule fois) ; l'expéditeur déclaré et vérifié dans **Expéditeurs**.
+- Supabase, **Authentication › Emails › SMTP Settings** : *Enable Custom SMTP*, l'expéditeur,
+  le nom « CTS Coaching », le serveur, le port, l'identifiant et la clé de Brevo.
+
+Expéditeur des essais : ctscoaching35@gmail.com, **non authentifié** (Brevo ne peut pas
+authentifier une adresse Gmail) : le code peut finir en indésirables. Avant le lancement :
+authentifier le domaine cts-coaching.com dans Brevo (enregistrements DNS) et envoyer depuis une
+adresse du site.
 
 ## 4. Les clés
 
