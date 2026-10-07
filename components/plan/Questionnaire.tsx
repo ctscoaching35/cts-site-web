@@ -378,7 +378,7 @@ export default function Questionnaire() {
             <input id="dmoins" type="number" step="1" min="0" inputMode="numeric" className={inputCls} value={c.dmoins_m} onChange={(e) => maj('dmoins_m')(e.target.value)} />
           </div>
         </div>
-        <p className="text-sm text-indigo/60 -mt-3">D− facultatif : laissé vide, on suppose D− = D+ et le PDF le signale.</p>
+        <p className="text-sm text-indigo/60 -mt-3">D− facultatif : laissé vide, on suppose D− = D+.</p>
         <div>
           <label className={labelCls} htmlFor="gpx">Trace GPX de la course — facultatif</label>
           <input id="gpx" type="file" accept=".gpx" className="block text-sm text-indigo" onChange={(e) => choisirTrace(e.target.files?.[0] ?? null)} />
@@ -391,7 +391,6 @@ export default function Questionnaire() {
           <label className={labelCls} htmlFor="temps">Temps cible</label>
           <input id="temps" className={inputCls} required placeholder="ex. 5h30" value={c.temps_cible} onChange={(e) => maj('temps_cible')(e.target.value)} />
           {reperes && <p className="text-sm text-teal mt-2 leading-relaxed">{reperes}</p>}
-          {bande && <p className="text-sm text-teal mt-2 leading-relaxed">{bande.annonce}</p>}
           {bande?.alerte && (
             <p role="status" className="bg-white border-l-4 border-teal px-4 py-3 mt-2 text-sm text-indigo leading-relaxed">{bande.alerte}</p>
           )}
@@ -403,7 +402,6 @@ export default function Questionnaire() {
       </Section>
 
       <Section numero={5} titre="Ton terrain d’entraînement">
-        <p className={aideCls}>{textes.terrain.aide}</p>
         <div className="grid sm:grid-cols-2 gap-3">
           {textes.terrain.options.map((o) => (
             <Choix key={o.valeur} nom="terrain" valeur={o.valeur} courant={c.terrain} onChange={maj('terrain')}

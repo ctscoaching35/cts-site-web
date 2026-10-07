@@ -105,9 +105,9 @@ export const textes = {
   gpx:
     'Le profil réel du parcours (répartition des pentes) affine tout le plan. Sans trace, le plan est construit sur le D+/D− déclaré ci-dessus, et le PDF n’affiche pas de profil.',
   tempsCible: 'Même une estimation large vaut mieux que rien — c’est ce qui calibre l’intensité de tout le plan.',
+  // Sans paragraphe d'aide (décision coach du 07/10/2026 : « ça n'apporte rien ») : les quatre
+  // descriptions disent la longueur de côte.
   terrain: {
-    aide:
-      'Réponds sur la plus longue côte que tu peux vraiment enchaîner près de chez toi, pas sur le paysage. C’est cette longueur qui décide si ton travail au seuil se fera en côte ou sur terrain roulant.',
     options: [
       { valeur: 'vallonne', titre: 'Vallonné', description: 'Côtes courtes, jusqu’à 1min30 de montée.' },
       { valeur: 'intermediaire', titre: 'Intermédiaire', description: 'Côtes de 2 à 5 min de montée.' },
@@ -251,18 +251,17 @@ export function alerteSortieLongue(c: Champs, config: ConfigPlan): string | null
 }
 
 /**
- * Bande du temps cible (CONTRAT_API_CTS.md §4 ; audit du questionnaire du 01/10/2026, F1) :
- * pour quelle durée de course le plan sera construit et, à moins de `marge_min` minutes
- * d'une borne, ce qui change de l'autre côté. Bornes, noms et phrases lus dans /v1/config.
+ * Bande du temps cible (CONTRAT_API_CTS.md §4 ; audit du questionnaire du 01/10/2026, F1) : à
+ * moins de `marge_min` minutes d'une borne, ce qui change de l'autre côté. Bornes et phrases lues
+ * dans /v1/config. L'annonce « Ton plan sera construit pour une course de… » est retirée (décision
+ * coach du 07/10/2026 : elle n'apprend rien à l'athlète).
  */
-export function bandeTempsCible(c: Champs, config: ConfigPlan): { annonce: string; alerte: string | null } | null {
+export function bandeTempsCible(c: Champs, config: ConfigPlan): { alerte: string | null } | null {
   const bandes = config.bandes_temps_cible;
   const h = lireTemps(c.temps_cible);
   if (!bandes || h === null || !(h > 0)) return null;
-  const i = bandes.bornes_h.filter((b) => h >= b).length;
   const j = bandes.bornes_h.findIndex((b) => Math.abs(h - b) * 60 < bandes.marge_min);
   return {
-    annonce: `Ton plan sera construit pour une course de ${bandes.libelles[i]}.`,
     alerte: j < 0 ? null
       : `Tu es à moins de ${bandes.marge_min} min de ${bandes.bornes_h[j]}h, une frontière du plan. ${bandes.phrases_bornes[j]} Mets le temps que tu crois le plus probable.`,
   };
