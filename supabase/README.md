@@ -125,6 +125,14 @@ critique et D′, la FC au seuil 2, avec la date du consentement de l'athlète. 
 écrit (clé de service, après avoir vérifié la session) ; l'athlète ne lit que les siennes. Sans
 cette table, la rubrique « Tes zones » s'affiche mais n'enregistre rien.
 
+## 9. Le journal de séance
+
+Deux tables de plus, `journaux` et `retours` (`supabase/migrations/20261008100000_journal.sql`) : SQL
+Editor, coller le fichier, Run (« Success. No rows returned »). Après chaque séance, l'athlète dit si elle
+est faite, raccourcie ou pas faite, son RPE ressenti et ses sensations ; rien n'est gardé sans son
+consentement au journal (daté dans `journaux`), et jamais de douleur. Sans ces tables, le journal
+s'affiche mais n'enregistre rien.
+
 ## Ce qui viendra ensuite
 
 - La confirmation de paiement de Stripe (webhook), une fois le site en ligne.

@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import CarteSeance from '@/components/app/CarteSeance';
 import EnTeteApp from '@/components/app/EnTeteApp';
 import MentionTest from '@/components/app/MentionTest';
+import RetourSeance from '@/components/app/RetourSeance';
 import TexteRiche from '@/components/app/TexteRiche';
 import { contexte, lien, type Recherche } from '@/lib/app/contexte';
 import { dateLongue, jourParId, tousLesJours } from '@/lib/app/plan';
@@ -46,6 +47,7 @@ export default async function FicheSeance({
           <p className="text-sm text-indigo/70 -mt-2">{plan.zones.derive_sl}</p>
         )}
         <MentionTest jour={jour} ctx={ctx} />
+        <RetourSeance jour={jour} ctx={ctx} ouvert={(await searchParams).retour === '1'} />
 
         {definition && (
           <section className="bg-white shadow-sm p-4 text-sm text-indigo/80 leading-relaxed">

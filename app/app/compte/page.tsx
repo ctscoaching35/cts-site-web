@@ -3,6 +3,7 @@ import { Avertissement } from '@/components/app/Texte';
 import { Deconnexion, Suppression } from '@/components/app/BoutonsCompte';
 import Installation from '@/components/app/Installation';
 import { choisirPlan } from '@/lib/app/actionsPlan';
+import { effacerJournal } from '@/lib/app/actionsJournal';
 import { contexte, type Recherche } from '@/lib/app/contexte';
 import { dateLongue } from '@/lib/app/plan';
 import { clientServeur } from '@/lib/app/supabase';
@@ -66,6 +67,11 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
           <h2 className="eyebrow text-indigo/60">Ton plan sur ton écran d’accueil</h2>
           <Installation />
         </section>
+        {ctx.journal && (
+          <form action={effacerJournal.bind(null, ctx.cle)} className="bg-white shadow-sm p-4">
+            <button type="submit" className="text-sm font-semibold text-red-700 underline underline-offset-2">Effacer mon journal</button>
+          </form>
+        )}
         <Deconnexion />
         <Suppression />
         <Avertissement avertissement={ctx.plan.avertissement} />

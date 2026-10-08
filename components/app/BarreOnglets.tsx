@@ -39,7 +39,7 @@ export default function BarreOnglets() {
   if (SANS_ONGLETS.includes(chemin)) return null;
   // Les onglets gardent le plan et le jour de la démonstration.
   const garde = new URLSearchParams();
-  for (const cle of ['plan', 'jour', 'fc1', 'vc', 'fc2']) {
+  for (const cle of ['plan', 'jour', 'fc1', 'vc', 'fc2', 'retours']) {
     const valeur = params.get(cle);
     if (valeur) garde.set(cle, valeur);
   }

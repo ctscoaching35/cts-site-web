@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation';
 import BanniereSemaine from '@/components/app/BanniereSemaine';
 import CarteSeance from '@/components/app/CarteSeance';
 import EncartProfil from '@/components/app/EncartProfil';
+import EtHier from '@/components/app/EtHier';
+import JaugePreparation from '@/components/app/JaugePreparation';
 import EnTeteApp from '@/components/app/EnTeteApp';
 import MentionTest from '@/components/app/MentionTest';
 import JoursSemaine from '@/components/app/JoursSemaine';
@@ -12,6 +14,7 @@ import { COOKIE_BIENVENUE } from '@/lib/app/bienvenue';
 import { contexte, lien, type Recherche } from '@/lib/app/contexte';
 import { ajouterJours, dateLongue, jourParDate, joursEntre, moment, semaineDeDate } from '@/lib/app/plan';
 import { texteReperes } from '@/lib/app/zones';
+import { resume, seanceDuJournal } from '@/lib/app/journal';
 
 // Aujourd'hui (cadrage, 3.1) : le compte à rebours, la séance du jour, demain, la semaine en
 // cours ; avant le début, la date de départ et la première semaine ; après, le plan reste là.
@@ -35,6 +38,8 @@ export default async function Aujourdhui({ searchParams }: { searchParams: Reche
           <p className="text-sm text-indigo/60">{plan.course.format_clair}</p>
         </div>
 
+        {etape === 'pendant' && <EtHier ctx={ctx} />}
+        {etape !== 'avant' && <JaugePreparation ctx={ctx} />}
         {etape !== 'apres' && <EncartProfil ctx={ctx} />}
         {etape === 'avant' && <Avant ctx={ctx} />}
         {etape === 'pendant' && <Pendant ctx={ctx} />}
@@ -81,6 +86,13 @@ function Pendant({ ctx }: { ctx: Awaited<ReturnType<typeof contexte>> }) {
         <div className="space-y-2">
           <CarteSeance jour={seance} repere={texteReperes(seance.reperes, ctx.profil)} />
           <MentionTest jour={seance} ctx={ctx} />
+          {seanceDuJournal(seance) && (ctx.retours[seance.id] ? (
+            <p className="text-sm text-indigo/75">Ton retour : {resume(ctx.retours[seance.id], seance)}</p>
+          ) : (
+            <Link href={lien(`/app/seance/${seance.id}`, ctx, { retour: '1' }) + '#retour'} className="btn btn-primary !py-2.5 inline-block">
+              J’ai fait ma séance
+            </Link>
+          ))}
           <Link href={lien(`/app/seance/${seance.id}`, ctx)} className="inline-block text-teal font-semibold text-sm">
             La séance en détail ›
           </Link>

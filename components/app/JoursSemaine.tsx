@@ -4,6 +4,7 @@ import type { Semaine } from '@/lib/app/plan';
 import { FAMILLES } from '@/lib/app/charte';
 import { lien, type Contexte } from '@/lib/app/contexte';
 import { texteReperes } from '@/lib/app/zones';
+import { marque } from '@/lib/app/journal';
 
 // Les sept jours d'une semaine, comme le tableau du PDF : date, séance, terrain, durée, RPE,
 // à la couleur de leur famille. Chaque séance ouvre sa fiche ; le repos reste en retrait.
@@ -30,6 +31,13 @@ export default function JoursSemaine({ semaine, ctx }: { semaine: Semaine; ctx: 
                   <span className={clsx('block text-xs mt-0.5', course ? 'text-white/80' : 'text-indigo/55')}>{details}</span>
                 )}
               </span>
+              {/* Le fait (J5) : ✓ faite, ½ raccourcie, – pas faite ; rien sans retour. */}
+              {marque(ctx.retours[j.id]) && (
+                <span className={clsx('text-sm font-bold w-4 text-center', ctx.retours[j.id]?.statut === 'pas_faite' ? 'text-indigo/35' : 'text-teal')}
+                  aria-label={ctx.retours[j.id]?.statut === 'pas_faite' ? 'pas faite' : ctx.retours[j.id]?.statut}>
+                  {marque(ctx.retours[j.id])}
+                </span>
+              )}
               {!repos && <span aria-hidden className={course ? 'text-white/70' : 'text-indigo/30'}>›</span>}
             </div>
           </div>

@@ -79,7 +79,7 @@ export default async function ModeEmploi({ searchParams }: { searchParams: Reche
           <Puces puces={m.adapter.puces} />
         </Partie>
 
-        <Partie titre={m.fatigue.titre}>
+        <Partie titre={m.fatigue.titre} id="fatigue">
           <Puces puces={m.fatigue.puces} />
         </Partie>
 

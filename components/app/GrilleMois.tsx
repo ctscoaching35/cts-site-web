@@ -3,6 +3,7 @@ import clsx from 'clsx';
 import { ajouterJours, jourDuMois, jourParDate, rangDansSemaine, semaineDeDate, type Plan } from '@/lib/app/plan';
 import { BANNIERE, FAMILLES } from '@/lib/app/charte';
 import { lien, type Contexte } from '@/lib/app/contexte';
+import { faite } from '@/lib/app/journal';
 
 const ENTETES = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 
@@ -48,8 +49,12 @@ export default function GrilleMois({ plan, mois, ctx }: { plan: Plan; mois: stri
                   )}
                 >
                   <span className={clsx(!course && (jour ? 'text-indigo' : 'text-indigo/30'))}>{jourDuMois(iso)}</span>
+                  {/* Le trait de la famille : plein pour une séance faite, en contour sinon (J5). */}
                   {jour && !repos && !course && (
-                    <span className="w-5 h-1.5 rounded-full" style={{ backgroundColor: FAMILLES[jour.famille].filet }} />
+                    <span className="w-5 h-1.5 rounded-full border-[1.5px]" style={{
+                      borderColor: FAMILLES[jour.famille].filet,
+                      backgroundColor: faite(ctx.retours[jour.id]) ? FAMILLES[jour.famille].filet : 'transparent',
+                    }} />
                   )}
                   {course && <span className="text-[0.6rem] leading-none">Jour J</span>}
                 </span>
