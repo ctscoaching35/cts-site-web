@@ -24,6 +24,8 @@ export type SpecFc = { bas?: BorneFc; haut?: BorneFc };
 export type SpecAllure = [lent: number, rapide: number];
 export type Reperes = {
   fc: SpecFc | null;
+  // « en fin de fraction, à partir de la troisième », « sur les blocs » (moteur v8.312).
+  fc_precision?: string | null;
   allure_vc: SpecAllure | null;
   derive_sl: boolean;
   test: { cle: CleTest; allure_vc?: SpecAllure } | null;

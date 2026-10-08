@@ -15,7 +15,8 @@ function valeurAffichee(cle: CleTest, p: Profil) {
   if (cle === 'parole' && p.fc_seuil1 !== null) return { valeur: `${p.fc_seuil1} bpm`, le: p.fc_seuil1_le };
   if (cle === 'vitesse_critique' && p.vc_ms !== null)
     return {
-      valeur: `${kmh(p.vc_ms)} km/h (${allure(p.vc_ms)}/km)${p.d_prime_m !== null ? ` · D′ ${Math.round(p.d_prime_m)} m` : ''}`,
+      // D′ n'est plus dite (décision coach du 08/10/2026) : elle ne sert qu'à vérifier les deux efforts.
+      valeur: `${kmh(p.vc_ms)} km/h (${allure(p.vc_ms)}/km)`,
       le: p.vc_le,
     };
   if (cle === 'fc_seuil2' && p.fc_seuil2 !== null) return { valeur: `${p.fc_seuil2} bpm`, le: p.fc_seuil2_le };

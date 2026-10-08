@@ -48,7 +48,8 @@ export function allure(vitesse_ms: number) {
 // « 4:13 à 4:05/km » : du plus lent au plus rapide.
 export function texteAllure(spec: SpecAllure | null | undefined, p: Profil): string | null {
   if (!spec || p.vc_ms === null) return null;
-  return `${allure((p.vc_ms * spec[0]) / 100)} à ${allure((p.vc_ms * spec[1]) / 100)}/km`;
+  const [lent, rapide] = [allure((p.vc_ms * spec[0]) / 100), allure((p.vc_ms * spec[1]) / 100)];
+  return lent === rapide ? `${lent}/km` : `${lent} à ${rapide}/km`;
 }
 
 export const kmh = (vitesse_ms: number) => (vitesse_ms * 3.6).toFixed(1).replace('.', ',');
@@ -56,7 +57,11 @@ export const kmh = (vitesse_ms: number) => (vitesse_ms * 3.6).toFixed(1).replace
 // Les repères d'une séance, en une ligne : « FC sous 147 », « 4:13 à 4:05/km sur le plat ».
 export function texteReperes(r: Reperes | null | undefined, p: Profil): string | null {
   if (!r) return null;
-  const morceaux = [texteFc(r.fc, p), r.allure_vc && texteAllure(r.allure_vc, p) ? `${texteAllure(r.allure_vc, p)} sur le plat` : null];
+  const fc = texteFc(r.fc, p);
+  const morceaux = [
+    fc && r.fc_precision ? `${fc} ${r.fc_precision}` : fc,
+    r.allure_vc && texteAllure(r.allure_vc, p) ? `${texteAllure(r.allure_vc, p)} sur le plat` : null,
+  ];
   const ligne = morceaux.filter(Boolean).join(' · ');
   return ligne || null;
 }
