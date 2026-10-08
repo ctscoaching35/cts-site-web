@@ -87,8 +87,8 @@ export type Jour = {
   // de cette séance de qualité (règle 3). Absent d'un plan plus ancien.
   adaptation?: { suite: string | null; ef: ContenuJour | null } | null;
   // Posé par l'app quand un ajustement est appliqué (adaptation.ts) : la règle, la séance d'où vient la
-  // marche reprise, la séance prévue.
-  ajuste?: { regle: 'marche' | 'fatigue'; source: string | null; prevu: string } | null;
+  // marche reprise, la séance prévue ; pour une séance allégée, son contenu d'avant (la marche non tenue).
+  ajuste?: { regle: 'marche' | 'fatigue'; source: string | null; prevu: string; avant?: Jour } | null;
 };
 
 // Le contenu d'un jour, sans sa place dans le calendrier (id, jour, date) : la version EF d'une séance.
@@ -210,7 +210,10 @@ export type ReglesAdaptation = {
   seuils: { rpe_ecart: number; signaux: number; fenetre_jours: number; sensations_max: number };
   textes: {
     rattrape: string;
-    marche: { titre: string; raisons: { pas_faite: string; raccourcie: string; trop_dure: string }; suite: string; suite_sl: string };
+    marche: {
+      titre: string; suite: string; suite_sl: string;
+      raisons: { pas_faite: string; raccourcie: string; trop_dure: string; allegee?: string };
+    };
     fatigue: {
       titre: string; raison: string; proposition: string; renvoi: string;
       signaux: { sensations: string; raccourcie: string; rpe: string };

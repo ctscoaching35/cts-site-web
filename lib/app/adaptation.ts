@@ -3,8 +3,8 @@
  * CTS_ADAPTATION_REFLEXION.md dans le dépôt du moteur). Aucune règle nouvelle : chaque règle est une
  * phrase du mode d'emploi, que le journal déclenche et que l'app propose ; l'athlète accepte ou non.
  * - Règle 1 : une EF ou une mécanique pas faite ne se rattrape pas (un texte).
- * - Règle 2 : une marche pas faite, raccourcie ou ressentie trop dure est reprise par la séance suivante
- *   de sa progression (la suite, dite par le moteur).
+ * - Règle 2 : une marche pas faite, raccourcie, ressentie trop dure ou allégée par la règle 3 (A8) est
+ *   reprise par la séance suivante de sa progression (la suite, dite par le moteur).
  * - Règle 3 : deux signaux de fatigue en sept jours, et la prochaine séance de qualité devient une EF de
  *   même durée (préparée par le moteur).
  * Le moteur dit les suites, les versions EF, les seuils et les textes ; l'app ne fait que compter les
@@ -51,7 +51,9 @@ export function ajuster(plan: Plan, ajustements: Ajustement[]): Plan {
     const placeDe = { id: cible.id, jour: cible.jour, date: cible.date, date_iso: cible.date_iso };
     let contenu: Jour | null = null;
     if (a.regle === 'marche' && a.source) {
-      const source = lire(a.source);
+      // Une source allégée (A8) : sa suite reprend la marche d'avant l'allègement, pas l'EF.
+      const lue = lire(a.source);
+      const source = lue?.ajuste?.regle === 'fatigue' && lue.ajuste.avant ? { ...lue.ajuste.avant, id: lue.id } : lue;
       if (source) {
         contenu = {
           ...source, ...placeDe,
@@ -63,7 +65,7 @@ export function ajuster(plan: Plan, ajustements: Ajustement[]): Plan {
       contenu = {
         ...cible.adaptation.ef, ...placeDe,
         adaptation: { suite: cible.adaptation.suite, ef: null },
-        ajuste: { regle: 'fatigue', source: null, prevu },
+        ajuste: { regle: 'fatigue', source: null, prevu, avant: cible },
       };
     }
     if (contenu) semaines[p[0]].jours[p[1]] = contenu;
@@ -75,7 +77,10 @@ export function ajuster(plan: Plan, ajustements: Ajustement[]): Plan {
 
 type Signal = { jour: JourDuPlan; type: 'sensations' | 'raccourcie' | 'rpe'; retour: Retour };
 export type Proposition =
-  | { regle: 'marche'; source: JourDuPlan; cible: JourDuPlan; raison: 'pas_faite' | 'raccourcie' | 'trop_dure'; retour: Retour }
+  | {
+      regle: 'marche'; source: JourDuPlan; cible: JourDuPlan; raison: 'pas_faite' | 'raccourcie' | 'trop_dure' | 'allegee';
+      retour: Retour | null; modele: Jour;
+    }
   | { regle: 'fatigue'; cible: JourDuPlan; signaux: Signal[] };
 
 const tropDure = (j: Jour, r: Retour, ecart: number) =>
@@ -109,17 +114,19 @@ export function proposition(plan: Plan, retours: Retours, ajustements: Ajustemen
     if (cible) return { regle: 'fatigue', cible, signaux: signaux.slice(-seuils.signaux) };
   }
 
-  // Règle 2 — une marche non tenue : la séance suivante de sa progression la reprend.
+  // Règle 2 — une marche non tenue : la séance suivante de sa progression la reprend. Une marche allégée
+  // (A8) n'a pas été tenue non plus, dès son jour passé : sa suite reprend la marche d'avant l'allègement.
   const candidats: Proposition[] = [];
   for (const source of jours) {
-    const r = retours[source.id];
+    const r = retours[source.id] ?? null;
     const suite = source.adaptation?.suite;
-    if (!r || !suite || source.ajuste?.regle === 'fatigue') continue;
-    const raison = r.statut === 'pas_faite' ? 'pas_faite' : r.statut === 'raccourcie' ? 'raccourcie'
-      : tropDure(source, r, seuils.rpe_ecart) ? 'trop_dure' : null;
+    const avant = source.ajuste?.regle === 'fatigue' ? source.ajuste.avant : undefined;
+    if (!suite || (!r && !(avant && source.date_iso! <= aujourdhui))) continue;
+    const raison = avant ? 'allegee' : !r ? null : r.statut === 'pas_faite' ? 'pas_faite'
+      : r.statut === 'raccourcie' ? 'raccourcie' : tropDure(source, r, seuils.rpe_ecart) ? 'trop_dure' : null;
     const cible = parId.get(suite);
     if (!raison || !cible || !ouverte(cible) || decide('marche', cible.id) || allegee(cible.id)) continue;
-    candidats.push({ regle: 'marche', source, cible, raison, retour: r });
+    candidats.push({ regle: 'marche', source, cible, raison, retour: r, modele: avant ?? source });
   }
   candidats.sort((a, b) => (a.cible.date_iso! < b.cible.date_iso! ? -1 : 1));
   return candidats[0] ?? null;
@@ -144,14 +151,15 @@ export function textes(plan: Plan, p: Proposition): TextesProposition | null {
   if (!t) return null;
   const date = majuscule(dateLongue(p.cible.date_iso!));
   if (p.regle === 'marche') {
-    const sl = p.source.famille === 'sl';
-    const raison = t.marche.raisons[p.raison]
-      .replace('{ressenti}', String(p.retour.rpe ?? ''))
-      .replace('{prevu}', String(rpePrevu(p.source)));
-    const [nouveau, prevu] = sl ? [p.source.duree, p.cible.duree] : [resume(p.source), resume(p.cible)];
-    const concret = p.source.seance === p.cible.seance
+    const m = p.modele;
+    const sl = m.famille === 'sl';
+    const raison = (t.marche.raisons[p.raison] ?? '')
+      .replace('{ressenti}', String(p.retour?.rpe ?? ''))
+      .replace('{prevu}', String(rpePrevu(m)));
+    const [nouveau, prevu] = sl ? [m.duree, p.cible.duree] : [resume(m), resume(p.cible)];
+    const concret = m.seance === p.cible.seance
       ? `${date}, ${p.cible.seance} : ${nouveau} au lieu de ${prevu}.`
-      : `${date} : ${p.source.seance}, ${nouveau} au lieu de ${p.cible.seance}, ${prevu}.`;
+      : `${date} : ${m.seance}, ${nouveau} au lieu de ${p.cible.seance}, ${prevu}.`;
     return { titre: t.marche.titre, raison: `${raison}.`, suite: sl ? t.marche.suite_sl : t.marche.suite, concret, renvoi: null };
   }
   const liste = p.signaux.map((s) => {
