@@ -28,6 +28,8 @@ export const PASTILLES: Record<string, [string, string]> = {
   Terrain: ['#E3EFE9', '#0C6E5F'],
   Durée: ['#EEF1F6', '#2F2D4E'],
   Cible: ['#FBE7DF', '#9A3B2C'],
+  // « Tes zones » : la FC ou l'allure tirée du profil, à côté de la cible (moteur v8.311).
+  Repère: ['#DFF0EA', '#0C6E5F'],
 };
 
 // Libellés de la carte : la consigne et le ravito en ocre, le reste en teal (cts_base).

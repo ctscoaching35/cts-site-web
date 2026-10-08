@@ -3,6 +3,7 @@ import clsx from 'clsx';
 import type { Semaine } from '@/lib/app/plan';
 import { FAMILLES } from '@/lib/app/charte';
 import { lien, type Contexte } from '@/lib/app/contexte';
+import { texteReperes } from '@/lib/app/zones';
 
 // Les sept jours d'une semaine, comme le tableau du PDF : date, séance, terrain, durée, RPE,
 // à la couleur de leur famille. Chaque séance ouvre sa fiche ; le repos reste en retrait.
@@ -12,7 +13,8 @@ export default function JoursSemaine({ semaine, ctx }: { semaine: Semaine; ctx: 
       {semaine.jours.map((j) => {
         const repos = j.famille === 'repos';
         const course = j.famille === 'course';
-        const details = [j.terrain, j.duree, j.rpe !== '—' ? `RPE ${j.rpe}` : '']
+        // Les repères de « Tes zones » suivent le RPE : le RPE d'abord, il décide.
+        const details = [j.terrain, j.duree, j.rpe !== '—' ? `RPE ${j.rpe}` : '', texteReperes(j.reperes, ctx.profil) ?? '']
           .filter((x) => x && x !== '—')
           .join(' · ');
         const contenu = (

@@ -52,13 +52,15 @@ function Texte({ texte, corps }: { texte: string; corps: boolean }) {
   );
 }
 
-export default function CarteSeance({ jour, titre = true }: { jour: Jour; titre?: boolean }) {
+// repere : la ligne de « Tes zones » (FC, allure sur le plat), calculée depuis le profil de l'athlète.
+export default function CarteSeance({ jour, titre = true, repere = null }: { jour: Jour; titre?: boolean; repere?: string | null }) {
   const carte = jour.carte;
   const reperes: [string, string][] = [
     ...(jour.terrain_detail ? [['Terrain', jour.terrain_detail] as [string, string]] : []),
     ...(['Durée', 'Cible'] as const)
       .filter((k) => carte?.entete[k])
       .map((k) => [k, carte!.entete[k]] as [string, string]),
+    ...(repere ? [['Repère', repere] as [string, string]] : []),
   ];
   return (
     <article className="bg-white border-l-4 shadow-sm" style={{ borderLeftColor: FAMILLES[jour.famille].filet }}>

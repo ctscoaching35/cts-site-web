@@ -6,6 +6,7 @@ import { Avertissement, Partie, Puces, Tableau } from '@/components/app/Texte';
 import { contexte, type Recherche } from '@/lib/app/contexte';
 import { FAMILLES } from '@/lib/app/charte';
 import { cheminFiche } from '@/lib/app/plan';
+import { texteAllure, texteFc } from '@/lib/app/zones';
 
 // Le mode d'emploi (cts_contenu.contenu_mode_emploi), dans l'ordre du PDF. « Lire une semaine »
 // est le même texte sur le papier et à l'écran (décision coach du 07/10/2026, moteur v8.304).
@@ -13,6 +14,19 @@ export default async function ModeEmploi({ searchParams }: { searchParams: Reche
   const ctx = await contexte(searchParams);
   const { plan } = ctx;
   const m = plan.mode_emploi;
+  // « Tes zones » : deux colonnes de plus dès qu'une valeur du profil est connue (Z8).
+  const { profil } = ctx;
+  const avecZones = plan.zones && (profil.fc_seuil1 !== null || profil.vc_ms !== null);
+  const zonesTableau = avecZones
+    ? m.effort.zones.map((ligne, i) =>
+        i === 0
+          ? [...ligne, ...plan.zones!.tableau.colonnes]
+          : [
+              ...ligne,
+              texteFc(plan.zones!.tableau.lignes[i - 1]?.fc, profil)?.replace(/^FC /, '') ?? '—',
+              texteAllure(plan.zones!.tableau.lignes[i - 1]?.allure_vc, profil) ?? '—',
+            ])
+    : m.effort.zones;
   return (
     <>
       <EnTeteApp ctx={ctx} />
@@ -22,7 +36,7 @@ export default async function ModeEmploi({ searchParams }: { searchParams: Reche
 
         <Partie titre={m.effort.titre}>
           <p>{m.effort.intro}</p>
-          <Tableau lignes={m.effort.zones} />
+          <Tableau lignes={zonesTableau} />
           <p className="text-sm text-indigo/70">{m.effort.note}</p>
         </Partie>
 

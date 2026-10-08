@@ -13,6 +13,8 @@ export default async function MonPlan({ searchParams }: { searchParams: Recherch
     ['/app/plan/course', plan.ta_course.titre],
     ['/app/plan/jour-j', plan.jour_j.titre],
     ['/app/plan/mode-emploi', plan.mode_emploi.titre],
+    // « Tes zones » (moteur v8.311) : absente d'un plan plus ancien.
+    ...(plan.zones ? [['/app/plan/zones', plan.zones.titre] as [string, string]] : []),
   ];
   return (
     <>

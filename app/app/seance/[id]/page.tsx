@@ -2,9 +2,11 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import CarteSeance from '@/components/app/CarteSeance';
 import EnTeteApp from '@/components/app/EnTeteApp';
+import MentionTest from '@/components/app/MentionTest';
 import TexteRiche from '@/components/app/TexteRiche';
 import { contexte, lien, type Recherche } from '@/lib/app/contexte';
 import { dateLongue, jourParId, tousLesJours } from '@/lib/app/plan';
+import { texteReperes } from '@/lib/app/zones';
 
 // La fiche d'une séance (cadrage, 3.3) : la carte en codes, ce qu'est la séance (le glossaire
 // du mode d'emploi), comment lire la carte (sa légende), la séance d'avant et d'après.
@@ -39,7 +41,11 @@ export default async function FicheSeance({
           <div className="eyebrow text-teal mb-1">{jour.date_iso ? dateLongue(jour.date_iso) : jour.jour}</div>
           <h1 className="text-2xl text-indigo leading-tight">{jour.seance}</h1>
         </div>
-        <CarteSeance jour={jour} titre={false} />
+        <CarteSeance jour={jour} titre={false} repere={texteReperes(jour.reperes, ctx.profil)} />
+        {jour.reperes?.derive_sl && texteReperes(jour.reperes, ctx.profil) && plan.zones && (
+          <p className="text-sm text-indigo/70 -mt-2">{plan.zones.derive_sl}</p>
+        )}
+        <MentionTest jour={jour} ctx={ctx} />
 
         {definition && (
           <section className="bg-white shadow-sm p-4 text-sm text-indigo/80 leading-relaxed">

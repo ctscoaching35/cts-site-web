@@ -117,6 +117,14 @@ CTS_INVITATION=un-mot-a-toi
 le lien `…/plan?invitation=un-mot-a-toi` ouvre le questionnaire et la page de retour du paiement
 dans ce navigateur, 90 jours (un cookie). Changer le mot referme les liens déjà donnés.
 
+## 8. « Tes zones » : le profil de l'athlète
+
+Une table de plus, `zones` (`supabase/migrations/20261008000000_zones.sql`) : SQL Editor, coller le
+fichier, Run (« Success. No rows returned »). Elle garde, pour un plan, la FC au seuil 1, la vitesse
+critique et D′, la FC au seuil 2, avec la date du consentement de l'athlète. Le serveur du site y
+écrit (clé de service, après avoir vérifié la session) ; l'athlète ne lit que les siennes. Sans
+cette table, la rubrique « Tes zones » s'affiche mais n'enregistre rien.
+
 ## Ce qui viendra ensuite
 
 - La confirmation de paiement de Stripe (webhook), une fois le site en ligne.

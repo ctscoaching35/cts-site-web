@@ -15,6 +15,48 @@ export type Famille = 'repos' | 'ef' | 'qualite' | 'mecanique' | 'sl' | 'course'
 // « À retenir », « Ravito »), "" pour la suite du corps, null pour une ligne pleine largeur.
 export type PartieCarte = [libelle: string | null, texte: string];
 
+// « Tes zones » (moteur v8.311, cadrage de l'app §7.1) : la règle vient du moteur, l'app ne fait que
+// remplacer les références (seuil 1, seuil 2, vitesse critique) par les valeurs du profil.
+export type CleTest = 'parole' | 'vitesse_critique' | 'fc_seuil2';
+export type BorneFc = [reference: 'seuil1' | 'seuil2', ecart: number];
+export type SpecFc = { bas?: BorneFc; haut?: BorneFc };
+// % de la vitesse critique, du plus lent au plus rapide.
+export type SpecAllure = [lent: number, rapide: number];
+export type Reperes = {
+  fc: SpecFc | null;
+  allure_vc: SpecAllure | null;
+  derive_sl: boolean;
+  test: { cle: CleTest; allure_vc?: SpecAllure } | null;
+};
+export type TestZones = {
+  cle: CleTest;
+  titre: string;
+  mesure: string;
+  pour_qui: string;
+  quand: string;
+  materiel: string[];
+  etapes: string[];
+  duree: string;
+  change: string[];
+  change_general: string[];
+  limites: string;
+  sources: string;
+};
+export type Zones = {
+  titre: string;
+  intro: string[];
+  rpe_decide: string;
+  vitesse_critique_ouverte: boolean;
+  tests_disponibles: CleTest[];
+  tests: TestZones[];
+  consentement: string;
+  effacer: string;
+  encart: { titre: string; lien: string; libelles: Record<CleTest, string>; complet: string };
+  mentions: Record<CleTest, string>;
+  derive_sl: string;
+  tableau: { colonnes: [string, string]; lignes: { fc: SpecFc | null; allure_vc: SpecAllure | null }[] };
+};
+
 export type Jour = {
   id: string;
   jour: string;
@@ -32,6 +74,8 @@ export type Jour = {
   // La définition propre à la séance du jour (EF, sortie longue ; moteur v8.306) : sans elle, celle
   // du glossaire, qui présente toute la famille. Absente d'un plan plus ancien.
   definition_du_jour?: string | null;
+  // Les repères de « Tes zones » (moteur v8.311) : absents d'un plan plus ancien.
+  reperes?: Reperes | null;
 };
 
 export type Semaine = {
@@ -131,6 +175,8 @@ export type Plan = {
     fiches: { cle: string; titre: string; url: string }[];
   };
   semaines: Semaine[];
+  // « Tes zones » (moteur v8.311) : absent d'un plan plus ancien, qui n'a donc pas la rubrique.
+  zones?: Zones | null;
 };
 
 export type JourDuPlan = Jour & { semaine: Semaine };
