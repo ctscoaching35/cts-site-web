@@ -24,13 +24,16 @@ export default function FormulaireRetour({
   return (
     <form action={action} className="space-y-4">
       <p className="font-bold text-indigo">Comment s’est passée ta séance ?</p>
-      <div className="grid grid-cols-3 gap-2">
+      {/* Les choix vivent dans l'état et partent par des champs cachés : après un envoi refusé, React
+          remet le formulaire à zéro, et un bouton radio resté vert à l'écran ne partait plus. */}
+      <input type="hidden" name="statut" value={statut ?? ''} />
+      <div className="grid grid-cols-3 gap-2" role="radiogroup">
         {STATUTS.map(([s, libelle]) => (
-          <label key={s} className={clsx('text-center text-sm font-semibold px-2 py-2.5 border cursor-pointer',
-            statut === s ? 'bg-teal text-white border-teal' : 'bg-white text-indigo border-indigo/20')}>
-            <input type="radio" name="statut" value={s} checked={statut === s} onChange={() => setStatut(s)} className="sr-only" />
+          <button key={s} type="button" role="radio" aria-checked={statut === s} onClick={() => setStatut(s)}
+            className={clsx('text-center text-sm font-semibold px-2 py-2.5 border',
+              statut === s ? 'bg-teal text-white border-teal' : 'bg-white text-indigo border-indigo/20')}>
             {libelle}
-          </label>
+          </button>
         ))}
       </div>
       {faite && (
@@ -38,7 +41,8 @@ export default function FormulaireRetour({
           <label className="block">
             <span className="block text-sm font-bold text-indigo">Ton effort ressenti <span className="font-normal text-indigo/60">(RPE, de 0 à 10)</span></span>
             <div className="flex items-center gap-3 mt-1.5">
-              <input type="range" name="rpe" min={0} max={10} step={1} value={rpe} onChange={(e) => setRpe(Number(e.target.value))} className="flex-1 accent-teal" />
+              <input type="range" min={0} max={10} step={1} value={rpe} onChange={(e) => setRpe(Number(e.target.value))} className="flex-1 accent-teal" aria-label="Ton effort ressenti" />
+              <input type="hidden" name="rpe" value={rpe} />
               <span className="w-8 text-right text-lg font-extrabold text-indigo">{rpe}</span>
             </div>
             <span className="text-xs text-indigo/55">Prévu : RPE {rpeAffiche}</span>
