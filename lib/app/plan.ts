@@ -83,7 +83,16 @@ export type Jour = {
   placement?: Placement | null;
   // Posé par l'app quand l'athlète a déplacé la séance (deplacement.ts) : son jour prévu.
   prevu?: { jour: string; date_iso: string | null } | null;
+  // S'adapter aux retours (moteur v8.314) : la séance qui reprend cette marche (règle 2), la version EF
+  // de cette séance de qualité (règle 3). Absent d'un plan plus ancien.
+  adaptation?: { suite: string | null; ef: ContenuJour | null } | null;
+  // Posé par l'app quand un ajustement est appliqué (adaptation.ts) : la règle, la séance d'où vient la
+  // marche reprise, la séance prévue.
+  ajuste?: { regle: 'marche' | 'fatigue'; source: string | null; prevu: string } | null;
 };
+
+// Le contenu d'un jour, sans sa place dans le calendrier (id, jour, date) : la version EF d'une séance.
+export type ContenuJour = Omit<Jour, 'id' | 'jour' | 'date' | 'date_iso' | 'adaptation' | 'ajuste' | 'prevu'>;
 
 // Déplacer une séance (moteur v8.313, cadrage §7.2, E1-E6) : un échange est « moins propice » quand il
 // crée deux jours de classes a et b à moins de ecart_min jours l'un de l'autre. La règle et sa raison
@@ -193,6 +202,20 @@ export type Plan = {
   // Les règles du déplacement (moteur v8.313) : absentes d'un plan plus ancien, dont les jours ne se
   // colorent pas (E6).
   deplacement?: { regles: RegleDeplacement[] } | null;
+  // Les seuils et les textes des règles d'adaptation (moteur v8.314, cadrage §7.2, étape 3).
+  adaptation?: ReglesAdaptation | null;
+};
+
+export type ReglesAdaptation = {
+  seuils: { rpe_ecart: number; signaux: number; fenetre_jours: number; sensations_max: number };
+  textes: {
+    rattrape: string;
+    marche: { titre: string; raisons: { pas_faite: string; raccourcie: string; trop_dure: string }; suite: string; suite_sl: string };
+    fatigue: {
+      titre: string; raison: string; proposition: string; renvoi: string;
+      signaux: { sensations: string; raccourcie: string; rpe: string };
+    };
+  };
 };
 
 export type JourDuPlan = Jour & { semaine: Semaine };

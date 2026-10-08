@@ -141,6 +141,14 @@ une ligne par séance qui n'est plus à son jour prévu. Le plan lui-même ne ch
 consentement : c'est l'organisation de la semaine, pas une donnée de santé. Sans cette table, « Changer
 de jour » s'affiche mais l'échange n'aboutit pas.
 
+## 11. S'adapter aux retours
+
+Une table de plus, `ajustements` (`supabase/migrations/20261008300000_ajustements.sql`) : SQL Editor,
+coller le fichier, Run (« Success. No rows returned »). Quand un retour de séance déclenche une règle du
+mode d'emploi (une marche reprise, une séance dure allégée), l'app la propose ; l'athlète l'applique ou la
+refuse, et la décision est gardée ici, sous le consentement du journal. Sans cette table, les propositions
+s'affichent mais ne s'enregistrent pas.
+
 ## Ce qui viendra ensuite
 
 - La confirmation de paiement de Stripe (webhook), une fois le site en ligne.

@@ -16,6 +16,8 @@ import { ajouterJours, dateLongue, jourParDate, joursEntre, moment, semaineDeDat
 import { texteReperes } from '@/lib/app/zones';
 import { resume, seanceDuJournal } from '@/lib/app/journal';
 import { mentionDeplacee } from '@/lib/app/deplacement';
+import { mentionAjustee, proposition } from '@/lib/app/adaptation';
+import PropositionAjustement from '@/components/app/PropositionAjustement';
 
 // Aujourd'hui (cadrage, 3.1) : le compte à rebours, la séance du jour, demain, la semaine en
 // cours ; avant le début, la date de départ et la première semaine ; après, le plan reste là.
@@ -26,6 +28,8 @@ export default async function Aujourdhui({ searchParams }: { searchParams: Reche
   const { plan, jour } = ctx;
   const etape = moment(plan, jour);
   const restants = joursEntre(jour, plan.course.date);
+  // La proposition d'ajustement du moment (§7.2, étape 3, A6), tant que la séance visée est à venir.
+  const ajustement = proposition(plan, ctx.retours, ctx.ajustements, jour);
   return (
     <>
       <EnTeteApp ctx={ctx} />
@@ -40,6 +44,7 @@ export default async function Aujourdhui({ searchParams }: { searchParams: Reche
         </div>
 
         {etape === 'pendant' && <EtHier ctx={ctx} />}
+        {ajustement && <PropositionAjustement ctx={ctx} p={ajustement} />}
         {etape !== 'avant' && <JaugePreparation ctx={ctx} />}
         {etape !== 'apres' && <EncartProfil ctx={ctx} />}
         {etape === 'avant' && <Avant ctx={ctx} />}
@@ -87,6 +92,7 @@ function Pendant({ ctx }: { ctx: Awaited<ReturnType<typeof contexte>> }) {
         <div className="space-y-2">
           <CarteSeance jour={seance} repere={texteReperes(seance.reperes, ctx.profil)} />
           {seance.prevu && <p className="text-sm text-indigo/60">{mentionDeplacee(seance)}</p>}
+          {seance.ajuste && <p className="text-sm text-indigo/60">{mentionAjustee(plan, seance)}</p>}
           <MentionTest jour={seance} ctx={ctx} />
           {seanceDuJournal(seance) && (ctx.retours[seance.id] ? (
             <p className="text-sm text-indigo/75">Ton retour : {resume(ctx.retours[seance.id], seance)}</p>

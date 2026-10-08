@@ -2,6 +2,7 @@ import FormulaireRetour from '@/components/app/FormulaireRetour';
 import { effacerRetour } from '@/lib/app/actionsJournal';
 import { lien, type Contexte } from '@/lib/app/contexte';
 import { resume, rpePrevu, seanceDuJournal } from '@/lib/app/journal';
+import { texteRattrape } from '@/lib/app/adaptation';
 import type { Jour } from '@/lib/app/plan';
 
 const CONSENTEMENT =
@@ -26,6 +27,10 @@ export default function RetourSeance({ jour, ctx, ouvert = false }: { jour: Jour
         <>
           <h2 className="eyebrow text-indigo/60 mb-1.5">Ton retour</h2>
           <p className="text-indigo font-semibold">{resume(retour, jour)}</p>
+          {/* Règle 1 (§7.2, étape 3) : une séance sans suite à reprendre ne se rattrape pas. */}
+          {retour.statut === 'pas_faite' && !jour.adaptation?.suite && (
+            <p className="text-sm text-indigo/75 mt-1">{texteRattrape(ctx.plan)}</p>
+          )}
           <details className="mt-2">
             <summary className="text-sm font-semibold text-teal cursor-pointer">Modifier</summary>
             <div className="mt-3">{formulaire}</div>

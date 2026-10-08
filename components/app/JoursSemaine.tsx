@@ -6,6 +6,7 @@ import { lien, type Contexte } from '@/lib/app/contexte';
 import { texteReperes } from '@/lib/app/zones';
 import { marque } from '@/lib/app/journal';
 import { mentionDeplacee } from '@/lib/app/deplacement';
+import { mentionAjustee } from '@/lib/app/adaptation';
 
 // Les sept jours d'une semaine, comme le tableau du PDF : date, séance, terrain, durée, RPE,
 // à la couleur de leur famille. Chaque séance ouvre sa fiche ; le repos reste en retrait.
@@ -33,6 +34,8 @@ export default function JoursSemaine({ semaine, ctx }: { semaine: Semaine; ctx: 
                 )}
                 {/* Une séance que l'athlète a déplacée (§7.2, E5). */}
                 {j.prevu && <span className="block text-xs mt-0.5 text-indigo/55 italic">{mentionDeplacee(j)}</span>}
+                {/* Une séance ajustée après un retour (§7.2, étape 3). */}
+                {j.ajuste && <span className="block text-xs mt-0.5 text-indigo/55 italic">{mentionAjustee(ctx.plan, j)}</span>}
               </span>
               {/* Le fait (J5) : ✓ faite, ½ raccourcie, – pas faite ; rien sans retour. */}
               {marque(ctx.retours[j.id]) && (

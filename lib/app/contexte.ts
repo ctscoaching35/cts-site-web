@@ -14,14 +14,16 @@ import { clientServeur, supabaseConfigure } from './supabase';
 import { PROFIL_VIDE, type Profil } from './zones';
 import { seanceDuJournal, type Retours, type Statut } from './journal';
 import { ranger, type Deplacements } from './deplacement';
+import { ajuster, type Ajustement } from './adaptation';
 import { tousLesJours } from './plan';
 
 // profil : « Tes zones » pour ce plan (cadrage §7.1) ; vide tant qu'aucun test n'est saisi.
 // retours, journal : le journal de séance (§7.2) et le consentement qui l'ouvre.
-// plan : rangé selon les séances que l'athlète a déplacées (§7.2, E1-E6) ; prevu : tel que généré.
+// plan : ajusté (les ajustements appliqués, §7.2 étape 3) et rangé (les séances déplacées, E1-E6) ;
+// prevu : ajusté, pas encore rangé ; ajustements : appliqués et refusés.
 export type Contexte = {
-  cle: string; plan: Plan; prevu: Plan; deplacements: Deplacements; jour: string; demonstration: boolean;
-  profil: Profil; retours: Retours; journal: boolean;
+  cle: string; plan: Plan; prevu: Plan; deplacements: Deplacements; ajustements: Ajustement[]; jour: string;
+  demonstration: boolean; profil: Profil; retours: Retours; journal: boolean;
 };
 export type Recherche = Promise<Record<string, string | string[] | undefined>>;
 
@@ -42,7 +44,7 @@ export async function contexte(recherche: Recherche): Promise<Contexte> {
     const jour = jourDemande ?? jourParDefaut(plan);
     const retours = r.retours === 'exemple' ? retoursExemple(plan, jour) : {};
     return {
-      cle, plan, prevu: plan, deplacements: {}, jour, demonstration: true, profil: profilDemonstration(r), retours,
+      cle, plan, prevu: plan, deplacements: {}, ajustements: [], jour, demonstration: true, profil: profilDemonstration(r), retours,
       journal: Object.keys(retours).length > 0,
     };
   }
@@ -70,13 +72,18 @@ export async function contexte(recherche: Recherche): Promise<Contexte> {
     ? await supabase.from('retours').select('jour_id, statut, rpe, sensations').eq('plan_id', choisi.id)
     : { data: [] };
   const retours: Retours = Object.fromEntries((lignes ?? []).map((l) => [l.jour_id, l]));
+  // Les ajustements (§7.2, étape 3), sous le consentement du journal ; sans la table, aucun.
+  const { data: decisions } = journal
+    ? await supabase.from('ajustements').select('regle, cible, source, statut, decide_le').eq('plan_id', choisi.id)
+    : { data: [] };
+  const ajustements = (decisions ?? []) as Ajustement[];
   // Les séances déplacées ; sans la table (pas encore créée), le plan reste comme prévu.
   const { data: rangees } = await supabase.from('deplacements').select('jour_id, date_iso').eq('plan_id', choisi.id);
   const deplacements: Deplacements = Object.fromEntries((rangees ?? []).map((l) => [l.jour_id, l.date_iso]));
-  const prevu = verifierSchema(ligne.donnees as Plan);
+  const prevu = ajuster(verifierSchema(ligne.donnees as Plan), ajustements);
   return {
-    cle: choisi.id, plan: ranger(prevu, deplacements), prevu, deplacements, jour, demonstration: false, profil, retours,
-    journal: !!journal,
+    cle: choisi.id, plan: ranger(prevu, deplacements), prevu, deplacements, ajustements, jour, demonstration: false,
+    profil, retours, journal: !!journal,
   };
 }
 

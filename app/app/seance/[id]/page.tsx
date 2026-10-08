@@ -8,6 +8,9 @@ import TexteRiche from '@/components/app/TexteRiche';
 import { contexte, lien, type Recherche } from '@/lib/app/contexte';
 import { remettreSemaine } from '@/lib/app/actionsDeplacement';
 import { TEXTES, mentionDeplacee, peutChanger, peutRemettre } from '@/lib/app/deplacement';
+import { annulerAjustement } from '@/lib/app/actionsAdaptation';
+import { BOUTONS, mentionAjustee, peutAnnuler, proposition } from '@/lib/app/adaptation';
+import PropositionAjustement from '@/components/app/PropositionAjustement';
 import { dateLongue, jourParId, tousLesJours } from '@/lib/app/plan';
 import { texteReperes } from '@/lib/app/zones';
 
@@ -33,6 +36,8 @@ export default async function FicheSeance({
   const glossaire = plan.mode_emploi.seances.glossaire.find(([nom]) => nom === jour.definition);
   const definition = glossaire ? ([glossaire[0], jour.definition_du_jour ?? glossaire[1]] as const) : null;
   const lecture = plan.mode_emploi.lire_seance;
+  const p = proposition(plan, ctx.retours, ctx.ajustements, ctx.jour);
+  const ajustement = p && (p.regle === 'marche' ? p.source.id === jour.id : p.signaux.some((s) => s.jour.id === jour.id)) ? p : null;
   return (
     <>
       <EnTeteApp ctx={ctx} />
@@ -44,6 +49,7 @@ export default async function FicheSeance({
           <div className="eyebrow text-teal mb-1">{jour.date_iso ? dateLongue(jour.date_iso) : jour.jour}</div>
           <h1 className="text-2xl text-indigo leading-tight">{jour.seance}</h1>
           {jour.prevu && <p className="text-sm text-indigo/60 mt-0.5">{mentionDeplacee(jour)}</p>}
+          {jour.ajuste && <p className="text-sm text-indigo/60 mt-0.5">{mentionAjustee(plan, jour)}</p>}
         </div>
         <CarteSeance jour={jour} titre={false} repere={texteReperes(jour.reperes, ctx.profil)} />
         {jour.reperes?.derive_sl && texteReperes(jour.reperes, ctx.profil) && plan.zones && (
@@ -51,6 +57,14 @@ export default async function FicheSeance({
         )}
         <MentionTest jour={jour} ctx={ctx} />
         <RetourSeance jour={jour} ctx={ctx} ouvert={(await searchParams).retour === '1'} />
+        {/* La proposition que ce retour a déclenchée (§7.2, étape 3, A6). */}
+        {ajustement && <PropositionAjustement ctx={ctx} p={ajustement} />}
+        {!ctx.demonstration && jour.ajuste && peutAnnuler(jour, ctx.retours, ctx.jour) && (
+          <form action={annulerAjustement.bind(null, ctx.cle, jour.ajuste.regle, jour.id)}>
+            {process.env.NODE_ENV !== 'production' && <input type="hidden" name="jour" value={ctx.jour} />}
+            <button type="submit" className="text-sm text-indigo/70 underline underline-offset-2">{BOUTONS.annuler}</button>
+          </form>
+        )}
         {/* Déplacer la séance dans sa semaine (cadrage §7.2, E4, E5). */}
         {(peutChanger(jour, plan, ctx.retours, ctx.jour) || peutRemettre(jour.semaine, ctx.retours, ctx.jour)) && (
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
