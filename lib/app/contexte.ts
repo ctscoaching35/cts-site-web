@@ -13,12 +13,15 @@ import { SCHEMA_PLAN, aujourdhuiIso, type Plan } from './plan';
 import { clientServeur, supabaseConfigure } from './supabase';
 import { PROFIL_VIDE, type Profil } from './zones';
 import { seanceDuJournal, type Retours, type Statut } from './journal';
+import { ranger, type Deplacements } from './deplacement';
 import { tousLesJours } from './plan';
 
 // profil : « Tes zones » pour ce plan (cadrage §7.1) ; vide tant qu'aucun test n'est saisi.
 // retours, journal : le journal de séance (§7.2) et le consentement qui l'ouvre.
+// plan : rangé selon les séances que l'athlète a déplacées (§7.2, E1-E6) ; prevu : tel que généré.
 export type Contexte = {
-  cle: string; plan: Plan; jour: string; demonstration: boolean; profil: Profil; retours: Retours; journal: boolean;
+  cle: string; plan: Plan; prevu: Plan; deplacements: Deplacements; jour: string; demonstration: boolean;
+  profil: Profil; retours: Retours; journal: boolean;
 };
 export type Recherche = Promise<Record<string, string | string[] | undefined>>;
 
@@ -38,7 +41,10 @@ export async function contexte(recherche: Recherche): Promise<Contexte> {
     const plan = verifierSchema(EXEMPLES[cle].plan);
     const jour = jourDemande ?? jourParDefaut(plan);
     const retours = r.retours === 'exemple' ? retoursExemple(plan, jour) : {};
-    return { cle, plan, jour, demonstration: true, profil: profilDemonstration(r), retours, journal: Object.keys(retours).length > 0 };
+    return {
+      cle, plan, prevu: plan, deplacements: {}, jour, demonstration: true, profil: profilDemonstration(r), retours,
+      journal: Object.keys(retours).length > 0,
+    };
   }
 
   const supabase = await clientServeur();
@@ -64,7 +70,14 @@ export async function contexte(recherche: Recherche): Promise<Contexte> {
     ? await supabase.from('retours').select('jour_id, statut, rpe, sensations').eq('plan_id', choisi.id)
     : { data: [] };
   const retours: Retours = Object.fromEntries((lignes ?? []).map((l) => [l.jour_id, l]));
-  return { cle: choisi.id, plan: verifierSchema(ligne.donnees as Plan), jour, demonstration: false, profil, retours, journal: !!journal };
+  // Les séances déplacées ; sans la table (pas encore créée), le plan reste comme prévu.
+  const { data: rangees } = await supabase.from('deplacements').select('jour_id, date_iso').eq('plan_id', choisi.id);
+  const deplacements: Deplacements = Object.fromEntries((rangees ?? []).map((l) => [l.jour_id, l.date_iso]));
+  const prevu = verifierSchema(ligne.donnees as Plan);
+  return {
+    cle: choisi.id, plan: ranger(prevu, deplacements), prevu, deplacements, jour, demonstration: false, profil, retours,
+    journal: !!journal,
+  };
 }
 
 const CHAMPS_PROFIL = ['fc_seuil1', 'fc_seuil1_le', 'vc_ms', 'd_prime_m', 'vc_le', 'fc_seuil2', 'fc_seuil2_le'] as const;

@@ -15,6 +15,7 @@ import { contexte, lien, type Recherche } from '@/lib/app/contexte';
 import { ajouterJours, dateLongue, jourParDate, joursEntre, moment, semaineDeDate } from '@/lib/app/plan';
 import { texteReperes } from '@/lib/app/zones';
 import { resume, seanceDuJournal } from '@/lib/app/journal';
+import { mentionDeplacee } from '@/lib/app/deplacement';
 
 // Aujourd'hui (cadrage, 3.1) : le compte à rebours, la séance du jour, demain, la semaine en
 // cours ; avant le début, la date de départ et la première semaine ; après, le plan reste là.
@@ -85,6 +86,7 @@ function Pendant({ ctx }: { ctx: Awaited<ReturnType<typeof contexte>> }) {
       {seance && seance.famille !== 'repos' ? (
         <div className="space-y-2">
           <CarteSeance jour={seance} repere={texteReperes(seance.reperes, ctx.profil)} />
+          {seance.prevu && <p className="text-sm text-indigo/60">{mentionDeplacee(seance)}</p>}
           <MentionTest jour={seance} ctx={ctx} />
           {seanceDuJournal(seance) && (ctx.retours[seance.id] ? (
             <p className="text-sm text-indigo/75">Ton retour : {resume(ctx.retours[seance.id], seance)}</p>

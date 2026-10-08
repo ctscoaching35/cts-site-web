@@ -6,6 +6,8 @@ import MentionTest from '@/components/app/MentionTest';
 import RetourSeance from '@/components/app/RetourSeance';
 import TexteRiche from '@/components/app/TexteRiche';
 import { contexte, lien, type Recherche } from '@/lib/app/contexte';
+import { remettreSemaine } from '@/lib/app/actionsDeplacement';
+import { TEXTES, mentionDeplacee, peutChanger, peutRemettre } from '@/lib/app/deplacement';
 import { dateLongue, jourParId, tousLesJours } from '@/lib/app/plan';
 import { texteReperes } from '@/lib/app/zones';
 
@@ -41,6 +43,7 @@ export default async function FicheSeance({
         <div>
           <div className="eyebrow text-teal mb-1">{jour.date_iso ? dateLongue(jour.date_iso) : jour.jour}</div>
           <h1 className="text-2xl text-indigo leading-tight">{jour.seance}</h1>
+          {jour.prevu && <p className="text-sm text-indigo/60 mt-0.5">{mentionDeplacee(jour)}</p>}
         </div>
         <CarteSeance jour={jour} titre={false} repere={texteReperes(jour.reperes, ctx.profil)} />
         {jour.reperes?.derive_sl && texteReperes(jour.reperes, ctx.profil) && plan.zones && (
@@ -48,6 +51,22 @@ export default async function FicheSeance({
         )}
         <MentionTest jour={jour} ctx={ctx} />
         <RetourSeance jour={jour} ctx={ctx} ouvert={(await searchParams).retour === '1'} />
+        {/* Déplacer la séance dans sa semaine (cadrage §7.2, E4, E5). */}
+        {(peutChanger(jour, plan, ctx.retours, ctx.jour) || peutRemettre(jour.semaine, ctx.retours, ctx.jour)) && (
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            {peutChanger(jour, plan, ctx.retours, ctx.jour) && (
+              <Link href={lien(`/app/seance/${jour.id}/changer`, ctx)} className="btn btn-outline-dark !py-2.5">
+                {TEXTES.bouton}
+              </Link>
+            )}
+            {!ctx.demonstration && peutRemettre(jour.semaine, ctx.retours, ctx.jour) && (
+              <form action={remettreSemaine.bind(null, ctx.cle, jour.semaine.numero)}>
+                {process.env.NODE_ENV !== 'production' && <input type="hidden" name="jour" value={ctx.jour} />}
+                <button type="submit" className="text-sm text-indigo/70 underline underline-offset-2">{TEXTES.remettre}</button>
+              </form>
+            )}
+          </div>
+        )}
 
         {definition && (
           <section className="bg-white shadow-sm p-4 text-sm text-indigo/80 leading-relaxed">

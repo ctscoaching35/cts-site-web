@@ -133,6 +133,14 @@ est faite, raccourcie ou pas faite, son RPE ressenti et ses sensations ; rien n'
 consentement au journal (daté dans `journaux`), et jamais de douleur. Sans ces tables, le journal
 s'affiche mais n'enregistre rien.
 
+## 10. Déplacer une séance
+
+Une table de plus, `deplacements` (`supabase/migrations/20261008200000_deplacements.sql`) : SQL Editor,
+coller le fichier, Run (« Success. No rows returned »). L'athlète échange deux jours de la même semaine ;
+une ligne par séance qui n'est plus à son jour prévu. Le plan lui-même ne change pas. Pas de
+consentement : c'est l'organisation de la semaine, pas une donnée de santé. Sans cette table, « Changer
+de jour » s'affiche mais l'échange n'aboutit pas.
+
 ## Ce qui viendra ensuite
 
 - La confirmation de paiement de Stripe (webhook), une fois le site en ligne.

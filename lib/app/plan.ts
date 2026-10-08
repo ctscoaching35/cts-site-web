@@ -78,7 +78,18 @@ export type Jour = {
   definition_du_jour?: string | null;
   // Les repères de « Tes zones » (moteur v8.311) : absents d'un plan plus ancien.
   reperes?: Reperes | null;
+  // La classe du jour pour les règles du déplacement, et s'il est fixe (moteur v8.313) : absent d'un
+  // plan plus ancien.
+  placement?: Placement | null;
+  // Posé par l'app quand l'athlète a déplacé la séance (deplacement.ts) : son jour prévu.
+  prevu?: { jour: string; date_iso: string | null } | null;
 };
+
+// Déplacer une séance (moteur v8.313, cadrage §7.2, E1-E6) : un échange est « moins propice » quand il
+// crée deux jours de classes a et b à moins de ecart_min jours l'un de l'autre. La règle et sa raison
+// viennent du moteur ; l'app ne mesure que des écarts de dates.
+export type Placement = { etiquettes: string[]; fixe: boolean };
+export type RegleDeplacement = { cle: string; a: string; b: string; ecart_min: number; raison: string };
 
 export type Semaine = {
   numero: string;
@@ -179,6 +190,9 @@ export type Plan = {
   semaines: Semaine[];
   // « Tes zones » (moteur v8.311) : absent d'un plan plus ancien, qui n'a donc pas la rubrique.
   zones?: Zones | null;
+  // Les règles du déplacement (moteur v8.313) : absentes d'un plan plus ancien, dont les jours ne se
+  // colorent pas (E6).
+  deplacement?: { regles: RegleDeplacement[] } | null;
 };
 
 export type JourDuPlan = Jour & { semaine: Semaine };
