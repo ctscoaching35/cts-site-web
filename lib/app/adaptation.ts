@@ -137,11 +137,12 @@ export function proposition(plan: Plan, retours: Retours, ajustements: Ajustemen
 const majuscule = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 const jourDeLaSemaine = (iso: string) => dateLongue(iso).split(' ')[0];
 
-// Le corps d'une séance en quelques mots : « 5 × 3′ » d'une ligne, sinon la cible (« 10′ à RPE 8 »).
+// Le corps d'une séance en quelques mots : « 5 × 3′ » d'une ligne, sinon la cible (« 10′ à RPE 8 »),
+// sans coupure de ligne autour du « × ».
 function resume(j: Jour) {
   const corps = j.carte?.parties.find(([libelle]) => libelle === 'Corps')?.[1];
-  if (corps && !corps.includes('\n')) return corps.split(' RPE')[0].trim();
-  return j.carte?.entete.Cible ?? j.duree;
+  const texte = corps && !corps.includes('\n') ? corps.split(' RPE')[0].trim() : (j.carte?.entete.Cible ?? j.duree);
+  return texte.replace(/ × /g, '\u00a0×\u00a0');
 }
 
 export type TextesProposition = { titre: string; raison: string; suite: string; concret: string; renvoi: string | null };
