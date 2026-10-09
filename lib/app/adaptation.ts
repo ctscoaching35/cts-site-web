@@ -19,14 +19,20 @@ export type Ajustement = { regle: Regle; cible: string; source: string | null; s
 
 // Textes de l'app validés par le coach le 08/10/2026 (A7) ; les textes des règles viennent du moteur.
 export const BOUTONS = { appliquer: 'Appliquer', refuser: 'Non merci', annuler: 'Annuler l’ajustement' } as const;
+// A9 (décision coach du 09/10/2026) : la marche reprise fait reculer d'un cran toute la suite de sa
+// progression, pour qu'aucune séance ne saute deux marches ensuite. Textes validés avec la décision.
+const RECUL = "Les séances suivantes de cette progression reculent aussi d'une marche.";
+const MENTION_RECUL = 'Ajustée · une marche plus bas que prévu';
 // Un plan d'avant le moteur 8.314 n'a que la règle 1 : la phrase de son mode d'emploi.
 const RATTRAPE_SANS_MOTEUR = 'Ne la rattrape pas : reprends le plan là où il en est.';
 
 export const texteRattrape = (plan: Plan) => plan.adaptation?.textes.rattrape ?? RATTRAPE_SANS_MOTEUR;
 
-// Le plan ajusté : chaque ajustement appliqué remplace le contenu de la séance visée, à sa place. Une
-// marche reprise prend le contenu actuel de sa source (une chaîne se résout dans l'ordre des dates) ; une
-// séance allégée prend sa version EF. La séance garde sa place dans la progression (sa suite).
+// Le plan ajusté : chaque ajustement appliqué remplace des contenus, chaque séance gardant sa place et sa
+// suite. Une marche reprise : la séance visée prend le contenu de sa source, et toute la suite de sa
+// progression recule d'un cran, chacune prenant le contenu de la précédente jusqu'au bout de la chaîne
+// (A9) ; rien n'est jamais plus dur que prévu, et le plan finit une marche plus bas. Une séance allégée
+// prend sa version EF et garde sa marche d'avant (A8). Les ajustements se résolvent dans l'ordre des dates.
 export function ajuster(plan: Plan, ajustements: Ajustement[]): Plan {
   const appliques = ajustements.filter((a) => a.statut === 'applique');
   if (!appliques.length) return plan;
@@ -54,13 +60,33 @@ export function ajuster(plan: Plan, ajustements: Ajustement[]): Plan {
       // Une source allégée (A8) : sa suite reprend la marche d'avant l'allègement, pas l'EF.
       const lue = lire(a.source);
       const source = lue?.ajuste?.regle === 'fatigue' && lue.ajuste.avant ? { ...lue.ajuste.avant, id: lue.id } : lue;
-      if (source) {
-        contenu = {
-          ...source, ...placeDe,
-          adaptation: { suite: cible.adaptation?.suite ?? null, ef: source.adaptation?.ef ?? null },
-          ajuste: { regle: 'marche', source: source.id, prevu },
+      if (!source) continue;
+      const chaine: string[] = [];
+      for (let id: string | null = a.cible; id && place.has(id) && !chaine.includes(id); id = lire(id)!.adaptation?.suite ?? null)
+        chaine.push(id);
+      let entrant: Jour = source;
+      chaine.forEach((id, n) => {
+        const actuel = lire(id)!;
+        const [i, k] = place.get(id)!;
+        const ici = {
+          id: actuel.id, jour: actuel.jour, date: actuel.date, date_iso: actuel.date_iso,
+          adaptation: { suite: actuel.adaptation?.suite ?? null, ef: entrant.adaptation?.ef ?? null },
         };
-      }
+        const allegee = actuel.ajuste?.regle === 'fatigue' && actuel.ajuste.avant;
+        const sortant = allegee ? actuel.ajuste!.avant! : actuel;
+        if (allegee) {
+          // Reste allégée ; sa marche d'avant devient celle qui lui arrive.
+          semaines[i].jours[k] = { ...actuel, ajuste: { ...actuel.ajuste!, avant: { ...entrant, ...ici } } };
+        } else {
+          const prevuIci = actuel.ajuste?.prevu ?? actuel.seance;
+          semaines[i].jours[k] = {
+            ...entrant, ...ici,
+            ajuste: n === 0 ? { regle: 'marche', source: source.id, prevu: prevuIci } : { regle: 'marche', source: null, prevu: prevuIci, recul: true },
+          };
+        }
+        entrant = sortant;
+      });
+      continue;
     } else if (a.regle === 'fatigue' && cible.adaptation?.ef) {
       contenu = {
         ...cible.adaptation.ef, ...placeDe,
@@ -161,7 +187,8 @@ export function textes(plan: Plan, p: Proposition): TextesProposition | null {
     const concret = m.seance === p.cible.seance
       ? `${date}, ${p.cible.seance} : ${nouveau} au lieu de ${prevu}.`
       : `${date} : ${m.seance}, ${nouveau} au lieu de ${p.cible.seance}, ${prevu}.`;
-    return { titre: t.marche.titre, raison: `${raison}.`, suite: sl ? t.marche.suite_sl : t.marche.suite, concret, renvoi: null };
+    const suite = (sl ? t.marche.suite_sl : t.marche.suite) + (p.cible.adaptation?.suite ? ` ${RECUL}` : '');
+    return { titre: t.marche.titre, raison: `${raison}.`, suite, concret, renvoi: null };
   }
   const liste = p.signaux.map((s) => {
     const jour = jourDeLaSemaine(s.jour.date_iso!);
@@ -181,14 +208,17 @@ export function textes(plan: Plan, p: Proposition): TextesProposition | null {
   };
 }
 
-// « Ajustée · même marche que le mardi 10 novembre » ; « Allégée · prévue Seuil 2 — Fractions ».
+// « Ajustée · même marche que le mardi 10 novembre » ; « Ajustée · une marche plus bas que prévu » ;
+// « Allégée · prévue Seuil 2 — Fractions ».
 export function mentionAjustee(plan: Plan, j: Jour) {
   if (!j.ajuste) return null;
   if (j.ajuste.regle === 'fatigue') return `Allégée · prévue ${j.ajuste.prevu}`;
+  if (j.ajuste.recul) return MENTION_RECUL;
   const source = j.ajuste.source ? tousLesJours(plan).find((x) => x.id === j.ajuste!.source) : undefined;
   return source?.date_iso ? `Ajustée · même marche que le ${dateLongue(source.date_iso)}` : 'Ajustée';
 }
 
-// « Annuler l'ajustement » : tant que la séance est à venir et sans retour.
+// « Annuler l'ajustement » : tant que la séance est à venir et sans retour. Une séance qui a seulement
+// reculé d'une marche s'annule avec la séance qui a repris la marche, d'où vient le recul.
 export const peutAnnuler = (j: Jour, retours: Retours, aujourdhui: string) =>
-  !!j.ajuste && !!j.date_iso && j.date_iso >= aujourdhui && !retours[j.id];
+  !!j.ajuste && !j.ajuste.recul && !!j.date_iso && j.date_iso >= aujourdhui && !retours[j.id];

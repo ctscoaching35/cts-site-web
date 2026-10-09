@@ -88,7 +88,8 @@ export type Jour = {
   adaptation?: { suite: string | null; ef: ContenuJour | null } | null;
   // Posé par l'app quand un ajustement est appliqué (adaptation.ts) : la règle, la séance d'où vient la
   // marche reprise, la séance prévue ; pour une séance allégée, son contenu d'avant (la marche non tenue).
-  ajuste?: { regle: 'marche' | 'fatigue'; source: string | null; prevu: string; avant?: Jour } | null;
+  // recul : la séance a seulement reculé d'une marche, derrière une marche reprise (A9).
+  ajuste?: { regle: 'marche' | 'fatigue'; source: string | null; prevu: string; avant?: Jour; recul?: boolean } | null;
 };
 
 // Le contenu d'un jour, sans sa place dans le calendrier (id, jour, date) : la version EF d'une séance.
