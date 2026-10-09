@@ -232,6 +232,26 @@ a.ref { font-size: 0.8em; text-decoration: none; white-space: nowrap; }
 .retenir p { margin: 0; }
 .retenir strong { color: var(--teal-light); }
 
+/* Le tableau des zones aux couleurs de l'échelle d'effort (fiche zones ; même dessin que le
+   calculateur « Ton profil de traileur »). */
+table.zones { width: 100%; border-collapse: separate; border-spacing: 0 4px; margin: 0.8rem 0 1.2rem; }
+table.zones th { background: none; color: var(--muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; padding: 0.2rem 0.6rem; text-align: left; font-weight: 600; }
+table.zones td, table.zones tr:nth-child(even) td { padding: 0.6rem; vertical-align: middle; background: #ffffff; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); font-size: 0.88rem; }
+table.zones td:last-child { border-right: 1px solid var(--line); border-radius: 0 6px 6px 0; }
+table.zones td.nomzone { color: #ffffff; border: none; border-radius: 6px 0 0 6px; }
+table.zones td.nomzone strong { display: block; font-size: 0.92rem; -webkit-hyphens: none; hyphens: none; }
+table.zones td.nomzone span { display: block; font-size: 0.75rem; opacity: 0.9; }
+table.zones td small { display: block; color: var(--muted); font-size: 0.75rem; }
+table.zones tr.z1 td.nomzone { background: #cde8e1; color: var(--navy); }
+table.zones tr.z2 td.nomzone { background: #8fd1c3; color: var(--navy); }
+table.zones tr.z3 td.nomzone { background: #5fae9f; }
+table.zones tr.z4 td.nomzone { background: #2e8a7a; }
+table.zones tr.z5 td.nomzone { background: #0c6e5f; }
+table.zones tr.z6 td.nomzone { background: #245a63; }
+table.zones tr.z7 td.nomzone { background: #2f2d4e; }
+@media (max-width: 480px) { table.zones td, table.zones tr:nth-child(even) td { padding: 0.5rem 0.45rem; font-size: 0.82rem; } }
+@media print { table.zones td.nomzone { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+
 .pied {
   background: var(--navy-dark);
   color: #b9b8cc;
