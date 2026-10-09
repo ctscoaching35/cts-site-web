@@ -189,6 +189,18 @@ tr:nth-child(even) td { background: var(--cream); }
 .sources h2 { font-size: 0.78rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); margin: 0 0 0.6rem; }
 .sources ol { padding-left: 1.2rem; }
 
+/* Le second étage, « Pour comprendre » : la science vulgarisée (version 3 du prompt, décision coach du
+   09/10/2026). Un filet teal le sépare du premier étage, celui qui sert à agir. */
+.comprendre {
+  margin-top: 3rem;
+  padding-top: 1.6rem;
+  border-top: 3px solid var(--teal);
+}
+.comprendre > h2 { margin-top: 0; }
+/* Les renvois vers les références : [3] */
+a.ref { font-size: 0.8em; text-decoration: none; white-space: nowrap; }
+.sources li:target { background: var(--teal-wash); }
+
 .pied {
   background: var(--navy-dark);
   color: #b9b8cc;
