@@ -167,6 +167,8 @@ tr:nth-child(even) td { background: var(--cream); }
     hyphens: auto;
     hyphenate-limit-chars: 7 3 3;
   }
+  /* La première colonne porte l'intitulé de la ligne : jamais coupé (« Com-mencer », 10/10/2026). */
+  td:first-child { -webkit-hyphens: manual; hyphens: manual; }
 }
 
 /* Encadré d'alerte */
