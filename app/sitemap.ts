@@ -28,6 +28,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'monthly',
       priority: 0.7,
     },
+    {
+      url: `${site.url}/calculateur`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    },
     ...fichesBibliotheque().map((slug) => ({
       url: `${site.url}/bibliotheque/${slug}`,
       lastModified: new Date(),
