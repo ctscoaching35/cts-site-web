@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>La fréquence cardiaque — CTS Coaching</title>
-<meta name="description" content="Ce que mesure ta fréquence cardiaque, pourquoi les formules d'âge trompent, comment caler tes repères sur tes seuils, et ce qui la fausse : chaleur, fatigue, dérive, capteur au poignet.">
+<meta name="description" content="Ce que ta fréquence cardiaque dit et ce qu'elle ne dit pas, pourquoi oublier la FC max théorique, tes deux FC de référence aux seuils, et comment la lire en trail : côte, fractions, sortie longue, chaleur, descente.">
 <link rel="stylesheet" href="/bibliotheque/fiche.css">
 </head>
 <body>
@@ -16,54 +16,124 @@
 <section class="titre"><div class="titre-inner">
   <span class="surtitre">Fiche · S'entraîner</span>
   <h1>La fréquence cardiaque</h1>
-  <p class="chapeau">Ta montre l'affiche en permanence. Calée sur tes seuils, elle t'aide ; calée sur une formule d'âge, elle te trompe. Et elle bouge avec la chaleur, la fatigue et les heures.</p>
-  <p class="lecture">3 minutes de lecture</p>
+  <p class="chapeau">Ta fréquence cardiaque (FC) dit à quel point ton cœur travaille. Calée sur tes deux seuils, c'est un garde-fou précieux, surtout en côte, là où l'allure ne veut plus rien dire. Calée sur une formule, ou lue au mauvais moment, elle trompe.</p>
+  <p class="lecture">4 minutes de lecture</p>
 </div></section>
 
 <main>
-  <h2>Le principe</h2>
-  <p>Ta fréquence cardiaque (FC) compte les battements de ton cœur par minute. Elle monte avec l'effort, parce que tes muscles réclament plus d'oxygène. Elle suit bien les efforts réguliers, mais avec retard : il lui faut quelques minutes pour se stabiliser après un changement d'allure. Et à effort égal, elle ne reste pas fixe : chaleur, fatigue et durée la font bouger.</p>
+  <h2>1. Ce que ta FC te dit, et ce qu'elle ne dit pas</h2>
+  <div class="deux-colonnes">
+    <div>
+      <h3>Définition</h3>
+      <p>Ta FC compte les battements de ton cœur par minute. Elle monte avec l'effort, parce que tes muscles réclament plus d'oxygène. Elle suit bien les efforts réguliers, mais avec retard : il lui faut quelques minutes pour rejoindre un changement d'allure. Et à effort égal, elle ne reste pas fixe : la chaleur, la fatigue et la durée la font monter.</p>
+    </div>
+    <div>
+      <h3>Ses angles morts</h3>
+      <ul>
+        <li><strong>Les efforts courts</strong> : sur une fraction d'une ou deux minutes, elle n'a pas le temps de monter.</li>
+        <li><strong>Les efforts longs</strong> : au fil des heures, elle monte sans que l'effort change. C'est la dérive cardiaque.</li>
+        <li><strong>La descente</strong> : elle reste basse, et ne dit rien du travail de tes cuisses.</li>
+      </ul>
+    </div>
+  </div>
+  <p>Ta FC est donc un repère, pas un ordre. Quand ta sensation ne colle pas au chiffre, c'est ta sensation qui décide (fiche <a href="/bibliotheque/rpe">Le RPE et les sensations</a>).</p>
+  <figure class="schema">
+    <svg viewBox="0 0 360 210" role="img" aria-labelledby="fc-titre fc-desc">
+      <title id="fc-titre">Le retard et la dérive de la FC</title>
+      <desc id="fc-desc">Schéma de principe. Pendant un bloc de 20 minutes à allure constante, la FC met 2 à 3 minutes à monter, puis se stabilise, puis monte lentement au fil des minutes : c'est la dérive.</desc>
+      <text x="40" y="14" font-size="12" font-weight="700" fill="#2f2d4e">Ta FC</text>
+      <rect x="64" y="22" width="34" height="140" fill="#e1efea"/>
+      <line x1="40" y1="24" x2="40" y2="162" stroke="#2f2d4e" stroke-width="1.5"/>
+      <line x1="40" y1="162" x2="350" y2="162" stroke="#2f2d4e" stroke-width="1.5"/>
+      <path d="M40,140 L64,140 C74,140 80,92 98,76 C120,64 150,64 190,62 C240,60 290,54 340,46" fill="none" stroke="#0c6e5f" stroke-width="3" stroke-linecap="round"/>
+      <line x1="64" y1="162" x2="64" y2="168" stroke="#2f2d4e"/>
+      <line x1="340" y1="162" x2="340" y2="168" stroke="#2f2d4e"/>
+      <text x="64" y="182" text-anchor="middle" font-size="11" fill="#6f6d85">début</text>
+      <text x="340" y="182" text-anchor="end" font-size="11" fill="#6f6d85">20 min</text>
+      <text x="196" y="200" text-anchor="middle" font-size="12" fill="#2f2d4e">Un bloc à allure constante</text>
+      <text x="81" y="40" text-anchor="middle" font-size="11" font-weight="700" fill="#0c6e5f">2-3 min</text>
+      <text x="81" y="54" text-anchor="middle" font-size="11" fill="#0c6e5f">de retard</text>
+      <text x="300" y="34" text-anchor="end" font-size="11" font-weight="700" fill="#2f2d4e">la dérive</text>
+      <text x="196" y="88" text-anchor="middle" font-size="11" fill="#6f6d85">elle se stabilise…</text>
+    </svg>
+    <figcaption>Schéma de principe : à allure constante, ta FC met quelques minutes à monter, puis dérive lentement.</figcaption>
+  </figure>
+
+  <h2>2. Oublie la FC max théorique</h2>
+  <p>« 220 moins l'âge » et ses variantes donnent une moyenne : chez toi, elles peuvent se tromper d'une dizaine de battements, parfois plus. Et même avec ta vraie FC max, un pourcentage place mal. Chez plus de 1 400 coureurs testés en laboratoire, le seuil 1 tombait en moyenne vers 85 % de la FC maximale, mais entre 76 et 94 % selon les coureurs. La même « zone à 80 % » met l'un en endurance facile, l'autre tout près de son seuil.</p>
+  <p>Ce qu'il te faut, ce sont tes FC à tes deux seuils, mesurées sur le terrain. Ta FC max, tu n'en as pas besoin pour t'entraîner. Si tu tiens à la connaître, c'est la plus haute valeur relevée à la ceinture en fin d'effort à fond, jamais une formule.</p>
+
+  <h2>3. Tes deux FC de référence</h2>
+  <div class="tableau">
+    <table>
+      <thead><tr><th></th><th>FC au seuil 1 (FC S1)</th><th>FC au seuil 2 (FC S2)</th></tr></thead>
+      <tbody>
+        <tr><td>Comment l'obtenir</td><td>Le test de la parole : ta FC au premier « pas vraiment »</td><td>Une séance : 2 blocs de 10 min à 95 % de ta vitesse critique, ta FC à la fin du deuxième</td></tr>
+        <tr><td>Pour qui</td><td>Tout le monde</td><td>Une fois ta vitesse critique connue</td></tr>
+        <tr><td>Ce qu'elle règle</td><td>Endurance : sous FC S1 − 5<br>Seuil 1 : de FC S1 à FC S1 + 5</td><td>Tempo : de FC S1 + 5 à FC S2 − 5<br>Seuil 2 : de FC S2 − 5 à FC S2</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Les 5 battements de marge couvrent la précision des tests. Les protocoles sont dans les fiches <a href="/bibliotheque/test-parole">Le test de la parole</a> et <a href="/bibliotheque/vitesse-critique">La vitesse critique</a>. Tes zones de FC complètes, avec tes allures : le calculateur <a href="/calculateur">Ton profil de traileur</a>.</p>
+
+  <h2>4. Ta FC en trail</h2>
+  <p>En côte, ton allure s'effondre, mais ta FC à tes seuils change peu avec la pente. Dans une longue montée, c'est elle qui te dit si tu es sous ton seuil 1 ou près de ton seuil 2. Ailleurs, lis-la avec ses angles morts en tête.</p>
+  <div class="tableau">
+    <table>
+      <thead><tr><th>Situation</th><th>Ta FC</th><th>Ce que tu fais</th></tr></thead>
+      <tbody>
+        <tr><td>Longue montée</td><td>Fiable : elle change peu avec la pente</td><td>Règle-toi sur elle et sur le RPE. En endurance, passe à la marche quand elle dépasse ton plafond</td></tr>
+        <tr><td>Fractions</td><td>En retard</td><td>Au seuil 2, sur des fractions de 3 min et plus : lis-la en fin de fraction, à partir de la troisième. Plus court, ou à VO2max : le RPE seul</td></tr>
+        <tr><td>Sortie longue, au-delà d'une heure</td><td>Elle dérive vers le haut</td><td>Le RPE décide : ne cours pas après un chiffre fixe</td></tr>
+        <tr><td>Chaleur, altitude</td><td>Plus haute à allure égale</td><td>Ralentis plutôt que de forcer pour garder ton allure</td></tr>
+        <tr><td>Descente</td><td>Basse</td><td>Elle ne dit rien de tes cuisses : compte aussi ton dénivelé négatif (fiche <a href="/bibliotheque/descente">La descente</a>)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>5. Surveiller ta forme : FC de repos et VFC</h2>
+  <p>Ta FC de repos et ta variabilité de fréquence cardiaque (VFC), c'est-à-dire les petites variations d'intervalle entre deux battements, renseignent sur ta récupération. Mesure-les au réveil, toujours dans la même position, et compare ta moyenne de la semaine à ton habitude. Un écart net qui dure plusieurs jours, avec des sensations dégradées, invite à alléger (fiche <a href="/bibliotheque/recuperation">Récupération</a>). Un chiffre d'un seul matin, lui, ne dit pas grand-chose : il varie avec le sommeil, le stress ou un verre de la veille.</p>
+
+  <h2>6. Ceinture ou poignet ?</h2>
+  <p>La mesure au poignet est correcte sur un footing régulier. Elle se trompe plus souvent dans les accélérations, les fractions, le renforcement, ou quand le bracelet bouge. Pour tes tests et ton fractionné, prends une ceinture cardio.</p>
 
   <div class="essentiel">
-    <h2>L'essentiel</h2>
+    <h2>En coaching individualisé</h2>
     <ul>
-      <li>Les formules d'âge, comme « 220 moins l'âge », peuvent se tromper d'une dizaine de battements, parfois plus : n'y cale pas tes zones.</li>
-      <li>Cale tes repères sur tes seuils : la FC à laquelle parler devient moins confortable marque ton premier seuil.</li>
-      <li>À allure égale, ta FC monte au fil d'une longue sortie : c'est la dérive cardiaque. Ne cours pas après un chiffre fixe.</li>
-      <li>Chaleur, déshydratation, altitude et fatigue la déplacent ; le capteur au poignet décroche dans les changements de rythme.</li>
-      <li>FC de repos et VFC du matin : regarde la tendance sur plusieurs jours, et croise-la toujours avec tes sensations.</li>
+      <li><strong>On mesure tes FC aux deux seuils à chaque préparation</strong>, avec les tests de terrain, pour que tes zones restent justes.</li>
+      <li><strong>On suit ta FC et ton allure ensemble</strong> : sur le plat, dans les mêmes conditions, une allure plus rapide à FC égale signe un progrès.</li>
+      <li><strong>Sur les formats longs</strong>, on regarde la dérive de ta FC en fin de sortie longue : plus elle est faible, mieux ton endurance tient sur la durée.</li>
     </ul>
   </div>
 
-  <h2>Comment l'appliquer</h2>
-  <ol>
-    <li><strong>Laisse ta FC max de côté</strong> : tu n'en as pas besoin pour t'entraîner. Si tu tiens à la connaître, c'est la plus haute valeur relevée à la ceinture en fin d'effort à fond, jamais une formule.</li>
-    <li><strong>Trouve ta FC au premier seuil</strong> : sur le plat, bien échauffé, monte l'allure par paliers de quelques minutes en récitant une phrase d'une trentaine de secondes. La FC à laquelle parler devient moins confortable, c'est ton repère. En dessous, tu es dans le domaine modéré (fiche <a href="/bibliotheque/zones">Les domaines d'intensité</a>).</li>
-    <li><strong>Au-dessus, fie-toi plutôt au RPE et à l'allure</strong> : dans un effort intense, ta FC continue de grimper à allure stable. Elle dit mal si tu es sous ou au-dessus de ta vitesse critique (fiche <a href="/bibliotheque/vitesse-critique">La vitesse critique</a>).</li>
-    <li><strong>Sur les sorties longues</strong>, accepte qu'elle monte à allure égale. Garde la sensation et la parole comme boussole, et bois selon ta soif (fiche <a href="/bibliotheque/hydratation">Hydratation</a>).</li>
-    <li><strong>Si tu suis ta FC de repos ou ta VFC</strong>, c'est-à-dire les petites variations d'intervalle entre deux battements : mesure-les au réveil, toujours dans la même position, et compare ta moyenne de la semaine à ton habitude. Un écart net qui dure plusieurs jours, avec des sensations dégradées, invite à alléger (fiche <a href="/bibliotheque/recuperation">Récupération</a>).</li>
-  </ol>
-
-  <h2>Les pièges à éviter</h2>
+  <h2>7. Les pièges à éviter</h2>
   <ul>
-    <li><strong>La chaleur et la déshydratation</strong> : à allure égale, ta FC monte nettement. Ralentis plutôt que de forcer pour garder ton allure habituelle.</li>
-    <li><strong>La fatigue</strong> : elle peut faire monter ta FC au repos, ou l'empêcher de monter comme d'habitude en séance dure. Une FC qui plafonne bas n'est pas un signe de forme.</li>
-    <li><strong>La caféine</strong> : elle change peu ta FC à l'effort, mais elle rend l'effort plus facile à ressentir.</li>
-    <li><strong>Le capteur au poignet</strong> : correct sur un footing régulier, il se trompe plus souvent dans les accélérations, en renforcement ou quand le bracelet bouge. Pour le fractionné, préfère une ceinture pectorale.</li>
-    <li><strong>Un chiffre isolé</strong> : une FC de repos ou une VFC d'un seul matin varie avec le sommeil, le stress ou un verre de la veille. Seule une tendance compte.</li>
+    <li><strong>Les zones tirées d'une formule d'âge</strong> : elles peuvent se tromper d'une dizaine de battements, et un pourcentage de FC max place mal deux coureurs différents.</li>
+    <li><strong>Courir après un chiffre fixe sur une sortie longue</strong> : ta FC dérive au fil des heures. Le RPE décide.</li>
+    <li><strong>La fatigue</strong> : en séance dure, elle peut empêcher ta FC de monter comme d'habitude. Une FC qui plafonne bas, avec des jambes lourdes, n'est pas un signe de forme.</li>
+    <li><strong>La chaleur et la déshydratation</strong> : à allure égale, ta FC monte nettement. Ralentis plutôt que de forcer.</li>
+    <li><strong>La montre au poignet pour le fractionné</strong> : prends une ceinture.</li>
+    <li><strong>Un chiffre isolé</strong> : une FC de repos ou une VFC d'un seul matin ne dit pas grand-chose. Seule une tendance compte.</li>
   </ul>
 
-  <section class="sources">
-    <h2>Pour aller plus loin</h2>
-    <ol>
-      <li>Tanaka H, Monahan KD, Seals DR. Age-predicted maximal heart rate revisited. <em>J Am Coll Cardiol</em>, 2001. <a href="https://doi.org/10.1016/s0735-1097(00)01054-8">doi:10.1016/s0735-1097(00)01054-8</a></li>
-      <li>Meyler SJR, Swinton PA, Bottoms L et al. Changes in Cardiorespiratory Fitness Following Exercise Training Prescribed Relative to Traditional Intensity Anchors and Physiological Thresholds: A Systematic Review with Meta-analysis of Individual Participant Data. <em>Sports Med</em>, 2025. <a href="https://doi.org/10.1007/s40279-024-02125-x">doi:10.1007/s40279-024-02125-x</a></li>
-      <li>Périard JD, Eijsvogels TMH, Daanen HAM. Exercise under heat stress: thermoregulation, hydration, performance implications, and mitigation strategies. <em>Physiol Rev</em>, 2021. <a href="https://doi.org/10.1152/physrev.00038.2020">doi:10.1152/physrev.00038.2020</a></li>
-      <li>Zhang Y, Weaver RG, Armstrong B et al. Validity of Wrist-Worn photoplethysmography devices to measure heart rate: A systematic review and meta-analysis. <em>J Sports Sci</em>, 2020. <a href="https://doi.org/10.1080/02640414.2020.1767348">doi:10.1080/02640414.2020.1767348</a></li>
-      <li>Bosquet L, Merkari S, Arvisais D et al. Is heart rate a convenient tool to monitor over-reaching? A systematic review of the literature. <em>Br J Sports Med</em>, 2008. <a href="https://doi.org/10.1136/bjsm.2007.042200">doi:10.1136/bjsm.2007.042200</a></li>
-      <li>Bellenger CR, Fuller JT, Thomson RL et al. Monitoring Athletic Training Status Through Autonomic Heart Rate Regulation: A Systematic Review and Meta-Analysis. <em>Sports Med</em>, 2016. <a href="https://doi.org/10.1007/s40279-016-0484-2">doi:10.1007/s40279-016-0484-2</a></li>
-    </ol>
-  </section>
+  <div class="retenir">
+    <p><strong>À retenir.</strong> Cale ta FC sur tes deux seuils, pas sur une formule. C'est un garde-fou fiable sur les efforts réguliers et dans les longues montées ; elle traîne sur les fractions, dérive sur la durée et ne voit pas tes cuisses en descente. Le RPE décide toujours.</p>
+  </div>
+
+  <!-- Sources, vérifiées sur Crossref, non affichées (décision coach du 09/10/2026) :
+    - Tanaka H, Monahan KD, Seals DR. Age-predicted maximal heart rate revisited. J Am Coll Cardiol, 2001. doi:10.1016/s0735-1097(00)01054-8
+    - Esteve-Lanao J et al. Towards Accurate Reference Values for Heart Rate and Speed Zones by Aerobic Fitness and Sex in Long-Distance Runners. Sports (Basel), 2026. doi:10.3390/sports14010029 (1 411 coureurs : SV1 à 85,1 ± 4,6 % de la FC pic, SV2 à 93,5 ± 2,5 %)
+    - Meyler SJR et al. Changes in Cardiorespiratory Fitness Following Exercise Training Prescribed Relative to Traditional Intensity Anchors and Physiological Thresholds. Sports Med, 2025. doi:10.1007/s40279-024-02125-x
+    - Coyle EF, González-Alonso J. Cardiovascular Drift During Prolonged Exercise: New Perspectives. Exerc Sport Sci Rev, 2001. doi:10.1097/00003677-200104000-00009
+    - Périard JD, Eijsvogels TMH, Daanen HAM. Exercise under heat stress: thermoregulation, hydration, performance implications, and mitigation strategies. Physiol Rev, 2021. doi:10.1152/physrev.00038.2020
+    - Cassirame J et al. Physiological Implication of Slope Gradient during Incremental Running Test. Int J Environ Res Public Health, 2022. doi:10.3390/ijerph191912210 (FC aux seuils inchangée de 0 à 40 % de pente)
+    - Zhang Y et al. Validity of Wrist-Worn photoplethysmography devices to measure heart rate: A systematic review and meta-analysis. J Sports Sci, 2020. doi:10.1080/02640414.2020.1767348
+    - Bosquet L et al. Is heart rate a convenient tool to monitor over-reaching? A systematic review of the literature. Br J Sports Med, 2008. doi:10.1136/bjsm.2007.042200
+    - Bellenger CR et al. Monitoring Athletic Training Status Through Autonomic Heart Rate Regulation: A Systematic Review and Meta-Analysis. Sports Med, 2016. doi:10.1007/s40279-016-0484-2
+    - Maunder E et al. The Importance of 'Durability' in the Physiological Profiling of Endurance Athletes. Sports Med, 2021. doi:10.1007/s40279-021-01459-0
+    Règles de FC : « Tes zones » (Z6) ; fractions : FC en fin de fraction à partir de la troisième pour 3 min et plus, RPE seul en dessous (décision coach du 08/10/2026).
+    Base : la fiche en ligne (pas de fiche PDF du coach sur ce sujet).
+  -->
 </main>
 
 <footer class="pied"><div class="pied-inner">CTS Coaching — City to Summit. Ces fiches informent, elles ne remplacent pas un avis médical personnalisé.</div></footer>
