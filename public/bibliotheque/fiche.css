@@ -172,6 +172,15 @@ tr:nth-child(even) td { background: var(--cream); }
 }
 
 /* Encadré d'alerte */
+/* Check-list à cocher (fiche checklist, 10/10/2026) : une case vide devant chaque ligne, imprimable. */
+.coche { list-style: none; padding-left: 0; }
+.coche li { position: relative; padding-left: 1.75rem; margin-bottom: 0.4rem; }
+.coche li::before {
+  content: ""; position: absolute; left: 0; top: 0.32em;
+  width: 0.95em; height: 0.95em; border: 2px solid var(--teal); border-radius: 3px; background: #ffffff;
+}
+.coche li.cle { font-weight: 700; }
+
 .attention {
   border-left: 4px solid var(--navy);
   background: #ecebf2;
