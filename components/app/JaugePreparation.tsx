@@ -3,11 +3,14 @@ import { lien, type Contexte } from '@/lib/app/contexte';
 import { jauge, type EtatSemaine } from '@/lib/app/journal';
 
 // La jauge de préparation (J4, forme A, validée par le coach le 08/10/2026) : une case par semaine
-// jusqu'à la course, puis les séances faites et les sorties longues faites sur celles déjà passées ;
+// jusqu'à la course, puis les séances faites et les sorties longues faites sur celles déjà passées (J8) ;
 // les séances sans retour à part. Jamais le mot « chance ».
 const COULEUR: Record<EtatSemaine, string> = {
   pleine: '#0C6E5F', partielle: '#6BAA9C', manquee: '#E8D6C9', neutre: '#CDD2DA', encours: '#FFFFFF', avenir: '#E6E8EE',
 };
+
+// « 0 faite », « 1 faite », « 3 faites ».
+const faites = (n: number) => `${n} faite${n > 1 ? 's' : ''}`;
 
 export default function JaugePreparation({ ctx }: { ctx: Contexte }) {
   const j = jauge(ctx.plan, ctx.retours, ctx.jour);
@@ -27,8 +30,14 @@ export default function JaugePreparation({ ctx }: { ctx: Contexte }) {
         ))}
       </div>
       <div className="flex justify-between text-[0.65rem] text-indigo/50 mt-1 mb-2"><span>S1</span><span>Course</span></div>
-      <p className="text-sm text-indigo">Séances faites : <strong>{j.faites} sur {j.passees}</strong></p>
-      <p className="text-sm text-indigo">Sorties longues : <strong>{j.slFaites} sur {j.slPassees}</strong></p>
+      {/* J8 (décision coach du 09/10/2026) : dire ce qui est compté, les séances déjà passées, et ne rien
+          afficher tant qu'aucune n'est passée (plus de « 0 sur 0 »). */}
+      {j.passees > 0 && (
+        <p className="text-sm text-indigo">Séances déjà passées : <strong>{faites(j.faites)} sur {j.passees}</strong></p>
+      )}
+      {j.slPassees > 0 && (
+        <p className="text-sm text-indigo">Sorties longues déjà passées : <strong>{faites(j.slFaites)} sur {j.slPassees}</strong></p>
+      )}
       {premiere && (
         <Link href={lien(`/app/seance/${premiere.id}`, ctx, { retour: '1' }) + '#retour'} className="inline-block mt-1.5 text-sm font-semibold text-teal">
           {j.sansRetour.length} séance{j.sansRetour.length > 1 ? 's' : ''} sans retour ›
