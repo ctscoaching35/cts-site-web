@@ -169,6 +169,8 @@ tr:nth-child(even) td { background: var(--cream); }
   }
   /* Les en-têtes et la première colonne (l'intitulé de la ligne) ne sont jamais coupés (« Com-mencer », « Glu-cides », 10/10/2026). */
   th, td:first-child { -webkit-hyphens: manual; hyphens: manual; }
+  /* Dans l'encadré coaching, plus étroit, la première colonne peut se couper (vitesse critique, 360 px). */
+  .essentiel td:first-child { -webkit-hyphens: auto; hyphens: auto; }
 }
 
 /* Encadré d'alerte */
