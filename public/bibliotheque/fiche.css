@@ -201,6 +201,20 @@ tr:nth-child(even) td { background: var(--cream); }
 a.ref { font-size: 0.8em; text-decoration: none; white-space: nowrap; }
 .sources li:target { background: var(--teal-wash); }
 
+/* Les schémas (version 4 du prompt, décision coach du 09/10/2026) : SVG dans la page, dessinés pour
+   le téléphone d'abord (viewBox d'environ 360 de large), plafonnés à 30rem sur ordinateur. */
+.schema { margin: 1.6rem auto 2rem; max-width: 30rem; }
+.schema svg { display: block; width: 100%; height: auto; font-family: Montserrat, "Helvetica Neue", Arial, sans-serif; }
+.schema figcaption { margin-top: 0.5rem; font-size: 0.8rem; color: var(--muted); text-align: center; }
+
+/* « Sur le terrain » : ce que chaque rubrique de « Pour comprendre » change pour le coureur. */
+.terrain {
+  background: var(--teal-wash);
+  border-left: 4px solid var(--teal);
+  padding: 0.75rem 1rem;
+  margin: 0.4rem 0 1.8rem;
+}
+
 .pied {
   background: var(--navy-dark);
   color: #b9b8cc;
