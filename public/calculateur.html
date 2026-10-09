@@ -44,6 +44,8 @@ table.zones td.nomzone span { font-size: 0.75rem; opacity: 0.85; }
 table.zones td.chiffre { font-weight: 700; color: var(--navy); }
 table.zones td.chiffre small { display: block; font-weight: 400; color: var(--muted); font-size: 0.75rem; }
 table.zones td.vide { color: #a5a4b8; font-weight: 400; }
+#bloc-blocs h3 { margin: 1.4rem 0 0.2rem; color: var(--navy); }
+.sous-titre { font-size: 0.88rem; color: var(--muted); margin: 0; }
 tr.clair td.nomzone { color: var(--navy); }
 .imprimer { display: inline-block; margin: 1.2rem 0 0; font: inherit; font-weight: 700; font-size: 0.95rem; color: #ffffff; background: var(--teal); border: none; border-radius: 6px; padding: 0.7rem 1.1rem; cursor: pointer; }
 .imprimer:hover { background: #0a5c4f; }
@@ -157,7 +159,14 @@ tr.clair td.nomzone { color: var(--navy); }
       <thead><tr><th>Zone</th><th>Ta FC</th><th>Ton allure sur le plat</th></tr></thead>
       <tbody id="zones"></tbody>
     </table>
-    <p id="detail"></p>
+    <div id="bloc-blocs" hidden>
+      <h3>Tes allures selon la durée des blocs</h3>
+      <p class="sous-titre">Au seuil 2, plus le bloc est long, plus on se place sous ta vitesse critique ; en VO2max, plus il est court, plus on va vite.</p>
+      <table class="zones" aria-label="Tes allures selon la durée des blocs">
+        <thead><tr><th>Blocs</th><th>% de ta VC</th><th>Allure</th></tr></thead>
+        <tbody id="blocs"></tbody>
+      </table>
+    </div>
     <p class="apres">Les allures valent sur le plat. En côte, règle-toi à la FC et au RPE ; en descente, au RPE seul. Sur les fractions courtes, ta FC n'a pas le temps de monter : regarde-la en fin de fraction, à partir de la troisième.</p>
     <button type="button" class="imprimer" id="imprimer">Imprimer ou enregistrer mon profil</button>
   </section>
@@ -315,7 +324,7 @@ tr.clair td.nomzone { color: var(--navy); }
     ];
     var al = vc ? [
       ['Plus lent que ' + allure(vc * 0.7) + '/km', 'moins de 70' + N + '% de ta VC'],
-      ['Plus lent que ' + allure(vc * 0.8) + '/km', 'moins de 80' + N + '%'],
+      [plage(vc, 70, 80), plageKmh(vc, 70, 80) + ', 70 à 80' + N + '%'],
       [plage(vc, 80, 85), plageKmh(vc, 80, 85) + ', 80 à 85' + N + '%'],
       [plage(vc, 85, 92), plageKmh(vc, 85, 92) + ', 85 à 92' + N + '%'],
       [plage(vc, 92, 100), plageKmh(vc, 92, 100) + ', 92 à 100' + N + '%'],
@@ -344,9 +353,32 @@ tr.clair td.nomzone { color: var(--navy); }
       });
       corps.appendChild(tr);
     });
-    $('detail').textContent = vc
-      ? 'Au seuil' + N + '2, plus le bloc est long, plus on se place sous ta vitesse critique : fractions de 3' + H + '4' + N + 'min, ' + plage(vc, 97, 100) + ' ; blocs de 5 à 8' + N + 'min, ' + plage(vc, 95, 98) + ' ; blocs de 9 à 20' + N + 'min, ' + plage(vc, 92, 96) + '. En VO2max : blocs de 4' + H + '5' + N + 'min, ' + plage(vc, 105, 108) + ' ; blocs de 2' + H + '3' + N + 'min, ' + plage(vc, 108, 112) + '.'
-      : '';
+    // Les allures selon la durée des blocs (Z7) : seuil 2, puis VO2max.
+    $('bloc-blocs').hidden = !vc;
+    var tb = $('blocs');
+    tb.textContent = '';
+    if (vc) {
+      [
+        ['Seuil' + N + '2', 'fractions de 3' + H + '4' + N + 'min', 97, 100, '#0c6e5f'],
+        ['Seuil' + N + '2', 'blocs de 5 à 8' + N + 'min', 95, 98, '#0c6e5f'],
+        ['Seuil' + N + '2', 'blocs de 9 à 20' + N + 'min', 92, 96, '#0c6e5f'],
+        ['VO2max', 'blocs de 4' + H + '5' + N + 'min', 105, 108, '#245a63'],
+        ['VO2max', 'blocs de 2' + H + '3' + N + 'min', 108, 112, '#245a63']
+      ].forEach(function (l) {
+        var tr = document.createElement('tr');
+        var td = document.createElement('td');
+        td.className = 'nomzone'; td.style.background = l[4];
+        var b = document.createElement('strong'); b.textContent = l[0];
+        var sp = document.createElement('span'); sp.textContent = l[1];
+        td.appendChild(b); td.appendChild(sp); tr.appendChild(td);
+        var p = document.createElement('td'); p.className = 'chiffre'; p.textContent = l[2] + ' à ' + l[3] + N + '%'; tr.appendChild(p);
+        var al2 = document.createElement('td'); al2.className = 'chiffre';
+        al2.appendChild(document.createTextNode(plage(vc, l[2], l[3])));
+        var sm = document.createElement('small'); sm.textContent = plageKmh(vc, l[2], l[3]); al2.appendChild(sm);
+        tr.appendChild(al2);
+        tb.appendChild(tr);
+      });
+    }
   }
 
   $('avec3').addEventListener('change', function () { $('bloc3').hidden = !this.checked; calculer(); });
