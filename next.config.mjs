@@ -22,6 +22,9 @@ const nextConfig = {
     return [
       { source: '/bibliotheque', destination: '/bibliotheque/index.html' },
       { source: '/bibliotheque/:slug', destination: '/bibliotheque/:slug.html' },
+      // Le calculateur « Ton profil de traileur » : une page statique (public/calculateur.html),
+      // décision coach du 09/10/2026 (une page outil à part, liée depuis le menu et les fiches).
+      { source: '/calculateur', destination: '/calculateur.html' },
     ];
   },
   // Décommente la ligne ci-dessous pour un export statique pur (Netlify, GitHub Pages, etc.)

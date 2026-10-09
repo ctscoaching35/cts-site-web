@@ -21,6 +21,7 @@ export const nav = [
   { label: 'À propos', href: '#about' },
   { label: "L'offre", href: '#offre' },
   { label: 'Bibliothèque', href: '/bibliotheque' },
+  { label: 'Calculateur', href: '/calculateur' },
   { label: 'Contact', href: '#contact' },
 ];
 

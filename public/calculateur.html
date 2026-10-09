@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ton profil de traileur — calculateur CTS Coaching</title>
+<meta name="description" content="Calcule ta vitesse critique, ton D′, ton coefficient de Riegel et tes zones d'entraînement en RPE, en FC et en allure, à partir de trois tests de terrain. Rien n'est enregistré.">
+<link rel="stylesheet" href="/bibliotheque/fiche.css">
+<style>
+/* Le calculateur : la charte des fiches (fiche.css), plus ses champs et ses résultats. */
+.test { background: var(--cream); border-top: 3px solid var(--teal); padding: 1.2rem 1.3rem 1.3rem; margin: 0 0 1.6rem; }
+.test h2 { margin-top: 0; }
+.test p { font-size: 0.95rem; }
+.champs { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem 1rem; margin: 0.8rem 0 0.4rem; }
+.champs.trois { grid-template-columns: 1fr 1fr; }
+[hidden] { display: none !important; }
+.champ label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--navy); margin-bottom: 0.25rem; }
+.champ input { width: 100%; font: inherit; font-size: 1rem; padding: 0.55rem 0.65rem; border: 1px solid rgba(47, 45, 78, 0.25); border-radius: 6px; background: #ffffff; color: var(--navy); }
+.champ input:focus { outline: 2px solid var(--teal); outline-offset: 1px; border-color: var(--teal); }
+.effort { font-size: 0.82rem; font-weight: 700; color: var(--teal); grid-column: 1 / -1; margin-top: 0.4rem; }
+.option { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; margin-top: 0.6rem; cursor: pointer; }
+.option input { width: 1.1rem; height: 1.1rem; accent-color: var(--teal); }
+.message { font-size: 0.88rem; margin: 0.6rem 0 0; padding: 0.55rem 0.75rem; border-left: 3px solid var(--navy); background: #ffffff; }
+.message:empty { display: none; }
+.chiffres { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; margin: 0.9rem 0 0.2rem; }
+.chiffre { background: #ffffff; padding: 0.7rem 0.8rem; border-radius: 6px; }
+.chiffre .valeur { display: block; font-size: 1.35rem; font-weight: 800; color: var(--navy); line-height: 1.2; }
+.chiffre .nom { display: block; font-size: 0.75rem; color: var(--muted); }
+.profil { margin: 0.8rem 0 0; font-size: 0.95rem; }
+td.vide { color: var(--muted); }
+@media (max-width: 480px) { .champs, .champs.trois, .chiffres { gap: 0.6rem 0.7rem; } .chiffre .valeur { font-size: 1.15rem; } }
+@media print { .test input { border: none; } }
+</style>
+</head>
+<body>
+<header class="entete"><div class="entete-inner">
+  <a class="marque" href="/" aria-label="CTS Coaching — accueil"><img src="/bibliotheque/logo.png" alt="" width="40" height="40">CTS Coaching</a>
+  <a class="retour" href="/bibliotheque">Bibliothèque</a>
+</div></header>
+
+<section class="titre"><div class="titre-inner">
+  <span class="surtitre">Calculateur</span>
+  <h1>Ton profil de traileur</h1>
+  <p class="chapeau">Trois tests de terrain, un calcul : tes zones d'entraînement en RPE, en fréquence cardiaque (FC) et en allure sur le plat. Remplis ce que tu as ; le reste se complète test après test. Tout se calcule dans ton navigateur : rien n'est enregistré.</p>
+</div></section>
+
+<main>
+  <section class="test" aria-labelledby="t1">
+    <h2 id="t1">1. Le test de la parole : ton seuil 1</h2>
+    <p>Des paliers de 3 minutes sur le plat, de plus en plus rapides ; à la fin de chacun, tu comptes jusqu'à 30 et tu te demandes si tu parles confortablement. Au premier « pas vraiment », ta FC est ta FC au seuil 1 (fiche <a href="/bibliotheque/test-parole">Le test de la parole</a>).</p>
+    <div class="champs">
+      <div class="champ"><label for="fc1">FC au seuil 1 (battements/min)</label><input id="fc1" inputmode="numeric" placeholder="150" autocomplete="off"></div>
+      <div class="champ"><label for="v1">Vitesse de ce palier (km/h), facultatif</label><input id="v1" inputmode="decimal" placeholder="10" autocomplete="off"></div>
+    </div>
+    <p class="message" id="m1" role="status"></p>
+  </section>
+
+  <section class="test" aria-labelledby="t2">
+    <h2 id="t2">2. La vitesse critique : ton seuil 2 en allure</h2>
+    <p>Sur le plat, le même jour : 12 minutes à fond, 30 minutes de récupération, puis 3 minutes à fond. Note la distance de chaque effort. Tu peux aussi courir des distances fixes et noter tes chronos (fiche <a href="/bibliotheque/vitesse-critique">La vitesse critique</a>).</p>
+    <div class="champs trois">
+      <span class="effort">Effort long</span>
+      <div class="champ"><label for="d_long">Durée (min:s)</label><input id="d_long" inputmode="numeric" value="12:00" autocomplete="off"></div>
+      <div class="champ"><label for="x_long">Distance (m)</label><input id="x_long" inputmode="decimal" placeholder="2600" autocomplete="off"></div>
+      <span class="effort">Effort court</span>
+      <div class="champ"><label for="d_court">Durée (min:s)</label><input id="d_court" inputmode="numeric" value="3:00" autocomplete="off"></div>
+      <div class="champ"><label for="x_court">Distance (m)</label><input id="x_court" inputmode="decimal" placeholder="800" autocomplete="off"></div>
+    </div>
+    <label class="option"><input type="checkbox" id="avec3"> Ajouter un troisième effort (coaching individualisé)</label>
+    <div class="champs trois" id="bloc3" hidden>
+      <span class="effort">Troisième effort</span>
+      <div class="champ"><label for="d_moyen">Durée (min:s)</label><input id="d_moyen" inputmode="numeric" value="5:00" autocomplete="off"></div>
+      <div class="champ"><label for="x_moyen">Distance (m)</label><input id="x_moyen" inputmode="decimal" placeholder="1250" autocomplete="off"></div>
+    </div>
+    <p class="message" id="m2" role="status"></p>
+    <div id="r2" hidden>
+      <div class="chiffres">
+        <div class="chiffre"><span class="valeur" id="vc"></span><span class="nom">Vitesse critique</span></div>
+        <div class="chiffre"><span class="valeur" id="dp"></span><span class="nom">Réserve D′</span></div>
+        <div class="chiffre"><span class="valeur" id="riegel"></span><span class="nom">Coefficient de Riegel</span></div>
+        <div class="chiffre"><span class="valeur" id="s1est"></span><span class="nom">Seuil 1 estimé</span></div>
+      </div>
+      <p class="profil" id="profil"></p>
+    </div>
+  </section>
+
+  <section class="test" aria-labelledby="t3">
+    <h2 id="t3">3. Ta FC au seuil 2, mesurée en séance</h2>
+    <p>Une fois ta vitesse critique connue, sur le plat : 15 min d'échauffement, puis 2 blocs de 10 minutes à 95 % de ta vitesse critique<span id="allure95"></span>, 2 minutes de trot entre les deux. Ta FC à la fin du deuxième bloc est ta FC au seuil 2.</p>
+    <div class="champs">
+      <div class="champ"><label for="fc2">FC au seuil 2 (battements/min)</label><input id="fc2" inputmode="numeric" placeholder="170" autocomplete="off"></div>
+    </div>
+    <p class="message" id="m3" role="status"></p>
+  </section>
+
+  <h2>Tes zones d'entraînement</h2>
+  <div class="tableau">
+    <table>
+      <thead><tr><th>Zone</th><th>Ta FC</th><th>Ton allure sur le plat</th></tr></thead>
+      <tbody id="zones"></tbody>
+    </table>
+  </div>
+  <p id="detail"></p>
+  <p>Les allures valent sur le plat. En côte, règle-toi à la FC et au RPE ; en descente, au RPE seul. Sur les fractions courtes, ta FC n'a pas le temps de monter : regarde-la en fin de fraction, à partir de la troisième.</p>
+
+  <div class="retenir">
+    <p><strong>Le RPE décide.</strong> Ta FC et ton allure sont des repères : la chaleur, la fatigue, l'altitude ou une côte les font bouger. Si ta sensation ne correspond pas au chiffre, suis ta sensation (fiche <a href="/bibliotheque/rpe" style="color: var(--teal-light)">Le RPE et les sensations</a>).</p>
+  </div>
+</main>
+
+<footer class="pied"><div class="pied-inner">CTS Coaching — City to Summit. Ces repères informent, ils ne remplacent pas un avis médical personnalisé. Rien de ce que tu saisis n'est envoyé ni enregistré.</div></footer>
+
+<script>
+// Les calculs de « Tes zones » (lib/app/zones.ts) et de la fiche vitesse critique, à l'identique :
+// vitesse critique et D′ par la droite distance-durée (régression sur 2 ou 3 efforts), contrôles de
+// l'app ; coefficient de Riegel et seuil 1 estimé comme Rémi Rivet (décision coach du 09/10/2026) ;
+// zones de FC selon les règles de l'app (Z6), allures selon la fiche vitesse critique (Z7).
+(function () {
+  var N = ' ';
+  var $ = function (id) { return document.getElementById(id); };
+
+  function lireDuree(t) {
+    var m = /^\s*(\d{1,2})(?:\s*[:'h,.]\s*(\d{1,2}))?\s*$/.exec(t || '');
+    if (!m) return null;
+    return Number(m[1]) * 60 + Number(m[2] || 0);
+  }
+  function lireDistance(t) {
+    var n = Number(String(t || '').replace(/\s/g, '').replace(',', '.'));
+    if (!isFinite(n) || n <= 0) return null;
+    return n < 50 ? Math.round(n * 1000) : Math.round(n);
+  }
+  function lireNombre(t) {
+    var n = Number(String(t || '').replace(/\s/g, '').replace(',', '.'));
+    return isFinite(n) && n > 0 ? n : null;
+  }
+  function kmh(v) { return (v * 3.6).toFixed(1).replace('.', ','); }
+  function allure(v) {
+    var s = Math.round(1000 / v);
+    return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  }
+  // « 5:26 à 5:13/km » : du plus lent au plus rapide.
+  function plage(vc, bas, haut) { return allure(vc * bas / 100) + ' à' + N + allure(vc * haut / 100) + '/km'; }
+
+  // Vitesse critique : la droite distance = VC × durée + D′, sur 2 ou 3 efforts.
+  function vitesseCritique(efforts) {
+    var refaire = 'Tes efforts ne collent pas ensemble : refais le test, en partant moins vite sur le long.';
+    if (efforts.some(function (e) { return e.t < 120 || e.t > 900; })) return { erreur: 'Chaque effort doit durer de 2 à 15 minutes.' };
+    efforts.sort(function (a, b) { return a.t - b.t; });
+    var court = efforts[0], long = efforts[efforts.length - 1];
+    if (long.t - court.t < 300) return { erreur: 'Tes efforts doivent être bien écartés : au moins 5 minutes entre le plus court et le plus long.' };
+    if (court.d / court.t < 1.03 * (long.d / long.t)) return { erreur: refaire };
+    var n = efforts.length, tm = 0, dm = 0, sxy = 0, sxx = 0;
+    efforts.forEach(function (e) { tm += e.t / n; dm += e.d / n; });
+    efforts.forEach(function (e) { sxy += (e.t - tm) * (e.d - dm); sxx += (e.t - tm) * (e.t - tm); });
+    var vc = sxy / sxx, dp = dm - vc * tm;
+    if (vc < 2 || vc > 7 || dp < 20 || dp > 600) return { erreur: refaire };
+    // Coefficient de Riegel : 1 + la pente de ln(vitesse) en fonction de ln(durée).
+    var lx = 0, ly = 0, lxy = 0, lxx = 0;
+    efforts.forEach(function (e) { lx += Math.log(e.t) / n; ly += Math.log(e.d / e.t) / n; });
+    efforts.forEach(function (e) { lxy += (Math.log(e.t) - lx) * (Math.log(e.d / e.t) - ly); lxx += (Math.log(e.t) - lx) * (Math.log(e.t) - lx); });
+    var riegel = 1 + lxy / lxx;
+    var ecart = Math.max.apply(null, efforts.map(function (e) { return Math.abs(e.d - (vc * e.t + dp)) / e.d; }));
+    return { vc: vc, dp: dp, riegel: riegel, ecart: ecart };
+  }
+
+  function efforts() {
+    var lignes = [['d_long', 'x_long'], ['d_court', 'x_court']];
+    if ($('avec3').checked) lignes.push(['d_moyen', 'x_moyen']);
+    return lignes.map(function (l) { return { t: lireDuree($(l[0]).value), d: lireDistance($(l[1]).value) }; })
+                 .filter(function (e) { return e.t && e.d; });
+  }
+
+  function calculer() {
+    var fc1 = lireNombre($('fc1').value), v1 = lireNombre($('v1').value), fc2 = lireNombre($('fc2').value);
+    var m1 = '', m2 = '', m3 = '';
+    if ($('fc1').value && (!fc1 || fc1 < 90 || fc1 > 210)) { m1 = 'Ta FC au seuil 1 doit être entre 90 et 210 battements par minute.'; fc1 = null; }
+    if ($('fc2').value && (!fc2 || fc2 < 100 || fc2 > 220)) { m3 = 'Ta FC au seuil 2 doit être entre 100 et 220 battements par minute.'; fc2 = null; }
+    if (fc1 && fc2 && fc2 - fc1 < 10) { m3 = 'Ta FC au seuil 2 devrait être nettement au-dessus de ta FC au seuil 1 (au moins 10 battements) : vérifie tes deux tests.'; fc2 = null; }
+
+    // La vitesse critique
+    var e = efforts(), r = null;
+    if (e.length >= 2) {
+      r = vitesseCritique(e);
+      if (r.erreur) { m2 = r.erreur; r = null; }
+    }
+    $('r2').hidden = !r;
+    $('allure95').textContent = r ? ' (' + allure(r.vc * 0.95) + '/km)' : '';
+    if (r) {
+      var f1 = r.riegel > 0.93 ? 0.85 : r.riegel >= 0.9 ? 0.84 : 0.82;
+      $('vc').textContent = kmh(r.vc) + N + 'km/h · ' + allure(r.vc) + '/km';
+      $('dp').textContent = Math.round(r.dp) + N + 'm';
+      $('riegel').textContent = r.riegel.toFixed(2).replace('.', ',');
+      $('s1est').textContent = kmh(r.vc * f1) + N + 'km/h · ' + Math.round(f1 * 100) + N + '%';
+      var texte = r.riegel < 0.9
+        ? 'Profil plutôt rapide : ta vitesse baisse vite quand l’effort s’allonge. On travaille d’abord des blocs longs juste sous ta vitesse critique, le tempo et le volume d’endurance.'
+        : 'Profil plutôt endurant : tu tiens bien ta vitesse sur la durée. On travaille d’abord des intervalles courts au-dessus de ta vitesse critique.';
+      texte += ' Repère de 0,90 pour des efforts de 5 à 17 minutes ; avec 3 et 12 minutes, le coefficient sort un peu plus bas.';
+      if (v1) texte += ' Ton seuil 1 mesuré au test de la parole tombe à ' + Math.round(v1 / 3.6 / r.vc * 100) + N + '% de ta vitesse critique (en moyenne, 82 à 85' + N + '%).';
+      $('profil').textContent = texte;
+      if (e.length === 3 && r.ecart > 0.02) m2 = 'Un de tes trois efforts s’écarte de la droite : il est sans doute à refaire.';
+    }
+    $('m1').textContent = m1; $('m2').textContent = m2; $('m3').textContent = m3;
+
+    // Les zones : FC selon les règles de l'app, allures selon la fiche vitesse critique.
+    var vc = r ? r.vc : null;
+    var tiret = '—';
+    var lignes = [
+      ['Récupération', 'RPE 2', 'RPE seul', vc ? 'Très lent' : null],
+      ['Endurance fondamentale', 'RPE 3', fc1 ? 'Sous' + N + (fc1 - 5) : null, vc ? 'Plus lent que ' + allure(vc * 0.8) + '/km' : null],
+      ['Seuil' + N + '1', 'RPE 4\u20115', fc1 ? 'De' + N + fc1 + ' à' + N + (fc1 + 5) : null, vc ? plage(vc, 80, 85) + ', environ' : null],
+      ['Tempo', 'RPE 6', fc1 && fc2 ? 'De' + N + (fc1 + 5) + ' à' + N + (fc2 - 5) : null, vc ? plage(vc, 85, 92) + ', environ' : null],
+      ['Seuil' + N + '2', 'RPE 7', fc2 ? 'De' + N + (fc2 - 5) + ' à' + N + fc2 : null, vc ? plage(vc, 92, 100) : null],
+      ['VO2max', 'RPE 8', 'RPE seul', vc ? plage(vc, 105, 112) : null],
+      ['Sprint', 'RPE 9', 'RPE seul', 'RPE seul']
+    ];
+    var corps = $('zones');
+    corps.textContent = '';
+    lignes.forEach(function (l) {
+      var tr = document.createElement('tr');
+      var z = document.createElement('td');
+      var b = document.createElement('strong'); b.textContent = l[0];
+      z.appendChild(b); z.appendChild(document.createElement('br')); z.appendChild(document.createTextNode(l[1]));
+      tr.appendChild(z);
+      [l[2], l[3]].forEach(function (v) {
+        var td = document.createElement('td');
+        if (v === null) { td.textContent = tiret; td.className = 'vide'; } else td.textContent = v;
+        tr.appendChild(td);
+      });
+      corps.appendChild(tr);
+    });
+    $('detail').textContent = vc
+      ? 'Au seuil' + N + '2, plus le bloc est long, plus on se place sous ta vitesse critique : fractions de 3\u20114' + N + 'min, ' + plage(vc, 97, 100) + ' ; blocs de 5 à 8' + N + 'min, ' + plage(vc, 95, 98) + ' ; blocs de 9 à 20' + N + 'min, ' + plage(vc, 92, 96) + '. En VO2max : blocs de 4\u20115' + N + 'min, ' + plage(vc, 105, 108) + ' ; blocs de 2\u20113' + N + 'min, ' + plage(vc, 108, 112) + '.'
+      : 'Les cases vides se remplissent à mesure que tu fais les tests : le test de la parole donne ta FC d’endurance et de seuil' + N + '1, la vitesse critique tes allures, la séance de seuil' + N + '2 ta FC de tempo et de seuil' + N + '2.';
+  }
+
+  $('avec3').addEventListener('change', function () { $('bloc3').hidden = !this.checked; calculer(); });
+  ['fc1', 'v1', 'fc2', 'd_long', 'x_long', 'd_court', 'x_court', 'd_moyen', 'x_moyen'].forEach(function (id) {
+    $(id).addEventListener('input', calculer);
+  });
+  calculer();
+})();
+</script>
+</body>
+</html>
