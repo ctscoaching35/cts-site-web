@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ton profil de traileur — calculateur CTS Coaching</title>
-<meta name="description" content="Calculateur gratuit : à partir de trois tests de terrain, ta vitesse critique, ta réserve D′, ton coefficient de Riegel et tes zones d'entraînement en RPE, en FC et en allure. Rien n'est enregistré.">
+<meta name="description" content="Calculateur gratuit : à partir de trois tests de terrain, ta vitesse critique, ton profil de coureur avec des conseils d'entraînement, et tes zones en RPE, en FC et en allure. Rien n'est enregistré.">
 <link rel="stylesheet" href="/bibliotheque/fiche.css">
 <style>
 /* Le calculateur : la charte des fiches (fiche.css), plus ses champs et son profil. */
@@ -28,14 +28,12 @@
 .profil-tete { background: var(--navy); color: #ffffff; padding: 1.3rem 1.3rem 1.1rem; margin-top: 2.4rem; }
 .profil-tete h2 { color: #ffffff; margin: 0 0 0.3rem; }
 .profil-tete p { color: #d9d8e6; font-size: 0.92rem; margin: 0; }
-.cartes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin: 1rem 0 0; }
+.cartes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.6rem; margin: 1rem 0 0; }
 .carte-chiffre { background: rgba(255, 255, 255, 0.08); border-radius: 6px; padding: 0.65rem 0.7rem; }
 .carte-chiffre .valeur { display: block; font-size: 1.25rem; font-weight: 800; line-height: 1.2; color: #ffffff; }
 .carte-chiffre .sous { display: block; font-size: 0.78rem; color: var(--teal-light); }
 .carte-chiffre .nom { display: block; font-size: 0.72rem; color: #b9b8cc; margin-top: 0.15rem; }
 .carte-chiffre.vide .valeur { color: #8d8ba6; }
-.profil-texte { background: var(--teal-wash); border-left: 4px solid var(--teal); padding: 0.8rem 1rem; margin: 0; font-size: 0.93rem; }
-.profil-texte:empty { display: none; }
 table.zones { width: 100%; border-collapse: separate; border-spacing: 0 4px; margin-top: 0.6rem; }
 table.zones th { background: none; color: var(--muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; padding: 0.2rem 0.6rem; text-align: left; }
 table.zones td { padding: 0.6rem 0.6rem; vertical-align: middle; background: #ffffff; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
@@ -49,9 +47,24 @@ table.zones td.vide { color: #a5a4b8; font-weight: 400; }
 tr.clair td.nomzone { color: var(--navy); }
 .imprimer { display: inline-block; margin: 1.2rem 0 0; font: inherit; font-weight: 700; font-size: 0.95rem; color: #ffffff; background: var(--teal); border: none; border-radius: 6px; padding: 0.7rem 1.1rem; cursor: pointer; }
 .imprimer:hover { background: #0a5c4f; }
+
+/* Le bloc « Ton profil » : la jauge du coefficient de Riegel et les conseils, loin et près de l'objectif. */
+.profil-bloc { background: var(--cream); border-left: 4px solid var(--teal); padding: 1rem 1.1rem 0.9rem; margin: 0 0 0.6rem; }
+.profil-bloc h3 { margin: 0 0 0.7rem; color: var(--navy); }
+.jauge { margin: 0 0 0.9rem; }
+.jauge-barre { position: relative; height: 10px; border-radius: 5px; background: linear-gradient(90deg, #2f2d4e, #0c6e5f 50%, #8fd1c3); }
+.jauge-seuil { position: absolute; left: 50%; top: -4px; bottom: -4px; width: 2px; background: var(--navy); opacity: 0.5; }
+.jauge-repere { position: absolute; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; background: #ffffff; border: 3px solid var(--navy); }
+.jauge-legende { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--muted); margin-top: 0.4rem; }
+.conseils { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; margin: 0.6rem 0 0.4rem; }
+.conseil { background: #ffffff; border-radius: 6px; padding: 0.7rem 0.8rem; }
+.conseil h4 { margin: 0 0 0.3rem; font-size: 0.85rem; color: var(--teal); }
+.conseil p { margin: 0; font-size: 0.9rem; }
+.profil-bloc .petit { font-size: 0.8rem; color: var(--muted); margin: 0.5rem 0 0; }
 @media (max-width: 480px) {
   .champs { gap: 0.6rem 0.7rem; }
   .cartes { grid-template-columns: 1fr 1fr; }
+  .conseils { grid-template-columns: 1fr; }
   .carte-chiffre .valeur { font-size: 1.1rem; }
   table.zones td { padding: 0.5rem 0.45rem; font-size: 0.85rem; }
 }
@@ -124,11 +137,21 @@ tr.clair td.nomzone { color: var(--navy); }
         <div class="carte-chiffre" id="c_fc2"><span class="valeur"></span><span class="sous"></span><span class="nom">FC au seuil 2</span></div>
         <div class="carte-chiffre" id="c_vc"><span class="valeur"></span><span class="sous"></span><span class="nom">Vitesse critique</span></div>
         <div class="carte-chiffre" id="c_s1"><span class="valeur"></span><span class="sous"></span><span class="nom">Seuil 1 estimé</span></div>
-        <div class="carte-chiffre" id="c_dp"><span class="valeur"></span><span class="sous"></span><span class="nom">Réserve D′</span></div>
-        <div class="carte-chiffre" id="c_ri"><span class="valeur"></span><span class="sous"></span><span class="nom">Coefficient de Riegel</span></div>
       </div>
     </div>
-    <p class="profil-texte" id="profil"></p>
+    <div class="profil-bloc" id="profil-bloc" hidden>
+      <h3>Ton profil : <span id="p_nom"></span></h3>
+      <div class="jauge" aria-hidden="true">
+        <div class="jauge-barre"><span class="jauge-seuil"></span><span class="jauge-repere" id="p_repere"></span></div>
+        <div class="jauge-legende"><span>plutôt rapide</span><span>0,90</span><span>plutôt endurant</span></div>
+      </div>
+      <p id="p_texte"></p>
+      <div class="conseils">
+        <div class="conseil"><h4>Loin de ton objectif</h4><p id="p_loin"></p></div>
+        <div class="conseil"><h4>À l'approche de ton objectif</h4><p id="p_pres"></p></div>
+      </div>
+      <p class="petit" id="p_note"></p>
+    </div>
 
     <table class="zones" aria-label="Tes zones d'entraînement">
       <thead><tr><th>Zone</th><th>Ta FC</th><th>Ton allure sur le plat</th></tr></thead>
@@ -250,23 +273,34 @@ tr.clair td.nomzone { color: var(--navy); }
     carte('c_fc2', fc2 ? fc2 + N + 'bpm' : null, fc2 ? 'seuil' + N + '2 de ' + (fc2 - 5) + ' à ' + fc2 : 'séance de seuil' + N + '2');
     carte('c_vc', r ? kmh(r.vc) + N + 'km/h' : null, r ? allure(r.vc) + '/km' : 'test de vitesse critique');
     carte('c_s1', r ? kmh(r.vc * f1) + N + 'km/h' : null, r ? allure(r.vc * f1) + '/km · ' + Math.round(f1 * 100) + N + '%' : 'avec la vitesse critique');
-    carte('c_dp', r ? Math.round(r.dp) + N + 'm' : null, r ? 'au-dessus de ta VC' : 'avec la vitesse critique');
-    carte('c_ri', r ? r.riegel.toFixed(2).replace('.', ',') : null, r ? (r.riegel < 0.9 ? 'profil plutôt rapide' : 'profil plutôt endurant') : 'avec la vitesse critique');
 
     var faits = [fc1, r, fc2].filter(Boolean).length;
     $('etat').textContent = faits === 3
       ? 'Ton profil est complet : voici tes zones, en FC et en allure.'
       : 'Tests remplis : ' + faits + ' sur 3. Les cases se remplissent à mesure que tu fais les tests.';
 
-    var texte = '';
+    // Le profil : la jauge du coefficient de Riegel et les conseils, loin et près de l'objectif
+    // (approche du coach, 09/10/2026 : le point faible à distance, le point fort et la spécificité
+    // de l'épreuve à l'approche).
+    $('profil-bloc').hidden = !r;
     if (r) {
-      texte = r.riegel < 0.9
-        ? 'Profil plutôt rapide : ta vitesse baisse vite quand l’effort s’allonge. À travailler d’abord : des blocs longs juste sous ta vitesse critique, le tempo et le volume d’endurance.'
-        : 'Profil plutôt endurant : tu tiens bien ta vitesse sur la durée. À travailler d’abord : des intervalles courts au-dessus de ta vitesse critique.';
-      texte += ' Le repère de 0,90 vaut pour des efforts de 5 à 17 minutes ; avec 3 et 12 minutes, le coefficient sort un peu plus bas.';
-      if (v1) texte += ' Ton seuil' + N + '1 mesuré au test de la parole tombe à ' + Math.round(v1 / 3.6 / r.vc * 100) + N + '% de ta vitesse critique (en moyenne, 82 à 85' + N + '%).';
+      var rapide = r.riegel < 0.9;
+      var coef = r.riegel.toFixed(2).replace('.', ',');
+      $('p_nom').textContent = rapide ? 'plutôt rapide' : 'plutôt endurant';
+      $('p_repere').style.left = Math.max(0, Math.min(100, (r.riegel - 0.8) / 0.2 * 100)) + '%';
+      $('p_texte').textContent = rapide
+        ? 'Ton coefficient de Riegel est de ' + coef + ' : ta vitesse baisse vite quand l\u2019effort s\u2019allonge. Ton point fort, ce sont les efforts courts et intenses ; ton point faible, l\u2019endurance.'
+        : 'Ton coefficient de Riegel est de ' + coef + ' : tu tiens bien ta vitesse quand l\u2019effort s\u2019allonge. Ton point fort, c\u2019est l\u2019endurance ; ton point faible, la vitesse.';
+      $('p_loin').textContent = rapide
+        ? 'Travaille ton point faible, l\u2019endurance : des blocs longs juste sous ta vitesse critique, du tempo, du seuil' + N + '1 et du volume d\u2019endurance. Garde quelques rappels de vitesse.'
+        : 'Travaille ton point faible, la vitesse : des intervalles courts au-dessus de ta vitesse critique, des côtes courtes, des accélérations. Garde ton volume d\u2019endurance.';
+      $('p_pres').textContent = rapide
+        ? 'Appuie-toi sur ta vitesse, ton point fort, et sur la spécificité de ton épreuve : sa durée, son dénivelé, son allure de course. Sur un format long, des sorties longues sur un terrain proche de la course.'
+        : 'Appuie-toi sur ton endurance, ton point fort, et sur la spécificité de ton épreuve : sa durée, son dénivelé, son allure de course. Sur un format court, des séances à l\u2019allure de course.';
+      var note = 'Le repère de 0,90 vaut pour des efforts de 5 à 17' + N + 'minutes ; avec 3 et 12' + N + 'minutes, le coefficient sort un peu plus bas. Ce profil oriente l\u2019entraînement ; tes sensations et ton objectif décident.';
+      if (v1) note += ' Ton seuil' + N + '1 mesuré au test de la parole tombe à ' + Math.round(v1 / 3.6 / r.vc * 100) + N + '% de ta vitesse critique (en moyenne, 82 à 85' + N + '%).';
+      $('p_note').textContent = note;
     }
-    $('profil').textContent = texte;
 
     // Le tableau des zones
     var vc = r ? r.vc : null;
