@@ -25,6 +25,10 @@ const nextConfig = {
       // Le calculateur « Ton profil de traileur » : une page statique (public/calculateur.html),
       // décision coach du 09/10/2026 (une page outil à part, liée depuis le menu et les fiches).
       { source: '/calculateur', destination: '/calculateur.html' },
+      // Le calculateur « Ta nutrition en course » et la page qui présente les deux calculateurs
+      // (décision coach du 10/10/2026 : une page à part, le menu devient « Calculateurs »).
+      { source: '/calculateur-nutrition', destination: '/calculateur-nutrition.html' },
+      { source: '/calculateurs', destination: '/calculateurs.html' },
     ];
   },
   // Décommente la ligne ci-dessous pour un export statique pur (Netlify, GitHub Pages, etc.)
