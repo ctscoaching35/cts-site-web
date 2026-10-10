@@ -71,8 +71,9 @@
     </div>
     <p class="effort">Les conditions annoncées</p>
     <label class="option"><input type="radio" name="conditions" id="cond_frais" value="frais"> Frais : moins de 15 °C</label>
-    <label class="option"><input type="radio" name="conditions" id="cond_tempere" value="tempere" checked> Tempéré</label>
-    <label class="option"><input type="radio" name="conditions" id="cond_chaud" value="chaud"> Chaud ou lourd : plus de 25 °C, ou très humide</label>
+    <label class="option"><input type="radio" name="conditions" id="cond_tempere" value="tempere" checked> Tempéré : de 15 à 25 °C</label>
+    <label class="option"><input type="radio" name="conditions" id="cond_chaud" value="chaud"> Chaud et sec : plus de 25 °C</label>
+    <label class="option"><input type="radio" name="conditions" id="cond_humide" value="humide"> Chaud et humide : plus de 25 °C, air lourd</label>
     <label class="option"><input type="checkbox" id="nuit"> Ma course passe la nuit</label>
     <p class="message" id="m1" role="status"></p>
   </section>
@@ -119,19 +120,25 @@
 <footer class="pied"><div class="pied-inner">CTS Coaching — City to Summit. Ces repères informent, ils ne remplacent pas un avis médical personnalisé. Rien de ce que tu saisis n'est envoyé ni enregistré.</div></footer>
 
 <script>
-// Les chiffres communs de la bibliothèque (bibliotheque/PROMPT_FICHE.md), à l'identique :
+// Les chiffres communs de la bibliothèque (bibliotheque/PROMPT_FICHE.md) :
 // glucides dès 1 h, 30 à 60 g/h jusqu'à 2 h 30, jusqu'à 90 g/h au-delà si l'intestin est entraîné,
 // au-delà de 8 h souvent 30 à 50 g/h (60 et plus avec un intestin entraîné) ; glucose + fructose
 // au-delà de 60 g/h, de 2:1 à 1:0,8 en approchant 90 g/h ; sodium : rien de systématique sous 3 h
 // sauf forte chaleur (boisson salée à 0,5-0,7 g/L), au-delà 500 à 700 mg par litre bu ; boire à sa
 // soif ; caféine : environ 3 mg/kg une heure avant une course courte (au plus 200 mg), 1 à 2 mg/kg
 // par prise sur une course longue, au plus 200 mg par prise et 400 mg par 24 h.
-// Les entrées niveau, intestin en trois niveaux et sueur s'inspirent du calculateur « Nutrition à
-// l'effort » de Courir Mieux ; les chiffres, les textes et le calcul sont ceux de CTS (décisions coach
-// du 10/10/2026) : nos chiffres communs ; la chaleur en trois choix ; l'eau au repère de l'ACSM
-// (0,4 à 0,8 L/h, un peu plus au chaud, Thomas 2016), la consigne restant « à ta soif » ; le sodium
-// au litre bu, placé selon la sueur ; ni potassium ni magnésium. Le 10/10/2026 au soir, le coach a
-// voulu des doses seulement, sans les produits de la personne : plus de plan ni de liste à emporter.
+// Le 10/10/2026, le coach veut de petites fourchettes, sans les produits de la personne :
+// - glucides : une sous-fourchette de la fourchette commune, placée selon le niveau et l'intestin ;
+// - boisson : « à ta soif », avec une fourchette selon la chaleur et l'humidité, tirée de l'ACSM
+//   (0,4 à 0,8 L/h, le bas au frais, le haut au chaud ; Sawka 2007, Thomas 2016) et de l'ISSN
+//   (0,45 à 0,75 L/h, davantage au chaud et à l'humide ; Tiller 2019) : frais 400-600, tempéré
+//   500-700, chaud et sec 600-800, chaud et humide 700-900 mL/h ; jamais de prise de poids
+//   (Hew-Butler 2015, Kenefick 2018) ;
+// - sodium : la concentration par litre bu (selon la sueur et la chaleur) multipliée par le milieu
+//   de la fourchette de boisson ;
+// - caféine : 2,5 à 3 mg/kg avant une course courte, au plus 200 mg ; 1 à 2 mg/kg par prise sinon.
+// Les entrées niveau, intestin et sueur s'inspirent du calculateur de Courir Mieux ; les chiffres,
+// les textes et le calcul sont ceux de CTS.
 (function () {
   var N = ' ';
   var $ = function (id) { return document.getElementById(id); };
@@ -155,7 +162,8 @@
   }
   function choix(nom) { var e = document.querySelector('input[name="' + nom + '"]:checked'); return e ? e.value : null; }
   function entier(x) { return String(Math.round(x)).replace(/\B(?=(\d{3})+(?!\d))/g, N); }
-  function dizaine(x) { return entier(Math.round(x / 10) * 10); }
+  function arrondi(x, pas) { return Math.round(x / pas) * pas; }
+  function fourchette(a, b, unite) { return a === b ? entier(a) + N + unite : entier(a) + ' à ' + entier(b) + N + unite; }
   function enHeures(h) {
     if (h < 1) return Math.round(h * 60) + N + 'min';
     var hh = Math.floor(h), mm = Math.round((h - hh) * 60);
@@ -168,88 +176,87 @@
     c.querySelector('.sous').textContent = sous || '';
   }
 
-  // La fourchette de glucides par heure (chiffres communs), et la dose proposée selon le niveau et l'intestin.
+  // Les glucides : la fourchette commune, et une petite fourchette placée selon le niveau et l'intestin.
   function glucides(D, intestin, niveau) {
-    var choisir = function (deb, inte, exp) { return niveau === 'deb' ? deb : niveau === 'exp' ? exp : inte; };
+    var selon = function (deb, inte, exp) { return niveau === 'deb' ? deb : niveau === 'exp' ? exp : inte; };
     if (D < 1) return null;
-    if (D <= 2.5) return { bas: 30, haut: 60, dose: choisir(40, 50, 55) };
+    if (D <= 2.5) return { conseil: [30, 60], dose: selon([30, 45], [45, 55], [50, 60]) };
     if (D <= 8) {
-      if (intestin === 'oui') return { bas: 60, haut: 90, dose: choisir(60, 70, 80) };
-      return { bas: 30, haut: 60, dose: intestin === 'cours' ? choisir(50, 60, 60) : 50 };
+      if (intestin === 'oui') return { conseil: [60, 90], dose: selon([60, 70], [65, 75], [75, 90]) };
+      return { conseil: [30, 60], dose: intestin === 'cours' ? selon([45, 55], [50, 60], [50, 60]) : [40, 50] };
     }
-    if (intestin === 'oui') return { bas: 60, haut: 90, dose: choisir(60, 65, 75) };
-    return { bas: 30, haut: 50, dose: intestin === 'cours' ? 45 : 40 };
+    if (intestin === 'oui') return { conseil: [60, 90], dose: selon([60, 65], [60, 70], [70, 80]) };
+    return { conseil: [30, 50], dose: intestin === 'cours' ? [40, 50] : [30, 40] };
   }
+
+  // La boisson, selon la chaleur et l'humidité (ACSM, ISSN) : à ta soif, dans cette fourchette.
+  var BOISSON = { frais: [400, 600], tempere: [500, 700], chaud: [600, 800], humide: [700, 900] };
 
   function calculer() {
     var D = lireHeures($('duree').value), P = nombre($('poids').value);
-    var conditions = choix('conditions'), nuit = $('nuit').checked, niveau = choix('niveau'), intestin = choix('intestin'), sueur = choix('sueur');
-    var chaud = conditions === 'chaud', m1 = [];
+    var conditions = choix('conditions') || 'tempere', nuit = $('nuit').checked, niveau = choix('niveau'), intestin = choix('intestin'), sueur = choix('sueur');
+    var chaud = conditions === 'chaud' || conditions === 'humide', m1 = [];
     if (D !== null && (isNaN(D) || D <= 0 || D > 72)) { m1.push('Indique une durée entre quelques minutes et 72' + N + 'heures, par exemple 5:30.'); D = null; }
     if (P !== null && (isNaN(P) || P < 35 || P > 150)) { m1.push('Ton poids doit être entre 35 et 150' + N + 'kg.'); P = null; }
     $('m1').textContent = m1.join(' ');
     if (D === null) { $('resultat').hidden = true; return; }
 
     $('resultat').hidden = false;
-    $('etat').textContent = 'Pour une course de ' + enHeures(D) + (chaud ? ', par forte chaleur' : conditions === 'frais' ? ', au frais' : '') + '.';
+    var libelle = { frais: ', au frais', tempere: '', chaud: ', par temps chaud et sec', humide: ', par temps chaud et humide' }[conditions];
+    $('etat').textContent = 'Pour une course de ' + enHeures(D) + libelle + '.';
     var consignes = [];
-
-    // La boisson : à ta soif ; le repère de l'ACSM, et la valeur typique qui sert au sodium par heure.
-    var boire = conditions === 'chaud' ? 800 : conditions === 'frais' ? 500 : 600;
-    carte('c_eau', 'À ta soif', 'souvent 400 à 800' + N + 'mL' + (chaud ? ', plus au chaud' : ''));
 
     // Les glucides.
     var g = glucides(D, intestin, niveau);
     if (!g) {
       carte('c_cho', 'Rien', 'à prévoir sous 1' + N + 'h');
-      consignes.push('Sous 1' + N + 'heure, rien à prévoir. Effort intense de 45' + N + 'min à 1' + N + 'h' + N + '15' + N + ': une petite prise, ou un rinçage de bouche (une gorgée de boisson sucrée gardée en bouche puis recrachée).');
+      consignes.push('Glucides : sous 1' + N + 'heure, rien à prévoir. Effort intense de 45' + N + 'min à 1' + N + 'h' + N + '15' + N + ': une petite prise, ou un rinçage de bouche (une gorgée de boisson sucrée gardée en bouche puis recrachée).');
     } else {
-      carte('c_cho', g.dose + N + 'g', g.bas + ' à ' + g.haut + N + 'g conseillés');
-      consignes.push('Glucides : environ ' + g.dose + N + 'g par heure (' + g.bas + ' à ' + g.haut + N + 'g conseillés), soit ' + entier(g.dose * D) + N + 'g sur ta course. Commence dès la première heure, par petites prises toutes les 15 à 30' + N + 'minutes, sans attendre la faim.');
-      if (g.dose > 60) consignes.push('Au-delà de 60' + N + 'g par heure : des produits qui associent glucose et fructose, dans un rapport de 2 pour 1' + (g.dose >= 80 ? ', ou mieux de 1 pour 0,8 à ce niveau.' : ', ou de 1 pour 0,8 en approchant 90' + N + 'g.'));
+      carte('c_cho', fourchette(g.dose[0], g.dose[1], 'g'), 'par heure');
+      consignes.push('Glucides : ' + fourchette(g.dose[0], g.dose[1], 'g') + ' par heure, dans la fourchette conseillée de ' + g.conseil[0] + ' à ' + g.conseil[1] + N + 'g, soit environ ' + fourchette(arrondi(g.dose[0] * D, 10), arrondi(g.dose[1] * D, 10), 'g') + ' sur ta course. Commence dès la première heure, par petites prises toutes les 15 à 30' + N + 'minutes, sans attendre la faim.');
+      if (g.dose[1] > 60) consignes.push('Au-delà de 60' + N + 'g par heure : des produits qui associent glucose et fructose, dans un rapport de 2 pour 1, ou de 1 pour 0,8 en approchant 90' + N + 'g.');
       if (intestin !== 'oui' && D > 2.5) consignes.push('Ton intestin n’est pas encore entraîné : reste dans ta fourchette, et monte d’une dizaine de grammes par heure à chaque sortie longue tant que ton ventre suit.');
       if (D > 4 && D <= 8) consignes.push('Le salé est une option selon ton appétit : à tester sur tes sorties de 4 à 8' + N + 'heures.');
       if (D > 8) consignes.push('Au-delà de 8' + N + 'heures : l’appétit baisse souvent. Alterne sucré et salé, varie les textures ; du solide qui apporte des glucides (barres, sandwich, pommes de terre) compte dans ta dose.');
     }
 
-    // Le sodium : au litre bu (chiffres communs), placé selon la sueur ; l'heure, pour la boisson typique.
+    // La boisson.
+    var b = BOISSON[conditions], milieu = (b[0] + b[1]) / 2;
+    carte('c_eau', fourchette(b[0], b[1], 'mL'), 'par heure, à ta soif');
+    consignes.push('Boisson : bois à ta soif, ce qui fait souvent ' + fourchette(b[0], b[1], 'mL') + ' par heure dans ces conditions' + (conditions === 'humide' ? ' : l’air lourd fait transpirer davantage' : '') + '. Plutôt le bas si tu es léger ou lent, le haut si tu es lourd ou rapide. Ne te force pas au-delà de ta soif, et ne prends jamais de poids en course : mains gonflées, nausées, maux de tête, confusion, arrête de boire et préviens les secours.');
+
+    // Le sodium : la concentration par litre bu (selon la sueur et la chaleur), au milieu de la fourchette de boisson.
     if (D < 1) {
       carte('c_na', 'Rien', 'de systématique sous 1' + N + 'h');
-    } else if (D <= 3) {
-      if (chaud) {
-        carte('c_na', '500 à 700' + N + 'mg', 'par litre bu, dès la 1re heure');
-        consignes.push('Sodium : forte chaleur, une boisson d’effort salée dès la première heure, à 500 à 700' + N + 'mg de sodium par litre.');
-      } else {
-        carte('c_na', 'Rien', 'de systématique sous 3' + N + 'h');
-      }
+    } else if (D <= 3 && !chaud) {
+      carte('c_na', 'Rien', 'de systématique sous 3' + N + 'h');
     } else {
-      var parL = sueur === 'faible' ? [500, 500] : sueur === 'elevee' ? [700, 800] : [500, 700];
-      if (chaud && sueur !== 'elevee') parL = [parL[0], 800];
-      var unique = parL[0] === parL[1];
-      carte('c_na', unique ? 'Environ ' + parL[0] + N + 'mg' : parL[0] + ' à ' + parL[1] + N + 'mg', 'par litre bu');
-      consignes.push('Sodium : ' + (unique ? 'environ ' + parL[0] : parL[0] + ' à ' + parL[1]) + N + 'mg par litre bu, soit ' + (unique ? 'environ ' + dizaine(boire / 1000 * parL[0]) : dizaine(boire / 1000 * parL[0]) + ' à ' + dizaine(boire / 1000 * parL[1])) + N + 'mg par heure si tu bois ' + boire + N + 'mL.' + (sueur === 'elevee' ? ' Ta sueur est salée : vise le haut, voire un peu plus.' : sueur === 'faible' ? ' Ta sueur est peu salée : le bas suffit.' : chaud ? ' Par forte chaleur, un peu plus.' : ''));
+      var parL = D <= 3 ? [500, 700] : sueur === 'faible' ? [500, 500] : sueur === 'elevee' ? [700, 800] : [500, 700];
+      if (D > 3 && chaud && sueur !== 'elevee') parL = [parL[0], 800];
+      var na = [arrondi(milieu / 1000 * parL[0], 10), arrondi(milieu / 1000 * parL[1], 10)];
+      carte('c_na', fourchette(na[0], na[1], 'mg'), 'par heure');
+      consignes.push('Sodium : ' + fourchette(na[0], na[1], 'mg') + ' par heure, soit ' + fourchette(parL[0], parL[1], 'mg') + ' par litre bu' + (D <= 3 ? ', dès la première heure par forte chaleur, dans une boisson d’effort salée.' : '.') + (D > 3 && sueur === 'elevee' ? ' Ta sueur est salée : vise le haut, voire un peu plus.' : D > 3 && sueur === 'faible' ? ' Ta sueur est peu salée : le bas suffit.' : D > 3 && chaud ? ' Par forte chaleur, plutôt le haut.' : ''));
     }
 
     // La caféine : jamais pour la première fois le jour J, plafonnée à 200 mg par prise et 400 mg par 24 h.
     if (P === null) {
       carte('c_caf', '—', 'indique ton poids');
     } else if (D < 3) {
-      var dose = Math.round(Math.min(200, 3 * P) / 5) * 5;
-      carte('c_caf', dose + N + 'mg', 'une heure avant');
-      consignes.push('Caféine, si tu l’as testée : ' + dose + N + 'mg environ une heure avant le départ (environ 3' + N + 'mg par kilo, au plus 200' + N + 'mg).');
+      var c = [arrondi(Math.min(200, 2.5 * P), 5), arrondi(Math.min(200, 3 * P), 5)];
+      carte('c_caf', fourchette(c[0], c[1], 'mg'), 'une heure avant');
+      consignes.push('Caféine, si tu l’as testée : ' + fourchette(c[0], c[1], 'mg') + ' environ une heure avant le départ (environ 3' + N + 'mg par kilo, au plus 200' + N + 'mg).');
     } else {
-      var pb = Math.min(200, P), ph = Math.min(200, 2 * P), nmax = Math.floor(400 / ph);
-      carte('c_caf', Math.round(pb) + ' à ' + Math.round(ph) + N + 'mg', 'par prise');
-      consignes.push('Caféine, si tu l’as testée : de petites prises de ' + Math.round(pb) + ' à ' + Math.round(ph) + N + 'mg (1 à 2' + N + 'mg par kilo), ' + (nuit ? 'la nuit et vers la fin' : 'dans la seconde moitié, vers la fin') + '. Au plus 400' + N + 'mg par 24' + N + 'h, soit ' + nmax + ' prises de ' + Math.round(ph) + N + 'mg au plus. Compte aussi le cola et les gels caféinés.');
+      var pc = [arrondi(Math.min(200, P), 5), arrondi(Math.min(200, 2 * P), 5)], nmax = Math.floor(400 / pc[1]);
+      carte('c_caf', fourchette(pc[0], pc[1], 'mg'), 'par prise');
+      consignes.push('Caféine, si tu l’as testée : de petites prises de ' + fourchette(pc[0], pc[1], 'mg') + ' (1 à 2' + N + 'mg par kilo), ' + (nuit ? 'la nuit et vers la fin' : 'dans la seconde moitié, vers la fin') + '. Au plus 400' + N + 'mg par 24' + N + 'h, soit ' + nmax + ' prises de ' + pc[1] + N + 'mg au plus. Compte aussi le cola et les gels caféinés.');
     }
 
-    consignes.push('Boisson : bois à ta soif, souvent 400 à 800' + N + 'mL par heure, un peu plus au chaud. Prise de poids, mains gonflées, nausées, confusion : arrête de boire et préviens les secours.');
     consignes.push('Potassium, magnésium : inutile d’en ajouter, leurs compléments n’ont pas fait la preuve d’un effet sur les crampes ou la performance.');
     $('consignes').innerHTML = consignes.map(function (t) { return '<li>' + t + '</li>'; }).join('');
   }
 
   ['duree', 'poids'].forEach(function (id) { $(id).addEventListener('input', calculer); });
-  ['cond_frais', 'cond_tempere', 'cond_chaud', 'nuit', 'niveau_deb', 'niveau_int', 'niveau_exp', 'intestin_non', 'intestin_cours', 'intestin_oui', 'sueur_faible', 'sueur_moderee', 'sueur_elevee'].forEach(function (id) { $(id).addEventListener('change', calculer); });
+  ['cond_frais', 'cond_tempere', 'cond_chaud', 'cond_humide', 'nuit', 'niveau_deb', 'niveau_int', 'niveau_exp', 'intestin_non', 'intestin_cours', 'intestin_oui', 'sueur_faible', 'sueur_moderee', 'sueur_elevee'].forEach(function (id) { $(id).addEventListener('change', calculer); });
   $('imprimer').addEventListener('click', function () { window.print(); });
   calculer();
 })();
