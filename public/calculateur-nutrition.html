@@ -68,9 +68,11 @@
     <div class="champs">
       <div class="champ"><label for="duree">Durée prévue (h:min)</label><input id="duree" inputmode="numeric" placeholder="5:30" autocomplete="off"></div>
       <div class="champ"><label for="poids">Ton poids (kg)</label><input id="poids" inputmode="decimal" placeholder="70" autocomplete="off"></div>
-      <div class="champ"><label for="temperature">Température annoncée (°C)</label><input id="temperature" inputmode="decimal" value="20" autocomplete="off"></div>
-      <div class="champ"><label for="humidite">Humidité (%)</label><input id="humidite" inputmode="numeric" value="60" autocomplete="off"></div>
     </div>
+    <p class="effort">Les conditions annoncées</p>
+    <label class="option"><input type="radio" name="conditions" id="cond_frais" value="frais"> Frais : moins de 15 °C</label>
+    <label class="option"><input type="radio" name="conditions" id="cond_tempere" value="tempere" checked> Tempéré</label>
+    <label class="option"><input type="radio" name="conditions" id="cond_chaud" value="chaud"> Chaud ou lourd : plus de 25 °C, ou très humide</label>
     <label class="option"><input type="checkbox" id="nuit"> Ma course passe la nuit</label>
     <p class="message" id="m1" role="status"></p>
   </section>
@@ -86,14 +88,14 @@
     <label class="option"><input type="radio" name="intestin" id="intestin_cours" value="cours"> En cours : je monte mes apports en sortie longue</label>
     <label class="option"><input type="radio" name="intestin" id="intestin_oui" value="oui"> Entraîné : j'ai déjà tenu ma cible plusieurs fois en sortie longue</label>
     <p class="effort">Ta sueur</p>
-    <label class="option"><input type="radio" name="sueur" id="sueur_faible" value="faible"> Peu : peu de sueur, pas de sel visible</label>
-    <label class="option"><input type="radio" name="sueur" id="sueur_moderee" value="moderee" checked> Moyenne : sueur visible, vêtements humides</label>
-    <label class="option"><input type="radio" name="sueur" id="sueur_elevee" value="elevee"> Beaucoup : sueur abondante, traces de sel sur la casquette ou le tee-shirt</label>
+    <label class="option"><input type="radio" name="sueur" id="sueur_faible" value="faible"> Peu : tu transpires peu, ton tee-shirt sèche vite</label>
+    <label class="option"><input type="radio" name="sueur" id="sueur_moderee" value="moderee" checked> Moyenne : ton tee-shirt est trempé après une sortie au chaud</label>
+    <label class="option"><input type="radio" name="sueur" id="sueur_elevee" value="elevee"> Salée : des traces blanches sur ta casquette ou ton tee-shirt</label>
   </section>
 
   <section class="test">
     <h2>3. Ce que tu bois, et tes produits</h2>
-    <p>Lis les étiquettes. Pour ce que tu bois, le calculateur propose un repère selon la chaleur ; remplace-le par ce que tu bois vraiment en sortie longue, à ta soif.</p>
+    <p>Lis les étiquettes. Pour ce que tu bois, le calculateur propose une valeur selon la chaleur ; remplace-la par ce que tu bois vraiment en sortie longue, à ta soif.</p>
     <div class="champs">
       <div class="champ"><label for="boisson">Ce que tu bois par heure (mL)</label><input id="boisson" inputmode="numeric" autocomplete="off"></div>
       <p class="aide" id="repere-eau" style="grid-column: 1 / -1; margin: 0"></p>
@@ -148,7 +150,7 @@
   </section>
 
   <div class="retenir">
-    <p><strong>Tout se teste à l'entraînement.</strong> Ces chiffres sont des repères, ceux de nos fiches. Essaie ce plan en sortie longue, avec tes produits, avant de le suivre le jour J, et adapte-le en course selon tes sensations : faim, soif, écœurement, énergie (fiche <a href="/bibliotheque/nutrition" style="color: var(--teal-light)">La nutrition en course</a>).</p>
+    <p><strong>Tout se teste à l'entraînement.</strong> Ces chiffres sont des repères, ceux de nos fiches. Essaie ce plan en sortie longue, avec tes produits, avant de le suivre le jour J. En course, écoute ton ventre : s'il proteste, espace tes prises ; si l'énergie baisse, n'attends pas la suivante (fiche <a href="/bibliotheque/nutrition" style="color: var(--teal-light)">La nutrition en course</a>).</p>
   </div>
 </main>
 
@@ -162,11 +164,11 @@
 // 0,5-0,7 g/L), au-delà 500 à 700 mg par litre bu ; boire à sa soif ; caféine : 2 à 3 mg/kg une
 // heure avant une course courte, 1 à 2 mg/kg par prise sur une course longue, au plus 200 mg par
 // prise et 400 mg par 24 h ; marge de 20 % sur les gels (fiche PDF du coach « Check-list »).
-// Inspiré du calculateur « Nutrition à l'effort » de Courir Mieux (Cyril Forestier) : le niveau, l'intestin en
-// trois niveaux et le profil de sudation pour se placer dans la fourchette, la chaleur ressentie
-// (température + humidité / 10) et ses fourchettes d'eau (400-600, 500-800, 700-1 000 mL/h) comme
-// repère. Décisions coach du 10/10/2026 : ses entrées, nos chiffres ; « à ta soif », sa fourchette
-// en repère ; le sodium au litre bu, placé selon la sueur ; ni potassium ni magnésium.
+// Les entrées niveau, intestin en trois niveaux et sueur s'inspirent du calculateur « Nutrition à
+// l'effort » de Courir Mieux ; les chiffres, les textes et le calcul sont ceux de CTS (décisions coach
+// du 10/10/2026) : nos chiffres communs ; la chaleur en trois choix ; l'eau au repère de l'ACSM
+// (0,4 à 0,8 L/h, un peu plus au chaud, Thomas 2016), la consigne restant « à ta soif » ; le sodium
+// au litre bu, placé selon la sueur ; ni potassium ni magnésium.
 (function () {
   var N = ' ';
   var $ = function (id) { return document.getElementById(id); };
@@ -207,12 +209,9 @@
     c.querySelector('.sous').textContent = sous || '';
   }
 
-  // La chaleur ressentie (Courir Mieux) : température + humidité / 10. Au-delà de 30, forte chaleur.
-  function chaleurRessentie(T, H) { return T + H / 10; }
-  function repereEau(ressentie, sueur) {
-    if (ressentie > 30 || sueur === 'elevee') return { bas: 700, haut: 1000, propose: 800, texte: 'chaud, ou tu transpires beaucoup' };
-    if (ressentie < 20) return { bas: 400, haut: 600, propose: 500, texte: 'frais' };
-    return { bas: 500, haut: 800, propose: 600, texte: 'tempéré' };
+  // La boisson : le repère de l'ACSM (0,4 à 0,8 L par heure, un peu plus au chaud) ; la valeur proposée suit la chaleur.
+  function repereEau(conditions) {
+    return { bas: 400, haut: 800, propose: conditions === 'chaud' ? 800 : conditions === 'frais' ? 500 : 600 };
   }
 
   // La fourchette de glucides par heure (chiffres communs), et la cible proposée selon le niveau et l'intestin.
@@ -230,7 +229,7 @@
 
   function calculer() {
     var D = lireHeures($('duree').value);
-    var P = nombre($('poids').value), T = nombre($('temperature').value), Hu = nombre($('humidite').value);
+    var P = nombre($('poids').value), conditions = choix('conditions');
     var nuit = $('nuit').checked, niveau = choix('niveau'), intestin = choix('intestin'), sueur = choix('sueur');
     var choL = nombre($('cho_l').value) || 0, naL = nombre($('na_l').value) || 0;
     var choGel = nombre($('cho_gel').value), naGel = nombre($('na_gel').value) || 0;
@@ -238,11 +237,9 @@
 
     if (D !== null && (isNaN(D) || D <= 0 || D > 72)) { m1.push('Indique une durée entre quelques minutes et 72' + N + 'heures, par exemple 5:30.'); D = null; }
     if (P !== null && (isNaN(P) || P < 35 || P > 150)) { m1.push('Ton poids doit être entre 35 et 150' + N + 'kg.'); P = null; }
-    if (T === null || isNaN(T) || T < -30 || T > 50) { m1.push('Température : entre -30 et 50' + N + '°C.'); T = 20; }
-    if (Hu === null || isNaN(Hu) || Hu < 0 || Hu > 100) { m1.push('Humidité : entre 0 et 100' + N + '%.'); Hu = 60; }
-    var ressentie = chaleurRessentie(T, Hu), chaud = ressentie > 30;
-    var eau = repereEau(ressentie, sueur);
-    $('repere-eau').textContent = 'Repère pour un temps ' + eau.texte + N + ': ' + eau.bas + ' à ' + entier(eau.haut) + N + 'mL par heure. Bois à ta soif.';
+    var chaud = conditions === 'chaud';
+    var eau = repereEau(conditions);
+    $('repere-eau').textContent = 'Repère' + N + ': la plupart des coureurs boivent 400 à 800' + N + 'mL par heure, un peu plus au chaud. Bois à ta soif.';
     if (!boissonTouchee) $('boisson').value = eau.propose;
     var V = nombre($('boisson').value);
     if (V === null || isNaN(V) || V < 100 || V > 1500) { m3.push('Ce que tu bois par heure : entre 100 et 1' + N + '500' + N + 'mL.'); V = null; }
@@ -259,7 +256,7 @@
     var consignes = [];
     $('resultat').hidden = false;
     $('etat').textContent = 'Pour une course de ' + enHeures(D) + (chaud ? ', par forte chaleur' : '') + '.';
-    carte('c_eau', eau.bas + ' à ' + entier(eau.haut) + N + 'mL', 'par heure, à ta soif');
+    carte('c_eau', eau.bas + ' à ' + entier(eau.haut) + N + 'mL', chaud ? 'par heure, plus au chaud, à ta soif' : 'par heure, à ta soif');
 
     // Moins d'une heure : rien à prévoir.
     if (!f) {
@@ -389,10 +386,10 @@
   }
 
   $('duree').addEventListener('input', function () { cibleTouchee = false; calculer(); });
-  ['poids', 'temperature', 'humidite', 'cho_l', 'na_l', 'cho_gel', 'na_gel'].forEach(function (id) { $(id).addEventListener('input', calculer); });
+  ['poids', 'cho_l', 'na_l', 'cho_gel', 'na_gel'].forEach(function (id) { $(id).addEventListener('input', calculer); });
   $('boisson').addEventListener('input', function () { boissonTouchee = $('boisson').value.trim() !== ''; calculer(); });
   ['niveau_deb', 'niveau_int', 'niveau_exp', 'intestin_non', 'intestin_cours', 'intestin_oui'].forEach(function (id) { $(id).addEventListener('change', function () { cibleTouchee = false; calculer(); }); });
-  ['sueur_faible', 'sueur_moderee', 'sueur_elevee', 'nuit'].forEach(function (id) { $(id).addEventListener('change', calculer); });
+  ['sueur_faible', 'sueur_moderee', 'sueur_elevee', 'nuit', 'cond_frais', 'cond_tempere', 'cond_chaud'].forEach(function (id) { $(id).addEventListener('change', calculer); });
   $('cible').addEventListener('input', function () { cibleTouchee = $('cible').value.trim() !== ''; calculer(); });
   $('imprimer').addEventListener('click', function () { window.print(); });
   calculer();
