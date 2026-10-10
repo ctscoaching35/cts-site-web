@@ -30,3 +30,20 @@ export function lireBibliotheque(): Famille[] {
 
 export const ficheParSlug = (familles: Famille[], slug: string) =>
   familles.flatMap((f) => f.fiches).find((f) => f.slug === slug);
+
+// Les calculateurs du site (décision coach du 11/10/2026) : en haut de l'onglet Bibliothèque, ouverts
+// comme une fiche. Lus dans la page qui les présente (public/calculateurs.html), jamais recopiés.
+export type Calculateur = Fiche;
+
+export function lireCalculateurs(): Calculateur[] {
+  const html = readFileSync(path.join(process.cwd(), 'public', 'calculateurs.html'), 'utf-8');
+  return Array.from(
+    html.matchAll(
+      /<a class="carte" href="\/(calculateur[\w-]*)"><span class="carte-titre">([^<]*)<\/span><span class="carte-texte">([^<]*)<\/span><\/a>/g
+    ),
+    ([, slug, titre, texte]) => ({ slug, titre, texte })
+  );
+}
+
+export const calculateurParSlug = (calculateurs: Calculateur[], slug: string) =>
+  calculateurs.find((c) => c.slug === slug);

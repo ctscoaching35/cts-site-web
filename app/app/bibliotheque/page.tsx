@@ -1,15 +1,17 @@
 import Link from 'next/link';
 import EnTeteApp from '@/components/app/EnTeteApp';
-import { lireBibliotheque, ficheParSlug } from '@/lib/app/bibliotheque';
+import { lireBibliotheque, ficheParSlug, lireCalculateurs } from '@/lib/app/bibliotheque';
 import { contexte, lien, type Contexte, type Recherche } from '@/lib/app/contexte';
 import { slugFiche } from '@/lib/app/plan';
 
 // La bibliothèque (cadrage, 3.5 ; décision coach du 07/10/2026) : les fiches de ton plan
-// d'abord, puis toutes celles du site, dans ses familles et son ordre.
+// d'abord, puis toutes celles du site, dans ses familles et son ordre. Au-dessus, les deux
+// calculateurs du site (décision coach du 11/10/2026).
 export default async function Bibliotheque({ searchParams }: { searchParams: Recherche }) {
   const ctx = await contexte(searchParams);
   const { plan } = ctx;
   const familles = lireBibliotheque();
+  const calculateurs = lireCalculateurs();
   const tesFiches = plan.pour_aller_plus_loin.fiches.map((f) => {
     const slug = slugFiche(f.url);
     return { slug, titre: f.titre, texte: ficheParSlug(familles, slug)?.texte ?? '' };
@@ -22,6 +24,10 @@ export default async function Bibliotheque({ searchParams }: { searchParams: Rec
           <h1 className="text-2xl text-indigo">Bibliothèque</h1>
           <p className="mt-2 text-sm text-indigo/70 leading-relaxed">{plan.pour_aller_plus_loin.app}</p>
         </div>
+        <section className="space-y-2">
+          <h2 className="eyebrow text-teal">Calculateurs</h2>
+          <Cartes fiches={calculateurs} ctx={ctx} base="/app/calculateurs" />
+        </section>
         <section className="space-y-2">
           <h2 className="eyebrow text-teal">Tes fiches</h2>
           <Cartes fiches={tesFiches} ctx={ctx} />
@@ -40,12 +46,18 @@ export default async function Bibliotheque({ searchParams }: { searchParams: Rec
   );
 }
 
-function Cartes({ fiches, ctx }: { fiches: { slug: string; titre: string; texte: string }[]; ctx: Contexte }) {
+function Cartes({
+  fiches, ctx, base = '/app/bibliotheque',
+}: {
+  fiches: { slug: string; titre: string; texte: string }[];
+  ctx: Contexte;
+  base?: string;
+}) {
   return (
     <ul className="bg-white shadow-sm divide-y divide-indigo/10">
       {fiches.map((f) => (
         <li key={f.slug}>
-          <Link href={lien(`/app/bibliotheque/${f.slug}`, ctx)} className="flex items-center gap-3 px-4 py-3 hover:bg-sand/60">
+          <Link href={lien(`${base}/${f.slug}`, ctx)} className="flex items-center gap-3 px-4 py-3 hover:bg-sand/60">
             <span className="flex-1 min-w-0">
               <span className="block font-semibold text-indigo leading-snug">{f.titre}</span>
               {f.texte && <span className="block text-xs text-indigo/60 mt-0.5 leading-relaxed">{f.texte}</span>}

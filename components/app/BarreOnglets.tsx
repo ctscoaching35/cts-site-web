@@ -45,9 +45,14 @@ export default function BarreOnglets() {
   }
   const requete = garde.toString();
   const suite = requete ? `?${requete}` : '';
-  // Une fiche séance s'ouvre depuis le calendrier : c'est lui qui reste allumé.
+  // Une fiche séance s'ouvre depuis le calendrier : c'est lui qui reste allumé ; un calculateur,
+  // depuis la bibliothèque.
   const actif = (c: string) =>
-    c === '/app' ? chemin === '/app' : chemin.startsWith(c) || (c === '/app/calendrier' && chemin.startsWith('/app/seance'));
+    c === '/app'
+      ? chemin === '/app'
+      : chemin.startsWith(c) ||
+        (c === '/app/calendrier' && chemin.startsWith('/app/seance')) ||
+        (c === '/app/bibliotheque' && chemin.startsWith('/app/calculateurs'));
   return (
     <nav
       aria-label="Navigation de l’app"
