@@ -15,6 +15,9 @@
 .champs { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem 1rem; margin: 0.8rem 0 0.4rem; }
 .champ label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--navy); margin-bottom: 0.25rem; }
 .champ input { width: 100%; font: inherit; font-size: 1rem; padding: 0.55rem 0.65rem; border: 1px solid rgba(47, 45, 78, 0.25); border-radius: 6px; background: #ffffff; color: var(--navy); }
+.chrono { display: flex; align-items: center; gap: 0.3rem; }
+.chrono input { min-width: 0; flex: 1; text-align: center; }
+.chrono span { font-weight: 700; color: var(--navy); }
 .champ input:focus { outline: 2px solid var(--teal); outline-offset: 1px; border-color: var(--teal); }
 .effort { font-size: 0.82rem; font-weight: 700; color: var(--teal); grid-column: 1 / -1; margin-top: 0.4rem; }
 .option { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; margin-top: 0.6rem; cursor: pointer; }
@@ -105,16 +108,16 @@ tr.clair td.nomzone { color: var(--navy); }
     <p>Sur le plat, le même jour : 12 minutes à fond, 30 minutes de récupération, puis 3 minutes à fond. Note la distance de chaque effort. Tu peux aussi courir des distances fixes et noter tes chronos (fiche <a href="/bibliotheque/vitesse-critique">La vitesse critique</a>).</p>
     <div class="champs">
       <span class="effort">Effort long</span>
-      <div class="champ"><label for="d_long">Durée (min:s)</label><input id="d_long" inputmode="numeric" value="12:00" autocomplete="off"></div>
+      <div class="champ"><label for="d_long">Durée (min : s)</label><div class="chrono"><input id="d_long" inputmode="numeric" value="12" autocomplete="off"><span>:</span><input id="s_long" inputmode="numeric" value="00" autocomplete="off" aria-label="Secondes"></div></div>
       <div class="champ"><label for="x_long">Distance (m)</label><input id="x_long" inputmode="decimal" placeholder="2600" autocomplete="off"></div>
       <span class="effort">Effort court</span>
-      <div class="champ"><label for="d_court">Durée (min:s)</label><input id="d_court" inputmode="numeric" value="3:00" autocomplete="off"></div>
+      <div class="champ"><label for="d_court">Durée (min : s)</label><div class="chrono"><input id="d_court" inputmode="numeric" value="3" autocomplete="off"><span>:</span><input id="s_court" inputmode="numeric" value="00" autocomplete="off" aria-label="Secondes"></div></div>
       <div class="champ"><label for="x_court">Distance (m)</label><input id="x_court" inputmode="decimal" placeholder="800" autocomplete="off"></div>
     </div>
     <label class="option"><input type="checkbox" id="avec3"> Ajouter un troisième effort, de 5 minutes, pour vérifier les deux autres</label>
     <div class="champs" id="bloc3" hidden>
       <span class="effort">Troisième effort</span>
-      <div class="champ"><label for="d_moyen">Durée (min:s)</label><input id="d_moyen" inputmode="numeric" value="5:00" autocomplete="off"></div>
+      <div class="champ"><label for="d_moyen">Durée (min : s)</label><div class="chrono"><input id="d_moyen" inputmode="numeric" value="5" autocomplete="off"><span>:</span><input id="s_moyen" inputmode="numeric" value="00" autocomplete="off" aria-label="Secondes"></div></div>
       <div class="champ"><label for="x_moyen">Distance (m)</label><input id="x_moyen" inputmode="decimal" placeholder="1200" autocomplete="off"></div>
     </div>
     <p class="message" id="m2" role="status"></p>
@@ -190,10 +193,12 @@ tr.clair td.nomzone { color: var(--navy); }
   var N = ' ', H = '‑';
   var $ = function (id) { return document.getElementById(id); };
 
-  function lireDuree(t) {
-    var m = /^\s*(\d{1,2})(?:\s*[:'h,.]\s*(\d{1,2}))?\s*$/.exec(t || '');
-    if (!m) return null;
-    return Number(m[1]) * 60 + Number(m[2] || 0);
+  // La durée, en deux champs : un clavier de téléphone en chiffres n'a pas de « : ».
+  function lireDuree(idMin, idSec) {
+    var m = /^\s*(\d{1,2})\s*$/.exec($(idMin).value), s = /^\s*(\d{0,2})\s*$/.exec($(idSec).value);
+    if (!m || !s) return null;
+    var sec = Number(s[1] || 0);
+    return sec < 60 ? Number(m[1]) * 60 + sec : null;
   }
   function lireDistance(t) {
     var n = Number(String(t || '').replace(/\s/g, '').replace(',', '.'));
@@ -235,9 +240,9 @@ tr.clair td.nomzone { color: var(--navy); }
   }
 
   function efforts() {
-    var lignes = [['d_long', 'x_long'], ['d_court', 'x_court']];
-    if ($('avec3').checked) lignes.push(['d_moyen', 'x_moyen']);
-    return lignes.map(function (l) { return { t: lireDuree($(l[0]).value), d: lireDistance($(l[1]).value) }; })
+    var lignes = [['d_long', 's_long', 'x_long'], ['d_court', 's_court', 'x_court']];
+    if ($('avec3').checked) lignes.push(['d_moyen', 's_moyen', 'x_moyen']);
+    return lignes.map(function (l) { return { t: lireDuree(l[0], l[1]), d: lireDistance($(l[2]).value) }; })
                  .filter(function (e) { return e.t && e.d; });
   }
 
@@ -267,6 +272,7 @@ tr.clair td.nomzone { color: var(--navy); }
     if (fc1 && fc2 && fc2 - fc1 < 10) { m3 = 'Ta FC au seuil 2 devrait être nettement au-dessus de ta FC au seuil 1 (au moins 10 battements) : vérifie tes deux tests.'; fc2 = null; }
 
     var e = efforts(), r = null;
+    if (['s_long', 's_court', 's_moyen'].some(function (id) { return Number($(id).value) >= 60; })) m2 = 'Les secondes vont de 0 à 59.';
     if (e.length >= 2) {
       r = vitesseCritique(e);
       if (r.erreur) { m2 = r.erreur; r = null; }
@@ -382,7 +388,7 @@ tr.clair td.nomzone { color: var(--navy); }
   }
 
   $('avec3').addEventListener('change', function () { $('bloc3').hidden = !this.checked; calculer(); });
-  ['fc1', 'v1', 'fc2', 'd_long', 'x_long', 'd_court', 'x_court', 'd_moyen', 'x_moyen'].forEach(function (id) {
+  ['fc1', 'v1', 'fc2', 'd_long', 's_long', 'x_long', 'd_court', 's_court', 'x_court', 'd_moyen', 's_moyen', 'x_moyen'].forEach(function (id) {
     $(id).addEventListener('input', calculer);
   });
   $('imprimer').addEventListener('click', function () { window.print(); });
