@@ -15,6 +15,9 @@
 .champs { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem 1rem; margin: 0.8rem 0 0.4rem; align-items: end; }
 .champ label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--navy); margin-bottom: 0.25rem; }
 .champ input { width: 100%; font: inherit; font-size: 1rem; padding: 0.55rem 0.65rem; border: 1px solid rgba(47, 45, 78, 0.25); border-radius: 6px; background: #ffffff; color: var(--navy); }
+.champ-duree { grid-column: 1 / -1; }
+.duree { display: flex; align-items: center; gap: 0.4rem; font-size: 0.9rem; color: var(--navy); }
+.duree input { width: 4.5rem; }
 .champ input:focus { outline: 2px solid var(--teal); outline-offset: 1px; border-color: var(--teal); }
 .effort { font-size: 0.82rem; font-weight: 700; color: var(--teal); grid-column: 1 / -1; margin: 1.3rem 0 0; }
 .test h2 + .effort { margin-top: 0.2rem; }
@@ -69,7 +72,7 @@
   <section class="test">
     <h2>1. Ta course</h2>
     <div class="champs">
-      <div class="champ"><label for="duree">Durée prévue (h:min)</label><input id="duree" inputmode="numeric" placeholder="5:30" autocomplete="off"></div>
+      <div class="champ champ-duree"><label for="heures">Durée prévue</label><div class="duree"><input id="heures" inputmode="numeric" placeholder="5" autocomplete="off"> h <input id="minutes" inputmode="numeric" placeholder="30" autocomplete="off" aria-label="Minutes"> min</div></div>
       <div class="champ"><label for="poids">Ton poids (kg), pour la caféine</label><input id="poids" inputmode="decimal" placeholder="70" autocomplete="off"></div>
     </div>
     <p class="effort">Les conditions annoncées</p>
@@ -138,9 +141,14 @@
 // - sodium : la concentration par litre bu (selon la sueur et la chaleur) multipliée par le milieu
 //   de la fourchette de boisson ;
 // - caféine (décision coach du 11/10/2026) : moins de 3 h, 2,5 à 3 mg/kg une heure avant ; de 3 à 8 h,
-//   la même prise de départ puis au besoin une petite prise (1 à 2 mg/kg) en fin de course ; au-delà de
-//   8 h ou de nuit, une prise de départ légère (1 à 2 mg/kg), puis de petites prises la nuit et en fin
-//   de course (ISSN ultra, Tiller 2019) ; au plus 200 mg par prise et 400 mg par 24 h.
+//   la même prise de départ puis au besoin une petite prise (1 à 2 mg/kg) à mi-course, jamais avant 2 h
+//   de course ; au-delà de 8 h ou de nuit, une prise de départ légère (1 à 2 mg/kg), puis de petites
+//   prises la nuit, quand le sommeil arrive, et dans le dernier tiers, au moins 3 h entre deux (ISSN
+//   ultra, Tiller 2019) ; au plus 200 mg par prise et 400 mg par 24 h. Pourquoi à mi-course (décision
+//   coach du 11/10/2026, sur la littérature) : demi-vie de 4 à 6 h en moyenne, de 1,5 à 10 h selon les
+//   personnes (Guest 2021) ; l'effet d'une prise de départ est net 1 et 3 h après chez un buveur de café,
+//   plus à 6 h (Bell et McLellan 2002) ; une prise en cours d'effort marche (Cox 2002, Talanian et
+//   Spriet 2016).
 // Les entrées niveau, intestin et sueur s'inspirent du calculateur de Courir Mieux ; les chiffres,
 // les textes et le calcul sont ceux de CTS.
 (function () {
@@ -153,16 +161,12 @@
     var n = Number(s);
     return isFinite(n) ? n : NaN;
   }
-  function lireHeures(t) {
-    var s = String(t || '').trim().toLowerCase().replace(/\s/g, '');
-    if (!s) return null;
-    var m = /^(\d{1,3})(?:[h:](\d{1,2})?)?$/.exec(s);
-    if (m) {
-      var mn = Number(m[2] || 0);
-      return mn < 60 ? Number(m[1]) + mn / 60 : NaN;
-    }
-    var n = nombre(s);
-    return n === null ? null : n;
+  // La durée, en deux champs : un clavier de téléphone en chiffres n'a pas de « : ».
+  function lireDuree() {
+    var h = nombre($('heures').value), mn = nombre($('minutes').value);
+    if (h === null && mn === null) return null;
+    if (isNaN(h) || isNaN(mn) || (mn !== null && (mn < 0 || mn >= 60))) return NaN;
+    return (h || 0) + (mn || 0) / 60;
   }
   function choix(nom) { var e = document.querySelector('input[name="' + nom + '"]:checked'); return e ? e.value : null; }
   function entier(x) { return String(Math.round(x)).replace(/\B(?=(\d{3})+(?!\d))/g, N); }
@@ -197,10 +201,11 @@
   var BOISSON = { frais: [400, 600], tempere: [500, 700], chaud: [600, 800], humide: [700, 900] };
 
   function calculer() {
-    var D = lireHeures($('duree').value), P = nombre($('poids').value);
+    var D = lireDuree(), P = nombre($('poids').value);
     var conditions = choix('conditions') || 'tempere', nuit = $('nuit').checked, niveau = choix('niveau'), intestin = choix('intestin'), sueur = choix('sueur');
     var chaud = conditions === 'chaud' || conditions === 'humide', m1 = [];
-    if (D !== null && (isNaN(D) || D <= 0 || D > 72)) { m1.push('Indique une durée entre quelques minutes et 72' + N + 'heures, par exemple 5:30.'); D = null; }
+    if (/^\s*\d+\s*$/.test($('minutes').value) && Number($('minutes').value) >= 60) { m1.push('Les minutes vont de 0 à 59.'); D = null; }
+    if (D !== null && (isNaN(D) || D <= 0 || D > 72)) { m1.push('Indique une durée entre quelques minutes et 72' + N + 'heures, par exemple 5' + N + 'h' + N + '30.'); D = null; }
     if (P !== null && (isNaN(P) || P < 35 || P > 150)) { m1.push('Ton poids doit être entre 35 et 150' + N + 'kg.'); P = null; }
     $('m1').textContent = m1.join(' ');
     if (D === null) { $('resultat').hidden = true; return; }
@@ -266,14 +271,16 @@
         carte('c_caf', fourchette(fort[0], fort[1], 'mg'), 'une heure avant');
         points.cafeine.push('<strong>' + fourchette(fort[0], fort[1], 'mg') + ' environ une heure avant le départ</strong> (environ 3' + N + 'mg par kilo, au plus 200' + N + 'mg).');
       } else if (D <= 8 && !nuit) {
-        carte('c_caf', fourchette(fort[0], fort[1], 'mg'), 'au départ, puis ' + fourchette(petit[0], petit[1], 'mg'));
+        var mi = enHeures(Math.max(2, arrondi(D / 2, 0.25)));
+        carte('c_caf', fourchette(fort[0], fort[1], 'mg'), 'au départ, puis ' + fourchette(petit[0], petit[1], 'mg') + ' à ' + mi);
         points.cafeine.push('<strong>Au départ : ' + fourchette(fort[0], fort[1], 'mg') + ' environ une heure avant</strong> (environ 3' + N + 'mg par kilo, au plus 200' + N + 'mg).');
-        points.cafeine.push('<strong>En course : au besoin, une petite prise de ' + fourchette(petit[0], petit[1], 'mg') + '</strong> (1 à 2' + N + 'mg par kilo) dans la dernière partie, quand l’effet de la première s’estompe.');
+        points.cafeine.push('<strong>À ' + mi + ' de course : au besoin, ' + fourchette(petit[0], petit[1], 'mg') + '</strong> (1 à 2' + N + 'mg par kilo). La prise de départ s’estompe ; celle-ci te porte jusqu’à l’arrivée.');
         points.cafeine.push('Au plus 400' + N + 'mg sur la journée, prise de départ comprise : il te reste ' + fourchette(400 - fort[1], 400 - fort[0], 'mg') + ' pour la course.');
       } else {
         carte('c_caf', fourchette(petit[0], petit[1], 'mg'), 'au départ, puis par prise');
         points.cafeine.push('<strong>Au départ : une prise légère de ' + fourchette(petit[0], petit[1], 'mg') + '</strong> une heure avant (1 à 2' + N + 'mg par kilo).');
-        points.cafeine.push('<strong>En course : de petites prises de ' + fourchette(petit[0], petit[1], 'mg') + '</strong>, ' + (nuit ? 'la nuit et vers la fin' : 'vers la fin') + ', quand la fatigue et le sommeil pèsent.');
+        if (nuit) points.cafeine.push('<strong>La nuit : ' + fourchette(petit[0], petit[1], 'mg') + ' quand le sommeil arrive</strong>, au moins 3' + N + 'h après la précédente.');
+        points.cafeine.push('<strong>Dans le dernier tiers : ' + fourchette(petit[0], petit[1], 'mg') + ' dès ' + enHeures(arrondi(2 * D / 3, 0.25)) + ' de course</strong>' + (nuit ? ', au moins 3' + N + 'h après la précédente.' : '.'));
         points.cafeine.push('Au plus 400' + N + 'mg par 24' + N + 'h, prise de départ comprise : il te reste ' + fourchette(400 - petit[1], 400 - petit[0], 'mg') + ' pour les 24 premières heures, en 2 ou 3 petites prises.');
       }
       points.cafeine.push('Seulement si tu l’as testée à l’entraînement. Compte aussi le cola et les gels caféinés.');
@@ -285,7 +292,7 @@
     }).join('');
   }
 
-  ['duree', 'poids'].forEach(function (id) { $(id).addEventListener('input', calculer); });
+  ['heures', 'minutes', 'poids'].forEach(function (id) { $(id).addEventListener('input', calculer); });
   ['cond_frais', 'cond_tempere', 'cond_chaud', 'cond_humide', 'nuit', 'niveau_deb', 'niveau_int', 'niveau_exp', 'intestin_non', 'intestin_cours', 'intestin_oui', 'sueur_faible', 'sueur_moderee', 'sueur_elevee'].forEach(function (id) { $(id).addEventListener('change', calculer); });
   $('imprimer').addEventListener('click', function () { window.print(); });
   calculer();
