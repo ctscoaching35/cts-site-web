@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ta nutrition en course — calculateur CTS Coaching</title>
-<meta name="description" content="Calculateur gratuit : ta stratégie nutritionnelle à l'effort selon la durée de ta course, la chaleur, ta sueur et ton intestin. Glucides par heure, sodium, caféine, un plan heure par heure avec tes produits et la liste à emporter. Rien n'est enregistré.">
+<meta name="description" content="Calculateur gratuit : tes doses par heure à l'effort, selon la durée de ta course, la chaleur, ta sueur et ton intestin. Glucides, sodium, boisson et caféine ; à toi de choisir tes produits. Rien n'est enregistré.">
 <link rel="stylesheet" href="/bibliotheque/fiche.css">
 <style>
 /* Le calculateur : la charte des fiches (fiche.css), plus ses champs et sa stratégie. */
@@ -59,7 +59,7 @@
 <section class="titre"><div class="titre-inner">
   <span class="surtitre">Calculateur gratuit</span>
   <h1>Ta nutrition en course</h1>
-  <p class="chapeau">La durée de ta course, la chaleur, ta sueur, ton intestin, tes produits : le calculateur en tire tes glucides par heure, ton sodium, ta caféine, un plan heure par heure et la liste à emporter. Tout se calcule dans ton navigateur : rien n'est envoyé ni enregistré.</p>
+  <p class="chapeau">La durée de ta course, la chaleur, ta sueur, ton intestin : le calculateur te donne tes doses par heure en glucides, en sodium, en boisson et en caféine. À toi ensuite de choisir les produits qui t'apportent ces doses. Tout se calcule dans ton navigateur : rien n'est envoyé ni enregistré.</p>
 </div></section>
 
 <main>
@@ -67,7 +67,7 @@
     <h2>1. Ta course</h2>
     <div class="champs">
       <div class="champ"><label for="duree">Durée prévue (h:min)</label><input id="duree" inputmode="numeric" placeholder="5:30" autocomplete="off"></div>
-      <div class="champ"><label for="poids">Ton poids (kg)</label><input id="poids" inputmode="decimal" placeholder="70" autocomplete="off"></div>
+      <div class="champ"><label for="poids">Ton poids (kg), pour la caféine</label><input id="poids" inputmode="decimal" placeholder="70" autocomplete="off"></div>
     </div>
     <p class="effort">Les conditions annoncées</p>
     <label class="option"><input type="radio" name="conditions" id="cond_frais" value="frais"> Frais : moins de 15 °C</label>
@@ -93,64 +93,26 @@
     <label class="option"><input type="radio" name="sueur" id="sueur_elevee" value="elevee"> Salée : des traces blanches sur ta casquette ou ton tee-shirt</label>
   </section>
 
-  <section class="test">
-    <h2>3. Ce que tu bois, et tes produits</h2>
-    <p>Lis les étiquettes. Pour ce que tu bois, le calculateur propose une valeur selon la chaleur ; remplace-la par ce que tu bois vraiment en sortie longue, à ta soif.</p>
-    <div class="champs">
-      <div class="champ"><label for="boisson">Ce que tu bois par heure (mL)</label><input id="boisson" inputmode="numeric" autocomplete="off"></div>
-      <p class="aide" id="repere-eau" style="grid-column: 1 / -1; margin: 0"></p>
-      <p class="effort">Ta boisson (laisse vide si tu bois de l'eau)</p>
-      <div class="champ"><label for="cho_l">Glucides par litre (g)</label><input id="cho_l" inputmode="decimal" placeholder="60" autocomplete="off"></div>
-      <div class="champ"><label for="na_l">Sodium par litre (mg)</label><input id="na_l" inputmode="decimal" placeholder="500" autocomplete="off"></div>
-      <p class="effort">Ton gel</p>
-      <div class="champ"><label for="cho_gel">Glucides par gel (g)</label><input id="cho_gel" inputmode="decimal" value="25" autocomplete="off"></div>
-      <div class="champ"><label for="na_gel">Sodium par gel (mg)</label><input id="na_gel" inputmode="decimal" placeholder="0" autocomplete="off"></div>
-    </div>
-    <p class="message" id="m3" role="status"></p>
-  </section>
-
-  <section class="test" id="bloc-cible" hidden>
-    <h2>4. Ta cible</h2>
-    <p id="fourchette"></p>
-    <div class="champs">
-      <div class="champ"><label for="cible">Ta cible (g de glucides par heure)</label><input id="cible" inputmode="numeric" autocomplete="off"></div>
-    </div>
-    <p class="aide">Proposée selon ton niveau et ton intestin ; tu peux la changer.</p>
-    <p class="message" id="m4" role="status"></p>
-  </section>
-
   <section class="resultat" id="resultat" hidden>
     <div class="profil-tete">
-      <h2>Ta stratégie</h2>
+      <h2>Tes doses par heure</h2>
       <p id="etat"></p>
       <div class="cartes">
-        <div class="carte-chiffre" id="c_cho"><span class="valeur"></span><span class="sous"></span><span class="nom">Glucides par heure</span></div>
-        <div class="carte-chiffre" id="c_eau"><span class="valeur"></span><span class="sous"></span><span class="nom">Boisson, repère</span></div>
+        <div class="carte-chiffre" id="c_cho"><span class="valeur"></span><span class="sous"></span><span class="nom">Glucides</span></div>
+        <div class="carte-chiffre" id="c_eau"><span class="valeur"></span><span class="sous"></span><span class="nom">Boisson</span></div>
         <div class="carte-chiffre" id="c_na"><span class="valeur"></span><span class="sous"></span><span class="nom">Sodium</span></div>
         <div class="carte-chiffre" id="c_caf"><span class="valeur"></span><span class="sous"></span><span class="nom">Caféine</span></div>
       </div>
     </div>
 
-    <div id="bloc-plan">
-      <h3>Ton plan, heure par heure</h3>
-      <p class="sous-titre" id="rythme"></p>
-      <div class="tableau">
-        <table>
-          <thead><tr><th>Heure</th><th>Boisson</th><th>Gels, à</th><th>Glucides</th></tr></thead>
-          <tbody id="plan"></tbody>
-        </table>
-      </div>
-      <h3>À emporter</h3>
-      <ul class="coche" id="emporter"></ul>
-    </div>
-
-    <h3>Tes consignes</h3>
+    <h3>Comment t'en servir</h3>
     <ul class="consignes" id="consignes"></ul>
-    <button type="button" class="imprimer" id="imprimer">Imprimer ou enregistrer ma stratégie</button>
+    <p class="aide">Pour traduire ces doses en produits, lis les étiquettes : un gel apporte souvent 20 à 30 g de glucides, 500 mL de boisson d'effort 30 à 40 g ; 1 g de sel apporte environ 400 mg de sodium.</p>
+    <button type="button" class="imprimer" id="imprimer">Imprimer ou enregistrer mes doses</button>
   </section>
 
   <div class="retenir">
-    <p><strong>Tout se teste à l'entraînement.</strong> Ces chiffres sont des repères, ceux de nos fiches. Essaie ce plan en sortie longue, avec tes produits, avant de le suivre le jour J. En course, écoute ton ventre : s'il proteste, espace tes prises ; si l'énergie baisse, n'attends pas la suivante (fiche <a href="/bibliotheque/nutrition" style="color: var(--teal-light)">La nutrition en course</a>).</p>
+    <p><strong>Tout se teste à l'entraînement.</strong> Ces doses sont des repères, ceux de nos fiches. Choisis tes produits, essaie-les en sortie longue avant le jour J, et en course, écoute ton ventre : s'il proteste, espace tes prises ; si l'énergie baisse, n'attends pas la suivante (fiche <a href="/bibliotheque/nutrition" style="color: var(--teal-light)">La nutrition en course</a>).</p>
   </div>
 </main>
 
@@ -160,19 +122,19 @@
 // Les chiffres communs de la bibliothèque (bibliotheque/PROMPT_FICHE.md), à l'identique :
 // glucides dès 1 h, 30 à 60 g/h jusqu'à 2 h 30, jusqu'à 90 g/h au-delà si l'intestin est entraîné,
 // au-delà de 8 h souvent 30 à 50 g/h (60 et plus avec un intestin entraîné) ; glucose + fructose
-// au-delà de 60 g/h, de 2:1 à 1:0,8 en approchant 90 g/h ; sodium : rien de systématique sous 3 h sauf forte chaleur (boisson salée à
-// 0,5-0,7 g/L), au-delà 500 à 700 mg par litre bu ; boire à sa soif ; caféine : environ 3 mg/kg une
-// heure avant une course courte, 1 à 2 mg/kg par prise sur une course longue, au plus 200 mg par
-// prise et 400 mg par 24 h ; marge de 20 % sur les gels (fiche PDF du coach « Check-list »).
+// au-delà de 60 g/h, de 2:1 à 1:0,8 en approchant 90 g/h ; sodium : rien de systématique sous 3 h
+// sauf forte chaleur (boisson salée à 0,5-0,7 g/L), au-delà 500 à 700 mg par litre bu ; boire à sa
+// soif ; caféine : environ 3 mg/kg une heure avant une course courte (au plus 200 mg), 1 à 2 mg/kg
+// par prise sur une course longue, au plus 200 mg par prise et 400 mg par 24 h.
 // Les entrées niveau, intestin en trois niveaux et sueur s'inspirent du calculateur « Nutrition à
 // l'effort » de Courir Mieux ; les chiffres, les textes et le calcul sont ceux de CTS (décisions coach
 // du 10/10/2026) : nos chiffres communs ; la chaleur en trois choix ; l'eau au repère de l'ACSM
 // (0,4 à 0,8 L/h, un peu plus au chaud, Thomas 2016), la consigne restant « à ta soif » ; le sodium
-// au litre bu, placé selon la sueur ; ni potassium ni magnésium.
+// au litre bu, placé selon la sueur ; ni potassium ni magnésium. Le 10/10/2026 au soir, le coach a
+// voulu des doses seulement, sans les produits de la personne : plus de plan ni de liste à emporter.
 (function () {
   var N = ' ';
   var $ = function (id) { return document.getElementById(id); };
-  var cibleTouchee = false, boissonTouchee = false;
 
   function nombre(t) {
     var s = String(t || '').replace(/\s/g, '').replace(',', '.');
@@ -192,205 +154,102 @@
     return n === null ? null : n;
   }
   function choix(nom) { var e = document.querySelector('input[name="' + nom + '"]:checked'); return e ? e.value : null; }
-  function virgule(x, d) { return String(Number(x.toFixed(d))).replace('.', ','); }
   function entier(x) { return String(Math.round(x)).replace(/\B(?=(\d{3})+(?!\d))/g, N); }
-  function grammes(x) { return entier(x) + N + 'g'; }
-  function milli(x) { return entier(Math.round(x / 10) * 10) + N + 'mg'; }
   function dizaine(x) { return entier(Math.round(x / 10) * 10); }
   function enHeures(h) {
+    if (h < 1) return Math.round(h * 60) + N + 'min';
     var hh = Math.floor(h), mm = Math.round((h - hh) * 60);
     if (mm === 60) { hh += 1; mm = 0; }
     return hh + N + 'h' + (mm ? N + (mm < 10 ? '0' : '') + mm : '');
   }
-  function horloge(min) { var hh = Math.floor(min / 60), mm = min % 60; return hh + ':' + (mm < 10 ? '0' : '') + mm; }
   function carte(id, valeur, sous) {
     var c = $(id);
     c.querySelector('.valeur').textContent = valeur;
     c.querySelector('.sous').textContent = sous || '';
   }
 
-  // La boisson : le repère de l'ACSM (0,4 à 0,8 L par heure, un peu plus au chaud) ; la valeur proposée suit la chaleur.
-  function repereEau(conditions) {
-    return { bas: 400, haut: 800, propose: conditions === 'chaud' ? 800 : conditions === 'frais' ? 500 : 600 };
-  }
-
-  // La fourchette de glucides par heure (chiffres communs), et la cible proposée selon le niveau et l'intestin.
-  function fourchette(D, intestin, niveau) {
+  // La fourchette de glucides par heure (chiffres communs), et la dose proposée selon le niveau et l'intestin.
+  function glucides(D, intestin, niveau) {
     var choisir = function (deb, inte, exp) { return niveau === 'deb' ? deb : niveau === 'exp' ? exp : inte; };
     if (D < 1) return null;
-    if (D <= 2.5) return { bas: 30, haut: 60, cible: choisir(40, 50, 55), texte: 'de 1' + N + 'h à 2' + N + 'h' + N + '30, 30 à 60' + N + 'g par heure.' };
+    if (D <= 2.5) return { bas: 30, haut: 60, dose: choisir(40, 50, 55) };
     if (D <= 8) {
-      if (intestin === 'oui') return { bas: 60, haut: 90, cible: choisir(60, 70, 80), texte: 'au-delà de 2' + N + 'h' + N + '30, avec un intestin entraîné, jusqu’à 90' + N + 'g par heure.' };
-      return { bas: 30, haut: 60, cible: intestin === 'cours' ? choisir(50, 60, 60) : 50, texte: 'au-delà de 2' + N + 'h' + N + '30, 30 à 60' + N + 'g par heure tant que ton intestin n’est pas entraîné.' };
+      if (intestin === 'oui') return { bas: 60, haut: 90, dose: choisir(60, 70, 80) };
+      return { bas: 30, haut: 60, dose: intestin === 'cours' ? choisir(50, 60, 60) : 50 };
     }
-    if (intestin === 'oui') return { bas: 60, haut: 90, cible: choisir(60, 65, 75), texte: 'au-delà de 8' + N + 'h, avec un intestin entraîné, 60' + N + 'g ou plus, jusqu’à 90' + N + 'g chez les mieux entraînés.' };
-    return { bas: 30, haut: 50, cible: intestin === 'cours' ? 45 : 40, texte: 'au-delà de 8' + N + 'h, souvent plus bas' + N + ': 30 à 50' + N + 'g par heure pour beaucoup de coureurs.' };
+    if (intestin === 'oui') return { bas: 60, haut: 90, dose: choisir(60, 65, 75) };
+    return { bas: 30, haut: 50, dose: intestin === 'cours' ? 45 : 40 };
   }
 
   function calculer() {
-    var D = lireHeures($('duree').value);
-    var P = nombre($('poids').value), conditions = choix('conditions');
-    var nuit = $('nuit').checked, niveau = choix('niveau'), intestin = choix('intestin'), sueur = choix('sueur');
-    var choL = nombre($('cho_l').value) || 0, naL = nombre($('na_l').value) || 0;
-    var choGel = nombre($('cho_gel').value), naGel = nombre($('na_gel').value) || 0;
-    var m1 = [], m3 = [];
-
+    var D = lireHeures($('duree').value), P = nombre($('poids').value);
+    var conditions = choix('conditions'), nuit = $('nuit').checked, niveau = choix('niveau'), intestin = choix('intestin'), sueur = choix('sueur');
+    var chaud = conditions === 'chaud', m1 = [];
     if (D !== null && (isNaN(D) || D <= 0 || D > 72)) { m1.push('Indique une durée entre quelques minutes et 72' + N + 'heures, par exemple 5:30.'); D = null; }
     if (P !== null && (isNaN(P) || P < 35 || P > 150)) { m1.push('Ton poids doit être entre 35 et 150' + N + 'kg.'); P = null; }
-    var chaud = conditions === 'chaud';
-    var eau = repereEau(conditions);
-    $('repere-eau').textContent = 'Repère' + N + ': la plupart des coureurs boivent 400 à 800' + N + 'mL par heure, un peu plus au chaud. Bois à ta soif.';
-    if (!boissonTouchee) $('boisson').value = eau.propose;
-    var V = nombre($('boisson').value);
-    if (V === null || isNaN(V) || V < 100 || V > 1500) { m3.push('Ce que tu bois par heure : entre 100 et 1' + N + '500' + N + 'mL.'); V = null; }
-    if (isNaN(choL) || choL < 0 || choL > 120) { m3.push('Glucides par litre : entre 0 et 120' + N + 'g.'); choL = 0; }
-    if (isNaN(naL) || naL < 0 || naL > 2000) { m3.push('Sodium par litre : entre 0 et 2' + N + '000' + N + 'mg.'); naL = 0; }
-    if (choGel === null || isNaN(choGel) || choGel < 5 || choGel > 60) { m3.push('Glucides par gel : entre 5 et 60' + N + 'g.'); choGel = null; }
-    if (isNaN(naGel) || naGel < 0 || naGel > 600) { m3.push('Sodium par gel : entre 0 et 600' + N + 'mg.'); naGel = 0; }
     $('m1').textContent = m1.join(' ');
-    $('m3').textContent = m3.join(' ');
+    if (D === null) { $('resultat').hidden = true; return; }
 
-    if (D === null) { $('resultat').hidden = true; $('bloc-cible').hidden = true; return; }
-
-    var f = fourchette(D, intestin, niveau);
-    var consignes = [];
     $('resultat').hidden = false;
-    $('etat').textContent = 'Pour une course de ' + enHeures(D) + (chaud ? ', par forte chaleur' : '') + '.';
-    carte('c_eau', eau.bas + ' à ' + entier(eau.haut) + N + 'mL', chaud ? 'par heure, plus au chaud, à ta soif' : 'par heure, à ta soif');
+    $('etat').textContent = 'Pour une course de ' + enHeures(D) + (chaud ? ', par forte chaleur' : conditions === 'frais' ? ', au frais' : '') + '.';
+    var consignes = [];
 
-    // Moins d'une heure : rien à prévoir.
-    if (!f) {
-      $('bloc-cible').hidden = true;
-      $('bloc-plan').hidden = true;
-      carte('c_cho', 'Rien', 'à prévoir');
-      carte('c_na', chaud ? 'Boisson salée' : 'Rien', chaud ? 'par forte chaleur' : 'de systématique');
-      cafeine(D, P, nuit, consignes);
-      consignes.unshift('Sous 1' + N + 'heure, rien à prévoir. Effort intense de 45' + N + 'min à 1' + N + 'h' + N + '15' + N + ': une petite prise, ou un rinçage de bouche (une gorgée de boisson sucrée gardée en bouche puis recrachée).');
-      consignes.push('Bois à ta soif.');
-      afficherConsignes(consignes);
-      return;
-    }
+    // La boisson : à ta soif ; le repère de l'ACSM, et la valeur typique qui sert au sodium par heure.
+    var boire = conditions === 'chaud' ? 800 : conditions === 'frais' ? 500 : 600;
+    carte('c_eau', 'À ta soif', 'souvent 400 à 800' + N + 'mL' + (chaud ? ', plus au chaud' : ''));
 
-    // La cible : proposée selon le niveau et l'intestin, modifiable.
-    $('bloc-cible').hidden = false;
-    $('fourchette').textContent = 'Ta fourchette, ' + f.texte;
-    if (!cibleTouchee) $('cible').value = f.cible;
-    var C = nombre($('cible').value), m4 = '';
-    if (C === null || isNaN(C)) { C = f.cible; }
-    if (C > 90) { m4 = 'Au-delà de 90' + N + 'g par heure, ce n’est plus conseillé : le calcul s’arrête à 90' + N + 'g.'; C = 90; }
-    else if (C < f.bas) m4 = 'Ta cible est sous la fourchette conseillée (' + f.bas + ' à ' + f.haut + N + 'g par heure).';
-    else if (C > f.haut) m4 = 'Ta cible dépasse la fourchette conseillée (' + f.bas + ' à ' + f.haut + N + 'g par heure)' + (intestin !== 'oui' ? ' : entraîne d’abord ton intestin.' : '.');
-    $('m4').textContent = m4;
-    carte('c_cho', C + N + 'g', f.bas + ' à ' + f.haut + N + 'g conseillés, ' + grammes(C * D) + ' au total');
-
-    // Le plan heure par heure : la boisson d'abord, les gels complètent, régulièrement espacés.
-    var totalGels = 0, gelsH = 0;
-    if (V === null || choGel === null) {
-      $('bloc-plan').hidden = true;
-      carte('c_na', '—', 'complète tes produits');
+    // Les glucides.
+    var g = glucides(D, intestin, niveau);
+    if (!g) {
+      carte('c_cho', 'Rien', 'à prévoir sous 1' + N + 'h');
+      consignes.push('Sous 1' + N + 'heure, rien à prévoir. Effort intense de 45' + N + 'min à 1' + N + 'h' + N + '15' + N + ': une petite prise, ou un rinçage de bouche (une gorgée de boisson sucrée gardée en bouche puis recrachée).');
     } else {
-      $('bloc-plan').hidden = false;
-      var choBoisson = V / 1000 * choL;
-      gelsH = Math.max(0, C - choBoisson) / choGel;
-      var n = Math.ceil(D - 1e-9), lignes = [];
-      var intervalle = gelsH > 0.01 ? 60 / gelsH : 0, horaires = [];
-      totalGels = Math.round(gelsH * D);
-      for (var k = 1; k <= totalGels; k++) horaires.push(Math.round((k - 0.5) * intervalle / 5) * 5);
-      // Pas de gel dans les 20 dernières minutes : il n'aurait pas le temps de servir.
-      horaires = horaires.filter(function (t) { return t < D * 60 - 20; });
-      totalGels = horaires.length;
-      var montrer = Math.min(n, 6);
-      for (var h = 1; h <= montrer; h++) {
-        var part = Math.min(1, D - (h - 1));
-        var dans = horaires.filter(function (t) { return t >= (h - 1) * 60 && t < h * 60; });
-        var cho = choBoisson * part + dans.length * choGel;
-        lignes.push('<tr><td>' + (h === n && part < 0.999 ? 'Dernière (' + Math.round(part * 60) + N + 'min)' : h + (h === 1 ? 're' : 'e')) + '</td><td>' + Math.round(V * part / 10) * 10 + N + 'mL</td><td>' + (dans.length ? dans.map(horloge).join(', ') : '—') + '</td><td>' + grammes(cho) + '</td></tr>');
-      }
-      if (n > montrer) lignes.push('<tr><td colspan="4">Et ainsi de suite jusqu’à l’arrivée, un gel toutes les ' + Math.round(intervalle / 5) * 5 + N + 'minutes environ.</td></tr>');
-      $('plan').innerHTML = lignes.join('');
-      var rythme = 'Commence dès la première heure, par petites prises. ';
-      if (gelsH > 0.01) {
-        var minutes = Math.round(intervalle / 5) * 5;
-        rythme += choBoisson > 0
-          ? 'Ta boisson t’apporte ' + grammes(choBoisson) + ' par heure ; les gels complètent : un toutes les ' + minutes + N + 'minutes environ.'
-          : 'Un gel toutes les ' + minutes + N + 'minutes environ, avec de l’eau.';
-      } else {
-        rythme += 'Ta boisson suffit à couvrir ta cible.';
-      }
-      $('rythme').textContent = rythme;
-
-      var emporter = [];
-      if (totalGels > 0) emporter.push(Math.ceil(totalGels * 1.2) + ' gels (' + totalGels + (totalGels > 1 ? ' prévus' : ' prévu') + ', plus 20' + N + '% de marge), ou leur équivalent en glucides si l’organisation en fournit aux ravitaillements.');
-      emporter.push('De quoi boire environ ' + virgule(V * D / 1000, 1) + N + 'L au total, à remplir aux ravitaillements' + (choL > 0 ? ', avec ta boisson d’effort' : '') + '.');
-      if (D > 8) emporter.push('Du solide qui apporte des glucides (barres, sandwich, pommes de terre, galettes) et un peu de salé, pour varier.');
-      if (P !== null) emporter.push('Ta caféine, si tu l’as testée (voir tes consignes).');
-      $('emporter').innerHTML = emporter.map(function (t) { return '<li>' + t + '</li>'; }).join('');
-
-      // Le sodium : au litre bu (chiffres communs), placé selon la sueur.
-      if (D <= 3) {
-        if (chaud) {
-          carte('c_na', '500 à 700' + N + 'mg', 'par litre, dès la 1re heure');
-          consignes.push(naL >= 500
-            ? 'Forte chaleur : ta boisson, salée à ' + entier(naL) + N + 'mg par litre, convient dès la première heure.'
-            : 'Forte chaleur : bois une boisson d’effort salée dès la première heure, à 500 à 700' + N + 'mg de sodium par litre' + (naL > 0 ? ' (la tienne en apporte ' + entier(naL) + ')' : '') + '.');
-        } else {
-          carte('c_na', 'Rien', 'de systématique sous 3' + N + 'h');
-        }
-      } else {
-        var parL = sueur === 'faible' ? [500, 500] : sueur === 'elevee' ? [700, 800] : [500, 700];
-        if (chaud && sueur !== 'elevee') parL = [parL[0], 800];
-        var bas = V / 1000 * parL[0], haut = V / 1000 * parL[1];
-        var apporte = V / 1000 * naL + gelsH * naGel;
-        carte('c_na', parL[0] === parL[1] ? milli(bas) : dizaine(bas) + ' à ' + milli(haut), 'par heure, soit ' + (parL[0] === parL[1] ? 'environ ' + parL[0] : parL[0] + ' à ' + parL[1]) + N + 'mg par litre');
-        var pourquoi = sueur === 'elevee' ? ' Ta sueur est salée : vise le haut du repère, voire un peu plus.' : sueur === 'faible' ? ' Ta sueur est peu salée : le bas du repère suffit.' : chaud ? ' Par forte chaleur, un peu plus.' : '';
-        if (apporte >= bas) {
-          consignes.push('Sodium : tes produits t’en apportent environ ' + milli(apporte) + ' par heure, c’est dans ta fourchette.' + pourquoi);
-        } else {
-          consignes.push('Sodium : il te manque environ ' + (haut - bas < 5 ? milli(bas - apporte) : dizaine(bas - apporte) + ' à ' + milli(haut - apporte)) + ' par heure. Une boisson plus salée, des gels salés, une capsule de sel ou du salé (1' + N + 'g de sel apporte environ 400' + N + 'mg de sodium).' + pourquoi);
-        }
-      }
+      carte('c_cho', g.dose + N + 'g', g.bas + ' à ' + g.haut + N + 'g conseillés');
+      consignes.push('Glucides : environ ' + g.dose + N + 'g par heure (' + g.bas + ' à ' + g.haut + N + 'g conseillés), soit ' + entier(g.dose * D) + N + 'g sur ta course. Commence dès la première heure, par petites prises toutes les 15 à 30' + N + 'minutes, sans attendre la faim.');
+      if (g.dose > 60) consignes.push('Au-delà de 60' + N + 'g par heure : des produits qui associent glucose et fructose, dans un rapport de 2 pour 1' + (g.dose >= 80 ? ', ou mieux de 1 pour 0,8 à ce niveau.' : ', ou de 1 pour 0,8 en approchant 90' + N + 'g.'));
+      if (intestin !== 'oui' && D > 2.5) consignes.push('Ton intestin n’est pas encore entraîné : reste dans ta fourchette, et monte d’une dizaine de grammes par heure à chaque sortie longue tant que ton ventre suit.');
+      if (D > 4 && D <= 8) consignes.push('Le salé est une option selon ton appétit : à tester sur tes sorties de 4 à 8' + N + 'heures.');
+      if (D > 8) consignes.push('Au-delà de 8' + N + 'heures : l’appétit baisse souvent. Alterne sucré et salé, varie les textures ; du solide qui apporte des glucides (barres, sandwich, pommes de terre) compte dans ta dose.');
     }
 
-    // Les consignes.
-    if (C > 60) consignes.unshift('Au-delà de 60' + N + 'g par heure : des produits qui associent glucose et fructose, dans un rapport de 2 pour 1' + (C >= 80 ? ', ou mieux de 1 pour 0,8 à ce niveau.' : ', ou de 1 pour 0,8 en approchant 90' + N + 'g.'));
-    consignes.unshift('Commence dès la première heure, par petites prises toutes les 15 à 30' + N + 'minutes, sans attendre la faim. Dans une descente technique, attends.');
-    if (intestin !== 'oui' && D > 2.5) consignes.push('Ton intestin n’est pas encore entraîné : reste dans ta fourchette, et monte d’une dizaine de grammes par heure à chaque sortie longue tant que ton ventre suit.');
-    if (D > 4 && D <= 8) consignes.push('Le salé est une option selon ton appétit : à tester sur tes sorties de 4 à 8' + N + 'heures.');
-    if (D > 8) consignes.push('Au-delà de 8' + N + 'heures : l’appétit baisse souvent. Alterne sucré et salé, varie les textures, et remplace des gels par du solide qui apporte autant de glucides.');
-    cafeine(D, P, nuit, consignes);
-    consignes.push('Bois à ta soif : le volume indiqué est un repère pour le calcul, ne te force pas à le boire. Prise de poids, mains gonflées, nausées, confusion : arrête de boire et préviens les secours.');
-    consignes.push('Potassium, magnésium : inutile d’en ajouter, leurs compléments n’ont pas fait la preuve d’un effet sur les crampes ou la performance.');
-    consignes.push('Teste ce plan en sortie longue avant la course, avec les mêmes produits (fiche <a href="/bibliotheque/gut-training">Entraîner son intestin</a>).');
-    afficherConsignes(consignes);
-  }
+    // Le sodium : au litre bu (chiffres communs), placé selon la sueur ; l'heure, pour la boisson typique.
+    if (D < 1) {
+      carte('c_na', 'Rien', 'de systématique sous 1' + N + 'h');
+    } else if (D <= 3) {
+      if (chaud) {
+        carte('c_na', '500 à 700' + N + 'mg', 'par litre bu, dès la 1re heure');
+        consignes.push('Sodium : forte chaleur, une boisson d’effort salée dès la première heure, à 500 à 700' + N + 'mg de sodium par litre.');
+      } else {
+        carte('c_na', 'Rien', 'de systématique sous 3' + N + 'h');
+      }
+    } else {
+      var parL = sueur === 'faible' ? [500, 500] : sueur === 'elevee' ? [700, 800] : [500, 700];
+      if (chaud && sueur !== 'elevee') parL = [parL[0], 800];
+      var unique = parL[0] === parL[1];
+      carte('c_na', unique ? 'Environ ' + parL[0] + N + 'mg' : parL[0] + ' à ' + parL[1] + N + 'mg', 'par litre bu');
+      consignes.push('Sodium : ' + (unique ? 'environ ' + parL[0] : parL[0] + ' à ' + parL[1]) + N + 'mg par litre bu, soit ' + (unique ? 'environ ' + dizaine(boire / 1000 * parL[0]) : dizaine(boire / 1000 * parL[0]) + ' à ' + dizaine(boire / 1000 * parL[1])) + N + 'mg par heure si tu bois ' + boire + N + 'mL.' + (sueur === 'elevee' ? ' Ta sueur est salée : vise le haut, voire un peu plus.' : sueur === 'faible' ? ' Ta sueur est peu salée : le bas suffit.' : chaud ? ' Par forte chaleur, un peu plus.' : ''));
+    }
 
-  // La caféine : jamais pour la première fois le jour J, plafonnée à 200 mg par prise et 400 mg par 24 h.
-  function cafeine(D, P, nuit, consignes) {
+    // La caféine : jamais pour la première fois le jour J, plafonnée à 200 mg par prise et 400 mg par 24 h.
     if (P === null) {
       carte('c_caf', '—', 'indique ton poids');
-      return;
-    }
-    if (D < 3) {
+    } else if (D < 3) {
       var dose = Math.round(Math.min(200, 3 * P) / 5) * 5;
       carte('c_caf', dose + N + 'mg', 'une heure avant');
-      consignes.push('Caféine, si tu l\u2019as testée : ' + dose + N + 'mg environ une heure avant le départ (environ 3' + N + 'mg par kilo, au plus 200' + N + 'mg).');
+      consignes.push('Caféine, si tu l’as testée : ' + dose + N + 'mg environ une heure avant le départ (environ 3' + N + 'mg par kilo, au plus 200' + N + 'mg).');
     } else {
       var pb = Math.min(200, P), ph = Math.min(200, 2 * P), nmax = Math.floor(400 / ph);
       carte('c_caf', Math.round(pb) + ' à ' + Math.round(ph) + N + 'mg', 'par prise');
       consignes.push('Caféine, si tu l’as testée : de petites prises de ' + Math.round(pb) + ' à ' + Math.round(ph) + N + 'mg (1 à 2' + N + 'mg par kilo), ' + (nuit ? 'la nuit et vers la fin' : 'dans la seconde moitié, vers la fin') + '. Au plus 400' + N + 'mg par 24' + N + 'h, soit ' + nmax + ' prises de ' + Math.round(ph) + N + 'mg au plus. Compte aussi le cola et les gels caféinés.');
     }
+
+    consignes.push('Boisson : bois à ta soif, souvent 400 à 800' + N + 'mL par heure, un peu plus au chaud. Prise de poids, mains gonflées, nausées, confusion : arrête de boire et préviens les secours.');
+    consignes.push('Potassium, magnésium : inutile d’en ajouter, leurs compléments n’ont pas fait la preuve d’un effet sur les crampes ou la performance.');
+    $('consignes').innerHTML = consignes.map(function (t) { return '<li>' + t + '</li>'; }).join('');
   }
 
-  function afficherConsignes(liste) {
-    $('consignes').innerHTML = liste.map(function (t) { return '<li>' + t + '</li>'; }).join('');
-  }
-
-  $('duree').addEventListener('input', function () { cibleTouchee = false; calculer(); });
-  ['poids', 'cho_l', 'na_l', 'cho_gel', 'na_gel'].forEach(function (id) { $(id).addEventListener('input', calculer); });
-  $('boisson').addEventListener('input', function () { boissonTouchee = $('boisson').value.trim() !== ''; calculer(); });
-  ['niveau_deb', 'niveau_int', 'niveau_exp', 'intestin_non', 'intestin_cours', 'intestin_oui'].forEach(function (id) { $(id).addEventListener('change', function () { cibleTouchee = false; calculer(); }); });
-  ['sueur_faible', 'sueur_moderee', 'sueur_elevee', 'nuit', 'cond_frais', 'cond_tempere', 'cond_chaud'].forEach(function (id) { $(id).addEventListener('change', calculer); });
-  $('cible').addEventListener('input', function () { cibleTouchee = $('cible').value.trim() !== ''; calculer(); });
+  ['duree', 'poids'].forEach(function (id) { $(id).addEventListener('input', calculer); });
+  ['cond_frais', 'cond_tempere', 'cond_chaud', 'nuit', 'niveau_deb', 'niveau_int', 'niveau_exp', 'intestin_non', 'intestin_cours', 'intestin_oui', 'sueur_faible', 'sueur_moderee', 'sueur_elevee'].forEach(function (id) { $(id).addEventListener('change', calculer); });
   $('imprimer').addEventListener('click', function () { window.print(); });
   calculer();
 })();
