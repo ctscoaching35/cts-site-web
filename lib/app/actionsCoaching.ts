@@ -8,6 +8,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { envoyerSemaine, ficheAthlete, objectifCoache } from './coaching';
 import { coachConnecte } from './nolio';
+import { lireAllure } from './allureCoach';
 import { clientService } from './supabase';
 
 export type EtatCoach = { message: string; ok: boolean } | null;
@@ -20,7 +21,7 @@ export async function associerNolio(athleteId: string, form: FormData): Promise<
   revalidatePath(`/app/coach/athlete/${athleteId}`);
 }
 
-// N8 : FC au seuil 1, vitesse critique (km/h), FC au seuil 2 ; un champ vide efface la valeur.
+// N8 : FC au seuil 1, vitesse critique (en allure, min/km), FC au seuil 2 ; un champ vide efface la valeur.
 export async function enregistrerValeurs(athleteId: string, _e: EtatCoach, form: FormData): Promise<EtatCoach> {
   const coach = await coachConnecte();
   if (!coach) return { ok: false, message: 'Ta session a expiré : reconnecte-toi.' };
@@ -31,14 +32,18 @@ export async function enregistrerValeurs(athleteId: string, _e: EtatCoach, form:
     return Number.isFinite(n) && n >= min && n <= max ? { valeur: n, ok: true } : { valeur: null, ok: false };
   };
   const fc1 = lire('fc_seuil1', 80, 220);
-  const vc = lire('vc_kmh', 5.4, 27);
   const fc2 = lire('fc_seuil2', 80, 230);
-  if (!fc1.ok || !vc.ok || !fc2.ok) return { ok: false, message: 'Une valeur ne semble pas juste : FC entre 80 et 230, vitesse critique en km/h.' };
+  // L'allure, de 2:15 à 11:00 min/km (de 27 à 5,4 km/h).
+  const brutAllure = String(form.get('vc_allure') ?? '').trim();
+  const allure = brutAllure ? lireAllure(brutAllure) : null;
+  const vcOk = !brutAllure || (allure !== null && allure >= 135 && allure <= 660);
+  if (!fc1.ok || !vcOk || !fc2.ok)
+    return { ok: false, message: 'Une valeur ne semble pas juste : FC entre 80 et 230, vitesse critique en min/km (par exemple 4:10).' };
   if (fc1.valeur !== null && fc2.valeur !== null && fc2.valeur <= fc1.valeur)
     return { ok: false, message: 'La FC au seuil 2 doit être plus haute que la FC au seuil 1.' };
   const { error } = await clientService().from('athletes_coaches').update({
     fc_seuil1: fc1.valeur === null ? null : Math.round(fc1.valeur),
-    vc_ms: vc.valeur === null ? null : Math.round((vc.valeur / 3.6) * 1000) / 1000,
+    vc_ms: allure === null ? null : Math.round((1000 / allure) * 1000) / 1000,
     fc_seuil2: fc2.valeur === null ? null : Math.round(fc2.valeur),
   }).eq('id', athleteId).eq('coach_id', coach.compteId);
   if (error) return { ok: false, message: 'L’enregistrement n’a pas abouti. Réessaie.' };

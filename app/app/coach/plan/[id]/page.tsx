@@ -7,6 +7,7 @@ import { retirerObjectif } from '@/lib/app/actionsCoaching';
 import { objectifCoache, verifierEnvois } from '@/lib/app/coaching';
 import { exigerCoach } from '@/lib/app/nolio';
 import { dateLongue } from '@/lib/app/plan';
+import { allureDepuisVitesse } from '@/lib/app/allureCoach';
 import { supabaseConfigure } from '@/lib/app/supabase';
 
 // Toujours calculée à la visite : la page lit la session du coach.
@@ -22,7 +23,7 @@ export default async function ObjectifCoache({ params }: { params: Promise<{ id:
   if (!o) notFound();
   const nolio = o.athlete.nolio_athlete_id;
   const envois = nolio ? await verifierEnvois(coach.compteId, id, nolio, o.plan, o.envois) : o.envois;
-  const valeurs = [o.athlete.fc_seuil1 && `FC seuil 1 ${o.athlete.fc_seuil1}`, o.athlete.vc_ms && `VC ${(o.athlete.vc_ms * 3.6).toFixed(1)} km/h`,
+  const valeurs = [o.athlete.fc_seuil1 && `FC seuil 1 ${o.athlete.fc_seuil1}`, o.athlete.vc_ms && `VC ${allureDepuisVitesse(o.athlete.vc_ms)} min/km`,
     o.athlete.fc_seuil2 && `FC seuil 2 ${o.athlete.fc_seuil2}`].filter(Boolean).join(' · ');
   return (
     <>

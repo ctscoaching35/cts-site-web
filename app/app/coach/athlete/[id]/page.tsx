@@ -6,6 +6,7 @@ import { associerNolio, retirerAthlete } from '@/lib/app/actionsCoaching';
 import { ficheAthlete } from '@/lib/app/coaching';
 import { athletesNolio, estRelie, exigerCoach, type AthleteNolio } from '@/lib/app/nolio';
 import { dateLongue } from '@/lib/app/plan';
+import { allureDepuisVitesse } from '@/lib/app/allureCoach';
 import { supabaseConfigure } from '@/lib/app/supabase';
 
 // Toujours calculée à la visite : la page lit la session du coach.
@@ -73,7 +74,7 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
         <section className="bg-white shadow-sm p-4 space-y-2">
           <h2 className="eyebrow text-indigo/60">Ses valeurs</h2>
           <p className="text-sm text-indigo/70">Avec elles, les séances partent avec une allure sur le plat ou une FC, le RPE en commentaire. Sans elles, au RPE.</p>
-          <FormulaireValeurs athleteId={a.id} fc1={a.fc_seuil1} vcKmh={a.vc_ms ? (a.vc_ms * 3.6).toFixed(1) : null} fc2={a.fc_seuil2} />
+          <FormulaireValeurs athleteId={a.id} fc1={a.fc_seuil1} vcAllure={a.vc_ms ? allureDepuisVitesse(a.vc_ms) : null} fc2={a.fc_seuil2} />
         </section>
 
         <details className="text-sm text-indigo/70">
