@@ -79,7 +79,7 @@ export const textes = {
         titre: 'Intermédiaire',
         description:
           'Je cours régulièrement depuis deux ans ou plus. J’ai déjà suivi un plan d’entraînement. Je pratique le fractionné. Je tiens 2h30 de course sans difficulté majeure.',
-        formats: 'Formats ouverts : Trail Court, Trail Marathon.',
+        formats: 'Formats ouverts : Trail Court, Trail Marathon, et Trail Long jusqu’à 10h de course.',
       },
       {
         valeur: 'confirme',
