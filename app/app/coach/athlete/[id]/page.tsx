@@ -6,7 +6,7 @@ import EnvoiSemaine from '@/components/app/EnvoiSemaine';
 import { associerNolio, retirerAthlete } from '@/lib/app/actionsCoaching';
 import { athleteCoache, verifierEnvois } from '@/lib/app/coaching';
 import { supabaseConfigure } from '@/lib/app/supabase';
-import { athletesNolio, coachConnecte, estRelie, type AthleteNolio } from '@/lib/app/nolio';
+import { athletesNolio, estRelie, exigerCoach, type AthleteNolio } from '@/lib/app/nolio';
 import { dateLongue } from '@/lib/app/plan';
 
 // Toujours calculée à la visite : la page lit la session du coach.
@@ -15,8 +15,8 @@ export const dynamic = 'force-dynamic';
 // Un athlète coaché (CTS_NOLIO_CADRAGE.md, N1 à N5) : son athlète Nolio, son plan semaine par semaine,
 // « Envoyer dans Nolio » ou « Envoyée le … », son PDF.
 export default async function AthleteCoache({ params }: { params: Promise<{ id: string }> }) {
-  const coach = supabaseConfigure() ? await coachConnecte() : null;
-  if (!coach) notFound();
+  if (!supabaseConfigure()) notFound();
+  const coach = await exigerCoach();
   const { id } = await params;
   const a = await athleteCoache(coach.compteId, id);
   if (!a) notFound();

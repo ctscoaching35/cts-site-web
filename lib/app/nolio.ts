@@ -4,6 +4,7 @@
  * Vercel, saisies par le coach : NOLIO_CLIENT_ID, NOLIO_CLIENT_SECRET. Les jetons restent dans la table
  * nolio_comptes, que seule la clé de service lit. Documentation : github.com/NolioApp/NolioAPI-Documentation.
  */
+import { notFound, redirect } from 'next/navigation';
 import { clientServeur, clientService } from './supabase';
 
 const NOLIO = 'https://www.nolio.io';
@@ -21,6 +22,16 @@ export const urlAutorisation = (origine: string, etat: string) =>
 
 // Les coachs : les e-mails de la variable CTS_COACHS (séparés par des virgules), saisie par le coach dans Vercel.
 const coachs = () => (process.env.CTS_COACHS ?? '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
+
+// Les pages coach : sans session, la connexion ; connecté sans être coach, une page introuvable.
+export async function exigerCoach(): Promise<{ compteId: string; email: string }> {
+  const supabase = await clientServeur();
+  const { data } = await supabase.auth.getClaims();
+  if (!data?.claims?.sub) redirect('/app/connexion');
+  const coach = await coachConnecte();
+  if (!coach) notFound();
+  return coach;
+}
 
 // Le coach connecté, ou null : la page coach n'existe pour personne d'autre.
 export async function coachConnecte(): Promise<{ compteId: string; email: string } | null> {

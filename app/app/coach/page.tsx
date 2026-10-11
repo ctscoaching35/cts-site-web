@@ -5,7 +5,7 @@ import { dateLongue } from '@/lib/app/plan';
 import EnTeteCoach from '@/components/app/EnTeteCoach';
 import type { Recherche } from '@/lib/app/contexte';
 import { supabaseConfigure } from '@/lib/app/supabase';
-import { athletesNolio, coachConnecte, estRelie, nolioConfigure, type AthleteNolio } from '@/lib/app/nolio';
+import { athletesNolio, estRelie, exigerCoach, nolioConfigure, type AthleteNolio } from '@/lib/app/nolio';
 
 // Toujours calculée à la visite : la page lit la session du coach.
 export const dynamic = 'force-dynamic';
@@ -19,8 +19,8 @@ const RESULTATS: Record<string, string> = {
 };
 
 export default async function Coach({ searchParams }: { searchParams: Recherche }) {
-  const coach = supabaseConfigure() ? await coachConnecte() : null;
-  if (!coach) notFound();
+  if (!supabaseConfigure()) notFound();
+  const coach = await exigerCoach();
   const r = await searchParams;
   const resultat = typeof r.nolio === 'string' ? RESULTATS[r.nolio] : undefined;
   const relie = nolioConfigure() && (await estRelie(coach.compteId));
