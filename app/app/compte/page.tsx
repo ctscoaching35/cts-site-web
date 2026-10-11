@@ -32,7 +32,10 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
   }
   const supabase = await clientServeur();
   const { data } = await supabase.auth.getClaims();
-  const { data: plans } = await supabase.from('plans').select('id, course_nom, course_date').order('course_date', { ascending: false });
+  const { data: tous } = await supabase.from('plans').select('id, course_nom, course_date').order('course_date', { ascending: false });
+  // Les plans des athlètes coachés restent dans l'espace coach (CTS_NOLIO_CADRAGE.md).
+  const { data: coaches } = await supabase.from('coaching').select('plan_id');
+  const plans = (tous ?? []).filter((p) => !(coaches ?? []).some((c) => c.plan_id === p.id));
   return (
     <>
       <EnTeteApp ctx={ctx} />

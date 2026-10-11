@@ -87,10 +87,14 @@ export async function appelNolio(compteId: string, chemin: string, init: Request
 
 export type AthleteNolio = { nolio_id: number; name: string };
 
-// Les athlètes que le coach suit dans Nolio (/api/get/athletes/).
+// Les athlètes que le coach suit dans Nolio (/api/get/athletes/), et le coach lui-même, que Nolio ajoute en
+// dernier (wants_coach) : marqué « (toi) », pour un premier envoi d'essai dans son propre calendrier.
 export async function athletesNolio(compteId: string): Promise<AthleteNolio[]> {
-  const reponse = await appelNolio(compteId, '/get/athletes/');
+  const reponse = await appelNolio(compteId, '/get/athletes/?wants_coach=true');
   if (!reponse.ok) throw new Error(`Nolio /get/athletes/ : ${reponse.status}`);
   const liste = (await reponse.json()) as AthleteNolio[];
-  return liste.map(({ nolio_id, name }) => ({ nolio_id, name })).sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+  const lui = liste[liste.length - 1];
+  const athletes = liste.slice(0, -1).map(({ nolio_id, name }) => ({ nolio_id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+  return lui ? [...athletes, { nolio_id: lui.nolio_id, name: `${lui.name} (toi)` }] : athletes;
 }

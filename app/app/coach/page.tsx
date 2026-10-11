@@ -1,10 +1,17 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import EnTeteApp from '@/components/app/EnTeteApp';
-import { contexte, type Recherche } from '@/lib/app/contexte';
+import { athletesCoaches } from '@/lib/app/coaching';
+import { dateLongue } from '@/lib/app/plan';
+import EnTeteCoach from '@/components/app/EnTeteCoach';
+import type { Recherche } from '@/lib/app/contexte';
+import { supabaseConfigure } from '@/lib/app/supabase';
 import { athletesNolio, coachConnecte, estRelie, nolioConfigure, type AthleteNolio } from '@/lib/app/nolio';
 
-// La page coach (CTS_NOLIO_CADRAGE.md, N2) : réservée aux comptes de CTS_COACHS. Étape 2 : relier le compte
-// Nolio du coach et lire ses athlètes ; les plans des athlètes coachés et l'envoi des semaines suivent (étape 3).
+// Toujours calculée à la visite : la page lit la session du coach.
+export const dynamic = 'force-dynamic';
+
+// La page coach (CTS_NOLIO_CADRAGE.md, N2) : réservée aux comptes de CTS_COACHS. Relier le compte Nolio du
+// coach ; ses athlètes coachés (étape 3) : en ajouter un, ouvrir son plan pour l'envoyer dans Nolio.
 const RESULTATS: Record<string, string> = {
   relie: 'Ton compte Nolio est relié.',
   refus: 'La liaison n’a pas abouti : recommence depuis cette page.',
@@ -12,8 +19,7 @@ const RESULTATS: Record<string, string> = {
 };
 
 export default async function Coach({ searchParams }: { searchParams: Recherche }) {
-  const ctx = await contexte(searchParams);
-  const coach = ctx.demonstration ? null : await coachConnecte();
+  const coach = supabaseConfigure() ? await coachConnecte() : null;
   if (!coach) notFound();
   const r = await searchParams;
   const resultat = typeof r.nolio === 'string' ? RESULTATS[r.nolio] : undefined;
@@ -28,11 +34,27 @@ export default async function Coach({ searchParams }: { searchParams: Recherche 
       erreur = true;
     }
   }
+  const coaches = await athletesCoaches(coach.compteId);
   return (
     <>
-      <EnTeteApp ctx={ctx} />
+      <EnTeteCoach />
       <main className="mx-auto max-w-2xl px-4 py-5 space-y-5">
         <h1 className="text-2xl text-indigo">Coach</h1>
+        <section className="bg-white shadow-sm p-4 space-y-3">
+          <h2 className="eyebrow text-indigo/60">Tes athlètes coachés</h2>
+          {coaches.length === 0 && <p className="text-sm text-indigo/70">Aucun pour l’instant.</p>}
+          <ul className="divide-y divide-indigo/10">
+            {coaches.map((x) => (
+              <li key={x.plan_id}>
+                <Link href={`/app/coach/athlete/${x.plan_id}`} className="flex justify-between gap-3 py-2 text-sm">
+                  <span className="font-semibold text-indigo">{x.athlete_nom}</span>
+                  <span className="text-indigo/60 text-right">{x.course_nom} · {x.course_date ? dateLongue(x.course_date, true) : ''} ›</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <Link href="/app/coach/nouveau" className="btn btn-primary !py-2.5 inline-block">Ajouter un athlète</Link>
+        </section>
         {resultat && <p className="text-sm font-semibold text-indigo bg-white shadow-sm p-3" role="status">{resultat}</p>}
         <section className="bg-white shadow-sm p-4 space-y-3">
           <h2 className="eyebrow text-indigo/60">Nolio</h2>

@@ -65,7 +65,9 @@ function Choix({
   );
 }
 
-export default function Questionnaire() {
+// coach : le questionnaire rempli par le coach pour un athlète coaché (CTS_NOLIO_CADRAGE.md, N1, N2) : sans
+// paiement ni brouillon gardé, le plan part dans son espace coach.
+export default function Questionnaire({ coach = false }: { coach?: boolean } = {}) {
   const [config, setConfig] = useState<ConfigPlan | null>(null);
   const [erreurConfig, setErreurConfig] = useState('');
   const [c, setC] = useState<Champs>(champsVides);
@@ -84,6 +86,7 @@ export default function Questionnaire() {
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then(setConfig)
       .catch(() => setErreurConfig('Le service de génération ne répond pas. Réessaie dans quelques minutes.'));
+    if (coach) return;
     try {
       const brouillon = localStorage.getItem(CLE_BROUILLON);
       // La réponse de santé n'est jamais reprise d'un brouillon, même ancien.
@@ -94,6 +97,7 @@ export default function Questionnaire() {
   }, []);
 
   useEffect(() => {
+    if (coach) return;
     try {
       // La réponse de santé reste hors du brouillon (audit du 27/09/2026, T4 ; décision
       // coach du 28/09/2026) : « elle reste sur ta page » devient vrai au pied de la
@@ -198,6 +202,21 @@ export default function Questionnaire() {
     const donnees = new FormData();
     donnees.append('intake', JSON.stringify(intakePourApi(c)));
     if (gpx) donnees.append('gpx', gpx);
+    if (coach) {
+      try {
+        const r = await fetch('/app/coach/athletes', { method: 'POST', body: donnees });
+        const corps = await r.json().catch(() => null);
+        if (r.ok && corps?.page) {
+          window.location.href = corps.page;
+          return;
+        }
+        setRefus(corps?.message || 'Une erreur est survenue. Réessaie dans quelques minutes.');
+      } catch {
+        setRefus('Le service de génération ne répond pas. Vérifie ta connexion et réessaie.');
+      }
+      setEnvoi(false);
+      return;
+    }
     try {
       const r = await fetch(`${API_URL}/v1/checkout`, { method: 'POST', body: donnees });
       const corps = await r.json().catch(() => null);
@@ -281,15 +300,17 @@ export default function Questionnaire() {
 
         <section className="bg-indigo text-white p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
           <div>
-            <div className="eyebrow text-teal-light mb-2">Ton plan · {c.duree_mois} mois</div>
-            <div className="text-4xl font-black">{prix} €</div>
+            <div className="eyebrow text-teal-light mb-2">{coach ? `Plan de ${c.nom}` : 'Ton plan'} · {c.duree_mois} mois</div>
+            {!coach && <div className="text-4xl font-black">{prix} €</div>}
           </div>
           <button type="button" onClick={generer} disabled={bloque || envoi} className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed">
             {envoi
-              ? 'Vérification…'
-              : config.mode_paiement === 'test'
-                ? 'Générer mon plan (test, sans paiement) →'
-                : `Payer ${prix} € →`}
+              ? (coach ? 'Génération…' : 'Vérification…')
+              : coach
+                ? 'Générer le plan de l’athlète →'
+                : config.mode_paiement === 'test'
+                  ? 'Générer mon plan (test, sans paiement) →'
+                  : `Payer ${prix} € →`}
           </button>
         </section>
       </div>

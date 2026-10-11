@@ -55,7 +55,11 @@ export async function contexte(recherche: Recherche): Promise<Contexte> {
   // Un plan par course (cadrage, 3.6) : celui que l'athlète a choisi sur cet appareil (« Tes plans »,
   // ou le dernier acheté), sinon celui de la prochaine course, sinon le dernier couru.
   const aujourdhui = aujourdhuiIso();
-  const { data: plans } = await supabase.from('plans').select('id, course_date').order('course_date');
+  // Les plans des athlètes coachés, rangés dans le compte du coach, ne sont pas les siens (CTS_NOLIO_CADRAGE.md).
+  const { data: tous } = await supabase.from('plans').select('id, course_date').order('course_date');
+  const { data: coaches } = await supabase.from('coaching').select('plan_id');
+  const exclus = new Set((coaches ?? []).map((c) => c.plan_id));
+  const plans = (tous ?? []).filter((p) => !exclus.has(p.id));
   const voulu = (await cookies()).get(COOKIE_PLAN)?.value;
   const choisi = plans?.find((p) => p.id === voulu)
     ?? plans?.find((p) => p.course_date >= aujourdhui) ?? plans?.[plans.length - 1];
