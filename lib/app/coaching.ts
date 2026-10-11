@@ -50,6 +50,17 @@ async function seancesDuMoteur(jours: Jour[]) {
   return ((await r.json()).seances ?? []) as { id: string; nolio: Record<string, unknown> | null }[];
 }
 
+// N7 : le moteur met le RPE de chaque étape en cible. Si Nolio refuse cette cible (sa documentation hésite), la
+// séance repart avec le RPE en simple champ de l'étape, sans cible.
+type Etape = Record<string, unknown> & { type?: string; steps?: Etape[] };
+const sansCibleRpe = (etapes: Etape[]): Etape[] =>
+  etapes.map((e) => {
+    if (e.type === 'repetition') return { ...e, steps: sansCibleRpe(e.steps ?? []) };
+    if (e.target_type !== 'rpe') return e;
+    const { target_value_min: _min, target_value_max: _max, ...reste } = e;
+    return { ...reste, target_type: 'no_target' };
+  });
+
 // Envoyer une semaine dans Nolio (N4 : une seule fois tant que ses séances existent). Rend le nombre de séances.
 export async function envoyerSemaine(coachId: string, planId: string, numero: string) {
   const a = await athleteCoache(coachId, planId);
@@ -61,10 +72,17 @@ export async function envoyerSemaine(coachId: string, planId: string, numero: st
   const seances = (await seancesDuMoteur(semaine.jours)).filter((s) => s.nolio);
   const crees: Envoi['seances'] = [];
   for (const s of seances) {
-    const corps = { ...s.nolio, athlete_id: a.coaching.nolio_athlete_id, id_partner: idPartenaire(`${planId}:${s.id}`) };
-    const r = await appelNolio(coachId, '/create/planned/training/', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corps),
+    const corps: Record<string, unknown> = {
+      ...s.nolio, athlete_id: a.coaching.nolio_athlete_id, id_partner: idPartenaire(`${planId}:${s.id}`),
+    };
+    const creer = (c: Record<string, unknown>) => appelNolio(coachId, '/create/planned/training/', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(c),
     });
+    let r = await creer(corps);
+    if (!r.ok && r.status < 500 && Array.isArray(corps.structured_workout)) {
+      console.error(`Nolio refuse la cible RPE (${r.status}) : nouvel essai sans cible.`);
+      r = await creer({ ...corps, structured_workout: sansCibleRpe(corps.structured_workout as Etape[]) });
+    }
     if (!r.ok) {
       // Ce qui est déjà créé est gardé, pour que la semaine reste « envoyée » et ne se double pas.
       if (crees.length) await garderEnvoi(coachId, planId, numero, crees);
