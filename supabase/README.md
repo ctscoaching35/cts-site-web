@@ -157,6 +157,13 @@ Trois tables de plus, `nolio_comptes`, `coaching` et `nolio_envois`
 ses jetons restent dans `nolio_comptes`, que seul le serveur lit. Les clés de l'API Nolio vivent dans Vercel :
 `NOLIO_CLIENT_ID`, `NOLIO_CLIENT_SECRET`, saisies par le coach.
 
+## 13. L'athlète coaché sur la durée
+
+Une table de plus, `athletes_coaches` (`supabase/migrations/20261011100000_athletes_coaches.sql`) : SQL Editor,
+coller le fichier, Run. La fiche d'un athlète coaché regroupe ses objectifs successifs (un plan par objectif),
+son nom Nolio et ses valeurs (FC au seuil 1, vitesse critique, FC au seuil 2), saisies par le coach. Les
+athlètes déjà ajoutés reçoivent leur fiche au passage du fichier.
+
 ## Ce qui viendra ensuite
 
 - La confirmation de paiement de Stripe (webhook), une fois le site en ligne.

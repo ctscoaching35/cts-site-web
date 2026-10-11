@@ -67,10 +67,14 @@ function Choix({
 
 // coach : le questionnaire rempli par le coach pour un athlète coaché (CTS_NOLIO_CADRAGE.md, N1, N2) : sans
 // paiement ni brouillon gardé, le plan part dans son espace coach.
-export default function Questionnaire({ coach = false }: { coach?: boolean } = {}) {
+export default function Questionnaire({
+  coach = false, emailCoach = '', athleteId, initial,
+}: { coach?: boolean; emailCoach?: string; athleteId?: string; initial?: Record<string, string | string[]> } = {}) {
   const [config, setConfig] = useState<ConfigPlan | null>(null);
   const [erreurConfig, setErreurConfig] = useState('');
-  const [c, setC] = useState<Champs>(champsVides);
+  // En mode coach : l'e-mail est celui du coach (rien n'est envoyé à l'athlète, N5) ; un nouvel objectif part des
+  // réponses du précédent (N9).
+  const [c, setC] = useState<Champs>(coach ? { ...champsVides, ...(initial as Partial<Champs>), email: emailCoach } : champsVides);
   const [gpx, setGpx] = useState<File | null>(null);
   // Trace vérifiée dès son choix, sans rien bloquer (audit du 27/09/2026, T3 ; décision coach
   // du 28/09/2026) : l'athlète apprenait après avoir payé qu'elle était illisible.
@@ -202,6 +206,7 @@ export default function Questionnaire({ coach = false }: { coach?: boolean } = {
     const donnees = new FormData();
     donnees.append('intake', JSON.stringify(intakePourApi(c)));
     if (gpx) donnees.append('gpx', gpx);
+    if (coach && athleteId) donnees.append('athlete_id', athleteId);
     if (coach) {
       try {
         const r = await fetch('/app/coach/athletes', { method: 'POST', body: donnees });
@@ -245,7 +250,7 @@ export default function Questionnaire({ coach = false }: { coach?: boolean } = {
 
   if (etape === 'recap') {
     const lignes: [string, string][] = [
-      ['Nom', c.nom], ['E-mail', c.email], ['Niveau', nomNiveau],
+      ['Nom', c.nom], ...(coach ? [] : [['E-mail', c.email] as [string, string]]), ['Niveau', nomNiveau],
       ['En ce moment', `${c.volume_hebdo_actuel} de course par semaine · plus longue sortie ${c.sortie_longue_actuelle}`],
       ['Formule', `${nomFormat} — ${c.duree_mois} mois`],
       ['Course', `${c.course_nom}, le ${new Date(`${c.date_course}T00:00:00`).toLocaleDateString('fr-FR')}`],
@@ -325,11 +330,13 @@ export default function Questionnaire({ coach = false }: { coach?: boolean } = {
             <label className={labelCls} htmlFor="nom">Nom / prénom</label>
             <input id="nom" className={inputCls} required value={c.nom} onChange={(e) => maj('nom')(e.target.value)} autoComplete="name" />
           </div>
-          <div>
-            <label className={labelCls} htmlFor="email">E-mail</label>
-            <input id="email" type="email" className={inputCls} required value={c.email} onChange={(e) => maj('email')(e.target.value)} autoComplete="email" />
-            <p className={aideCls}>C’est là que part ton plan.</p>
-          </div>
+          {!coach && (
+            <div>
+              <label className={labelCls} htmlFor="email">E-mail</label>
+              <input id="email" type="email" className={inputCls} required value={c.email} onChange={(e) => maj('email')(e.target.value)} autoComplete="email" />
+              <p className={aideCls}>C’est là que part ton plan.</p>
+            </div>
+          )}
         </div>
       </Section>
 

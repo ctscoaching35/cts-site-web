@@ -4,9 +4,10 @@ import type { Plan } from '@/lib/app/plan';
 import { coachConnecte } from '@/lib/app/nolio';
 import { clientService } from '@/lib/app/supabase';
 
-// « Ajouter un athlète » (CTS_NOLIO_CADRAGE.md, N1, N2, N5) : le questionnaire rempli par le coach part au
-// moteur avec le code du coach (CTS_CLE_COACH), sans paiement ; le plan et son PDF sont rangés dans le compte
-// du coach, avec l'athlète coaché. Aucun compte ni e-mail pour l'athlète.
+// « Ajouter un athlète » et « Nouvel objectif » (CTS_NOLIO_CADRAGE.md, N1, N2, N5, N9) : le questionnaire rempli
+// par le coach part au moteur avec le code du coach (CTS_CLE_COACH), sans paiement ; le plan et son PDF sont
+// rangés dans le compte du coach, comme objectif de l'athlète (sa fiche, créée au premier objectif). Aucun compte
+// ni e-mail pour l'athlète.
 export async function POST(request: NextRequest) {
   const coach = await coachConnecte();
   const cle = process.env.CTS_CLE_COACH;
@@ -14,6 +15,7 @@ export async function POST(request: NextRequest) {
   if (!cle) return NextResponse.json({ message: 'Le code du coach (CTS_CLE_COACH) manque dans Vercel.' }, { status: 500 });
   const enTete = { 'X-CTS-Coach': cle };
   const formulaire = await request.formData();
+  const athleteDemande = String(formulaire.get('athlete_id') ?? '');
   const r1 = await fetch(`${API_URL}/v1/checkout`, { method: 'POST', body: formulaire, headers: enTete, cache: 'no-store' });
   const c1 = await r1.json().catch(() => null);
   if (!r1.ok || !c1?.session_id) {
@@ -42,13 +44,24 @@ export async function POST(request: NextRequest) {
   const chemin = `${coach.compteId}/${plan.id}.pdf`;
   const { error: erreurPdf } = await service.storage.from('plans-pdf').upload(chemin, pdf, { contentType: 'application/pdf', upsert: true });
   if (!erreurPdf) await service.from('plans').update({ pdf_chemin: chemin }).eq('id', plan.id);
-  const { error: erreurCoaching } = await service.from('coaching').insert({
-    plan_id: plan.id, coach_id: coach.compteId, athlete_nom: String(c2.resume?.athlete || donnees.athlete.nom),
-  });
+  const nom = String(c2.resume?.athlete || donnees.athlete.nom);
+  // La fiche de l'athlète : celle d'un nouvel objectif si elle est au coach, sinon une nouvelle.
+  let athleteId: string | null = null;
+  if (athleteDemande) {
+    const { data } = await service.from('athletes_coaches').select('id').eq('id', athleteDemande).eq('coach_id', coach.compteId).maybeSingle();
+    athleteId = data?.id ?? null;
+  }
+  if (!athleteId) {
+    const { data } = await service.from('athletes_coaches').insert({ coach_id: coach.compteId, nom }).select('id').single();
+    athleteId = data?.id ?? null;
+  }
+  const { error: erreurCoaching } = athleteId
+    ? await service.from('coaching').insert({ plan_id: plan.id, coach_id: coach.compteId, athlete_nom: nom, athlete_id: athleteId })
+    : { error: { message: 'fiche de l’athlète non créée' } };
   if (erreurCoaching) {
     console.error('Coaching :', erreurCoaching.message);
     await service.from('plans').delete().eq('id', plan.id);
     return NextResponse.json({ message: 'Le plan n’a pas pu être rangé. Réessaie.' }, { status: 500 });
   }
-  return NextResponse.json({ page: `/app/coach/athlete/${plan.id}` });
+  return NextResponse.json({ page: `/app/coach/plan/${plan.id}` });
 }

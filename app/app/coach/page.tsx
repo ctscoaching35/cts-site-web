@@ -44,14 +44,19 @@ export default async function Coach({ searchParams }: { searchParams: Recherche 
           <h2 className="eyebrow text-indigo/60">Tes athlètes coachés</h2>
           {coaches.length === 0 && <p className="text-sm text-indigo/70">Aucun pour l’instant.</p>}
           <ul className="divide-y divide-indigo/10">
-            {coaches.map((x) => (
-              <li key={x.plan_id}>
-                <Link href={`/app/coach/athlete/${x.plan_id}`} className="flex justify-between gap-3 py-2 text-sm">
-                  <span className="font-semibold text-indigo">{x.athlete_nom}</span>
-                  <span className="text-indigo/60 text-right">{x.course_nom} · {x.course_date ? dateLongue(x.course_date, true) : ''} ›</span>
-                </Link>
-              </li>
-            ))}
+            {coaches.map((x) => {
+              // Le prochain objectif, sinon le dernier couru.
+              const aujourdhui = new Date().toISOString().slice(0, 10);
+              const o = x.objectifs.find((y) => y.course_date >= aujourdhui) ?? x.objectifs[x.objectifs.length - 1];
+              return (
+                <li key={x.id}>
+                  <Link href={`/app/coach/athlete/${x.id}`} className="flex justify-between gap-3 py-2 text-sm">
+                    <span className="font-semibold text-indigo">{x.nom}</span>
+                    <span className="text-indigo/60 text-right">{o ? `${o.course_nom} · ${dateLongue(o.course_date, true)}` : 'Aucun objectif'} ›</span>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
           <Link href="/app/coach/nouveau" className="btn btn-primary !py-2.5 inline-block">Ajouter un athlète</Link>
         </section>
