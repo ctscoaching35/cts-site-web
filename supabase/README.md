@@ -149,6 +149,14 @@ mode d'emploi (une marche reprise, une séance dure allégée), l'app la propose
 refuse, et la décision est gardée ici, sous le consentement du journal. Sans cette table, les propositions
 s'affichent mais ne s'enregistrent pas.
 
+## 12. Le coaching par Nolio
+
+Trois tables de plus, `nolio_comptes`, `coaching` et `nolio_envois`
+(`supabase/migrations/20261011000000_coaching.sql`) : SQL Editor, coller le fichier, Run. La page coach
+(`/app/coach`, réservée aux e-mails de la variable `CTS_COACHS` dans Vercel) relie le compte Nolio du coach ;
+ses jetons restent dans `nolio_comptes`, que seul le serveur lit. Les clés de l'API Nolio vivent dans Vercel :
+`NOLIO_CLIENT_ID`, `NOLIO_CLIENT_SECRET`, saisies par le coach.
+
 ## Ce qui viendra ensuite
 
 - La confirmation de paiement de Stripe (webhook), une fois le site en ligne.

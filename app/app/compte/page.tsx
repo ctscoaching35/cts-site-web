@@ -7,6 +7,8 @@ import { effacerJournal } from '@/lib/app/actionsJournal';
 import { contexte, type Recherche } from '@/lib/app/contexte';
 import { dateLongue } from '@/lib/app/plan';
 import { clientServeur } from '@/lib/app/supabase';
+import { coachConnecte } from '@/lib/app/nolio';
+import Link from 'next/link';
 
 // Le compte (cadrage, 3.6) : l'e-mail, les plans (un par course), la déconnexion, la
 // suppression. Les exports (PDF, agenda) et les pages légales viennent ensuite (1e, 1f).
@@ -40,6 +42,10 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
           <h2 className="eyebrow text-indigo/60">Ton e-mail</h2>
           <p className="text-indigo">{String(data?.claims?.email ?? '')}</p>
         </section>
+        {/* La page coach (CTS_NOLIO_CADRAGE.md, N2), pour les seuls comptes de CTS_COACHS. */}
+        {(await coachConnecte()) && (
+          <Link href="/app/coach" className="block bg-white shadow-sm p-4 text-teal font-semibold">Espace coach ›</Link>
+        )}
         {/* « Tes plans » (décision coach du 07/10/2026) : avec plusieurs plans, on choisit celui que
             l'app affiche ; le choix se retient sur l'appareil. */}
         <section className="bg-white shadow-sm p-4 space-y-2">
