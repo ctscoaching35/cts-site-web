@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { compterEtape } from '@/lib/mesure';
 import clsx from 'clsx';
 import {
   API_URL, alerteSortieLongue, avertissements, bandeTempsCible, champsVides, formatDepuisDistance, formatOuvert,
@@ -143,7 +144,14 @@ export default function Questionnaire({
     return () => clearTimeout(minuteur);
   }, [rappel, c.email, coach]);
 
-  const maj = (champ: keyof Champs) => (v: string) => setC((p) => ({ ...p, [champ]: v }));
+  // Le tunnel de vente (L4) : questionnaire commencé à la première réponse, récapitulatif atteint ; pas pour le coach.
+  const maj = (champ: keyof Champs) => (v: string) => {
+    if (!coach) compterEtape('questionnaire');
+    setC((p) => ({ ...p, [champ]: v }));
+  };
+  useEffect(() => {
+    if (!coach && etape === 'recap') compterEtape('recap');
+  }, [etape, coach]);
 
   // Le format se déduit de la distance (F4) : un format que le niveau n'ouvre pas ne propose
   // aucune durée, et la note sous la distance dit pourquoi.
@@ -237,6 +245,7 @@ export default function Questionnaire({
     if (gpx) donnees.append('gpx', gpx);
     if (coach && athleteId) donnees.append('athlete_id', athleteId);
     if (!coach && renonce) donnees.append('renonciation_retractation', '1');
+    if (!coach) compterEtape('paiement');
     if (coach) {
       try {
         const r = await fetch('/app/coach/athletes', { method: 'POST', body: donnees });

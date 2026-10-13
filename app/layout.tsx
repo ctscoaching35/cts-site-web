@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Montserrat } from 'next/font/google';
 import './globals.css';
+import { Analytics } from '@vercel/analytics/next';
 import { site } from '@/lib/content';
 
 const montserrat = Montserrat({
@@ -74,7 +75,12 @@ export default function RootLayout({
     // suppressHydrationWarning : les navigateurs ajoutent leurs propres attributs à <html> avant
     // que React démarre (Chrome sur iPhone : __gcrremoteframetoken) ; ce n'est pas une erreur.
     <html lang="fr" className={montserrat.variable} data-scroll-behavior="smooth" suppressHydrationWarning>
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased">
+        {children}
+        {/* Les visites par page (CTS_LANCEMENT_CADRAGE.md dans le dépôt du moteur, L4) : sans cookie ; à activer
+            dans Vercel (projet › Analytics). */}
+        <Analytics />
+      </body>
     </html>
   );
 }

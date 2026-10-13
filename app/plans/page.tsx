@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import CompterOffre from '@/components/CompterOffre';
 import EnTetePlan from '@/components/plan/EnTetePlan';
 import { plansOffre as t } from '@/lib/content';
 import { API_URL } from '@/lib/plan';
@@ -51,6 +52,7 @@ export default async function PagePlans() {
   const des = prix ? Math.min(...Object.values(prix)) : null;
   return (
     <div className="min-h-screen bg-sand">
+      <CompterOffre />
       <EnTetePlan />
       <main>
         <section className="bg-indigo text-white">

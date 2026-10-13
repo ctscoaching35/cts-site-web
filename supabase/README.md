@@ -178,6 +178,13 @@ Run. La case « Envoie-moi un rappel » du questionnaire y range l'e-mail et la 
 le passage quotidien (`vercel.json`, `/api/relance/envoyer`, protégé par CRON_SECRET) envoie une relance, une
 seule, aux accords de plus de 24 h sans achat ; l'achat l'annule ; les lignes de plus de 30 jours s'effacent.
 
+## 16. La mesure du tunnel de vente
+
+Une table de plus, `mesures` (`supabase/migrations/20261013200000_mesures.sql`), et sa fonction
+`compter_mesure` : SQL Editor, coller le fichier, Run. Des compteurs anonymes par jour (page des plans vue,
+questionnaire commencé, récapitulatif atteint, paiement lancé), sans cookie ni adresse ; relus avec les achats
+dans l'espace coach (`/app/coach/chiffres`). Les visites et leur provenance : Vercel Analytics.
+
 ## Ce qui viendra ensuite
 
 - La suppression des comptes restés 3 ans sans connexion, après un e-mail d'avertissement (D4).
