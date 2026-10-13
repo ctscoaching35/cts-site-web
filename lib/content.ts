@@ -217,7 +217,7 @@ export const plansOffre = {
       {
         titre: 'Tu t’entraînes avec l’app',
         texte:
-          'La séance du jour, détaillée à l’effort ; ton journal ; un plan qui s’ajuste quand une séance saute ou quand la fatigue s’installe. Et le PDF de ton plan, à garder ou à imprimer.',
+          'La séance du jour, détaillée à l’effort ; ton journal ; un plan qui s’ajuste quand une séance saute ou quand la fatigue s’installe.',
       },
     ],
   },
@@ -231,14 +231,13 @@ export const plansOffre = {
       'Un plan qui s’adapte : séance manquée, fatigue, sensations notées dans ton journal, la suite s’ajuste sans saut de charge.',
       'Une séance à déplacer dans la semaine ? L’app te montre les jours qui conviennent le mieux.',
       'La bibliothèque CTS : 22 fiches (nutrition, récupération, renforcement, descente…) et les calculateurs.',
-      'Ton plan complet en PDF.',
     ],
   },
   exemple: {
     eyebrow: 'Un exemple',
-    title: 'Le plan, tel que tu le recevras',
+    title: 'À quoi ressemble un plan',
     texte:
-      'Un trail de 42 km et 2 700 m de D+, niveau intermédiaire, quatre séances par semaine, préparé en 4 mois : le PDF complet, tel qu’un athlète le reçoit.',
+      'Un trail de 42 km et 2 700 m de D+, niveau intermédiaire, quatre séances par semaine, préparé en 4 mois : le plan complet, semaine par semaine, dans sa version PDF.',
     lien: { label: 'Voir le plan d’exemple (PDF)', href: '/exemples/plan-exemple-cts.pdf' },
   },
   coachs: {
@@ -261,7 +260,7 @@ export const plansOffre = {
     eyebrow: 'À savoir',
     title: 'Ce que le plan ne fait pas',
     items: [
-      'Pas d’envoi sur ta montre pour l’instant : tes séances sont dans l’app et dans ton PDF.',
+      'Pas d’envoi sur ta montre pour l’instant : tes séances sont dans l’app.',
       'Pas de coach qui te répond : le plan est construit à partir de tes réponses. Pour un suivi par Juliette ou Romain, il y a le coaching individualisé.',
       'Les formats ouverts dépendent de ton niveau : un débutant prépare un Trail Court, l’ultra-trail est réservé aux coureurs confirmés.',
       'Il ne remplace pas un avis médical.',
@@ -291,6 +290,10 @@ export const plansOffre = {
       {
         q: 'J’ai une douleur ou une blessure.',
         r: 'Le plan ne remplace pas un avis médical : adapte ou interromps la séance, et consulte un professionnel de santé.',
+      },
+      {
+        q: 'Et si je n’ai pas de connexion ?',
+        r: 'Ton plan t’est aussi envoyé en PDF avec l’e-mail de bienvenue : une copie à garder, à consulter sans connexion ou à imprimer.',
       },
       {
         q: 'Je prépare plusieurs courses.',
