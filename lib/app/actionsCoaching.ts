@@ -70,6 +70,19 @@ export async function envoyer(planId: string, numero: string, _e: EtatCoach): Pr
   }
 }
 
+// Envoyer tout le plan d'une traite (demande du coach du 13/10/2026) : le navigateur envoie les semaines une à une, avec
+// cette action, sans rafraîchir la page entre deux (un seul long appel dépasserait le temps d'une requête Vercel).
+export async function envoyerUneSemaine(planId: string, numero: string): Promise<EtatCoach> {
+  const coach = await coachConnecte();
+  if (!coach) return { ok: false, message: 'Ta session a expiré : reconnecte-toi.' };
+  try {
+    return { ok: true, message: await envoyerSemaine(coach.compteId, planId, numero) };
+  } catch (e) {
+    console.error(`Envoi Nolio ${planId} ${numero} :`, e instanceof Error ? e.message : e);
+    return { ok: false, message: e instanceof Error ? e.message : 'L’envoi n’a pas abouti.' };
+  }
+}
+
 const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`;
 
 // V4 : mettre à jour une semaine envoyée ; le bilan dit ce qui a changé et ce qui est resté tel que le coach l'a fait.

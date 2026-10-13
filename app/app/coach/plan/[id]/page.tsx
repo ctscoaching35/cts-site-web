@@ -2,11 +2,13 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import BanniereSemaine from '@/components/app/BanniereSemaine';
 import EnTeteCoach from '@/components/app/EnTeteCoach';
+import EnvoiPlan from '@/components/app/EnvoiPlan';
 import EnvoiSemaine from '@/components/app/EnvoiSemaine';
 import { retirerObjectif } from '@/lib/app/actionsCoaching';
 import { objectifCoache, verifierEnvois } from '@/lib/app/coaching';
 import { exigerCoach } from '@/lib/app/nolio';
-import { dateLongue } from '@/lib/app/plan';
+import { ajouterJours, dateLongue } from '@/lib/app/plan';
+import { aujourdhuiParis } from '@/lib/app/signauxSuivi';
 import { allureDepuisVitesse } from '@/lib/app/allureCoach';
 import { supabaseConfigure } from '@/lib/app/supabase';
 
@@ -41,6 +43,10 @@ export default async function ObjectifCoache({ params }: { params: Promise<{ id:
           </p>
           {o.pdf && <a href={`/app/coach/plan/${id}/pdf`} className="inline-block mt-2 text-sm text-teal font-semibold">Télécharger le PDF ›</a>}
         </div>
+
+        <EnvoiPlan planId={id} actif={Boolean(nolio)} semaines={o.plan.semaines
+          .filter((s) => s.lundi && ajouterJours(s.lundi, 6) >= aujourdhuiParis() && !envois.some((e) => e.semaine === s.numero))
+          .map((s) => s.numero)} />
 
         {o.plan.semaines.map((s) => {
           const e = envois.find((x) => x.semaine === s.numero);
