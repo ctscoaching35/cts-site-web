@@ -37,6 +37,8 @@
 .carte-chiffre .sous { display: block; font-size: 0.78rem; color: var(--teal-light); }
 .carte-chiffre .nom { display: block; font-size: 0.72rem; color: #b9b8cc; margin-top: 0.15rem; }
 .carte-chiffre.vide .valeur { color: #8d8ba6; }
+.profil-tete p.recoupe { margin-top: 0.9rem; font-size: 0.86rem; line-height: 1.5; }
+.profil-tete p.recoupe:empty { display: none; }
 table.zones { width: 100%; border-collapse: separate; border-spacing: 0 4px; margin-top: 0.6rem; }
 table.zones th { background: none; color: var(--muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; padding: 0.2rem 0.6rem; text-align: left; }
 table.zones td { padding: 0.6rem 0.6rem; vertical-align: middle; background: #ffffff; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
@@ -105,7 +107,7 @@ tr.clair td.nomzone { color: var(--navy); }
 
   <section class="test" aria-labelledby="t2">
     <h2 id="t2">2. La vitesse critique : ton seuil 2 en allure</h2>
-    <p>Sur le plat, le même jour : 12 minutes à fond, 30 minutes de récupération, puis 3 minutes à fond. Note la distance de chaque effort. Tu peux aussi courir des distances fixes et noter tes chronos (fiche <a href="/bibliotheque/vitesse-critique">La vitesse critique</a>).</p>
+    <p>Sur le plat, le même jour : 12 minutes à fond, 30 minutes de récupération, puis 3 minutes à fond. Note la distance de chaque effort. Tu peux aussi courir des distances fixes et noter tes chronos, ou choisir d'autres durées : chaque effort de 2 à 15 minutes, le plus long au moins 5 minutes de plus que le plus court. Un effort vers 3 minutes et un vers 12 donnent le résultat le plus précis (fiche <a href="/bibliotheque/vitesse-critique">La vitesse critique</a>).</p>
     <div class="champs">
       <span class="effort">Effort long</span>
       <div class="champ"><label for="d_long">Durée (min : s)</label><div class="chrono"><input id="d_long" inputmode="numeric" value="12" autocomplete="off"><span>:</span><input id="s_long" inputmode="numeric" value="00" autocomplete="off" aria-label="Secondes"></div></div>
@@ -143,6 +145,7 @@ tr.clair td.nomzone { color: var(--navy); }
         <div class="carte-chiffre" id="c_vc"><span class="valeur"></span><span class="sous"></span><span class="nom">Vitesse critique</span></div>
         <div class="carte-chiffre" id="c_s1"><span class="valeur"></span><span class="sous"></span><span class="nom">Seuil 1 estimé</span></div>
       </div>
+      <p class="recoupe" id="recoupe"></p>
     </div>
     <div class="profil-bloc" id="profil-bloc" hidden>
       <h3>Ton profil : <span id="p_nom"></span></h3>
@@ -184,11 +187,14 @@ tr.clair td.nomzone { color: var(--navy); }
 <script>
 // Les calculs de « Tes zones » (lib/app/zones.ts) et de la fiche vitesse critique, à l'identique :
 // vitesse critique et D′ par la droite distance-durée (régression sur 2 ou 3 efforts), contrôles de
-// l'app ; coefficient de Riegel et seuil 1 estimé comme Rémi Rivet (décision coach du 09/10/2026) ;
+// l'app ; coefficient de Riegel (décision coach du 09/10/2026), ramené à un test de référence de
+// 5:00, 12:00 et 16:40 quelles que soient les durées (décision coach du 13/10/2026) ; le seuil 1 ne dépend plus du
+// coefficient : estimé vers 82 % de la VC (75 à 90 %, Hunter 2024) et recoupé avec le test de la
+// parole, sur lequel se calent les allures basses (décision coach du 13/10/2026) ;
 // zones de FC tirées des deux tests de FC (règles de l'app, Z6) ; allures en % de la vitesse
 // critique, calées sur la littérature (seuil 1 vers 82 % de la VC, Hunter 2024 ; état stable le
 // plus haut entre 93 et 100 %, Nixon 2021, de Lucas 2012 ; VMA vers 115 %, Billat 1996), la
-// récupération sous 70 % étant un repère de coach (Rivet).
+// récupération sous 70 % étant un repère de coach.
 (function () {
   var N = ' ', H = '‑';
   var $ = function (id) { return document.getElementById(id); };
@@ -231,10 +237,15 @@ tr.clair td.nomzone { color: var(--navy); }
     efforts.forEach(function (e) { sxy += (e.t - tm) * (e.d - dm); sxx += (e.t - tm) * (e.t - tm); });
     var vc = sxy / sxx, dp = dm - vc * tm;
     if (vc < 2 || vc > 7 || dp < 20 || dp > 600) return { erreur: refaire };
-    // Coefficient de Riegel : 1 + la pente de ln(vitesse) en fonction de ln(durée).
-    var lx = 0, ly = 0, lxy = 0, lxx = 0;
-    efforts.forEach(function (e) { lx += Math.log(e.t) / n; ly += Math.log(e.d / e.t) / n; });
-    efforts.forEach(function (e) { lxy += (Math.log(e.t) - lx) * (Math.log(e.d / e.t) - ly); lxx += (Math.log(e.t) - lx) * (Math.log(e.t) - lx); });
+    // Coefficient de Riegel : 1 + la pente de ln(vitesse) en fonction de ln(durée), RAMENÉ au test de
+    // référence (5:00, 12:00, 16:40) quelles que soient les durées courues (décision coach du
+    // 13/10/2026) : c'est le coefficient que donneraient ces trois efforts pour cette VC et cette D′.
+    // Le coefficient brut dépend des durées (même coureur : 0,85 sur 3 et 12 min, 0,89 sur le test
+    // de référence) ; ramené, il se compare tel quel au repère de 0,90.
+    var REF = [300, 720, 1000], lx = 0, ly = 0, lxy = 0, lxx = 0;
+    var lnv = function (t) { return Math.log(vc + dp / t); };
+    REF.forEach(function (t) { lx += Math.log(t) / REF.length; ly += lnv(t) / REF.length; });
+    REF.forEach(function (t) { lxy += (Math.log(t) - lx) * (lnv(t) - ly); lxx += (Math.log(t) - lx) * (Math.log(t) - lx); });
     var ecart = Math.max.apply(null, efforts.map(function (e) { return Math.abs(e.d - (vc * e.t + dp)) / e.d; }));
     return { vc: vc, dp: dp, riegel: 1 + lxy / lxx, ecart: ecart };
   }
@@ -282,12 +293,32 @@ tr.clair td.nomzone { color: var(--navy); }
     $('allure95').textContent = r ? ' (' + allure(r.vc * 0.95) + '/km)' : '';
     $('m1').textContent = m1; $('m2').textContent = m2; $('m3').textContent = m3; $('ok2').textContent = ok2;
 
+    // Le seuil 1, recoupé (décision coach du 13/10/2026) : la VC l'estime vers 82 % (Hunter 2024), le
+    // plus souvent entre 75 et 90 % ; aucune étude ne chiffre l'écart d'une personne à l'autre, les
+    // bornes sont un choix de coach. Le test de la parole, s'il tombe entre 70 et 95 % de la VC, est
+    // retenu et cale les allures basses ; sous 70 % ou à 95 % et plus, il est à vérifier et les
+    // allures restent calées sur la VC.
+    var p1 = r && v1 ? v1 / 3.6 / r.vc : null;
+    var parole = p1 !== null && p1 >= 0.7 && p1 < 0.95;
+    var s1 = parole ? p1 : 0.82;
+    var pct = function (x) { return Math.round(x * 100) + N + '%'; };
+    var recoupe = '';
+    if (r) {
+      var fourchette = ' la fourchette habituelle, de 75 à 90' + N + '%';
+      if (p1 === null) recoupe = 'Ton seuil' + N + '1 est estimé à partir de ta vitesse critique' + N + ': vers 82' + N + '%, le plus souvent entre ' + kmh(r.vc * 0.75) + ' et ' + kmh(r.vc * 0.9) + N + 'km/h. Remplis la vitesse du palier de ton test de la parole pour recouper les deux.';
+      else if (p1 >= 0.75 && p1 <= 0.9) recoupe = 'Ton test de la parole tombe à ' + pct(p1) + ' de ta vitesse critique, dans' + fourchette + N + ': tes deux tests concordent. Tes allures d\u2019endurance et de seuil' + N + '1 sont calées sur ton test de la parole.';
+      else if (parole) recoupe = 'Ton test de la parole tombe à ' + pct(p1) + ' de ta vitesse critique, un peu en dehors de' + fourchette + '. C\u2019est possible, le seuil' + N + '1 varie d\u2019une personne à l\u2019autre' + N + ': tes allures sont calées sur ton test de la parole, et ton RPE tranche.';
+      else recoupe = 'Ton test de la parole tombe à ' + pct(p1) + ' de ta vitesse critique, loin de' + fourchette + N + ': l\u2019écart est inhabituel. Vérifie tes deux tests' + N + ': le test de la parole au calme, avec une ceinture cardio et des paliers de 3' + N + 'minutes, les efforts de vitesse critique vraiment à fond, sur le plat. En attendant, tes allures sont calées sur ta vitesse critique.';
+      recoupe += ' Ni le test de la parole ni la vitesse critique ne donnent ton seuil' + N + '1 au km/h près' + N + ': on les recoupe, et ton RPE a le dernier mot.';
+    }
+    $('recoupe').textContent = recoupe;
+
     // Les cartes du profil
-    var f1 = r ? (r.riegel > 0.93 ? 0.85 : r.riegel >= 0.9 ? 0.84 : 0.82) : null;
     carte('c_fc1', fc1 ? fc1 + N + 'bpm' : null, fc1 ? 'endurance sous ' + (fc1 - 5) : 'test de la parole');
     carte('c_fc2', fc2 ? fc2 + N + 'bpm' : null, fc2 ? 'seuil' + N + '2 de ' + (fc2 - 5) + ' à ' + fc2 : 'séance de seuil' + N + '2');
     carte('c_vc', r ? kmh(r.vc) + N + 'km/h' : null, r ? allure(r.vc) + '/km' : 'test de vitesse critique');
-    carte('c_s1', r ? kmh(r.vc * f1) + N + 'km/h' : null, r ? allure(r.vc * f1) + '/km · ' + Math.round(f1 * 100) + N + '%' : 'avec la vitesse critique');
+    carte('c_s1', r ? kmh(r.vc * s1) + N + 'km/h' : null, r ? allure(r.vc * s1) + '/km · ' + pct(s1) + (parole ? '' : ', de ' + kmh(r.vc * 0.75) + ' à ' + kmh(r.vc * 0.9)) : 'avec la vitesse critique');
+    $('c_s1').querySelector('.nom').textContent = parole ? 'Seuil' + N + '1, test de la parole' : 'Seuil' + N + '1 estimé';
 
     var faits = [fc1, r, fc2].filter(Boolean).length;
     $('etat').textContent = faits === 3
@@ -296,7 +327,9 @@ tr.clair td.nomzone { color: var(--navy); }
 
     // Le profil : la jauge du coefficient de Riegel et les conseils, loin et près de l'objectif
     // (approche du coach, 09/10/2026 : le point faible à distance, le point fort et la spécificité
-    // de l'épreuve à l'approche).
+    // de l'épreuve à l'approche). Le texte du profil (décision coach du 13/10/2026) :
+    // un coefficient bas dit une marge en endurance (la part de sa vitesse tenue longtemps), pas une vitesse
+    // mesurée — le test ne contient aucun sprint ; le coefficient ≈ VC / VMA (Zinoubi 2017).
     $('profil-bloc').hidden = !r;
     if (r) {
       var rapide = r.riegel < 0.9;
@@ -304,16 +337,15 @@ tr.clair td.nomzone { color: var(--navy); }
       $('p_nom').textContent = rapide ? 'plutôt rapide' : 'plutôt endurant';
       $('p_repere').style.left = Math.max(0, Math.min(100, (r.riegel - 0.8) / 0.2 * 100)) + '%';
       $('p_texte').textContent = rapide
-        ? 'Ton coefficient de Riegel est de ' + coef + ' : ta vitesse baisse vite quand l\u2019effort s\u2019allonge. Ton point fort, ce sont les efforts courts et intenses ; ton point faible, l\u2019endurance.'
-        : 'Ton coefficient de Riegel est de ' + coef + ' : tu tiens bien ta vitesse quand l\u2019effort s\u2019allonge. Ton point fort, c\u2019est l\u2019endurance ; ton point faible, la vitesse.';
+        ? 'Ton coefficient de Riegel est de ' + coef + N + ': ta vitesse baisse plus que la moyenne quand l\u2019effort s\u2019allonge. Ta marge de progrès est surtout en endurance' + N + ': tenir plus longtemps une plus grande part de ta vitesse.'
+        : 'Ton coefficient de Riegel est de ' + coef + N + ': tu tiens bien ta vitesse quand l\u2019effort s\u2019allonge. Ta marge de progrès est surtout en vitesse, sur les efforts courts.';
       $('p_loin').textContent = rapide
         ? 'Travaille ton point faible, l\u2019endurance : des blocs longs juste sous ta vitesse critique, du tempo, du seuil' + N + '1 et du volume d\u2019endurance. Garde quelques rappels de vitesse.'
         : 'Travaille ton point faible, la vitesse : des intervalles courts au-dessus de ta vitesse critique, des côtes courtes, des accélérations. Garde ton volume d\u2019endurance.';
       $('p_pres').textContent = rapide
         ? 'Appuie-toi sur ta vitesse, ton point fort, et sur la spécificité de ton épreuve : sa durée, son dénivelé, son allure de course. Sur un format long, des sorties longues sur un terrain proche de la course.'
         : 'Appuie-toi sur ton endurance, ton point fort, et sur la spécificité de ton épreuve : sa durée, son dénivelé, son allure de course. Sur un format court, des séances à l\u2019allure de course.';
-      var note = 'Le repère de 0,90 vaut pour des efforts de 5 à 17' + N + 'minutes ; avec 3 et 12' + N + 'minutes, le coefficient sort un peu plus bas. Ce profil oriente l\u2019entraînement ; tes sensations et ton objectif décident.';
-      if (v1) note += ' Ton seuil' + N + '1 mesuré au test de la parole tombe à ' + Math.round(v1 / 3.6 / r.vc * 100) + N + '% de ta vitesse critique (en moyenne, 82 à 85' + N + '%).';
+      var note = 'Ton coefficient est ramené à une échelle commune, celle d’efforts de 5, 12 et 17' + N + 'minutes, quelles que soient les durées de ton test. Le repère de 0,90 est un repère de coach' + N + '; près de 0,90, ton profil est peu marqué' + N + ': un autre test pourrait le faire basculer. Ce profil oriente l\u2019entraînement' + N + '; tes sensations et ton objectif décident.';
       $('p_note').textContent = note;
     }
 
@@ -328,11 +360,17 @@ tr.clair td.nomzone { color: var(--navy); }
       fc2 ? ['Au-dessus de ' + fc2, 'en fin de fraction'] : null,
       null
     ];
+    // Récupération, endurance et seuil 1 gardent leur forme (70, 80, 85 % pour un seuil 1 à 82 %) mais
+    // se centrent sur le seuil 1 retenu ; le tempo commence où finit le seuil 1 ; seuil 2 et VO2max ne
+    // bougent pas. Le décalage est borné à +7 points pour que le seuil 1 ne dépasse pas 92 %.
+    var dec = Math.max(-12, Math.min(7, s1 * 100 - 82));
+    var bo = [70 + dec, 80 + dec, 85 + dec];
+    var ent = function (x) { return Math.round(x); };
     var al = vc ? [
-      ['Plus lent que ' + allure(vc * 0.7) + '/km', 'moins de 70' + N + '% de ta VC'],
-      [plage(vc, 70, 80), plageKmh(vc, 70, 80) + ', 70 à 80' + N + '%'],
-      [plage(vc, 80, 85), plageKmh(vc, 80, 85) + ', 80 à 85' + N + '%'],
-      [plage(vc, 85, 92), plageKmh(vc, 85, 92) + ', 85 à 92' + N + '%'],
+      ['Plus lent que ' + allure(vc * bo[0] / 100) + '/km', 'moins de ' + ent(bo[0]) + N + '% de ta VC'],
+      [plage(vc, bo[0], bo[1]), plageKmh(vc, bo[0], bo[1]) + ', ' + ent(bo[0]) + ' à ' + ent(bo[1]) + N + '%'],
+      [plage(vc, bo[1], bo[2]), plageKmh(vc, bo[1], bo[2]) + ', ' + ent(bo[1]) + ' à ' + ent(bo[2]) + N + '%'],
+      bo[2] < 91.5 ? [plage(vc, bo[2], 92), plageKmh(vc, bo[2], 92) + ', ' + ent(bo[2]) + ' à 92' + N + '%'] : null,
       [plage(vc, 92, 100), plageKmh(vc, 92, 100) + ', 92 à 100' + N + '%'],
       [plage(vc, 105, 112), plageKmh(vc, 105, 112) + ', 105 à 112' + N + '%'],
       null
