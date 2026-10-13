@@ -164,7 +164,13 @@ coller le fichier, Run. La fiche d'un athlète coaché regroupe ses objectifs su
 son nom Nolio et ses valeurs (FC au seuil 1, vitesse critique, FC au seuil 2), saisies par le coach. Les
 athlètes déjà ajoutés reçoivent leur fiche au passage du fichier.
 
+## 14. Un plan par achat (webhook de Stripe)
+
+Un index de plus (`supabase/migrations/20261013000000_un_plan_par_achat.sql`) : SQL Editor, coller le fichier,
+Run. Le webhook de Stripe (`app/api/stripe/webhook`) range le plan d'un paiement réussi même si l'acheteur ferme
+la page avant d'y revenir ; avec la page de retour, deux appels peuvent ranger le même achat au même instant :
+l'index garde un seul plan, et un seul e-mail de bienvenue part.
+
 ## Ce qui viendra ensuite
 
-- La confirmation de paiement de Stripe (webhook), une fois le site en ligne.
 - La suppression des comptes restés 3 ans sans connexion, après un e-mail d'avertissement (D4).

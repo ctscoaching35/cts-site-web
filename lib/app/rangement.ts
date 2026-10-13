@@ -6,7 +6,9 @@
  * 2. Le compte est retrouvé, ou créé confirmé, sur l'e-mail du questionnaire : on s'y reconnecte
  *    ensuite par code, comme tout compte. Supabase fabrique un lien de connexion, sans l'envoyer.
  * 3. L'achat (unique par session de paiement), puis le plan figé et son PDF sont rangés une seule
- *    fois : une page rechargée ne range rien de plus, et un rangement interrompu se reprend.
+ *    fois : une page rechargée ne range rien de plus, et un rangement interrompu se reprend. La page de
+ *    retour et le webhook de Stripe (app/api/stripe/webhook) appellent tous deux cette fonction, parfois au
+ *    même instant : un plan par achat (index plans_un_par_achat), le second appel reprend le premier.
  * 4. L'e-mail de bienvenue part avec le PDF, par l'appel qui a rangé le plan, donc une fois.
  */
 import type { EmailOtpType } from '@supabase/supabase-js';
@@ -65,7 +67,11 @@ export async function rangerLePlan(sessionId: string, origine: string) {
   if (!achat) {
     const { data: nouvel, error } = await service
       .from('achats')
-      .insert({ compte_id: compteId, stripe_session: sessionId, montant_centimes: Math.round(corps.resume.prix_eur * 100) })
+      // Le montant réellement payé, code promo déduit (CTS_LANCEMENT_CADRAGE.md, L6) ; le prix de la formule en mode test.
+      .insert({
+        compte_id: compteId, stripe_session: sessionId,
+        montant_centimes: corps.resume.montant_paye_centimes ?? Math.round(corps.resume.prix_eur * 100),
+      })
       .select('id, paye_le')
       .single();
     // 23505 : rangé à l'instant par un autre appel (un second onglet).
@@ -96,19 +102,28 @@ export async function rangerLePlan(sessionId: string, origine: string) {
       })
       .select('id')
       .single();
-    if (error || !plan) throw new Error(`plans : ${error?.message}`);
-    planId = plan.id;
-    const chemin = `${compteId}/${plan.id}.pdf`;
-    const { error: erreurPdf } = await service.storage
-      .from('plans-pdf')
-      .upload(chemin, pdf, { contentType: 'application/pdf', upsert: true });
-    if (erreurPdf) throw new Error(`PDF : ${erreurPdf.message}`);
-    await service.from('plans').update({ pdf_chemin: chemin }).eq('id', plan.id);
-    // Le plan est rangé : un e-mail qui échoue ne le défait pas, il se signale dans le journal.
-    try {
-      await envoyerBienvenue(email, donnees, `${origine}/app`, { nom: nomDuPdf(reponsePdf), contenu: pdf });
-    } catch (e) {
-      console.error(`E-mail de bienvenue de l'achat ${sessionId} :`, e);
+    if (error?.code === '23505') {
+      // Rangé à l'instant par l'autre appel (la page de retour ou le webhook) : il range aussi le PDF et
+      // envoie l'e-mail ; celui-ci reprend son plan.
+      const { data: deja } = await service.from('plans').select('id').eq('achat_id', achat.id).maybeSingle();
+      if (!deja) throw new Error('plans : plan de l’achat introuvable');
+      planId = deja.id;
+    } else if (error || !plan) {
+      throw new Error(`plans : ${error?.message}`);
+    } else {
+      planId = plan.id;
+      const chemin = `${compteId}/${plan.id}.pdf`;
+      const { error: erreurPdf } = await service.storage
+        .from('plans-pdf')
+        .upload(chemin, pdf, { contentType: 'application/pdf', upsert: true });
+      if (erreurPdf) throw new Error(`PDF : ${erreurPdf.message}`);
+      await service.from('plans').update({ pdf_chemin: chemin }).eq('id', plan.id);
+      // Le plan est rangé : un e-mail qui échoue ne le défait pas, il se signale dans le journal.
+      try {
+        await envoyerBienvenue(email, donnees, `${origine}/app`, { nom: nomDuPdf(reponsePdf), contenu: pdf });
+      } catch (e) {
+        console.error(`E-mail de bienvenue de l'achat ${sessionId} :`, e);
+      }
     }
   }
 
