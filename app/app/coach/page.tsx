@@ -15,13 +15,15 @@ export default async function Coach() {
   if (!supabaseConfigure()) notFound();
   const coach = await exigerCoach();
   let athletes: AthleteNolio[] | null = null;
-  let erreur = false;
+  // La raison d'un échec, dite au coach : les refus de Nolio ont leur phrase (lib/app/nolio.ts, refusNolio).
+  let erreur: string | null = null;
   if (nolioConfigure()) {
     try {
       athletes = await athletesNolio();
     } catch (e) {
-      console.error('Athlètes Nolio :', e instanceof Error ? e.message : e);
-      erreur = true;
+      const message = e instanceof Error ? e.message : String(e);
+      console.error('Athlètes Nolio :', message);
+      erreur = message.startsWith('Nolio') ? message : `Nolio ne répond pas pour l’instant : réessaie dans un moment (${message}).`;
     }
   }
   const coaches = await athletesCoaches(coach.compteId);
@@ -59,7 +61,7 @@ export default async function Coach() {
             <p className="text-sm text-indigo/75">La clé de l’API Nolio manque dans Vercel (NOLIO_API_KEY).</p>
           ) : (
             <>
-              {erreur && <p className="text-sm text-indigo/75">Nolio ne répond pas pour l’instant : réessaie dans un moment.</p>}
+              {erreur && <p className="text-sm text-indigo/75">{erreur}</p>}
               {athletes && (
                 <div>
                   <h3 className="text-sm font-bold text-indigo mb-1">Tes athlètes dans Nolio ({athletes.length})</h3>

@@ -22,10 +22,13 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
   if (!a) notFound();
   const relie = nolioConfigure();
   let liste: AthleteNolio[] = [];
+  let erreur: string | null = null;
   try {
     liste = relie ? await athletesNolio() : [];
-  } catch {
-    liste = [];
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error('Athlètes Nolio :', message);
+    erreur = message.startsWith('Nolio') ? message : `Nolio ne répond pas pour l’instant : réessaie dans un moment (${message}).`;
   }
   return (
     <>
@@ -57,6 +60,8 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
           <h2 className="eyebrow text-indigo/60">Dans Nolio</h2>
           {!relie ? (
             <p className="text-sm text-indigo/75">La clé de l’API Nolio manque dans Vercel (NOLIO_API_KEY).</p>
+          ) : erreur ? (
+            <p className="text-sm text-indigo/75">{erreur}</p>
           ) : (
             <form action={associerNolio.bind(null, a.id)} className="flex flex-wrap items-center gap-2">
               <select name="nolio_id" defaultValue={a.nolio_athlete_id ?? ''} className="border border-indigo/20 px-2 py-2 text-sm text-indigo bg-white">
