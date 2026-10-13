@@ -192,7 +192,8 @@ tr.clair td.nomzone { color: var(--navy); }
 // 5:00, 12:00 et 16:40 quelles que soient les durées (décision coach du 13/10/2026) ; le seuil 1 ne dépend plus du
 // coefficient : estimé vers 82 % de la VC (75 à 90 %, Hunter 2024) et recoupé avec le test de la
 // parole, sur lequel se calent les allures basses (décision coach du 13/10/2026) ;
-// zones de FC tirées des deux tests de FC (règles de l'app, Z6) ; allures en % de la vitesse
+// zones de FC tirées des deux tests de FC (règles de l'app, Z6 ; seuil 1 de FC S1 − 5 à FC S1 + 5,
+// décision coach du 13/10/2026) ; allures en % de la vitesse
 // critique, calées sur la littérature (seuil 1 vers 82 % de la VC, Hunter 2024 ; état stable le
 // plus haut entre 93 et 100 %, Nixon 2021, de Lucas 2012 ; VMA vers 115 %, Billat 1996), la
 // récupération sous 70 % étant un repère de coach.
@@ -361,7 +362,7 @@ tr.clair td.nomzone { color: var(--navy); }
       $('p_pres').textContent = rapide
         ? 'Appuie-toi sur ta vitesse, ton point fort, et sur la spécificité de ton épreuve : sa durée, son dénivelé, son allure de course. Sur un format long, des sorties longues sur un terrain proche de la course.'
         : 'Appuie-toi sur ton endurance, ton point fort, et sur la spécificité de ton épreuve : sa durée, son dénivelé, son allure de course. Sur un format court, des séances à l\u2019allure de course.';
-      var note = 'Ton coefficient est ramené à une échelle commune, celle d’efforts de 5, 12 et 17' + N + 'minutes, quelles que soient les durées de ton test. Le repère de 0,90 est un repère de coach' + N + '; près de 0,90, ton profil est peu marqué' + N + ': un autre test pourrait le faire basculer. Ce profil oriente l\u2019entraînement' + N + '; tes sensations et ton objectif décident.';
+      var note = 'Le repère de 0,90 est un repère de coach. Ce profil oriente l\u2019entraînement' + N + '; tes sensations et ton objectif décident.';
       $('p_note').textContent = note;
     }
 
@@ -370,7 +371,7 @@ tr.clair td.nomzone { color: var(--navy); }
     var fc = [
       null,
       fc1 ? ['Sous ' + (fc1 - 5), 'ton plafond d’endurance'] : null,
-      fc1 ? ['De' + N + fc1 + ' à' + N + (fc1 + 5)] : null,
+      fc1 ? ['De' + N + (fc1 - 5) + ' à' + N + (fc1 + 5)] : null,
       fc1 && fc2 ? ['De' + N + (fc1 + 5) + ' à' + N + (fc2 - 5)] : null,
       fc2 ? ['De' + N + (fc2 - 5) + ' à' + N + fc2] : null,
       fc2 ? ['Au-dessus de ' + fc2, 'en fin de fraction'] : null,
