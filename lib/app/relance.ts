@@ -28,19 +28,16 @@ export async function retirerRelance(email: string) {
 
 export function contenuRelance() {
   const lien = `${site.url}/plan`;
-  const paragraphes = [
-    'Tu as commencé à construire ton plan d’entraînement sur cts-coaching.com. Ton plan t’attend : reprends ton questionnaire sur le même appareil et le même navigateur, tes réponses y sont gardées.',
-    'Tu reçois ce rappel parce que tu l’as demandé. C’est le seul.',
-  ];
+  const paragraphe =
+    'Tu as commencé à construire ton plan d’entraînement sur cts-coaching.com. Ton plan t’attend : reprends ton questionnaire sur le même appareil et le même navigateur, tes réponses y sont gardées.';
   const signature = 'Juliette et Romain — CTS Coaching';
-  const texte = ['Bonjour,', paragraphes[0], `Reprendre mon questionnaire : ${lien}`, paragraphes[1], signature].join('\n\n');
+  const texte = ['Bonjour,', paragraphe, `Reprendre mon questionnaire : ${lien}`, signature].join('\n\n');
   const p = (contenu: string) => `<p style="margin:0 0 16px;line-height:1.55">${contenu}</p>`;
   const html = `<!doctype html><html lang="fr"><body style="margin:0;padding:24px 12px;background:#F3F7F0">
 <div style="max-width:560px;margin:0 auto;background:#ffffff;padding:32px 28px;font-family:Helvetica,Arial,sans-serif;font-size:16px;color:#2F2D4E">
 ${p('Bonjour,')}
-${p(paragraphes[0])}
+${p(paragraphe)}
 <p style="margin:24px 0"><a href="${lien}" style="display:inline-block;background:#0C6E5F;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 24px">Reprendre mon questionnaire</a></p>
-${p(paragraphes[1])}
 <p style="margin:24px 0 0;line-height:1.55;font-weight:bold">${signature}</p>
 </div></body></html>`;
   return { sujet: 'Ton plan t’attend', texte, html };
