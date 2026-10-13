@@ -6,7 +6,7 @@
  * dans Nolio par l'API v2, avec la clé du coach.
  */
 import { API_URL } from '@/lib/plan';
-import { ajouterJours, type Jour, type Plan } from './plan';
+import { ajouterJours, type Plan, type Semaine } from './plan';
 import { appelNolio, convertirIdsV1, listeNolio, moiNolio, nolioConfigure, refusNolio } from './nolio';
 import { clientService } from './supabase';
 
@@ -18,10 +18,12 @@ export type FicheAthlete = {
 };
 // Une séance envoyée : son jour du plan, son identifiant Nolio (« ptrn_… » ; un nombre pour un envoi de la v1,
 // converti à la visite suivante), sa révision à l'envoi (V4 : une révision changée, le coach l'a retouchée), et
-// supprimee quand le coach l'a supprimée dans Nolio (une mise à jour ne la recrée pas). note : la note « Repos » d'un
-// jour de repos (« pnot_… », V6), dont la révision est l'empreinte de son contenu.
+// supprimee quand le coach l'a supprimée dans Nolio (une mise à jour ne la recrée pas). genre : la note « Repos » d'un
+// jour de repos (« pnot_… », V6) ou le bandeau de la semaine (« pcyc_… », jour_id « semaine », V7), dont la révision
+// est l'empreinte de leur contenu (l'API ne leur en donne pas).
+export type Genre = 'seance' | 'note' | 'cycle';
 export type SeanceEnvoyee = {
-  jour_id: string; nolio_id: string | number | null; revision?: string | null; supprimee?: boolean; note?: boolean;
+  jour_id: string; nolio_id: string | number | null; revision?: string | null; supprimee?: boolean; genre?: Genre;
 };
 export type Envoi = { semaine: string; envoye_le: string; seances: SeanceEnvoyee[] };
 // Ce que la page montre d'une semaine envoyée : combien de ses séances le coach a retouchées ou supprimées.
@@ -95,14 +97,18 @@ export async function questionnairePrerempli(coachId: string, athleteId: string)
 }
 
 // Les jours d'une semaine traduits par le moteur (cts_nolio), avec les valeurs de l'athlète (N8) : la séance, ou
-// pour un jour de repos la note « Repos » (V6).
+// pour un jour de repos la note « Repos » (V6) ; et le bandeau de la semaine (V7).
 type JourTraduit = { id: string; nolio: Record<string, unknown> | null; note: Record<string, unknown> | null };
-async function seancesDuMoteur(jours: Jour[], profil: Record<string, number>) {
+const SEMAINE = 'semaine';
+async function seancesDuMoteur(semaine: Semaine, profil: Record<string, number>) {
   const r = await fetch(`${API_URL}/v1/nolio/seances`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jours, profil }), cache: 'no-store',
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
+    body: JSON.stringify({ jours: semaine.jours, profil, semaine: { type: semaine.type, bloc: semaine.bloc, lundi: semaine.lundi } }),
   });
   if (!r.ok) throw new Error(`Moteur /v1/nolio/seances : ${r.status}`);
-  return ((await r.json()).seances ?? []).map((s: JourTraduit) => ({ ...s, note: s.note ?? null })) as JourTraduit[];
+  const corps = await r.json();
+  const jours = (corps.seances ?? []).map((s: JourTraduit) => ({ ...s, note: s.note ?? null })) as JourTraduit[];
+  return { jours, cycle: (corps.cycle ?? null) as Record<string, unknown> | null };
 }
 
 type Destinataire = { usr: string; moi: boolean };
@@ -115,7 +121,8 @@ async function destinataire(nolioAthlete: string | null): Promise<Destinataire> 
   return { usr: nolioAthlete, moi: (await moiNolio()).id === nolioAthlete };
 }
 const requete = (d: Destinataire) => (d.moi ? '' : `?athlete=${d.usr}`);
-const chemin = (note: boolean) => (note ? 'planned/notes/' : 'planned/trainings/');
+const CHEMINS: Record<Genre, string> = { seance: 'planned/trainings/', note: 'planned/notes/', cycle: 'planned/cycles/' };
+const genreDe = (s: SeanceEnvoyee): Genre => s.genre ?? 'seance';
 
 function profilDe(a: FicheAthlete) {
   return Object.fromEntries(
@@ -123,25 +130,28 @@ function profilDe(a: FicheAthlete) {
   );
 }
 
-// Une note n'a pas de révision dans l'API : sa version est ce qu'elle contient (nom, jour, type, couleur).
+// Une note ou un bandeau n'a pas de révision dans l'API : sa version est ce qu'il contient.
 const empreinte = (n: Record<string, unknown>) =>
-  JSON.stringify([n.name ?? '', n.date_start ?? '', n.note_type ?? null, String(n.color ?? '').toLowerCase()]);
+  JSON.stringify([n.name ?? '', n.date_start ?? '', n.date_end ?? null, n.note_type ?? null, String(n.color ?? '').toLowerCase()]);
+// Pour les messages au coach : le nom, son article et son accord (« la note retouchée », « le bandeau retouché »).
+const NOM: Record<Genre, [string, string, string]> = { seance: ['la', 'séance', 'e'], note: ['la', 'note de repos', 'e'], cycle: ['le', 'bandeau', ''] };
 
-// Créer une séance ou une note dans Nolio ; rend son identifiant et sa version à l'envoi.
-async function creer(d: Destinataire, jourId: string, corps: Record<string, unknown>, note = false): Promise<SeanceEnvoyee & { erreur?: string }> {
-  const r = await appelNolio('POST', chemin(note), d.moi ? corps : { ...corps, athletes: [d.usr] });
-  const quoi = note ? `la note de repos du ${String(corps.date_start)}` : `la séance du ${String(corps.date_start)}`;
-  if (r.statut !== 201 && r.statut !== 200) return { jour_id: jourId, nolio_id: null, erreur: refusNolio(r, quoi) };
+// Créer une séance, une note ou un bandeau dans Nolio ; rend son identifiant et sa version à l'envoi. deja : Nolio
+// refuse un second bandeau sur la même période (409), celui que le coach a posé lui-même est gardé.
+async function creer(d: Destinataire, jourId: string, corps: Record<string, unknown>, genre: Genre = 'seance'): Promise<SeanceEnvoyee & { erreur?: string; deja?: boolean }> {
+  const r = await appelNolio('POST', CHEMINS[genre], d.moi ? corps : { ...corps, athletes: [d.usr] });
+  if (genre === 'cycle' && r.statut === 409) return { jour_id: jourId, nolio_id: null, deja: true };
+  if (r.statut !== 201 && r.statut !== 200) return { jour_id: jourId, nolio_id: null, erreur: refusNolio(r, `${NOM[genre][0]} ${NOM[genre][1]} du ${String(corps.date_start)}`) };
   const id = String(r.corps?.id ?? '');
-  return note
-    ? { jour_id: jourId, nolio_id: id, note: true, revision: empreinte(r.corps ?? corps) }
-    : { jour_id: jourId, nolio_id: id, revision: (r.corps?.revision as string) ?? null };
+  return genre === 'seance'
+    ? { jour_id: jourId, nolio_id: id, revision: (r.corps?.revision as string) ?? null }
+    : { jour_id: jourId, nolio_id: id, genre, revision: empreinte(r.corps ?? corps) };
 }
 
 const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`;
 
-// Envoyer une semaine dans Nolio, la première fois : ses séances, et une note « Repos » sur ses jours de repos (V6).
-// Rend ce qui est parti, en clair.
+// Envoyer une semaine dans Nolio, la première fois : son bandeau (V7), ses séances, et une note « Repos » sur ses jours
+// de repos (V6). Rend ce qui est parti, en clair.
 export async function envoyerSemaine(coachId: string, planId: string, numero: string) {
   const o = await objectifCoache(coachId, planId);
   if (!o) throw new Error('Objectif introuvable');
@@ -149,12 +159,22 @@ export async function envoyerSemaine(coachId: string, planId: string, numero: st
   if (o.envois.some((e) => e.semaine === numero)) throw new Error('Cette semaine est déjà envoyée : mets-la à jour.');
   const semaine = o.plan.semaines.find((s) => s.numero === numero);
   if (!semaine) throw new Error('Semaine introuvable');
-  const jours = await seancesDuMoteur(semaine.jours, profilDe(o.athlete));
+  const { jours, cycle } = await seancesDuMoteur(semaine, profilDe(o.athlete));
   const crees: SeanceEnvoyee[] = [];
+  let bandeau = '';
+  if (cycle) {
+    const cree = await creer(d, SEMAINE, cycle, 'cycle');
+    if (cree.erreur) throw new Error(cree.erreur);
+    if (cree.deja) bandeau = ' ; ton bandeau déjà posé sur cette semaine est gardé';
+    else {
+      crees.push(cree);
+      bandeau = ` et le bandeau « ${String(cycle.name)} »`;
+    }
+  }
   for (const j of jours) {
     const corps = j.nolio ?? j.note;
     if (!corps) continue;
-    const cree = await creer(d, j.id, corps, !j.nolio);
+    const cree = await creer(d, j.id, corps, j.nolio ? 'seance' : 'note');
     if (cree.erreur) {
       // Ce qui est déjà créé est gardé, pour que la semaine reste « envoyée » et ne se double pas.
       if (crees.length) await garderEnvoi(coachId, planId, numero, crees);
@@ -163,8 +183,9 @@ export async function envoyerSemaine(coachId: string, planId: string, numero: st
     crees.push(cree);
   }
   await garderEnvoi(coachId, planId, numero, crees);
-  const notes = crees.filter((c) => c.note).length;
-  return `${pluriel(crees.length - notes, 'séance')}${notes ? ` et ${pluriel(notes, 'note')} de repos` : ''}`;
+  const notes = crees.filter((c) => c.genre === 'note').length;
+  const seances = crees.filter((c) => genreDe(c) === 'seance').length;
+  return `${pluriel(seances, 'séance')}${notes ? `, ${pluriel(notes, 'note')} de repos` : ''}${bandeau}`;
 }
 
 async function garderEnvoi(coachId: string, planId: string, numero: string, seances: SeanceEnvoyee[]) {
@@ -174,14 +195,16 @@ async function garderEnvoi(coachId: string, planId: string, numero: string, sean
   if (error) throw new Error(`nolio_envois : ${error.message}`);
 }
 
-// Ce qui est dans Nolio entre deux dates, séances et notes de l'athlète : { identifiant : version } (la révision
-// d'une séance, l'empreinte d'une note).
+// Ce qui est dans Nolio entre deux dates, séances, notes et bandeaux de l'athlète : { identifiant : version } (la
+// révision d'une séance, l'empreinte d'une note ou d'un bandeau).
 async function versions(d: Destinataire, du: string, au: string): Promise<Map<string, string>> {
   const params = new URLSearchParams({ date_from: du, date_to: au });
   if (!d.moi) params.set('athlete', d.usr);
   const seances = await listeNolio<{ id: string; revision?: string }>(`planned/trainings/?${params}&with_revision=true`);
   const notes = await listeNolio<{ id: string } & Record<string, unknown>>(`planned/notes/?${params}`);
-  return new Map([...seances.map((x) => [x.id, x.revision ?? ''] as [string, string]), ...notes.map((x) => [x.id, empreinte(x)] as [string, string])]);
+  const cycles = await listeNolio<{ id: string } & Record<string, unknown>>(`planned/cycles/?${params}`);
+  return new Map([...seances.map((x) => [x.id, x.revision ?? ''] as [string, string]),
+    ...[...notes, ...cycles].map((x) => [x.id, empreinte(x)] as [string, string])]);
 }
 
 // Les envois du temps de la v1 (des numéros) : convertis une fois en « ptrn_… » et enregistrés, sans révision.
@@ -232,14 +255,20 @@ export async function verifierEnvois(planId: string, nolioAthlete: string, plan:
   }
 }
 
-export type BilanMiseAJour = { remplacees: number; ajoutees: number; retirees: number; notes: number; gardees: string[] };
+export type BilanMiseAJour = {
+  remplacees: number; ajoutees: number; retirees: number; notes: number; bandeau: string | null; gardees: string[];
+};
 
 // Ce que l'app réécrit d'une séance (tous les champs qu'elle pose, pour que rien de l'ancienne version ne reste),
-// ou d'une note.
-function corpsPatch(corps: Record<string, unknown>, note: boolean) {
-  if (note) {
+// d'une note ou d'un bandeau.
+function corpsPatch(corps: Record<string, unknown>, genre: Genre) {
+  if (genre === 'note') {
     const { name, date_start, note_type, color } = corps;
     return { name, date_start, note_type: note_type ?? null, color: color ?? null };
+  }
+  if (genre === 'cycle') {
+    const { name, date_start, date_end, color } = corps;
+    return { name, date_start, date_end, color: color ?? null };
   }
   const { sport, name, date_start, duration, rpe, show_rpe, color, description, workout } = corps;
   return { sport, name, date_start, duration: duration ?? null, rpe: rpe ?? null, show_rpe: show_rpe ?? false,
@@ -248,7 +277,8 @@ function corpsPatch(corps: Record<string, unknown>, note: boolean) {
 
 // V4 (décision coach du 13/10/2026) : mettre à jour une semaine envoyée. Ce que le coach n'a pas touché dans Nolio
 // (même version qu'à l'envoi) est remplacé, ce que la semaine n'a plus est supprimé, le nouveau créé ; ce qu'il a
-// retouché ou supprimé dans Nolio reste tel quel, et lui est dit. Les notes de repos (V6) suivent la même règle.
+// retouché ou supprimé dans Nolio reste tel quel, et lui est dit. Les notes de repos (V6) et le bandeau (V7) suivent
+// la même règle.
 export async function mettreAJourSemaine(coachId: string, planId: string, numero: string): Promise<BilanMiseAJour> {
   const o = await objectifCoache(coachId, planId);
   if (!o) throw new Error('Objectif introuvable');
@@ -258,9 +288,9 @@ export async function mettreAJourSemaine(coachId: string, planId: string, numero
   if (!envoi || !semaine?.lundi) throw new Error('Cette semaine n’est pas encore envoyée.');
   await convertirEnvoisV1(planId, d, [envoi]);
   const dansNolio = await versions(d, ajouterJours(semaine.lundi, -1), ajouterJours(semaine.lundi, 7));
-  const jours = await seancesDuMoteur(semaine.jours, profilDe(o.athlete));
-  const date = (jourId: string) => semaine.jours.find((j) => j.id === jourId)?.date ?? jourId;
-  const bilan: BilanMiseAJour = { remplacees: 0, ajoutees: 0, retirees: 0, notes: 0, gardees: [] };
+  const { jours, cycle } = await seancesDuMoteur(semaine, profilDe(o.athlete));
+  const date = (jourId: string) => (jourId === SEMAINE ? 'la semaine' : semaine.jours.find((j) => j.id === jourId)?.date ?? jourId);
+  const bilan: BilanMiseAJour = { remplacees: 0, ajoutees: 0, retirees: 0, notes: 0, bandeau: null, gardees: [] };
   const garde: SeanceEnvoyee[] = [];
   const parJour = new Map(envoi.seances.map((s) => [s.jour_id, s]));
   const echec = async (message: string) => {
@@ -268,15 +298,22 @@ export async function mettreAJourSemaine(coachId: string, planId: string, numero
     return new Error(message);
   };
   const ajouter = async (j: JourTraduit) => {
-    const corps = j.nolio ?? j.note;
+    const genre: Genre = j.id === SEMAINE ? 'cycle' : j.nolio ? 'seance' : 'note';
+    const corps = genre === 'cycle' ? cycle : j.nolio ?? j.note;
     if (!corps) return;
-    const cree = await creer(d, j.id, corps, !j.nolio);
+    const cree = await creer(d, j.id, corps, genre);
     if (cree.erreur) throw await echec(cree.erreur);
+    if (cree.deja) {
+      bilan.gardees.push('ton bandeau déjà posé sur la semaine');
+      return;
+    }
     garde.push(cree);
-    if (j.nolio) bilan.ajoutees += 1;
-    else bilan.notes += 1;
+    if (genre === 'seance') bilan.ajoutees += 1;
+    else if (genre === 'note') bilan.notes += 1;
+    else bilan.bandeau = String(corps.name);
   };
-  for (const j of jours) {
+  // Le bandeau d'abord, comme un jour de plus (« semaine »).
+  for (const j of [{ id: SEMAINE, nolio: null, note: null } as JourTraduit, ...jours]) {
     const ancienne = parJour.get(j.id);
     parJour.delete(j.id);
     if (!ancienne?.nolio_id) {
@@ -284,45 +321,45 @@ export async function mettreAJourSemaine(coachId: string, planId: string, numero
       continue;
     }
     const id = String(ancienne.nolio_id);
-    const note = Boolean(ancienne.note);
-    const quoi = note ? 'note de repos' : 'séance';
+    const genre = genreDe(ancienne);
+    const [article, quoi, e] = NOM[genre];
     const version = dansNolio.get(id);
     if (ancienne.supprimee || version === undefined) {
       garde.push({ ...ancienne, supprimee: true });
-      bilan.gardees.push(`${date(j.id)} (${quoi} supprimée dans Nolio)`);
+      bilan.gardees.push(`${date(j.id)} (${quoi} supprimé${e} dans Nolio)`);
       continue;
     }
     if (!ancienne.revision || version !== ancienne.revision) {
       garde.push(ancienne);
-      bilan.gardees.push(`${date(j.id)} (${quoi} retouchée dans Nolio)`);
+      bilan.gardees.push(`${date(j.id)} (${quoi} retouché${e} dans Nolio)`);
       continue;
     }
-    const voulu = note ? j.note : j.nolio;
+    const voulu = genre === 'cycle' ? cycle : genre === 'note' ? j.note : j.nolio;
     if (voulu) {
       // Même nature qu'à l'envoi : réécrite. If-Match sur une séance : refusée (409) si le coach l'a retouchée
       // entre la lecture et l'écriture.
-      const r = await appelNolio('PATCH', `${chemin(note)}${id}/${requete(d)}`, corpsPatch(voulu, note), note ? {} : { 'If-Match': version });
+      const r = await appelNolio('PATCH', `${CHEMINS[genre]}${id}/${requete(d)}`, corpsPatch(voulu, genre), genre === 'seance' ? { 'If-Match': version } : {});
       if (r.statut === 409) {
         garde.push(ancienne);
-        bilan.gardees.push(`${date(j.id)} (${quoi} retouchée dans Nolio)`);
+        bilan.gardees.push(`${date(j.id)} (${quoi} retouché${e} dans Nolio)`);
         continue;
       }
       if (r.statut !== 200) {
         garde.push(ancienne);
-        throw await echec(refusNolio(r, `la mise à jour de la ${quoi} du ${date(j.id)}`));
+        throw await echec(refusNolio(r, `la mise à jour de ${article} ${quoi} du ${date(j.id)}`));
       }
-      garde.push(note ? { jour_id: j.id, nolio_id: id, note: true, revision: empreinte(r.corps ?? voulu) }
-        : { jour_id: j.id, nolio_id: id, revision: (r.corps?.revision as string) ?? null });
-      if (!note) bilan.remplacees += 1;
+      garde.push(genre === 'seance' ? { jour_id: j.id, nolio_id: id, revision: (r.corps?.revision as string) ?? null }
+        : { jour_id: j.id, nolio_id: id, genre, revision: empreinte(r.corps ?? voulu) });
+      if (genre === 'seance') bilan.remplacees += 1;
       continue;
     }
     // Le jour a changé de nature (une séance devenue repos, ou l'inverse) : l'ancienne part, la nouvelle arrive.
-    const r = await appelNolio('DELETE', `${chemin(note)}${id}/${requete(d)}`);
+    const r = await appelNolio('DELETE', `${CHEMINS[genre]}${id}/${requete(d)}`);
     if (r.statut !== 204 && r.statut !== 200 && r.statut !== 404) {
       garde.push(ancienne);
-      throw await echec(refusNolio(r, `le retrait de la ${quoi} du ${date(j.id)}`));
+      throw await echec(refusNolio(r, `le retrait de ${article} ${quoi} du ${date(j.id)}`));
     }
-    if (!note) bilan.retirees += 1;
+    if (genre === 'seance') bilan.retirees += 1;
     await ajouter(j);
   }
   // Une séance d'un jour que la semaine n'a plus (rare) : gardée dans l'envoi, telle quelle.
