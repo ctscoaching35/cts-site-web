@@ -29,7 +29,7 @@ export async function retirerRelance(email: string) {
 export function contenuRelance() {
   const lien = `${site.url}/plan`;
   const paragraphes = [
-    'Tu as commencé à construire ton plan d’entraînement sur cts-coaching.com. Ton plan t’attend : tes réponses sont gardées sur l’appareil où tu les as saisies, il ne te reste que quelques minutes pour terminer.',
+    'Tu as commencé à construire ton plan d’entraînement sur cts-coaching.com. Ton plan t’attend : reprends ton questionnaire sur le même appareil et le même navigateur, tes réponses y sont gardées.',
     'Tu reçois ce rappel parce que tu l’as demandé. C’est le seul.',
   ];
   const signature = 'Juliette et Romain — CTS Coaching';
