@@ -14,6 +14,7 @@
 import type { EmailOtpType } from '@supabase/supabase-js';
 import { API_URL } from '@/lib/plan';
 import { envoyerBienvenue } from './emailBienvenue';
+import { retirerRelance } from './relance';
 import type { Plan } from './plan';
 import { clientService } from './supabase';
 
@@ -79,6 +80,8 @@ export async function rangerLePlan(sessionId: string, origine: string) {
     achat = nouvel ?? (await trouverAchat()).data;
   }
   if (!achat) throw new Error('achat introuvable');
+  // L'achat fait, plus de relance du questionnaire (L3).
+  await retirerRelance(email).catch((e) => console.error(`Relance de l'achat ${sessionId} :`, e));
 
   const { data: plans, error: erreurPlans } = await service.from('plans').select('id, achat_id').eq('compte_id', compteId);
   if (erreurPlans) throw new Error(`plans : ${erreurPlans.message}`);

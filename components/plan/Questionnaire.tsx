@@ -86,6 +86,10 @@ export default function Questionnaire({
   // numérique livré dès le paiement ne s'achète qu'avec l'accord exprès de l'acheteur (Code de la consommation,
   // art. L221-28, 13°). Pas pour le coach, qui n'achète rien.
   const [renonce, setRenonce] = useState(false);
+  // La relance (CTS_LANCEMENT_CADRAGE.md dans le dépôt du moteur, L3) : une seule, le lendemain, seulement si la
+  // case est cochée ; l'accord part au serveur avec l'e-mail, rien d'autre (lib/app/relance.ts).
+  const [rappel, setRappel] = useState(false);
+  const rappelEnregistre = useRef('');
   const [envoi, setEnvoi] = useState(false);
   const [refus, setRefus] = useState('');
 
@@ -117,6 +121,27 @@ export default function Questionnaire({
       /* stockage indisponible : sans conséquence */
     }
   }, [c]);
+
+  // La case « rappel » : cochée avec une adresse valable, l'accord part (une seconde après la dernière frappe) ;
+  // l'adresse corrigée remplace la précédente ; décochée, l'accord est retiré.
+  useEffect(() => {
+    if (coach) return;
+    const email = c.email.trim().toLowerCase();
+    const valable = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    const minuteur = setTimeout(() => {
+      const precedent = rappelEnregistre.current;
+      const envoyer = (corps: object) =>
+        fetch('/api/relance', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corps) }).catch(() => {});
+      if (rappel && valable && email !== precedent) {
+        envoyer({ email, accord: true, precedent });
+        rappelEnregistre.current = email;
+      } else if (!rappel && precedent) {
+        envoyer({ email: precedent, accord: false });
+        rappelEnregistre.current = '';
+      }
+    }, 1000);
+    return () => clearTimeout(minuteur);
+  }, [rappel, c.email, coach]);
 
   const maj = (champ: keyof Champs) => (v: string) => setC((p) => ({ ...p, [champ]: v }));
 
@@ -358,6 +383,13 @@ export default function Questionnaire({
               <label className={labelCls} htmlFor="email">E-mail</label>
               <input id="email" type="email" className={inputCls} required value={c.email} onChange={(e) => maj('email')(e.target.value)} autoComplete="email" />
               <p className={aideCls}>C’est là que part ton plan.</p>
+              <label className="flex gap-3 items-start mt-3 cursor-pointer">
+                <input type="checkbox" checked={rappel} onChange={(e) => setRappel(e.target.checked)} className="mt-1 accent-teal" />
+                <span className="text-sm text-indigo/80">
+                  Envoie-moi un rappel si je ne termine pas mon questionnaire.{' '}
+                  <span className="text-indigo/60">Un seul e-mail, le lendemain. Tes réponses restent sur ton appareil.</span>
+                </span>
+              </label>
             </div>
           )}
         </div>

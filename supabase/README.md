@@ -171,6 +171,13 @@ Run. Le webhook de Stripe (`app/api/stripe/webhook`) range le plan d'un paiement
 la page avant d'y revenir ; avec la page de retour, deux appels peuvent ranger le même achat au même instant :
 l'index garde un seul plan, et un seul e-mail de bienvenue part.
 
+## 15. La relance d'un questionnaire commencé
+
+Une table de plus, `relances` (`supabase/migrations/20261013100000_relances.sql`) : SQL Editor, coller le fichier,
+Run. La case « Envoie-moi un rappel » du questionnaire y range l'e-mail et la date de l'accord, rien d'autre ;
+le passage quotidien (`vercel.json`, `/api/relance/envoyer`, protégé par CRON_SECRET) envoie une relance, une
+seule, aux accords de plus de 24 h sans achat ; l'achat l'annule ; les lignes de plus de 30 jours s'effacent.
+
 ## Ce qui viendra ensuite
 
 - La suppression des comptes restés 3 ans sans connexion, après un e-mail d'avertissement (D4).

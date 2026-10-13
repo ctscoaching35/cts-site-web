@@ -11,7 +11,7 @@ import type { Plan } from './plan';
 
 // L'adresse d'envoi des essais (non authentifiée) ; une adresse du domaine cts-coaching.com,
 // authentifié dans Brevo, avant l'ouverture (supabase/README.md).
-const EXPEDITEUR = {
+export const EXPEDITEUR = {
   name: 'CTS Coaching',
   email: process.env.CTS_EMAIL_EXPEDITEUR?.trim() || 'ctscoaching35@gmail.com',
 };
