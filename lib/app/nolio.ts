@@ -11,6 +11,21 @@ const NOLIO = 'https://www.nolio.io/api/v2';
 
 export const nolioConfigure = () => Boolean(process.env.NOLIO_API_KEY?.trim());
 
+// Une erreur de Nolio dite au coach : sa phrase est faite pour lui et ne contient jamais la clé. Toute autre erreur
+// reste dans les journaux du serveur (elle pourrait la contenir : un en-tête refusé est cité en entier).
+export class ErreurNolio extends Error {}
+
+// La forme d'une clé d'application personnelle : « nolio_sk_ » puis des lettres, chiffres, « _ » ou « - ». Vérifiée
+// avant tout appel, pour ne jamais envoyer (ni laisser citer) autre chose (13/10/2026 : une variable collée avec un
+// autre texte que la clé).
+const FORME_CLE = /^nolio_sk_[A-Za-z0-9_-]{20,}$/;
+function cle(): string {
+  const valeur = process.env.NOLIO_API_KEY?.trim() ?? '';
+  if (!FORME_CLE.test(valeur))
+    throw new ErreurNolio('La variable NOLIO_API_KEY de Vercel ne contient pas une clé Nolio (elle commence par nolio_sk_) : recolle la clé, puis redéploie.');
+  return valeur;
+}
+
 // Les coachs : les e-mails de la variable CTS_COACHS (séparés par des virgules), saisie par le coach dans Vercel.
 const coachs = () => (process.env.CTS_COACHS ?? '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
 
@@ -40,7 +55,7 @@ export async function appelNolio(methode: string, chemin: string, corps?: unknow
   const reponse = await fetch(`${NOLIO}/${chemin}`, {
     method: methode,
     headers: {
-      Authorization: `Bearer ${process.env.NOLIO_API_KEY?.trim() ?? ''}`, 'Accept-Language': 'fr',
+      Authorization: `Bearer ${cle()}`, 'Accept-Language': 'fr',
       ...(corps === undefined ? {} : { 'Content-Type': 'application/json' }), ...entetes,
     },
     body: corps === undefined ? undefined : JSON.stringify(corps),
@@ -67,7 +82,7 @@ export async function listeNolio<T extends { id: string }>(chemin: string): Prom
   let apres = '';
   for (let page = 0; page < 50; page += 1) {
     const r = await appelNolio('GET', `${chemin}${chemin.includes('?') ? '&' : '?'}limit=100${apres ? `&starting_after=${apres}` : ''}`);
-    if (r.statut !== 200) throw new Error(refusNolio(r, 'la lecture'));
+    if (r.statut !== 200) throw new ErreurNolio(refusNolio(r, 'la lecture'));
     const lot = (r.corps?.data ?? []) as T[];
     tous.push(...lot);
     if (!r.corps?.has_more || !lot.length) break;
@@ -81,7 +96,7 @@ export type AthleteNolio = { id: string; name: string };
 // Le compte du coach (GET me/) : ses propres séances se créent sans destinataire et se lisent sans ?athlete=.
 export async function moiNolio(): Promise<AthleteNolio> {
   const r = await appelNolio('GET', 'me/');
-  if (r.statut !== 200 || typeof r.corps?.id !== 'string') throw new Error(refusNolio(r, 'la lecture de ton compte'));
+  if (r.statut !== 200 || typeof r.corps?.id !== 'string') throw new ErreurNolio(refusNolio(r, 'la lecture de ton compte'));
   return { id: r.corps.id, name: [r.corps.first_name, r.corps.last_name].filter(Boolean).join(' ') || 'Toi' };
 }
 

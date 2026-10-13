@@ -4,7 +4,7 @@ import { athletesCoaches } from '@/lib/app/coaching';
 import { dateLongue } from '@/lib/app/plan';
 import EnTeteCoach from '@/components/app/EnTeteCoach';
 import { supabaseConfigure } from '@/lib/app/supabase';
-import { athletesNolio, exigerCoach, nolioConfigure, type AthleteNolio } from '@/lib/app/nolio';
+import { athletesNolio, ErreurNolio, exigerCoach, nolioConfigure, type AthleteNolio } from '@/lib/app/nolio';
 
 // Toujours calculée à la visite : la page lit la session du coach.
 export const dynamic = 'force-dynamic';
@@ -15,7 +15,7 @@ export default async function Coach() {
   if (!supabaseConfigure()) notFound();
   const coach = await exigerCoach();
   let athletes: AthleteNolio[] | null = null;
-  // La raison d'un échec, dite au coach : les refus de Nolio ont leur phrase (lib/app/nolio.ts, refusNolio).
+  // La raison d'un échec, dite au coach quand Nolio la donne (ErreurNolio, sans jamais la clé) ; le reste au journal.
   let erreur: string | null = null;
   if (nolioConfigure()) {
     try {
@@ -23,7 +23,7 @@ export default async function Coach() {
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       console.error('Athlètes Nolio :', message);
-      erreur = message.startsWith('Nolio') ? message : `Nolio ne répond pas pour l’instant : réessaie dans un moment (${message}).`;
+      erreur = e instanceof ErreurNolio ? message : 'Nolio ne répond pas pour l’instant : réessaie dans un moment.';
     }
   }
   const coaches = await athletesCoaches(coach.compteId);

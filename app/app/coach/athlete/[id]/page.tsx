@@ -4,7 +4,7 @@ import EnTeteCoach from '@/components/app/EnTeteCoach';
 import FormulaireValeurs from '@/components/app/FormulaireValeurs';
 import { associerNolio, retirerAthlete } from '@/lib/app/actionsCoaching';
 import { ficheAthlete } from '@/lib/app/coaching';
-import { athletesNolio, exigerCoach, nolioConfigure, type AthleteNolio } from '@/lib/app/nolio';
+import { athletesNolio, ErreurNolio, exigerCoach, nolioConfigure, type AthleteNolio } from '@/lib/app/nolio';
 import { dateLongue } from '@/lib/app/plan';
 import { allureDepuisVitesse } from '@/lib/app/allureCoach';
 import { supabaseConfigure } from '@/lib/app/supabase';
@@ -28,7 +28,7 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     console.error('Athlètes Nolio :', message);
-    erreur = message.startsWith('Nolio') ? message : `Nolio ne répond pas pour l’instant : réessaie dans un moment (${message}).`;
+    erreur = e instanceof ErreurNolio ? message : 'Nolio ne répond pas pour l’instant : réessaie dans un moment.';
   }
   return (
     <>
