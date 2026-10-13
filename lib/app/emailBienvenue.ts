@@ -31,6 +31,10 @@ export function contenuBienvenue(plan: Plan, lienApp: string) {
       'puis t’y envoie un code à 6 chiffres pour te connecter.',
     'Ton plan est aussi joint en PDF, à garder ou à imprimer.',
     'Une question sur ton plan ? Réponds simplement à cet e-mail.',
+    // La confirmation de l'achat sur un support durable, avec la renonciation au droit de rétractation que
+    // l'acheteur a cochée avant de payer (Code de la consommation, art. L221-13 et L221-28 ; CTS_LANCEMENT_CADRAGE.md).
+    'Comme tu l’as demandé avant ton paiement, ton plan t’a été livré tout de suite : ce contenu numérique ' +
+      'n’ouvre donc plus de droit de rétractation (article L221-28 du Code de la consommation).',
   ];
   const signature = 'Juliette et Romain — CTS Coaching';
   const texte = [

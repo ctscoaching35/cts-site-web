@@ -82,6 +82,10 @@ export default function Questionnaire({
   const traceDemandee = useRef(0);
   const [etape, setEtape] = useState<'formulaire' | 'recap'>('formulaire');
   const [confirme, setConfirme] = useState(false);
+  // La renonciation au droit de rétractation (CTS_LANCEMENT_CADRAGE.md dans le dépôt du moteur, L5) : un contenu
+  // numérique livré dès le paiement ne s'achète qu'avec l'accord exprès de l'acheteur (Code de la consommation,
+  // art. L221-28, 13°). Pas pour le coach, qui n'achète rien.
+  const [renonce, setRenonce] = useState(false);
   const [envoi, setEnvoi] = useState(false);
   const [refus, setRefus] = useState('');
 
@@ -207,6 +211,7 @@ export default function Questionnaire({
     donnees.append('intake', JSON.stringify(intakePourApi(c)));
     if (gpx) donnees.append('gpx', gpx);
     if (coach && athleteId) donnees.append('athlete_id', athleteId);
+    if (!coach && renonce) donnees.append('renonciation_retractation', '1');
     if (coach) {
       try {
         const r = await fetch('/app/coach/athletes', { method: 'POST', body: donnees });
@@ -260,7 +265,7 @@ export default function Questionnaire({
     ];
     // L'avertissement santé se lit et se coche à chaque fois (décision coach du 07/10/2026), avec
     // les points propres à l'athlète au-dessus quand il y en a.
-    const bloque = !confirme;
+    const bloque = !confirme || (!coach && !renonce);
     return (
       <div className="space-y-6">
         <section className="bg-white border border-indigo/10 p-6 sm:p-8">
@@ -295,8 +300,26 @@ export default function Questionnaire({
           )}
           <label className="flex gap-3 items-start mt-6 cursor-pointer">
             <input type="checkbox" checked={confirme} onChange={(e) => setConfirme(e.target.checked)} className="mt-1 accent-teal" />
-            <span className="text-indigo font-semibold">J’ai lu cet avertissement et je veux générer mon plan.</span>
+            <span className="text-indigo font-semibold">
+              {coach ? (
+                'J’ai lu cet avertissement et je veux générer mon plan.'
+              ) : (
+                <>
+                  J’ai lu cet avertissement et les{' '}
+                  <a href="/cgv" target="_blank" rel="noopener" className="underline underline-offset-2">conditions générales de vente</a>, et je veux générer mon plan.
+                </>
+              )}
+            </span>
           </label>
+          {!coach && (
+            <label className="flex gap-3 items-start mt-4 cursor-pointer">
+              <input type="checkbox" checked={renonce} onChange={(e) => setRenonce(e.target.checked)} className="mt-1 accent-teal" />
+              <span className="text-indigo">
+                <span className="font-semibold">Je demande à recevoir mon plan dès mon paiement, et je renonce à mon droit de rétractation de 14 jours.</span>{' '}
+                <span className="text-indigo/70">Ton plan est un contenu numérique livré tout de suite : la loi demande ton accord pour te le livrer avant la fin de ce délai.</span>
+              </span>
+            </label>
+          )}
         </section>
 
         {refus && (
