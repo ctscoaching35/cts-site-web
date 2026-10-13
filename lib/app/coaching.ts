@@ -6,6 +6,7 @@
  * dans Nolio par l'API v2, avec la clé du coach.
  */
 import { API_URL } from '@/lib/plan';
+import { lienFicheCourse } from './ficheCourse';
 import { ajouterJours, type Plan, type Semaine } from './plan';
 import { appelNolio, convertirIdsV1, listeNolio, moiNolio, nolioConfigure, refusNolio } from './nolio';
 import { clientService } from './supabase';
@@ -104,12 +105,18 @@ export async function questionnairePrerempli(coachId: string, athleteId: string)
 type JourTraduit = { id: string; nolio: Record<string, unknown> | null; note: Record<string, unknown> | null };
 const SEMAINE = 'semaine';
 const RENFO = ':renfo';
-async function seancesDuMoteur(plan: Plan, semaine: Semaine, profil: Record<string, number>, niveau: string) {
+async function seancesDuMoteur(plan: Plan, planId: string, semaine: Semaine, profil: Record<string, number>, niveau: string) {
   // La place de la semaine dans son bloc : la dose du renfo monte à partir de la troisième.
   const rang = plan.semaines.filter((s) => s.bloc === semaine.bloc).findIndex((s) => s.numero === semaine.numero) + 1;
+  // Le calendrier du plan, pour les fiches au bon moment (F1) et la fiche de course (F2).
+  const lundiDu = (bloc: string) => plan.semaines.find((s) => s.bloc === bloc)?.lundi ?? null;
+  const calendrier = {
+    debut: plan.semaines[0]?.lundi ?? null, course: plan.course.date, specifique: lundiDu('Bloc spécifique'),
+    affutage: lundiDu('Affûtage'), fiches_du_plan: plan.pour_aller_plus_loin.fiches.map((f) => f.cle),
+  };
   const r = await fetch(`${API_URL}/v1/nolio/seances`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
-    body: JSON.stringify({ jours: semaine.jours, profil, niveau,
+    body: JSON.stringify({ jours: semaine.jours, profil, niveau, calendrier,
       semaine: { type: semaine.type, bloc: semaine.bloc, lundi: semaine.lundi, rang_bloc: rang || 1 } }),
   });
   if (!r.ok) throw new Error(`Moteur /v1/nolio/seances : ${r.status}`);
@@ -117,7 +124,12 @@ async function seancesDuMoteur(plan: Plan, semaine: Semaine, profil: Record<stri
   const jours = (corps.seances ?? []).map((s: JourTraduit) => ({ ...s, note: s.note ?? null })) as JourTraduit[];
   const brut = (corps.renfo ?? []) as { id: string; nolio: Record<string, unknown> }[];
   const renfo = brut.length ? await monterRenfo(brut) : [];
-  return { jours, cycle: (corps.cycle ?? null) as Record<string, unknown> | null, renfo };
+  // Les fiches, des notes de plus (« fiche:pieds ») ; la fiche de course reçoit son lien privé.
+  const fiches = ((corps.fiches ?? []) as { id: string; note: Record<string, unknown> }[]).map((f) => ({
+    id: f.id, nolio: null,
+    note: { ...f.note, description: String(f.note.description ?? '').replace('{lien_fiche_course}', lienFicheCourse(planId)) },
+  }));
+  return { jours, cycle: (corps.cycle ?? null) as Record<string, unknown> | null, renfo: [...renfo, ...fiches] };
 }
 
 type Noeud = Record<string, unknown> & { kind: string };
@@ -191,7 +203,7 @@ export async function envoyerSemaine(coachId: string, planId: string, numero: st
   if (o.envois.some((e) => e.semaine === numero)) throw new Error('Cette semaine est déjà envoyée : mets-la à jour.');
   const semaine = o.plan.semaines.find((s) => s.numero === numero);
   if (!semaine) throw new Error('Semaine introuvable');
-  const { jours, cycle, renfo } = await seancesDuMoteur(o.plan, semaine, profilDe(o.athlete), o.niveau);
+  const { jours, cycle, renfo } = await seancesDuMoteur(o.plan, planId, semaine, profilDe(o.athlete), o.niveau);
   const crees: SeanceEnvoyee[] = [];
   let bandeau = '';
   if (cycle) {
@@ -215,10 +227,11 @@ export async function envoyerSemaine(coachId: string, planId: string, numero: st
     crees.push(cree);
   }
   await garderEnvoi(coachId, planId, numero, crees);
-  const notes = crees.filter((c) => c.genre === 'note').length;
+  const fiches = crees.filter((c) => c.jour_id.startsWith('fiche:')).length;
+  const notes = crees.filter((c) => c.genre === 'note').length - fiches;
   const renfos = crees.filter((c) => c.jour_id.endsWith(RENFO)).length;
   const seances = crees.filter((c) => genreDe(c) === 'seance').length - renfos;
-  return `${pluriel(seances, 'séance')}${renfos ? `, ${pluriel(renfos, 'séance')} de renfo` : ''}${notes ? `, ${pluriel(notes, 'note')} de repos` : ''}${bandeau}`;
+  return `${pluriel(seances, 'séance')}${renfos ? `, ${pluriel(renfos, 'séance')} de renfo` : ''}${notes ? `, ${pluriel(notes, 'note')} de repos` : ''}${fiches ? `, ${pluriel(fiches, 'fiche')}` : ''}${bandeau}`;
 }
 
 async function garderEnvoi(coachId: string, planId: string, numero: string, seances: SeanceEnvoyee[]) {
@@ -296,8 +309,8 @@ export type BilanMiseAJour = {
 // d'une note ou d'un bandeau.
 function corpsPatch(corps: Record<string, unknown>, genre: Genre) {
   if (genre === 'note') {
-    const { name, date_start, note_type, color } = corps;
-    return { name, date_start, note_type: note_type ?? null, color: color ?? null };
+    const { name, date_start, note_type, color, description } = corps;
+    return { name, date_start, note_type: note_type ?? null, color: color ?? null, description: description ?? '' };
   }
   if (genre === 'cycle') {
     const { name, date_start, date_end, color } = corps;
@@ -321,7 +334,7 @@ export async function mettreAJourSemaine(coachId: string, planId: string, numero
   if (!envoi || !semaine?.lundi) throw new Error('Cette semaine n’est pas encore envoyée.');
   await convertirEnvoisV1(planId, d, [envoi]);
   const dansNolio = await versions(d, ajouterJours(semaine.lundi, -1), ajouterJours(semaine.lundi, 7));
-  const { jours, cycle, renfo } = await seancesDuMoteur(o.plan, semaine, profilDe(o.athlete), o.niveau);
+  const { jours, cycle, renfo } = await seancesDuMoteur(o.plan, planId, semaine, profilDe(o.athlete), o.niveau);
   const date = (jourId: string) => {
     if (jourId === SEMAINE) return 'la semaine';
     const jour = semaine.jours.find((j) => j.id === jourId.replace(RENFO, ''))?.date ?? jourId;
@@ -346,7 +359,7 @@ export async function mettreAJourSemaine(coachId: string, planId: string, numero
     }
     garde.push(cree);
     if (genre === 'seance') bilan.ajoutees += 1;
-    else if (genre === 'note') bilan.notes += 1;
+    else if (genre === 'note' && !j.id.startsWith('fiche:')) bilan.notes += 1;
     else bilan.bandeau = String(corps.name);
   };
   // Le bandeau d'abord, comme un jour de plus (« semaine ») ; le renfo après les jours ; puis ce que la semaine n'a
