@@ -97,12 +97,13 @@ tr.clair td.nomzone { color: var(--navy); }
 <main>
   <section class="test" aria-labelledby="t1">
     <h2 id="t1">1. Le test de la parole : ton seuil 1</h2>
-    <p>Des paliers de 3 minutes sur le plat, de plus en plus rapides ; à la fin de chacun, tu comptes jusqu'à 30 et tu te demandes si tu parles confortablement. Au premier « pas vraiment », ta FC est ta FC au seuil 1 (fiche <a href="/bibliotheque/test-parole">Le test de la parole</a>).</p>
+    <p>Des paliers de 3 minutes sur le plat, de plus en plus rapides ; à la fin de chacun, tu comptes jusqu'à 30 et tu te demandes si tu parles confortablement. Au premier « pas vraiment », note ta FC et ton allure : ce sont tes repères de seuil 1 (fiche <a href="/bibliotheque/test-parole">Le test de la parole</a>).</p>
     <div class="champs">
       <div class="champ"><label for="fc1">FC au seuil 1 (battements/min)</label><input id="fc1" inputmode="numeric" placeholder="150" autocomplete="off"></div>
-      <div class="champ"><label for="v1">Vitesse de ce palier (km/h), facultatif</label><input id="v1" inputmode="decimal" placeholder="10" autocomplete="off"></div>
+      <div class="champ"><label for="a1_min">Allure de ce palier (min : s par km)</label><div class="chrono"><input id="a1_min" inputmode="numeric" placeholder="6" autocomplete="off"><span>:</span><input id="a1_sec" inputmode="numeric" placeholder="00" autocomplete="off" aria-label="Secondes"></div></div>
     </div>
     <p class="message" id="m1" role="status"></p>
+    <p class="ok" id="ok1"></p>
   </section>
 
   <section class="test" aria-labelledby="t2">
@@ -211,6 +212,13 @@ tr.clair td.nomzone { color: var(--navy); }
     if (!isFinite(n) || n <= 0) return null;
     return n < 50 ? Math.round(n * 1000) : Math.round(n);
   }
+  // L'allure du palier du test de la parole, en deux champs (min, s) par km, rendue en km/h.
+  function lireAllure(idMin, idSec) {
+    var m = /^\s*(\d{1,2})\s*$/.exec($(idMin).value), s = /^\s*(\d{0,2})\s*$/.exec($(idSec).value);
+    if (!m || !s || Number(s[1] || 0) >= 60) return null;
+    var t = Number(m[1]) * 60 + Number(s[1] || 0);
+    return t > 0 ? 3600 / t : null;
+  }
   function lireNombre(t) {
     var n = Number(String(t || '').replace(/\s/g, '').replace(',', '.'));
     return isFinite(n) && n > 0 ? n : null;
@@ -276,9 +284,17 @@ tr.clair td.nomzone { color: var(--navy); }
   ];
 
   function calculer() {
-    var fc1 = lireNombre($('fc1').value), v1 = lireNombre($('v1').value), fc2 = lireNombre($('fc2').value);
-    var m1 = '', m2 = '', m3 = '', ok2 = '';
+    var fc1 = lireNombre($('fc1').value), v1 = lireAllure('a1_min', 'a1_sec'), fc2 = lireNombre($('fc2').value);
+    var m1 = '', m2 = '', m3 = '', ok1 = '', ok2 = '';
+    // L'allure du palier compte autant que la FC (décision coach du 13/10/2026) : c'est elle qui
+    // recoupe le seuil 1 avec la VC et cale les allures basses.
+    if ($('a1_min').value || $('a1_sec').value) {
+      if (!v1) { m1 = 'Écris ton allure en minutes et secondes, de 0 à 59' + N + 'secondes' + N + ': par exemple 6 et 00 pour 6:00/km.'; }
+      else if (v1 < 5 || v1 > 24) { m1 = 'Ton allure doit être entre 2:30 et 12:00 par km.'; v1 = null; }
+    }
     if ($('fc1').value && (!fc1 || fc1 < 90 || fc1 > 210)) { m1 = 'Ta FC au seuil 1 doit être entre 90 et 210 battements par minute.'; fc1 = null; }
+    if (fc1 && !v1 && !m1) m1 = 'Note aussi l\u2019allure de ce palier' + N + ': sans elle, ton seuil' + N + '1 n\u2019est qu\u2019estimé à partir de ta vitesse critique.';
+    if (fc1 && v1) ok1 = 'Ton seuil' + N + '1' + N + ': ' + fc1 + N + 'bpm, à ' + allure(v1 / 3.6) + '/km, soit ' + kmh(v1 / 3.6) + N + 'km/h.';
     if ($('fc2').value && (!fc2 || fc2 < 100 || fc2 > 220)) { m3 = 'Ta FC au seuil 2 doit être entre 100 et 220 battements par minute.'; fc2 = null; }
     if (fc1 && fc2 && fc2 - fc1 < 10) { m3 = 'Ta FC au seuil 2 devrait être nettement au-dessus de ta FC au seuil 1 (au moins 10 battements) : vérifie tes deux tests.'; fc2 = null; }
 
@@ -291,7 +307,7 @@ tr.clair td.nomzone { color: var(--navy); }
     if (r && e.length === 3 && r.ecart > 0.02) m2 = 'Un de tes trois efforts s’écarte de la droite : il est sans doute à refaire.';
     if (r) ok2 = 'Ta vitesse critique : ' + kmh(r.vc) + N + 'km/h, soit ' + allure(r.vc) + '/km. Ton profil complet est plus bas.';
     $('allure95').textContent = r ? ' (' + allure(r.vc * 0.95) + '/km)' : '';
-    $('m1').textContent = m1; $('m2').textContent = m2; $('m3').textContent = m3; $('ok2').textContent = ok2;
+    $('m1').textContent = m1; $('m2').textContent = m2; $('m3').textContent = m3; $('ok1').textContent = ok1; $('ok2').textContent = ok2;
 
     // Le seuil 1, recoupé (décision coach du 13/10/2026) : la VC l'estime vers 82 % (Hunter 2024), le
     // plus souvent entre 75 et 90 % ; aucune étude ne chiffre l'écart d'une personne à l'autre, les
@@ -305,7 +321,7 @@ tr.clair td.nomzone { color: var(--navy); }
     var recoupe = '';
     if (r) {
       var fourchette = ' la fourchette habituelle, de 75 à 90' + N + '%';
-      if (p1 === null) recoupe = 'Ton seuil' + N + '1 est estimé à partir de ta vitesse critique' + N + ': vers 82' + N + '%, le plus souvent entre ' + kmh(r.vc * 0.75) + ' et ' + kmh(r.vc * 0.9) + N + 'km/h. Remplis la vitesse du palier de ton test de la parole pour recouper les deux.';
+      if (p1 === null) recoupe = 'Ton seuil' + N + '1 est estimé à partir de ta vitesse critique' + N + ': vers 82' + N + '%, le plus souvent entre ' + kmh(r.vc * 0.75) + ' et ' + kmh(r.vc * 0.9) + N + 'km/h. Note l\u2019allure du palier de ton test de la parole pour recouper les deux.';
       else if (p1 >= 0.75 && p1 <= 0.9) recoupe = 'Ton test de la parole tombe à ' + pct(p1) + ' de ta vitesse critique, dans' + fourchette + N + ': tes deux tests concordent. Tes allures d\u2019endurance et de seuil' + N + '1 sont calées sur ton test de la parole.';
       else if (parole) recoupe = 'Ton test de la parole tombe à ' + pct(p1) + ' de ta vitesse critique, un peu en dehors de' + fourchette + '. C\u2019est possible, le seuil' + N + '1 varie d\u2019une personne à l\u2019autre' + N + ': tes allures sont calées sur ton test de la parole, et ton RPE tranche.';
       else recoupe = 'Ton test de la parole tombe à ' + pct(p1) + ' de ta vitesse critique, loin de' + fourchette + N + ': l\u2019écart est inhabituel. Vérifie tes deux tests' + N + ': le test de la parole au calme, avec une ceinture cardio et des paliers de 3' + N + 'minutes, les efforts de vitesse critique vraiment à fond, sur le plat. En attendant, tes allures sont calées sur ta vitesse critique.';
@@ -320,7 +336,7 @@ tr.clair td.nomzone { color: var(--navy); }
     carte('c_s1', r ? kmh(r.vc * s1) + N + 'km/h' : null, r ? allure(r.vc * s1) + '/km · ' + pct(s1) + (parole ? '' : ', de ' + kmh(r.vc * 0.75) + ' à ' + kmh(r.vc * 0.9)) : 'avec la vitesse critique');
     $('c_s1').querySelector('.nom').textContent = parole ? 'Seuil' + N + '1, test de la parole' : 'Seuil' + N + '1 estimé';
 
-    var faits = [fc1, r, fc2].filter(Boolean).length;
+    var faits = [fc1 && v1, r, fc2].filter(Boolean).length;
     $('etat').textContent = faits === 3
       ? 'Ton profil est complet : voici tes zones, en FC et en allure.'
       : 'Tests remplis : ' + faits + ' sur 3. Les cases se remplissent à mesure que tu fais les tests.';
@@ -426,7 +442,7 @@ tr.clair td.nomzone { color: var(--navy); }
   }
 
   $('avec3').addEventListener('change', function () { $('bloc3').hidden = !this.checked; calculer(); });
-  ['fc1', 'v1', 'fc2', 'd_long', 's_long', 'x_long', 'd_court', 's_court', 'x_court', 'd_moyen', 's_moyen', 'x_moyen'].forEach(function (id) {
+  ['fc1', 'a1_min', 'a1_sec', 'fc2', 'd_long', 's_long', 'x_long', 'd_court', 's_court', 'x_court', 'd_moyen', 's_moyen', 'x_moyen'].forEach(function (id) {
     $(id).addEventListener('input', calculer);
   });
   $('imprimer').addEventListener('click', function () { window.print(); });
