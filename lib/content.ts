@@ -185,3 +185,130 @@ export const footer = {
   tagline: 'CTS Coaching · Annecy · Rennes · Coaching trail à distance',
   legal: '© ' + new Date().getFullYear() + ' CTS Coaching. Tous droits réservés.',
 };
+
+/**
+ * La page des plans clé en main (/plans) et son bloc sur l'accueil (CTS_LANCEMENT_CADRAGE.md dans le dépôt du
+ * moteur, L2, décision coach du 13/10/2026). Rien n'y est promis que l'app ne fasse aujourd'hui ; les limites
+ * sont dites. Les prix viennent de l'API (/v1/config), pas d'ici.
+ */
+export const plansOffre = {
+  hero: {
+    eyebrow: 'Plan d’entraînement trail',
+    title: 'Ton plan, construit sur ta course.',
+    subtitle:
+      'Ta course, ton niveau, ton terrain et tes jours disponibles : ton plan se construit sur tes réponses, semaine par semaine, jusqu’au jour J. Pensé par deux kinésithérapeutes du sport, il vit dans une app qui te suit tout au long de ta préparation.',
+    cta: 'Construire mon plan',
+    note: 'Achat unique, sans abonnement.',
+  },
+  etapes: {
+    eyebrow: 'Comment ça marche',
+    title: 'Trois étapes, et tu t’entraînes',
+    items: [
+      {
+        titre: 'Tu réponds au questionnaire',
+        texte:
+          'Une dizaine de minutes : ta course (distance, dénivelé, trace GPX si tu l’as), ton niveau, ce que tu cours en ce moment, ton terrain d’entraînement et tes jours disponibles.',
+      },
+      {
+        titre: 'Ton plan est construit',
+        texte:
+          'Dès le paiement : la progression de tes sorties longues, tes séances de qualité, le travail en côte et en descente, l’affûtage, calés sur la date de ta course.',
+      },
+      {
+        titre: 'Tu t’entraînes avec l’app',
+        texte:
+          'La séance du jour, détaillée à l’effort ; ton journal ; un plan qui s’ajuste quand une séance saute ou quand la fatigue s’installe. Et le PDF de ton plan, à garder ou à imprimer.',
+      },
+    ],
+  },
+  contenu: {
+    eyebrow: 'Ce que contient ton plan',
+    title: 'Tout ce qu’il faut, rien de trop',
+    items: [
+      'Chaque séance détaillée : échauffement, corps de séance, retour au calme, avec l’effort à viser sur l’échelle RPE.',
+      'Des sorties longues qui progressent par paliers, et le terrain de ta course : côtes, descentes, navettes.',
+      'Tes zones : avec ta fréquence cardiaque ou ta vitesse critique, mesurées par des tests simples, tes repères de FC et d’allure sur chaque séance.',
+      'Un plan qui s’adapte : séance manquée, fatigue, sensations notées dans ton journal, la suite s’ajuste sans saut de charge.',
+      'Une séance à déplacer dans la semaine ? L’app te montre les jours qui conviennent le mieux.',
+      'La bibliothèque CTS : 22 fiches (nutrition, récupération, renforcement, descente…) et les calculateurs.',
+      'Ton plan complet en PDF.',
+    ],
+  },
+  exemple: {
+    eyebrow: 'Un exemple',
+    title: 'Le plan, tel que tu le recevras',
+    texte:
+      'Un trail de 42 km et 2 700 m de D+, niveau intermédiaire, quatre séances par semaine, préparé en 4 mois : le PDF complet, tel qu’un athlète le reçoit.',
+    lien: { label: 'Voir le plan d’exemple (PDF)', href: '/exemples/plan-exemple-cts.pdf' },
+  },
+  coachs: {
+    eyebrow: 'Qui est derrière',
+    title: 'Deux kinés du sport, une méthode',
+    texte:
+      'Juliette (Annecy) et Romain (Rennes) sont kinésithérapeutes du sport et coachs trail depuis plus de 10 ans, kinés sur l’UTMB Mont-Blanc. La méthode de leurs coachings individualisés, appuyée sur les données actuelles des sciences de l’entraînement, construit ton plan.',
+  },
+  prix: {
+    eyebrow: 'Les prix',
+    title: 'Un prix selon la durée de ta préparation',
+    note: 'Le questionnaire te propose les durées qui conviennent à ta course. Achat unique, sans abonnement.',
+    durees: [
+      { mois: 3, semaines: 12 },
+      { mois: 4, semaines: 16 },
+      { mois: 6, semaines: 24 },
+    ],
+  },
+  limites: {
+    eyebrow: 'À savoir',
+    title: 'Ce que le plan ne fait pas',
+    items: [
+      'Pas d’envoi sur ta montre pour l’instant : tes séances sont dans l’app et dans ton PDF.',
+      'Pas de coach qui te répond : le plan est construit à partir de tes réponses. Pour un suivi par Juliette ou Romain, il y a le coaching individualisé.',
+      'Les formats ouverts dépendent de ton niveau : un débutant prépare un Trail Court, l’ultra-trail est réservé aux coureurs confirmés.',
+      'Il ne remplace pas un avis médical.',
+    ],
+    lienCoaching: { label: 'Découvrir le coaching individualisé', href: '/#offre' },
+  },
+  faq: {
+    eyebrow: 'Questions fréquentes',
+    title: 'Avant de te lancer',
+    items: [
+      {
+        q: 'Je ne connais pas encore mon temps visé.',
+        r: 'Le questionnaire te donne des repères de chrono pour ta course, selon sa distance et son dénivelé. Mets le temps qui te semble le plus probable.',
+      },
+      {
+        q: 'Ma course est plus proche que la durée du plan.',
+        r: 'Tu reçois quand même le plan entier, et tu le rejoins à la semaine en cours.',
+      },
+      {
+        q: 'Que se passe-t-il si je rate une séance ?',
+        r: 'Tu l’indiques dans ton journal : l’app ajuste la suite pour éviter un saut de charge.',
+      },
+      {
+        q: 'Je ne peux pas courir le jour prévu.',
+        r: 'Tu peux déplacer une séance dans la même semaine. L’app te signale les jours moins propices, sans te les interdire.',
+      },
+      {
+        q: 'J’ai une douleur ou une blessure.',
+        r: 'Le plan ne remplace pas un avis médical : adapte ou interromps la séance, et consulte un professionnel de santé.',
+      },
+      {
+        q: 'Je prépare plusieurs courses.',
+        r: 'Un plan par course : pour une autre course, un nouveau plan, rangé dans le même compte.',
+      },
+    ],
+  },
+  fin: {
+    title: 'Prêt ? Construis ton plan.',
+    cta: 'Construire mon plan',
+  },
+  // Le bloc de l'accueil, sous l'offre de coaching.
+  blocAccueil: {
+    eyebrow: 'Pas besoin d’un suivi ?',
+    title: 'Le plan clé en main',
+    texte:
+      'Ton plan d’entraînement construit sur ta course, dans une app, par la méthode CTS. Achat unique, dès 39 €.',
+    cta: 'Découvrir le plan',
+    href: '/plans',
+  },
+};

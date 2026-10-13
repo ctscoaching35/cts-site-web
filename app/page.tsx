@@ -3,6 +3,7 @@ import Hero from '@/components/Hero';
 import Problem from '@/components/Problem';
 import About from '@/components/About';
 import Offer from '@/components/Offer';
+import BlocPlans from '@/components/BlocPlans';
 import Testimonials from '@/components/Testimonials';
 import Instagram from '@/components/Instagram';
 import Contact from '@/components/Contact';
@@ -17,6 +18,7 @@ export default function HomePage() {
         <Problem />
         <About />
         <Offer />
+        <BlocPlans />
         <Testimonials />
         <Instagram />
         <Contact />
