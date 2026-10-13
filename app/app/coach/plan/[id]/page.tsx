@@ -13,8 +13,9 @@ import { supabaseConfigure } from '@/lib/app/supabase';
 // Toujours calculée à la visite : la page lit la session du coach.
 export const dynamic = 'force-dynamic';
 
-// Un objectif d'athlète coaché (CTS_NOLIO_CADRAGE.md, N1 à N9) : son plan semaine par semaine, « Envoyer dans
-// Nolio » ou « Envoyée le … » (N4), son PDF. Le nom Nolio et les valeurs de l'athlète sont sur sa fiche.
+// Un objectif d'athlète coaché (CTS_NOLIO_CADRAGE.md, N1 à N9, V4) : son plan semaine par semaine, « Envoyer dans
+// Nolio », puis « Envoyée le … » et « Mettre à jour dans Nolio » ; son PDF. Le nom Nolio et les valeurs de
+// l'athlète sont sur sa fiche.
 export default async function ObjectifCoache({ params }: { params: Promise<{ id: string }> }) {
   if (!supabaseConfigure()) notFound();
   const coach = await exigerCoach();
@@ -22,7 +23,7 @@ export default async function ObjectifCoache({ params }: { params: Promise<{ id:
   const o = await objectifCoache(coach.compteId, id);
   if (!o) notFound();
   const nolio = o.athlete.nolio_athlete_id;
-  const envois = nolio ? await verifierEnvois(coach.compteId, id, nolio, o.plan, o.envois) : o.envois;
+  const envois = nolio ? await verifierEnvois(id, nolio, o.plan, o.envois) : o.envois.map((e) => ({ ...e, retouchees: 0, supprimees: 0 }));
   const valeurs = [o.athlete.fc_seuil1 && `FC seuil 1 ${o.athlete.fc_seuil1}`, o.athlete.v_seuil1_ms && `allure seuil 1 ${allureDepuisVitesse(o.athlete.v_seuil1_ms)} min/km`, o.athlete.vc_ms && `VC ${allureDepuisVitesse(o.athlete.vc_ms)} min/km`,
     o.athlete.fc_seuil2 && `FC seuil 2 ${o.athlete.fc_seuil2}`].filter(Boolean).join(' · ');
   return (
@@ -58,7 +59,18 @@ export default async function ObjectifCoache({ params }: { params: Promise<{ id:
                 ))}
               </ul>
               {e ? (
-                <p className="text-sm text-teal font-semibold">Envoyée le {new Date(e.envoye_le).toLocaleDateString('fr-FR')}</p>
+                <div className="space-y-1">
+                  <p className="text-sm text-teal font-semibold">
+                    Envoyée le {new Date(e.envoye_le).toLocaleDateString('fr-FR')}
+                    {(e.retouchees > 0 || e.supprimees > 0) && (
+                      <span className="font-normal text-indigo/70">
+                        {' · '}{[e.retouchees && `${e.retouchees} retouchée${e.retouchees > 1 ? 's' : ''}`,
+                          e.supprimees && `${e.supprimees} supprimée${e.supprimees > 1 ? 's' : ''}`].filter(Boolean).join(', ')} dans Nolio, gardée{e.retouchees + e.supprimees > 1 ? 's' : ''} telle{e.retouchees + e.supprimees > 1 ? 's' : ''} quelle{e.retouchees + e.supprimees > 1 ? 's' : ''}
+                      </span>
+                    )}
+                  </p>
+                  <EnvoiSemaine planId={id} numero={s.numero} actif={Boolean(nolio)} envoyee />
+                </div>
               ) : (
                 <EnvoiSemaine planId={id} numero={s.numero} actif={Boolean(nolio)} />
               )}

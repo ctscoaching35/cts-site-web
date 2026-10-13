@@ -153,9 +153,9 @@ s'affichent mais ne s'enregistrent pas.
 
 Trois tables de plus, `nolio_comptes`, `coaching` et `nolio_envois`
 (`supabase/migrations/20261011000000_coaching.sql`) : SQL Editor, coller le fichier, Run. La page coach
-(`/app/coach`, réservée aux e-mails de la variable `CTS_COACHS` dans Vercel) relie le compte Nolio du coach ;
-ses jetons restent dans `nolio_comptes`, que seul le serveur lit. Les clés de l'API Nolio vivent dans Vercel :
-`NOLIO_CLIENT_ID`, `NOLIO_CLIENT_SECRET`, saisies par le coach.
+(`/app/coach`, réservée aux e-mails de la variable `CTS_COACHS` dans Vercel) parle à Nolio au nom du coach. Depuis
+le passage à l'API v2 (section 18), avec la clé de son application personnelle, `NOLIO_API_KEY` dans Vercel ;
+`nolio_comptes` (la liaison OAuth de la v1) n'existe plus.
 
 ## 13. L'athlète coaché sur la durée
 
@@ -191,6 +191,13 @@ Deux colonnes de plus (`supabase/migrations/20261013300000_allure_seuil1.sql`) :
 palier du test de la parole, saisie par l'athlète) et `athletes_coaches.v_seuil1_ms` (saisie par le coach, pour
 Nolio) : SQL Editor, coller le fichier, Run. Recoupée avec la vitesse critique (moteur 8.320), elle décale les
 allures de récupération, d'endurance et de seuil 1, comme le calculateur « Ton profil de traileur ».
+
+## 18. Nolio en API v2
+
+Un fichier de plus (`supabase/migrations/20261013400000_nolio_v2.sql`) : SQL Editor, coller le fichier, Run.
+L'athlète Nolio d'une fiche devient un identifiant texte (« usr_… ») ; les numéros de la v1 déjà enregistrés sont
+convertis par l'app à la première visite. La table `nolio_comptes` et ses jetons OAuth partent : l'app parle à
+Nolio avec la clé `NOLIO_API_KEY` (Vercel), saisie par le coach.
 
 ## Ce qui viendra ensuite
 

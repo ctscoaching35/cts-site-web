@@ -1,12 +1,12 @@
 'use server';
 /**
- * Les gestes de l'espace coach (CTS_NOLIO_CADRAGE.md, N1 à N9) : sur la fiche d'un athlète, son nom Nolio et ses
- * valeurs (N8) ; sur un objectif, l'envoi d'une semaine (N4) ; retirer un objectif ou un athlète. Chaque geste
- * revérifie le coach et que l'athlète ou l'objectif est à lui.
+ * Les gestes de l'espace coach (CTS_NOLIO_CADRAGE.md, N1 à N9, V4) : sur la fiche d'un athlète, son nom Nolio et
+ * ses valeurs (N8) ; sur un objectif, l'envoi d'une semaine puis sa mise à jour (V4) ; retirer un objectif ou un
+ * athlète. Chaque geste revérifie le coach et que l'athlète ou l'objectif est à lui.
  */
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { envoyerSemaine, ficheAthlete, objectifCoache } from './coaching';
+import { envoyerSemaine, ficheAthlete, mettreAJourSemaine, objectifCoache } from './coaching';
 import { coachConnecte } from './nolio';
 import { lireAllure } from './allureCoach';
 import { clientService } from './supabase';
@@ -15,8 +15,9 @@ export type EtatCoach = { message: string; ok: boolean } | null;
 
 export async function associerNolio(athleteId: string, form: FormData): Promise<void> {
   const coach = await coachConnecte();
-  const nolioId = Number(form.get('nolio_id'));
-  if (!coach || !Number.isInteger(nolioId) || nolioId <= 0) return;
+  // L'identifiant d'un athlète dans l'API v2 de Nolio : « usr_… ».
+  const nolioId = String(form.get('nolio_id') ?? '');
+  if (!coach || !/^usr_[A-Za-z0-9]+$/.test(nolioId)) return;
   await clientService().from('athletes_coaches').update({ nolio_athlete_id: nolioId }).eq('id', athleteId).eq('coach_id', coach.compteId);
   revalidatePath(`/app/coach/athlete/${athleteId}`);
 }
@@ -66,6 +67,26 @@ export async function envoyer(planId: string, numero: string, _e: EtatCoach): Pr
   } catch (e) {
     console.error(`Envoi Nolio ${planId} ${numero} :`, e instanceof Error ? e.message : e);
     return { ok: false, message: e instanceof Error ? e.message : 'L’envoi n’a pas abouti.' };
+  }
+}
+
+const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`;
+
+// V4 : mettre à jour une semaine envoyée ; le bilan dit ce qui a changé et ce qui est resté tel que le coach l'a fait.
+export async function mettreAJour(planId: string, numero: string, _e: EtatCoach): Promise<EtatCoach> {
+  const coach = await coachConnecte();
+  if (!coach) return { ok: false, message: 'Ta session a expiré : reconnecte-toi.' };
+  try {
+    const b = await mettreAJourSemaine(coach.compteId, planId, numero);
+    revalidatePath(`/app/coach/plan/${planId}`);
+    const fait = [b.remplacees && `${pluriel(b.remplacees, 'séance')} mise${b.remplacees > 1 ? 's' : ''} à jour`,
+      b.ajoutees && `${pluriel(b.ajoutees, 'séance')} ajoutée${b.ajoutees > 1 ? 's' : ''}`,
+      b.retirees && `${pluriel(b.retirees, 'séance')} retirée${b.retirees > 1 ? 's' : ''}`].filter(Boolean).join(', ');
+    const garde = b.gardees.length ? ` Gardé${b.gardees.length > 1 ? 'es' : 'e'} telle${b.gardees.length > 1 ? 's' : ''} quelle${b.gardees.length > 1 ? 's' : ''} : ${b.gardees.join(', ')}.` : '';
+    return { ok: true, message: `${fait ? `${fait.charAt(0).toUpperCase()}${fait.slice(1)} dans Nolio.` : 'Rien à changer dans Nolio.'}${garde}` };
+  } catch (e) {
+    console.error(`Mise à jour Nolio ${planId} ${numero} :`, e instanceof Error ? e.message : e);
+    return { ok: false, message: e instanceof Error ? e.message : 'La mise à jour n’a pas abouti.' };
   }
 }
 

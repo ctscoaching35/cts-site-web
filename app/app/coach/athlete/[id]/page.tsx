@@ -4,7 +4,7 @@ import EnTeteCoach from '@/components/app/EnTeteCoach';
 import FormulaireValeurs from '@/components/app/FormulaireValeurs';
 import { associerNolio, retirerAthlete } from '@/lib/app/actionsCoaching';
 import { ficheAthlete } from '@/lib/app/coaching';
-import { athletesNolio, estRelie, exigerCoach, type AthleteNolio } from '@/lib/app/nolio';
+import { athletesNolio, exigerCoach, nolioConfigure, type AthleteNolio } from '@/lib/app/nolio';
 import { dateLongue } from '@/lib/app/plan';
 import { allureDepuisVitesse } from '@/lib/app/allureCoach';
 import { supabaseConfigure } from '@/lib/app/supabase';
@@ -20,10 +20,10 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
   const { id } = await params;
   const a = await ficheAthlete(coach.compteId, id);
   if (!a) notFound();
-  const relie = await estRelie(coach.compteId);
+  const relie = nolioConfigure();
   let liste: AthleteNolio[] = [];
   try {
-    liste = relie ? await athletesNolio(coach.compteId) : [];
+    liste = relie ? await athletesNolio() : [];
   } catch {
     liste = [];
   }
@@ -56,16 +56,16 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
         <section className="bg-white shadow-sm p-4 space-y-2">
           <h2 className="eyebrow text-indigo/60">Dans Nolio</h2>
           {!relie ? (
-            <p className="text-sm text-indigo/75">Relie d’abord ton compte Nolio depuis l’espace coach.</p>
+            <p className="text-sm text-indigo/75">La clé de l’API Nolio manque dans Vercel (NOLIO_API_KEY).</p>
           ) : (
             <form action={associerNolio.bind(null, a.id)} className="flex flex-wrap items-center gap-2">
               <select name="nolio_id" defaultValue={a.nolio_athlete_id ?? ''} className="border border-indigo/20 px-2 py-2 text-sm text-indigo bg-white">
                 <option value="" disabled>Choisis son nom</option>
-                {liste.map((x) => <option key={x.nolio_id} value={x.nolio_id}>{x.name}</option>)}
+                {liste.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
               </select>
               <button type="submit" className="text-sm font-semibold text-teal">{a.nolio_athlete_id ? 'Changer' : 'Associer'}</button>
               {a.nolio_athlete_id && (
-                <span className="text-sm text-indigo/70">Associé à {liste.find((x) => x.nolio_id === a.nolio_athlete_id)?.name ?? `l’athlète Nolio n° ${a.nolio_athlete_id}`}.</span>
+                <span className="text-sm text-indigo/70">Associé à {liste.find((x) => x.id === a.nolio_athlete_id)?.name ?? 'un athlète que Nolio ne retrouve pas : choisis à nouveau son nom'}.</span>
               )}
             </form>
           )}
@@ -73,7 +73,7 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
 
         <section className="bg-white shadow-sm p-4 space-y-2">
           <h2 className="eyebrow text-indigo/60">Ses valeurs</h2>
-          <p className="text-sm text-indigo/70">Avec elles, les séances partent avec une allure sur le plat ou une FC, le RPE en commentaire. Sans elles, au RPE.</p>
+          <p className="text-sm text-indigo/70">Avec elles, les séances partent avec une allure sur le plat ou une FC, puis le RPE. Sans elles, au RPE.</p>
           <FormulaireValeurs athleteId={a.id} fc1={a.fc_seuil1} vs1Allure={a.v_seuil1_ms ? allureDepuisVitesse(a.v_seuil1_ms) : null}
             vcAllure={a.vc_ms ? allureDepuisVitesse(a.vc_ms) : null} fc2={a.fc_seuil2} />
         </section>

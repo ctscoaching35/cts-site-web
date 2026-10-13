@@ -1,24 +1,15 @@
 /**
- * Nolio, côté serveur seulement (CTS_NOLIO_CADRAGE.md dans le dépôt du moteur) : la page coach relie le
- * compte Nolio du coach (OAuth2, code d'autorisation) et appelle l'API en son nom. Les clés vivent dans
- * Vercel, saisies par le coach : NOLIO_CLIENT_ID, NOLIO_CLIENT_SECRET. Les jetons restent dans la table
- * nolio_comptes, que seule la clé de service lit. Documentation : github.com/NolioApp/NolioAPI-Documentation.
+ * Nolio, côté serveur seulement (CTS_NOLIO_CADRAGE.md dans le dépôt du moteur) : l'API v2, avec la clé de
+ * l'application personnelle du coach (NOLIO_API_KEY, saisie par le coach dans Vercel ; passage en v2 décidé le
+ * 13/10/2026). Ses droits : le calendrier prévu (lire, écrire, supprimer), le réalisé, les métriques et la
+ * bibliothèque en lecture. Documentation : www.nolio.io/api/v2/docs/.
  */
 import { notFound, redirect } from 'next/navigation';
-import { clientServeur, clientService } from './supabase';
+import { clientServeur } from './supabase';
 
-const NOLIO = 'https://www.nolio.io';
-export const COOKIE_ETAT_NOLIO = 'cts_nolio_etat';
+const NOLIO = 'https://www.nolio.io/api/v2';
 
-export const nolioConfigure = () => Boolean(process.env.NOLIO_CLIENT_ID && process.env.NOLIO_CLIENT_SECRET);
-
-// L'adresse de retour déclarée par le coach sur le portail API de Nolio, à l'identique.
-export const adresseRetour = (origine: string) => `${origine}/app/coach/nolio/retour`;
-
-export const urlAutorisation = (origine: string, etat: string) =>
-  `${NOLIO}/api/authorize/?${new URLSearchParams({
-    response_type: 'code', client_id: process.env.NOLIO_CLIENT_ID ?? '', redirect_uri: adresseRetour(origine), state: etat,
-  })}`;
+export const nolioConfigure = () => Boolean(process.env.NOLIO_API_KEY?.trim());
 
 // Les coachs : les e-mails de la variable CTS_COACHS (séparés par des virgules), saisie par le coach dans Vercel.
 const coachs = () => (process.env.CTS_COACHS ?? '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
@@ -42,70 +33,75 @@ export async function coachConnecte(): Promise<{ compteId: string; email: string
   return compteId && email && coachs().includes(email) ? { compteId, email } : null;
 }
 
-type Jetons = { access_token: string; refresh_token: string; expires_in: number };
+export type ReponseNolio = { statut: number; corps: Record<string, unknown> | null };
 
-// /api/token/ : le code ou le jeton de renouvellement, l'application authentifiée en Basic.
-async function demanderJetons(parametres: Record<string, string>): Promise<Jetons> {
-  const identite = Buffer.from(`${process.env.NOLIO_CLIENT_ID}:${process.env.NOLIO_CLIENT_SECRET}`).toString('base64');
-  const reponse = await fetch(`${NOLIO}/api/token/`, {
-    method: 'POST',
-    headers: { Authorization: `Basic ${identite}`, 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams(parametres),
+// Un appel à l'API v2. Les erreurs ont toutes la même forme : {"error": {"code", "message"}}.
+export async function appelNolio(methode: string, chemin: string, corps?: unknown, entetes: Record<string, string> = {}): Promise<ReponseNolio> {
+  const reponse = await fetch(`${NOLIO}/${chemin}`, {
+    method: methode,
+    headers: {
+      Authorization: `Bearer ${process.env.NOLIO_API_KEY?.trim() ?? ''}`, 'Accept-Language': 'fr',
+      ...(corps === undefined ? {} : { 'Content-Type': 'application/json' }), ...entetes,
+    },
+    body: corps === undefined ? undefined : JSON.stringify(corps),
     cache: 'no-store',
   });
-  if (!reponse.ok) throw new Error(`Nolio /api/token/ : ${reponse.status}`);
-  return reponse.json();
+  return { statut: reponse.status, corps: reponse.status === 204 ? null : await reponse.json().catch(() => null) };
 }
 
-async function garderJetons(compteId: string, j: Jetons) {
-  const { error } = await clientService().from('nolio_comptes').upsert({
-    compte_id: compteId, jeton_acces: j.access_token, jeton_renouvellement: j.refresh_token,
-    expire_le: new Date(Date.now() + j.expires_in * 1000).toISOString(),
-  });
-  if (error) throw new Error(`nolio_comptes : ${error.message}`);
+// Ce que Nolio refuse, dit au coach : les deux refus qui demandent un geste de sa part, sinon le code d'erreur.
+export function refusNolio(r: ReponseNolio, quoi: string): string {
+  const erreur = (r.corps?.error ?? {}) as { code?: string; athlete_name?: string };
+  if (erreur.code === 'team_scope_forbidden')
+    return 'Ton équipe Nolio interdit l’écriture par l’API : autorise-la dans les options de l’équipe (API et MCP), puis recommence.';
+  if (erreur.code === 'athlete_api_access_denied')
+    return `${erreur.athlete_name ?? 'Cet athlète'} a coupé l’accès de l’API à son compte Nolio.`;
+  if (r.statut === 401) return 'Nolio refuse la clé de l’API : vérifie NOLIO_API_KEY dans Vercel.';
+  if (r.statut === 429) return 'Nolio limite le nombre d’appels pour l’instant : réessaie dans quelques minutes.';
+  return `Nolio a refusé ${quoi} (${r.statut}${erreur.code ? ` ${erreur.code}` : ''}).`;
 }
 
-export async function relier(compteId: string, code: string, origine: string) {
-  await garderJetons(compteId, await demanderJetons({ grant_type: 'authorization_code', code, redirect_uri: adresseRetour(origine) }));
-}
-
-export async function estRelie(compteId: string) {
-  const { data } = await clientService().from('nolio_comptes').select('compte_id').eq('compte_id', compteId).maybeSingle();
-  return Boolean(data);
-}
-
-// Un appel à l'API au nom du coach : le jeton se renouvelle seul (il vit 24 h).
-export async function appelNolio(compteId: string, chemin: string, init: RequestInit = {}): Promise<Response> {
-  const { data } = await clientService().from('nolio_comptes').select('*').eq('compte_id', compteId).maybeSingle();
-  if (!data) throw new Error('Compte Nolio non relié');
-  let acces: string = data.jeton_acces;
-  const renouveler = async () => {
-    const j = await demanderJetons({ grant_type: 'refresh_token', refresh_token: data.jeton_renouvellement });
-    await garderJetons(compteId, j);
-    acces = j.access_token;
-  };
-  if (new Date(data.expire_le).getTime() < Date.now() + 60_000) await renouveler();
-  const appeler = () => fetch(`${NOLIO}/api${chemin}`, {
-    ...init, cache: 'no-store', headers: { ...(init.headers ?? {}), Authorization: `Bearer ${acces}` },
-  });
-  let reponse = await appeler();
-  if (reponse.status === 401) {
-    await renouveler();
-    reponse = await appeler();
+// Toutes les pages d'une liste (pagination par curseur : limit, starting_after, has_more).
+export async function listeNolio<T extends { id: string }>(chemin: string): Promise<T[]> {
+  const tous: T[] = [];
+  let apres = '';
+  for (let page = 0; page < 50; page += 1) {
+    const r = await appelNolio('GET', `${chemin}${chemin.includes('?') ? '&' : '?'}limit=100${apres ? `&starting_after=${apres}` : ''}`);
+    if (r.statut !== 200) throw new Error(refusNolio(r, 'la lecture'));
+    const lot = (r.corps?.data ?? []) as T[];
+    tous.push(...lot);
+    if (!r.corps?.has_more || !lot.length) break;
+    apres = lot[lot.length - 1].id;
   }
-  return reponse;
+  return tous;
 }
 
-export type AthleteNolio = { nolio_id: number; name: string };
+export type AthleteNolio = { id: string; name: string };
 
-// Les athlètes que le coach suit dans Nolio (/api/get/athletes/), et le coach lui-même, que Nolio ajoute en
-// dernier (wants_coach) : marqué « (toi) », pour un premier envoi d'essai dans son propre calendrier.
-export async function athletesNolio(compteId: string): Promise<AthleteNolio[]> {
-  const reponse = await appelNolio(compteId, '/get/athletes/?wants_coach=true');
-  if (!reponse.ok) throw new Error(`Nolio /get/athletes/ : ${reponse.status}`);
-  const liste = (await reponse.json()) as AthleteNolio[];
-  const lui = liste[liste.length - 1];
-  const athletes = liste.slice(0, -1).map(({ nolio_id, name }) => ({ nolio_id, name }))
+// Le compte du coach (GET me/) : ses propres séances se créent sans destinataire et se lisent sans ?athlete=.
+export async function moiNolio(): Promise<AthleteNolio> {
+  const r = await appelNolio('GET', 'me/');
+  if (r.statut !== 200 || typeof r.corps?.id !== 'string') throw new Error(refusNolio(r, 'la lecture de ton compte'));
+  return { id: r.corps.id, name: [r.corps.first_name, r.corps.last_name].filter(Boolean).join(' ') || 'Toi' };
+}
+
+// Les athlètes que le coach suit dans Nolio (GET me/athletes/), puis lui-même, marqué « (toi) », pour un envoi
+// d'essai dans son propre calendrier.
+export async function athletesNolio(): Promise<AthleteNolio[]> {
+  const athletes = (await listeNolio<AthleteNolio>('me/athletes/')).map(({ id, name }) => ({ id, name }))
     .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
-  return lui ? [...athletes, { nolio_id: lui.nolio_id, name: `${lui.name} (toi)` }] : athletes;
+  const moi = await moiNolio();
+  return [...athletes.filter((a) => a.id !== moi.id), { id: moi.id, name: `${moi.name} (toi)` }];
+}
+
+// Les identifiants de la v1 (des nombres) en identifiants v2 (GET migration/ids/, jusqu'au 30/06/2027) :
+// { « 1234 »: « usr_… » } ; ceux que Nolio ne retrouve pas manquent.
+export async function convertirIdsV1(type: 'user' | 'planned.event', ids: string[], athlete?: string): Promise<Record<string, string>> {
+  const nombres = ids.filter((x) => /^\d+$/.test(x));
+  if (!nombres.length) return {};
+  const params = new URLSearchParams({ type, ids: nombres.slice(0, 100).join(',') });
+  if (athlete) params.set('athlete', athlete);
+  const r = await appelNolio('GET', `migration/ids/?${params}`);
+  if (r.statut !== 200) return {};
+  return Object.fromEntries(((r.corps?.data ?? []) as { v1_id: number; id: string }[]).map((x) => [String(x.v1_id), x.id]));
 }
