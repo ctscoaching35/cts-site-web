@@ -27,6 +27,8 @@ export type Reperes = {
   // « en fin de fraction, à partir de la troisième », « sur les blocs » (moteur v8.312).
   fc_precision?: string | null;
   allure_vc: SpecAllure | null;
+  // L'allure suit le seuil 1 recoupé (moteur 8.320) : « tout », ses deux bornes se décalent.
+  allure_decalee?: 'tout' | 'bas' | null;
   derive_sl: boolean;
   test: { cle: CleTest; allure_vc?: SpecAllure } | null;
 };
@@ -44,6 +46,24 @@ export type TestZones = {
   limites: string;
   sources: string;
 };
+// Le seuil 1 recoupé entre le test de la parole et la vitesse critique (moteur 8.320, Plan.zones.recoupement) :
+// les chiffres de la règle et ses phrases ; l'app ne fait que l'arithmétique.
+export type Recoupement = {
+  centre: number;
+  concorde: [number, number];
+  retenu: [number, number];
+  decalage: [number, number];
+  recuperation_sous: number;
+  tempo_haut: number;
+  textes: Record<'estime' | 'concorde' | 'possible' | 'verifie' | 'transparence' | 'sans_allure', string>;
+};
+export type LigneZone = {
+  fc: SpecFc | null;
+  allure_vc: SpecAllure | null;
+  // « Plus lent que » ce % de la VC (la récupération) ; « tout » ou « bas » : ce qui suit le seuil 1 recoupé.
+  allure_sous_vc?: number;
+  allure_decalee?: 'tout' | 'bas';
+};
 export type Zones = {
   titre: string;
   intro: string[];
@@ -56,7 +76,9 @@ export type Zones = {
   encart: { titre: string; lien: string; libelles: Record<CleTest, string>; complet: string };
   mentions: Record<CleTest, string>;
   derive_sl: string;
-  tableau: { colonnes: [string, string]; lignes: { fc: SpecFc | null; allure_vc: SpecAllure | null }[] };
+  tableau: { colonnes: [string, string]; lignes: LigneZone[] };
+  // Absent d'un plan produit avant le moteur 8.320 : rien n'y est décalé.
+  recoupement?: Recoupement;
 };
 
 export type Jour = {

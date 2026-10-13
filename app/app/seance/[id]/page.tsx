@@ -12,7 +12,7 @@ import { annulerAjustement } from '@/lib/app/actionsAdaptation';
 import { BOUTONS, mentionAjustee, peutAnnuler, proposition } from '@/lib/app/adaptation';
 import PropositionAjustement from '@/components/app/PropositionAjustement';
 import { dateLongue, jourParId, tousLesJours } from '@/lib/app/plan';
-import { texteReperes } from '@/lib/app/zones';
+import { decalageSeuil1, texteReperes } from '@/lib/app/zones';
 
 // La fiche d'une séance (cadrage, 3.3) : la carte en codes, ce qu'est la séance (le glossaire
 // du mode d'emploi), comment lire la carte (sa légende), la séance d'avant et d'après.
@@ -51,8 +51,8 @@ export default async function FicheSeance({
           {jour.prevu && <p className="text-sm text-indigo/60 mt-0.5">{mentionDeplacee(jour)}</p>}
           {jour.ajuste && <p className="text-sm text-indigo/60 mt-0.5">{mentionAjustee(plan, jour)}</p>}
         </div>
-        <CarteSeance jour={jour} titre={false} repere={texteReperes(jour.reperes, ctx.profil)} />
-        {jour.reperes?.derive_sl && texteReperes(jour.reperes, ctx.profil) && plan.zones && (
+        <CarteSeance jour={jour} titre={false} repere={texteReperes(jour.reperes, ctx.profil, decalageSeuil1(ctx.profil, ctx.plan.zones))} />
+        {jour.reperes?.derive_sl && texteReperes(jour.reperes, ctx.profil, decalageSeuil1(ctx.profil, ctx.plan.zones)) && plan.zones && (
           <p className="text-sm text-indigo/70 -mt-2">{plan.zones.derive_sl}</p>
         )}
         <MentionTest jour={jour} ctx={ctx} />

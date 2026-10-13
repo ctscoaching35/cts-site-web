@@ -23,7 +23,7 @@ export default async function ObjectifCoache({ params }: { params: Promise<{ id:
   if (!o) notFound();
   const nolio = o.athlete.nolio_athlete_id;
   const envois = nolio ? await verifierEnvois(coach.compteId, id, nolio, o.plan, o.envois) : o.envois;
-  const valeurs = [o.athlete.fc_seuil1 && `FC seuil 1 ${o.athlete.fc_seuil1}`, o.athlete.vc_ms && `VC ${allureDepuisVitesse(o.athlete.vc_ms)} min/km`,
+  const valeurs = [o.athlete.fc_seuil1 && `FC seuil 1 ${o.athlete.fc_seuil1}`, o.athlete.v_seuil1_ms && `allure seuil 1 ${allureDepuisVitesse(o.athlete.v_seuil1_ms)} min/km`, o.athlete.vc_ms && `VC ${allureDepuisVitesse(o.athlete.vc_ms)} min/km`,
     o.athlete.fc_seuil2 && `FC seuil 2 ${o.athlete.fc_seuil2}`].filter(Boolean).join(' · ');
   return (
     <>

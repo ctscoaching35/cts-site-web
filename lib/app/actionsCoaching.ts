@@ -37,13 +37,18 @@ export async function enregistrerValeurs(athleteId: string, _e: EtatCoach, form:
   const brutAllure = String(form.get('vc_allure') ?? '').trim();
   const allure = brutAllure ? lireAllure(brutAllure) : null;
   const vcOk = !brutAllure || (allure !== null && allure >= 135 && allure <= 660);
-  if (!fc1.ok || !vcOk || !fc2.ok)
-    return { ok: false, message: 'Une valeur ne semble pas juste : FC entre 80 et 230, vitesse critique en min/km (par exemple 4:10).' };
+  // L'allure au seuil 1, le palier du test de la parole, de 2:30 à 12:00 min/km (moteur 8.320).
+  const brutS1 = String(form.get('vs1_allure') ?? '').trim();
+  const allureS1 = brutS1 ? lireAllure(brutS1) : null;
+  const s1Ok = !brutS1 || (allureS1 !== null && allureS1 >= 150 && allureS1 <= 720);
+  if (!fc1.ok || !vcOk || !fc2.ok || !s1Ok)
+    return { ok: false, message: 'Une valeur ne semble pas juste : FC entre 80 et 230, allures en min/km (par exemple 6:00 au seuil 1, 4:10 pour la vitesse critique).' };
   if (fc1.valeur !== null && fc2.valeur !== null && fc2.valeur <= fc1.valeur)
     return { ok: false, message: 'La FC au seuil 2 doit être plus haute que la FC au seuil 1.' };
   const { error } = await clientService().from('athletes_coaches').update({
     fc_seuil1: fc1.valeur === null ? null : Math.round(fc1.valeur),
     vc_ms: allure === null ? null : Math.round((1000 / allure) * 1000) / 1000,
+    v_seuil1_ms: allureS1 === null ? null : Math.round((1000 / allureS1) * 1000) / 1000,
     fc_seuil2: fc2.valeur === null ? null : Math.round(fc2.valeur),
   }).eq('id', athleteId).eq('coach_id', coach.compteId);
   if (error) return { ok: false, message: 'L’enregistrement n’a pas abouti. Réessaie.' };

@@ -12,9 +12,11 @@ const ACTIONS = { parole: enregistrerParole, vitesse_critique: enregistrerVitess
 // La saisie d'un test de « Tes zones » (cadrage §7.1) : la case de consentement tant qu'il n'a pas été
 // donné pour ce plan (Z2), la FC ou les deux efforts de la vitesse critique (Z4).
 export default function FormulaireZones({
-  cle, planId, consentement, consentementDonne, valeurActuelle, demonstration,
+  cle, planId, consentement, consentementDonne, valeurActuelle, allureActuelle, demonstration,
 }: {
   cle: CleTest; planId: string; consentement: string; consentementDonne: boolean; valeurActuelle: string | null;
+  // L'allure du palier du test de la parole déjà enregistrée, [minutes, secondes] (moteur 8.320).
+  allureActuelle?: [string, string] | null;
   demonstration: boolean;
 }) {
   const [etat, action, enCours] = useActionState<EtatZones, FormData>(ACTIONS[cle].bind(null, planId), null);
@@ -39,10 +41,23 @@ export default function FormulaireZones({
           ))}
         </div>
       ) : (
-        <label className="block max-w-[12rem]">
-          <span className={etiquette}>Ta FC (bpm)</span>
-          <input name="fc" inputMode="numeric" defaultValue={valeurActuelle ?? ''} placeholder="152" className={champ} />
-        </label>
+        <div className="flex flex-wrap gap-3">
+          <label className="block max-w-[12rem]">
+            <span className={etiquette}>Ta FC (bpm)</span>
+            <input name="fc" inputMode="numeric" defaultValue={valeurActuelle ?? ''} placeholder="152" className={champ} />
+          </label>
+          {cle === 'parole' && (
+            // L'allure du palier, comme le calculateur : elle recoupe le seuil 1 avec la vitesse critique.
+            <fieldset className="block">
+              <legend className={etiquette}>Allure de ce palier (min : s par km)</legend>
+              <div className="flex items-center gap-1.5">
+                <input name="allure_min" inputMode="numeric" defaultValue={allureActuelle?.[0] ?? ''} placeholder="6" aria-label="Minutes" className={`${champ} w-16 text-center`} />
+                <span className="text-indigo font-bold">:</span>
+                <input name="allure_sec" inputMode="numeric" defaultValue={allureActuelle?.[1] ?? ''} placeholder="00" aria-label="Secondes" className={`${champ} w-16 text-center`} />
+              </div>
+            </fieldset>
+          )}
+        </div>
       )}
       {!consentementDonne && (
         <label className="flex gap-2.5 items-start text-sm text-indigo/80 cursor-pointer">

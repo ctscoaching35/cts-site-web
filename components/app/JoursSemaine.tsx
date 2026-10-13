@@ -3,7 +3,7 @@ import clsx from 'clsx';
 import type { Semaine } from '@/lib/app/plan';
 import { FAMILLES } from '@/lib/app/charte';
 import { lien, type Contexte } from '@/lib/app/contexte';
-import { texteReperes } from '@/lib/app/zones';
+import { decalageSeuil1, texteReperes } from '@/lib/app/zones';
 import { marque } from '@/lib/app/journal';
 import { mentionDeplacee } from '@/lib/app/deplacement';
 import { mentionAjustee } from '@/lib/app/adaptation';
@@ -17,7 +17,7 @@ export default function JoursSemaine({ semaine, ctx }: { semaine: Semaine; ctx: 
         const repos = j.famille === 'repos';
         const course = j.famille === 'course';
         // Les repères de « Tes zones » suivent le RPE : le RPE d'abord, il décide.
-        const details = [j.terrain, j.duree, j.rpe !== '—' ? `RPE ${j.rpe}` : '', texteReperes(j.reperes, ctx.profil) ?? '']
+        const details = [j.terrain, j.duree, j.rpe !== '—' ? `RPE ${j.rpe}` : '', texteReperes(j.reperes, ctx.profil, decalageSeuil1(ctx.profil, ctx.plan.zones)) ?? '']
           .filter((x) => x && x !== '—')
           .join(' · ');
         const contenu = (

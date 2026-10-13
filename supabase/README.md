@@ -185,6 +185,13 @@ Une table de plus, `mesures` (`supabase/migrations/20261013200000_mesures.sql`),
 questionnaire commencé, récapitulatif atteint, paiement lancé), sans cookie ni adresse ; relus avec les achats
 dans l'espace coach (`/app/coach/chiffres`). Les visites et leur provenance : Vercel Analytics.
 
+## 17. L'allure du seuil 1
+
+Deux colonnes de plus (`supabase/migrations/20261013300000_allure_seuil1.sql`) : `zones.v_seuil1_ms` (l'allure du
+palier du test de la parole, saisie par l'athlète) et `athletes_coaches.v_seuil1_ms` (saisie par le coach, pour
+Nolio) : SQL Editor, coller le fichier, Run. Recoupée avec la vitesse critique (moteur 8.320), elle décale les
+allures de récupération, d'endurance et de seuil 1, comme le calculateur « Ton profil de traileur ».
+
 ## Ce qui viendra ensuite
 
 - La suppression des comptes restés 3 ans sans connexion, après un e-mail d'avertissement (D4).

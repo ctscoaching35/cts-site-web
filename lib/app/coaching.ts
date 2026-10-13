@@ -12,7 +12,7 @@ import { clientService } from './supabase';
 export type Objectif = { plan_id: string; course_nom: string; course_date: string };
 export type FicheAthlete = {
   id: string; nom: string; nolio_athlete_id: number | null;
-  fc_seuil1: number | null; vc_ms: number | null; fc_seuil2: number | null;
+  fc_seuil1: number | null; vc_ms: number | null; fc_seuil2: number | null; v_seuil1_ms: number | null;
   objectifs: Objectif[];
 };
 export type Envoi = { semaine: string; envoye_le: string; seances: { jour_id: string; nolio_id: number | null }[] };
@@ -31,6 +31,7 @@ export async function athletesCoaches(coachId: string): Promise<FicheAthlete[]> 
     .eq('coach_id', coachId);
   return (athletes ?? []).map((a) => ({
     id: a.id, nom: a.nom, nolio_athlete_id: a.nolio_athlete_id, fc_seuil1: a.fc_seuil1, vc_ms: a.vc_ms, fc_seuil2: a.fc_seuil2,
+    v_seuil1_ms: a.v_seuil1_ms ?? null,
     objectifs: ((lignes ?? []) as LigneCoaching[]).filter((l) => l.athlete_id === a.id).map(objectif)
       .sort((x, y) => x.course_date.localeCompare(y.course_date)),
   }));
@@ -90,7 +91,7 @@ export async function envoyerSemaine(coachId: string, planId: string, numero: st
   const semaine = o.plan.semaines.find((s) => s.numero === numero);
   if (!semaine) throw new Error('Semaine introuvable');
   const profil = Object.fromEntries(
-    (['fc_seuil1', 'vc_ms', 'fc_seuil2'] as const).filter((k) => o.athlete[k] !== null).map((k) => [k, Number(o.athlete[k])]),
+    (['fc_seuil1', 'vc_ms', 'fc_seuil2', 'v_seuil1_ms'] as const).filter((k) => o.athlete[k] !== null).map((k) => [k, Number(o.athlete[k])]),
   );
   const seances = (await seancesDuMoteur(semaine.jours, profil)).filter((s) => s.nolio);
   const crees: Envoi['seances'] = [];

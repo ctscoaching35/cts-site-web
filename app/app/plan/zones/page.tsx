@@ -5,14 +5,15 @@ import FormulaireZones from '@/components/app/FormulaireZones';
 import { effacerZones } from '@/lib/app/actionsZones';
 import { contexte, lien, type Recherche } from '@/lib/app/contexte';
 import { dateLongue, type CleTest } from '@/lib/app/plan';
-import { allure, kmh, remplir, testFait, testOuvert, valeursChange, type Profil } from '@/lib/app/zones';
+import { allure, kmh, remplir, testFait, testOuvert, texteRecoupement, valeursChange, type Profil } from '@/lib/app/zones';
 
 // « Tes zones » (cadrage de l'app §7.1, textes validés par le coach le 08/10/2026) : trois tests de
 // terrain, leur protocole, ce qu'ils changent au plan, leurs limites et leurs sources, et la saisie.
 // Le RPE prime. Un plan d'avant le moteur v8.311 n'a pas la rubrique.
 
 function valeurAffichee(cle: CleTest, p: Profil) {
-  if (cle === 'parole' && p.fc_seuil1 !== null) return { valeur: `${p.fc_seuil1} bpm`, le: p.fc_seuil1_le };
+  if (cle === 'parole' && p.fc_seuil1 !== null)
+    return { valeur: `${p.fc_seuil1} bpm${p.v_seuil1_ms !== null ? `, à ${allure(p.v_seuil1_ms)}/km` : ''}`, le: p.fc_seuil1_le };
   if (cle === 'vitesse_critique' && p.vc_ms !== null)
     return {
       // D′ n'est plus dite (décision coach du 08/10/2026) : elle ne sert qu'à vérifier les deux efforts.
@@ -54,6 +55,14 @@ export default async function TesZones({ searchParams }: { searchParams: Recherc
                   Ta valeur : {fait.valeur}{fait.le ? ` · le ${dateLongue(fait.le, true)}` : ''}
                 </p>
               )}
+              {/* Le seuil 1 recoupé (moteur 8.320), comme le calculateur : sans l'allure du palier, une invitation ;
+                  avec la vitesse critique, la situation du test et la phrase de transparence. */}
+              {t.cle === 'parole' && zones.recoupement && profil.fc_seuil1 !== null && profil.v_seuil1_ms === null && profil.vc_ms === null && (
+                <p className="text-sm text-indigo/80 leading-relaxed">{zones.recoupement.textes.sans_allure}</p>
+              )}
+              {t.cle === 'parole' && texteRecoupement(profil, zones) && (
+                <p className="text-sm text-indigo leading-relaxed bg-sand border-l-4 border-teal p-3">{texteRecoupement(profil, zones)}</p>
+              )}
               <div className="text-sm text-indigo/80 leading-relaxed space-y-2">
                 <p><strong className="text-indigo">Ce qu’il mesure.</strong> {t.mesure}</p>
                 <p><strong className="text-indigo">Pour qui.</strong> {t.pour_qui}</p>
@@ -84,6 +93,8 @@ export default async function TesZones({ searchParams }: { searchParams: Recherc
                   planId={ctx.cle}
                   consentement={zones.consentement}
                   consentementDonne={consentementDonne}
+                  allureActuelle={t.cle === 'parole' && profil.v_seuil1_ms !== null
+                    ? (allure(profil.v_seuil1_ms).split(':') as [string, string]) : null}
                   valeurActuelle={t.cle === 'parole' ? (profil.fc_seuil1?.toString() ?? null)
                     : t.cle === 'fc_seuil2' ? (profil.fc_seuil2?.toString() ?? null) : (profil.vc_ms !== null ? 'fait' : null)}
                   demonstration={ctx.demonstration}

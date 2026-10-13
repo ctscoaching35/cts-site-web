@@ -91,15 +91,17 @@ export async function contexte(recherche: Recherche): Promise<Contexte> {
   };
 }
 
-const CHAMPS_PROFIL = ['fc_seuil1', 'fc_seuil1_le', 'vc_ms', 'd_prime_m', 'vc_le', 'fc_seuil2', 'fc_seuil2_le'] as const;
+const CHAMPS_PROFIL = ['fc_seuil1', 'fc_seuil1_le', 'vc_ms', 'd_prime_m', 'vc_le', 'fc_seuil2', 'fc_seuil2_le', 'v_seuil1_ms'] as const;
 const pick = (ligne: Record<string, unknown>) =>
   Object.fromEntries(CHAMPS_PROFIL.map((k) => [k, ligne[k] ?? null])) as Partial<Profil>;
 
-// En démonstration (développement seulement), un profil simulé : ?fc1=152&vc=15&fc2=172 (vc en km/h).
+// En démonstration (développement seulement), un profil simulé : ?fc1=152&vc=15&fc2=172&v1=11 (vc, v1 en km/h).
 function profilDemonstration(r: Record<string, string | string[] | undefined>): Profil {
   const n = (k: string) => (typeof r[k] === 'string' && Number.isFinite(Number(r[k])) ? Number(r[k]) : null);
   const vc = n('vc');
-  return { ...PROFIL_VIDE, fc_seuil1: n('fc1'), vc_ms: vc === null ? null : vc / 3.6, d_prime_m: vc === null ? null : 200, fc_seuil2: n('fc2') };
+  const v1 = n('v1');
+  return { ...PROFIL_VIDE, fc_seuil1: n('fc1'), vc_ms: vc === null ? null : vc / 3.6, d_prime_m: vc === null ? null : 200, fc_seuil2: n('fc2'),
+    v_seuil1_ms: v1 === null ? null : v1 / 3.6 };
 }
 
 // En démonstration, ?retours=exemple : un journal simulé sur les séances passées, pour voir la jauge et
@@ -123,6 +125,7 @@ export const lien = (chemin: string, ctx: Contexte, extra: Record<string, string
         ...(ctx.profil.fc_seuil1 !== null ? { fc1: String(ctx.profil.fc_seuil1) } : {}),
         ...(ctx.profil.vc_ms !== null ? { vc: (ctx.profil.vc_ms * 3.6).toFixed(1) } : {}),
         ...(ctx.profil.fc_seuil2 !== null ? { fc2: String(ctx.profil.fc_seuil2) } : {}),
+        ...(ctx.profil.v_seuil1_ms !== null ? { v1: (ctx.profil.v_seuil1_ms * 3.6).toFixed(1) } : {}),
         ...(ctx.journal ? { retours: 'exemple' } : {}),
       }
     : {};

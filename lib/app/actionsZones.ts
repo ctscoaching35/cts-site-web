@@ -39,10 +39,25 @@ const lireFc = (brut: FormDataEntryValue | null) => {
   return Number.isInteger(fc) && fc >= 80 && fc <= 220 ? fc : null;
 };
 
+// L'allure du palier, en deux champs (minutes, secondes) par km, comme le calculateur : un clavier de téléphone
+// en chiffres n'a pas de « : ». undefined si les deux sont vides, null si elle est illisible ou hors de 2:30 à 12:00.
+const lireAllurePalier = (form: FormData) => {
+  const m = String(form.get('allure_min') ?? '').trim();
+  const sec = String(form.get('allure_sec') ?? '').trim();
+  if (!m && !sec) return undefined;
+  if (!/^\d{1,2}$/.test(m) || !/^\d{0,2}$/.test(sec) || Number(sec || 0) > 59) return null;
+  const t = Number(m) * 60 + Number(sec || 0);
+  return t >= 150 && t <= 720 ? Math.round((1000 / t) * 1000) / 1000 : null;
+};
+
 export async function enregistrerParole(planId: string, _e: EtatZones, form: FormData): Promise<EtatZones> {
   const fc = lireFc(form.get('fc'));
   if (fc === null) return { ok: false, message: 'Entre ta FC en battements par minute, entre 80 et 220.' };
-  return enregistrer(planId, form.get('consentement') === 'on', { fc_seuil1: fc, fc_seuil1_le: aujourdhui() });
+  const v = lireAllurePalier(form);
+  if (v === null) return { ok: false, message: 'Écris ton allure en minutes et secondes, entre 2:30 et 12:00 par km : par exemple 6 et 00 pour 6:00/km.' };
+  return enregistrer(planId, form.get('consentement') === 'on', {
+    fc_seuil1: fc, fc_seuil1_le: aujourdhui(), v_seuil1_ms: v ?? null,
+  });
 }
 
 export async function enregistrerFcSeuil2(planId: string, _e: EtatZones, form: FormData): Promise<EtatZones> {

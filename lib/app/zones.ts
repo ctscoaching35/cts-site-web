@@ -4,7 +4,7 @@
  * repères des séances. La règle (quelles séances, quels écarts, quels %) vient du moteur, dans le plan
  * (Jour.reperes, Plan.zones) : ici, seulement l'arithmétique. LE RPE PRIME.
  */
-import type { CleTest, Plan, Reperes, SpecAllure, SpecFc, Zones } from './plan';
+import type { CleTest, LigneZone, Plan, Recoupement, Reperes, SpecAllure, SpecFc, Zones } from './plan';
 
 export type Profil = {
   fc_seuil1: number | null;
@@ -14,10 +14,13 @@ export type Profil = {
   vc_le: string | null;
   fc_seuil2: number | null;
   fc_seuil2_le: string | null;
+  // L'allure du palier du test de la parole, en m/s (moteur 8.320).
+  v_seuil1_ms: number | null;
 };
 
 export const PROFIL_VIDE: Profil = {
   fc_seuil1: null, fc_seuil1_le: null, vc_ms: null, d_prime_m: null, vc_le: null, fc_seuil2: null, fc_seuil2_le: null,
+  v_seuil1_ms: null,
 };
 
 const valeur = (ref: 'seuil1' | 'seuil2', p: Profil) => (ref === 'seuil1' ? p.fc_seuil1 : p.fc_seuil2);
@@ -45,22 +48,69 @@ export function allure(vitesse_ms: number) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
-// « 4:13 à 4:05/km » : du plus lent au plus rapide.
-export function texteAllure(spec: SpecAllure | null | undefined, p: Profil): string | null {
+// « 4:13 à 4:05/km » : du plus lent au plus rapide ; decalage : les points de VC du seuil 1 recoupé.
+export function texteAllure(spec: SpecAllure | null | undefined, p: Profil, decalage = 0): string | null {
   if (!spec || p.vc_ms === null) return null;
-  const [lent, rapide] = [allure((p.vc_ms * spec[0]) / 100), allure((p.vc_ms * spec[1]) / 100)];
+  const [lent, rapide] = [allure((p.vc_ms * (spec[0] + decalage)) / 100), allure((p.vc_ms * (spec[1] + decalage)) / 100)];
   return lent === rapide ? `${lent}/km` : `${lent} à ${rapide}/km`;
+}
+
+// LE SEUIL 1 RECOUPÉ (moteur 8.320, décision coach du 13/10/2026) : l'allure du palier du test de la parole
+// rapportée à la VC, située par la règle du moteur, à l'identique du calculateur en ligne. Le décalage (en
+// points de VC) que suivent les allures de récupération, d'endurance, de seuil 1 et le bas du tempo. null sans
+// VC, ou dans un plan produit avant 8.320 (pas de règle : rien n'est décalé).
+export type Situation = { decalage: number; statut: 'estime' | 'concorde' | 'possible' | 'verifie'; part: number | null };
+export function situerSeuil1(p: Profil, r: Recoupement | undefined): Situation | null {
+  if (!r || p.vc_ms === null) return null;
+  if (p.v_seuil1_ms === null) return { decalage: 0, statut: 'estime', part: null };
+  const part = p.v_seuil1_ms / p.vc_ms;
+  const retenu = part >= r.retenu[0] / 100 && part < r.retenu[1] / 100;
+  const statut = part >= r.concorde[0] / 100 && part <= r.concorde[1] / 100 ? 'concorde' : retenu ? 'possible' : 'verifie';
+  const s1 = retenu ? part : r.centre / 100;
+  return { decalage: Math.max(r.decalage[0], Math.min(r.decalage[1], s1 * 100 - r.centre)), statut, part };
+}
+export const decalageSeuil1 = (p: Profil, zones: Pick<Zones, 'recoupement'> | null | undefined) =>
+  situerSeuil1(p, zones?.recoupement)?.decalage ?? 0;
+
+// La phrase du recoupement, comme le calculateur : la situation, puis la phrase de transparence.
+export function texteRecoupement(p: Profil, zones: Pick<Zones, 'recoupement'> | null | undefined): string | null {
+  const r = zones?.recoupement;
+  const s = situerSeuil1(p, r);
+  if (!r || !s || p.vc_ms === null) return null;
+  const situation = r.textes[s.statut]
+    .replace('{pct}', `${Math.round((s.part ?? 0) * 100)} %`)
+    .replace('{kmh_bas}', kmh((p.vc_ms * r.concorde[0]) / 100))
+    .replace('{kmh_haut}', kmh((p.vc_ms * r.concorde[1]) / 100));
+  return `${situation} ${r.textes.transparence}`;
+}
+
+// L'allure d'une ligne du tableau des zones : « Plus lent que 7:01/km » (récupération), une plage décalée selon
+// ce qui suit le seuil 1 ; le tempo disparaît quand le seuil 1 décalé atteint son haut (comme le calculateur).
+export function texteAllureLigne(l: LigneZone | undefined, p: Profil, decalage = 0): string | null {
+  if (!l || p.vc_ms === null) return null;
+  if (l.allure_sous_vc !== undefined) {
+    const sous = l.allure_sous_vc + (l.allure_decalee ? decalage : 0);
+    return `Plus lent que ${allure((p.vc_ms * sous) / 100)}/km`;
+  }
+  if (!l.allure_vc) return null;
+  if (l.allure_decalee === 'bas') {
+    const bas = l.allure_vc[0] + decalage;
+    return bas < l.allure_vc[1] - 0.5 ? texteAllure([bas, l.allure_vc[1]], p) : null;
+  }
+  return texteAllure(l.allure_vc, p, l.allure_decalee === 'tout' ? decalage : 0);
 }
 
 export const kmh = (vitesse_ms: number) => (vitesse_ms * 3.6).toFixed(1).replace('.', ',');
 
-// Les repères d'une séance, en une ligne : « FC sous 147 », « 4:13 à 4:05/km sur le plat ».
-export function texteReperes(r: Reperes | null | undefined, p: Profil): string | null {
+// Les repères d'une séance, en une ligne : « FC sous 147 », « 4:13 à 4:05/km sur le plat » ; decalage : celui du
+// seuil 1 recoupé, pour une allure qui le suit.
+export function texteReperes(r: Reperes | null | undefined, p: Profil, decalage = 0): string | null {
   if (!r) return null;
   const fc = texteFc(r.fc, p);
+  const a = r.allure_vc ? texteAllure(r.allure_vc, p, r.allure_decalee === 'tout' ? decalage : 0) : null;
   const morceaux = [
     fc && r.fc_precision ? `${fc} ${r.fc_precision}` : fc,
-    r.allure_vc && texteAllure(r.allure_vc, p) ? `${texteAllure(r.allure_vc, p)} sur le plat` : null,
+    a ? `${a} sur le plat` : null,
   ];
   const ligne = morceaux.filter(Boolean).join(' · ');
   return ligne || null;

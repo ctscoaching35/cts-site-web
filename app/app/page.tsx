@@ -13,7 +13,7 @@ import PastillesSemaine from '@/components/app/PastillesSemaine';
 import { COOKIE_BIENVENUE } from '@/lib/app/bienvenue';
 import { contexte, lien, type Recherche } from '@/lib/app/contexte';
 import { ajouterJours, dateLongue, jourParDate, joursEntre, moment, semaineDeDate } from '@/lib/app/plan';
-import { texteReperes } from '@/lib/app/zones';
+import { decalageSeuil1, texteReperes } from '@/lib/app/zones';
 import { resume, seanceDuJournal } from '@/lib/app/journal';
 import { mentionDeplacee } from '@/lib/app/deplacement';
 import { mentionAjustee, proposition } from '@/lib/app/adaptation';
@@ -90,7 +90,7 @@ function Pendant({ ctx }: { ctx: Awaited<ReturnType<typeof contexte>> }) {
     <>
       {seance && seance.famille !== 'repos' ? (
         <div className="space-y-2">
-          <CarteSeance jour={seance} repere={texteReperes(seance.reperes, ctx.profil)} />
+          <CarteSeance jour={seance} repere={texteReperes(seance.reperes, ctx.profil, decalageSeuil1(ctx.profil, ctx.plan.zones))} />
           {seance.prevu && <p className="text-sm text-indigo/60">{mentionDeplacee(seance)}</p>}
           {seance.ajuste && <p className="text-sm text-indigo/60">{mentionAjustee(plan, seance)}</p>}
           <MentionTest jour={seance} ctx={ctx} />
