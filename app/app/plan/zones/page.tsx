@@ -28,7 +28,7 @@ export default async function TesZones({ searchParams }: { searchParams: Recherc
   const { plan, profil } = ctx;
   const zones = plan.zones;
   if (!zones) notFound();
-  const valeurs = valeursChange(profil) ?? {};
+  const valeurs = valeursChange(profil, zones) ?? {};
   const consentementDonne = (['parole', 'vitesse_critique', 'fc_seuil2'] as const).some((c) => testFait(c, profil));
   const tests = zones.tests.filter((t) => zones.tests_disponibles.includes(t.cle));
   return (

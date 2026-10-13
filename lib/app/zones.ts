@@ -73,13 +73,16 @@ export const testFait = (cle: CleTest, p: Profil) =>
 export const testOuvert = (cle: CleTest, zones: Zones, p: Profil) =>
   zones.tests_disponibles.includes(cle) && (cle !== 'fc_seuil2' || p.vc_ms !== null);
 
-// Les valeurs qui remplissent les phrases « Ce que ça change » du moteur.
-export function valeursChange(p: Profil): Record<string, string> | null {
+// Les valeurs qui remplissent les phrases « Ce que ça change » du moteur. La plage du seuil 1 est lue dans le
+// tableau des zones du plan (D3) : de S1 − 5 à S1 + 5 depuis le 13/10/2026 (décision coach), de S1 à S1 + 5 dans
+// un plan produit avant ; chaque plan reste d'accord avec les repères de ses séances.
+export function valeursChange(p: Profil, zones?: Pick<Zones, 'tableau'> | null): Record<string, string> | null {
   const v: Record<string, string> = {};
   if (p.fc_seuil1 !== null) {
+    const s1 = zones?.tableau.lignes.find((l) => l.fc?.bas?.[0] === 'seuil1' && l.fc?.haut?.[0] === 'seuil1')?.fc;
     v.fc_ef_haut = String(p.fc_seuil1 - 5);
-    v.fc_s1_bas = String(p.fc_seuil1);
-    v.fc_s1_haut = String(p.fc_seuil1 + 5);
+    v.fc_s1_bas = String(p.fc_seuil1 + (s1?.bas?.[1] ?? -5));
+    v.fc_s1_haut = String(p.fc_seuil1 + (s1?.haut?.[1] ?? 5));
   }
   if (p.fc_seuil2 !== null) {
     v.fc_s2_bas = String(p.fc_seuil2 - 5);
