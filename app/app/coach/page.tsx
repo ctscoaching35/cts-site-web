@@ -52,6 +52,9 @@ export default async function Coach() {
           </ul>
           <Link href="/app/coach/nouveau" className="btn btn-primary !py-2.5 inline-block">Ajouter un athlète</Link>
         </section>
+        <Link href="/app/coach/suivi" className="block bg-white shadow-sm p-4 text-sm font-semibold text-teal">
+          Le suivi de tes athlètes, les 7 derniers jours ›
+        </Link>
         <Link href="/app/coach/chiffres" className="block bg-white shadow-sm p-4 text-sm font-semibold text-teal">
           Les chiffres de la vente des plans ›
         </Link>

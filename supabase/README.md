@@ -199,6 +199,12 @@ L'athlète Nolio d'une fiche devient un identifiant texte (« usr_… ») ; les 
 convertis par l'app à la première visite. La table `nolio_comptes` et ses jetons OAuth partent : l'app parle à
 Nolio avec la clé `NOLIO_API_KEY` (Vercel), saisie par le coach.
 
+## 19. L'accord des athlètes pour le suivi
+
+Une table de plus, `nolio_accords` (`supabase/migrations/20261013500000_nolio_accords.sql`) : SQL Editor, coller le
+fichier, Run. Le tableau de suivi du coach (`/app/coach/suivi`) ne lit dans Nolio que les athlètes dont l'accord est
+coché ; la table ne garde que leur identifiant Nolio, leur nom et la date. Rien de ce qui est lu dans Nolio n'est gardé.
+
 ## Ce qui viendra ensuite
 
 - La suppression des comptes restés 3 ans sans connexion, après un e-mail d'avertissement (D4).
