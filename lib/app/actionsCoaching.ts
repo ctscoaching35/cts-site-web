@@ -61,9 +61,9 @@ export async function envoyer(planId: string, numero: string, _e: EtatCoach): Pr
   const coach = await coachConnecte();
   if (!coach) return { ok: false, message: 'Ta session a expiré : reconnecte-toi.' };
   try {
-    const n = await envoyerSemaine(coach.compteId, planId, numero);
+    const envoye = await envoyerSemaine(coach.compteId, planId, numero);
     revalidatePath(`/app/coach/plan/${planId}`);
-    return { ok: true, message: `${n} séance${n > 1 ? 's' : ''} envoyée${n > 1 ? 's' : ''} dans Nolio.` };
+    return { ok: true, message: `Envoyé dans Nolio : ${envoye}.` };
   } catch (e) {
     console.error(`Envoi Nolio ${planId} ${numero} :`, e instanceof Error ? e.message : e);
     return { ok: false, message: e instanceof Error ? e.message : 'L’envoi n’a pas abouti.' };
@@ -81,7 +81,8 @@ export async function mettreAJour(planId: string, numero: string, _e: EtatCoach)
     revalidatePath(`/app/coach/plan/${planId}`);
     const fait = [b.remplacees && `${pluriel(b.remplacees, 'séance')} mise${b.remplacees > 1 ? 's' : ''} à jour`,
       b.ajoutees && `${pluriel(b.ajoutees, 'séance')} ajoutée${b.ajoutees > 1 ? 's' : ''}`,
-      b.retirees && `${pluriel(b.retirees, 'séance')} retirée${b.retirees > 1 ? 's' : ''}`].filter(Boolean).join(', ');
+      b.retirees && `${pluriel(b.retirees, 'séance')} retirée${b.retirees > 1 ? 's' : ''}`,
+      b.notes && `${pluriel(b.notes, 'note')} de repos ajoutée${b.notes > 1 ? 's' : ''}`].filter(Boolean).join(', ');
     const garde = b.gardees.length ? ` Gardé${b.gardees.length > 1 ? 'es' : 'e'} telle${b.gardees.length > 1 ? 's' : ''} quelle${b.gardees.length > 1 ? 's' : ''} : ${b.gardees.join(', ')}.` : '';
     return { ok: true, message: `${fait ? `${fait.charAt(0).toUpperCase()}${fait.slice(1)} dans Nolio.` : 'Rien à changer dans Nolio.'}${garde}` };
   } catch (e) {
