@@ -78,9 +78,11 @@ export async function objectifCoache(coachId: string, planId: string) {
   if (!c?.athlete_id) return null;
   const athlete = await ficheAthlete(coachId, c.athlete_id);
   if (!athlete) return null;
-  const { data: p } = await service.from('plans').select('donnees, pdf_chemin').eq('id', planId).single();
+  const { data: p } = await service.from('plans').select('donnees, pdf_chemin, intake').eq('id', planId).single();
   const { data: envois } = await service.from('nolio_envois').select('semaine, envoye_le, seances').eq('plan_id', planId);
-  return { athlete, plan: p?.donnees as Plan, pdf: p?.pdf_chemin as string | null, envois: (envois ?? []) as Envoi[] };
+  // Le niveau déclaré au questionnaire : le renfo s'y règle (cts_renfo, RF2).
+  const niveau = String((p?.intake as Record<string, unknown> | null)?.niveau ?? 'intermediaire');
+  return { athlete, plan: p?.donnees as Plan, pdf: p?.pdf_chemin as string | null, envois: (envois ?? []) as Envoi[], niveau };
 }
 
 // Les réponses du dernier objectif d'un athlète, pour préremplir le suivant (N9) : tout sauf la course.
@@ -97,18 +99,48 @@ export async function questionnairePrerempli(coachId: string, athleteId: string)
 }
 
 // Les jours d'une semaine traduits par le moteur (cts_nolio), avec les valeurs de l'athlète (N8) : la séance, ou
-// pour un jour de repos la note « Repos » (V6) ; et le bandeau de la semaine (V7).
+// pour un jour de repos la note « Repos » (V6) ; le bandeau de la semaine (V7) ; et les séances de renfo (RF1 à RF4),
+// rangées comme des jours de plus (« S6-jeudi:renfo »), leurs exercices montés pour le lecteur Nolio.
 type JourTraduit = { id: string; nolio: Record<string, unknown> | null; note: Record<string, unknown> | null };
 const SEMAINE = 'semaine';
-async function seancesDuMoteur(semaine: Semaine, profil: Record<string, number>) {
+const RENFO = ':renfo';
+async function seancesDuMoteur(plan: Plan, semaine: Semaine, profil: Record<string, number>, niveau: string) {
+  // La place de la semaine dans son bloc : la dose du renfo monte à partir de la troisième.
+  const rang = plan.semaines.filter((s) => s.bloc === semaine.bloc).findIndex((s) => s.numero === semaine.numero) + 1;
   const r = await fetch(`${API_URL}/v1/nolio/seances`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
-    body: JSON.stringify({ jours: semaine.jours, profil, semaine: { type: semaine.type, bloc: semaine.bloc, lundi: semaine.lundi } }),
+    body: JSON.stringify({ jours: semaine.jours, profil, niveau,
+      semaine: { type: semaine.type, bloc: semaine.bloc, lundi: semaine.lundi, rang_bloc: rang || 1 } }),
   });
   if (!r.ok) throw new Error(`Moteur /v1/nolio/seances : ${r.status}`);
   const corps = await r.json();
   const jours = (corps.seances ?? []).map((s: JourTraduit) => ({ ...s, note: s.note ?? null })) as JourTraduit[];
-  return { jours, cycle: (corps.cycle ?? null) as Record<string, unknown> | null };
+  const brut = (corps.renfo ?? []) as { id: string; nolio: Record<string, unknown> }[];
+  const renfo = brut.length ? await monterRenfo(brut) : [];
+  return { jours, cycle: (corps.cycle ?? null) as Record<string, unknown> | null, renfo };
+}
+
+type Noeud = Record<string, unknown> & { kind: string };
+
+// Les exercices du renfo, nommés par le moteur, remplacés par leur identifiant Nolio : la bibliothèque du coach
+// d'abord (ses vidéos), sinon le catalogue de Nolio. Un exercice absent (à filmer) part en étape décrite, sans vidéo.
+async function monterRenfo(seances: { id: string; nolio: Record<string, unknown> }[]): Promise<JourTraduit[]> {
+  const exercices = await listeNolio<{ id: string; name: string; scope: string }>('library/exercises/');
+  const idDe = (nom: string) => (exercices.find((e) => e.name === nom && e.scope === 'perso') ?? exercices.find((e) => e.name === nom))?.id;
+  const monter = (n: Noeud): Noeud => {
+    if (n.kind === 'superset') return { ...n, exercises: (n.exercises as Noeud[]).map(monter) };
+    if (n.kind !== 'exercise') return n;
+    const { exercice_nom: nom, ...reste } = n as Noeud & { exercice_nom: string; sets: Record<string, { value: number }>[] };
+    const id = idDe(nom);
+    if (id) return { ...reste, exercise: id };
+    const series = (n.sets as { reps?: number; duration?: { value: number }; rest: { value: number } }[]);
+    const duree = series.reduce((t, x) => t + (x.duration?.value ?? (x.reps ?? 0) * 4) + x.rest.value, 0);
+    const dose = `${series.length} × ${series[0]?.reps ?? `${series[0]?.duration?.value}″`}`;
+    return { kind: 'step', intensity: 'work', duration: { value: duree, unit: 's' }, targets: [{ type: 'no_target' }],
+      comment: [`${nom} : ${dose}`, n.comment].filter(Boolean).join(', ') };
+  };
+  return seances.map((s) => ({ id: s.id, note: null,
+    nolio: { ...s.nolio, workout: (s.nolio.workout as Noeud[]).map(monter) } }));
 }
 
 type Destinataire = { usr: string; moi: boolean };
@@ -159,7 +191,7 @@ export async function envoyerSemaine(coachId: string, planId: string, numero: st
   if (o.envois.some((e) => e.semaine === numero)) throw new Error('Cette semaine est déjà envoyée : mets-la à jour.');
   const semaine = o.plan.semaines.find((s) => s.numero === numero);
   if (!semaine) throw new Error('Semaine introuvable');
-  const { jours, cycle } = await seancesDuMoteur(semaine, profilDe(o.athlete));
+  const { jours, cycle, renfo } = await seancesDuMoteur(o.plan, semaine, profilDe(o.athlete), o.niveau);
   const crees: SeanceEnvoyee[] = [];
   let bandeau = '';
   if (cycle) {
@@ -171,7 +203,7 @@ export async function envoyerSemaine(coachId: string, planId: string, numero: st
       bandeau = ` et le bandeau « ${String(cycle.name)} »`;
     }
   }
-  for (const j of jours) {
+  for (const j of [...jours, ...renfo]) {
     const corps = j.nolio ?? j.note;
     if (!corps) continue;
     const cree = await creer(d, j.id, corps, j.nolio ? 'seance' : 'note');
@@ -184,8 +216,9 @@ export async function envoyerSemaine(coachId: string, planId: string, numero: st
   }
   await garderEnvoi(coachId, planId, numero, crees);
   const notes = crees.filter((c) => c.genre === 'note').length;
-  const seances = crees.filter((c) => genreDe(c) === 'seance').length;
-  return `${pluriel(seances, 'séance')}${notes ? `, ${pluriel(notes, 'note')} de repos` : ''}${bandeau}`;
+  const renfos = crees.filter((c) => c.jour_id.endsWith(RENFO)).length;
+  const seances = crees.filter((c) => genreDe(c) === 'seance').length - renfos;
+  return `${pluriel(seances, 'séance')}${renfos ? `, ${pluriel(renfos, 'séance')} de renfo` : ''}${notes ? `, ${pluriel(notes, 'note')} de repos` : ''}${bandeau}`;
 }
 
 async function garderEnvoi(coachId: string, planId: string, numero: string, seances: SeanceEnvoyee[]) {
@@ -288,8 +321,12 @@ export async function mettreAJourSemaine(coachId: string, planId: string, numero
   if (!envoi || !semaine?.lundi) throw new Error('Cette semaine n’est pas encore envoyée.');
   await convertirEnvoisV1(planId, d, [envoi]);
   const dansNolio = await versions(d, ajouterJours(semaine.lundi, -1), ajouterJours(semaine.lundi, 7));
-  const { jours, cycle } = await seancesDuMoteur(semaine, profilDe(o.athlete));
-  const date = (jourId: string) => (jourId === SEMAINE ? 'la semaine' : semaine.jours.find((j) => j.id === jourId)?.date ?? jourId);
+  const { jours, cycle, renfo } = await seancesDuMoteur(o.plan, semaine, profilDe(o.athlete), o.niveau);
+  const date = (jourId: string) => {
+    if (jourId === SEMAINE) return 'la semaine';
+    const jour = semaine.jours.find((j) => j.id === jourId.replace(RENFO, ''))?.date ?? jourId;
+    return jourId.endsWith(RENFO) ? `${jour}, renfo` : jour;
+  };
   const bilan: BilanMiseAJour = { remplacees: 0, ajoutees: 0, retirees: 0, notes: 0, bandeau: null, gardees: [] };
   const garde: SeanceEnvoyee[] = [];
   const parJour = new Map(envoi.seances.map((s) => [s.jour_id, s]));
@@ -312,8 +349,11 @@ export async function mettreAJourSemaine(coachId: string, planId: string, numero
     else if (genre === 'note') bilan.notes += 1;
     else bilan.bandeau = String(corps.name);
   };
-  // Le bandeau d'abord, comme un jour de plus (« semaine »).
-  for (const j of [{ id: SEMAINE, nolio: null, note: null } as JourTraduit, ...jours]) {
+  // Le bandeau d'abord, comme un jour de plus (« semaine ») ; le renfo après les jours ; puis ce que la semaine n'a
+  // plus (une séance de renfo déplacée, par exemple) : supprimé de Nolio s'il n'a pas été touché.
+  const voulus: JourTraduit[] = [{ id: SEMAINE, nolio: null, note: null }, ...jours, ...renfo];
+  const restes = [...parJour.keys()].filter((k) => !voulus.some((v) => v.id === k)).map((id) => ({ id, nolio: null, note: null }));
+  for (const j of [...voulus, ...restes]) {
     const ancienne = parJour.get(j.id);
     parJour.delete(j.id);
     if (!ancienne?.nolio_id) {
@@ -362,7 +402,7 @@ export async function mettreAJourSemaine(coachId: string, planId: string, numero
     if (genre === 'seance') bilan.retirees += 1;
     await ajouter(j);
   }
-  // Une séance d'un jour que la semaine n'a plus (rare) : gardée dans l'envoi, telle quelle.
+  // Chaque entrée de l'envoi est passée dans la boucle (les restes compris) : il ne reste rien à reporter.
   garde.push(...parJour.values());
   await garderEnvoi(coachId, planId, numero, garde);
   return bilan;
