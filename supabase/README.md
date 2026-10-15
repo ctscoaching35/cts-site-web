@@ -2,11 +2,14 @@
 
 *Étape 1b du cadrage de l'app (CTS_APP_CADRAGE.md, dépôt du moteur). Décisions : comptes créés au
 paiement, connexion par un code à 6 chiffres reçu par e-mail (D6) ; Supabase, serveurs en Europe
-(D7) ; aucune donnée de santé (D4). Ce que tu fais une fois, dans l'ordre.*
+(D7) ; aucune donnée de santé (D4) au départ — depuis, les zones (FC, allures) et le journal (RPE, sensations)
+sont gardés avec le consentement de l'utilisateur, et les repères des athlètes coachés avec leur accord (E3,
+CTS_LANCEMENT_CADRAGE.md). Ce que tu fais une fois, dans l'ordre.*
 
 ## 1. Le projet
 
-Sur supabase.com : un compte, puis **New project**, région **Europe (Paris ou Francfort)**. Le mot
+Sur supabase.com : un compte, puis **New project**, région **Europe (Paris ou Francfort)** — le projet cts-app a été créé en **West EU (Irlande), eu-west-1**
+(lu par le coach le 15/10/2026). Le mot
 de passe de la base que Supabase demande se garde dans ton gestionnaire de mots de passe ; l'app
 ne s'en sert pas.
 
