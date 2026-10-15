@@ -13,6 +13,15 @@ import { clientService } from './supabase';
 
 export type EtatCoach = { message: string; ok: boolean } | null;
 
+// E3 (CTS_LANCEMENT_CADRAGE.md, décision coach du 15/10/2026) : les repères d'un athlète ne se gardent qu'avec son
+// accord, le même que celui du suivi (« Accord reçu », table nolio_accords) ; le message d'accord les nomme.
+async function accordDeLAthlete(coachId: string, athleteId: string): Promise<boolean> {
+  const { data: a } = await clientService().from('athletes_coaches').select('nolio_athlete_id').eq('id', athleteId).eq('coach_id', coachId).maybeSingle();
+  if (!a?.nolio_athlete_id) return false;
+  const { data } = await clientService().from('nolio_accords').select('nolio_athlete_id').eq('coach_id', coachId).eq('nolio_athlete_id', a.nolio_athlete_id).maybeSingle();
+  return !!data;
+}
+
 export async function associerNolio(athleteId: string, form: FormData): Promise<void> {
   const coach = await coachConnecte();
   // L'identifiant d'un athlète dans l'API v2 de Nolio : « usr_… ».
@@ -46,6 +55,10 @@ export async function enregistrerValeurs(athleteId: string, _e: EtatCoach, form:
     return { ok: false, message: 'Une valeur ne semble pas juste : FC entre 80 et 230, allures en min/km (par exemple 6:00 au seuil 1, 4:10 pour la vitesse critique).' };
   if (fc1.valeur !== null && fc2.valeur !== null && fc2.valeur <= fc1.valeur)
     return { ok: false, message: 'La FC au seuil 2 doit être plus haute que la FC au seuil 1.' };
+  // Vider les champs reste toujours possible ; garder une valeur demande son accord (E3).
+  const aGarder = [fc1.valeur, allure, allureS1, fc2.valeur].some((v) => v !== null);
+  if (aGarder && !(await accordDeLAthlete(coach.compteId, athleteId)))
+    return { ok: false, message: 'Pas encore son accord : associe-le à Nolio, envoie-lui le message d’accord, puis coche « Accord reçu » dans le Suivi quand il a répondu oui.' };
   const { error } = await clientService().from('athletes_coaches').update({
     fc_seuil1: fc1.valeur === null ? null : Math.round(fc1.valeur),
     vc_ms: allure === null ? null : Math.round((1000 / allure) * 1000) / 1000,

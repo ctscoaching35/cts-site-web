@@ -78,7 +78,7 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
 
         <section className="bg-white shadow-sm p-4 space-y-2">
           <h2 className="eyebrow text-indigo/60">Ses valeurs</h2>
-          <p className="text-sm text-indigo/70">Avec elles, les séances partent avec une allure sur le plat ou une FC, puis le RPE. Sans elles, au RPE.</p>
+          <p className="text-sm text-indigo/70">Avec elles, les séances partent avec une allure sur le plat ou une FC, puis le RPE. Sans elles, au RPE. Gardées seulement avec son accord, celui du Suivi (« Accord reçu »).</p>
           <FormulaireValeurs athleteId={a.id} fc1={a.fc_seuil1} vs1Allure={a.v_seuil1_ms ? allureDepuisVitesse(a.v_seuil1_ms) : null}
             vcAllure={a.vc_ms ? allureDepuisVitesse(a.vc_ms) : null} fc2={a.fc_seuil2} />
         </section>

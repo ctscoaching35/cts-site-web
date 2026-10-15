@@ -72,7 +72,8 @@ export default async function SuiviCoach() {
           <h1 className="text-2xl text-indigo">Suivi des 7 derniers jours</h1>
           <p className="text-sm text-indigo/70 leading-relaxed mt-1">
             Ce qui mérite ton regard d’abord ; le détail est dans Nolio. Lu dans Nolio à l’ouverture de la page, rien
-            n’est gardé. Seuls les athlètes qui ont donné leur accord sont lus.
+            n’est gardé. Seuls les athlètes qui ont donné leur accord sont lus ; le même accord garde leurs repères
+            (FC, allures) sur leur fiche, et le retirer les efface.
           </p>
         </div>
         {erreur && <p className="text-sm text-indigo/75 bg-white shadow-sm p-4">{erreur}</p>}
