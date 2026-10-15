@@ -245,6 +245,8 @@ export default function Questionnaire({
     if (gpx) donnees.append('gpx', gpx);
     if (coach && athleteId) donnees.append('athlete_id', athleteId);
     if (!coach && renonce) donnees.append('renonciation_retractation', '1');
+    // La case de l'avertissement accepte aussi les CGV : l'API en garde la date chez Stripe, avec le paiement (E4).
+    if (!coach && confirme) donnees.append('cgv_acceptees', '1');
     if (!coach) compterEtape('paiement');
     if (coach) {
       try {
