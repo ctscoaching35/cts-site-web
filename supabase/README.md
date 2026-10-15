@@ -208,6 +208,11 @@ Une table de plus, `nolio_accords` (`supabase/migrations/20261013500000_nolio_ac
 fichier, Run. Le tableau de suivi du coach (`/app/coach/suivi`) ne lit dans Nolio que les athlètes dont l'accord est
 coché ; la table ne garde que leur identifiant Nolio, leur nom et la date. Rien de ce qui est lu dans Nolio n'est gardé.
 
-## Ce qui viendra ensuite
+## 20. Les comptes inactifs
 
-- La suppression des comptes restés 3 ans sans connexion, après un e-mail d'avertissement (D4).
+Une fonction de plus, `derniere_activite` (`supabase/migrations/20261015100000_derniere_activite.sql`) : SQL Editor,
+coller le fichier, Run. Le passage quotidien (`/api/relance/envoyer`, avec CRON_SECRET) avertit par e-mail un compte
+resté près de 3 ans sans activité, puis le supprime 30 jours plus tard, comme « Supprimer mon compte » (E7 du cadrage
+du lancement ; D4). La dernière activité compte les sessions de l'app, pas seulement la connexion par code : l'app
+restée ouverte sur un téléphone ne se reconnecte jamais. Sans la fonction, rien n'est supprimé. Jamais un compte coach.
+

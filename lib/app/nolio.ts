@@ -27,7 +27,7 @@ function cle(): string {
 }
 
 // Les coachs : les e-mails de la variable CTS_COACHS (séparés par des virgules), saisie par le coach dans Vercel.
-const coachs = () => (process.env.CTS_COACHS ?? '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
+export const coachs = () => (process.env.CTS_COACHS ?? '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
 
 // Les pages coach : sans session, la connexion ; connecté sans être coach, une page introuvable.
 export async function exigerCoach(): Promise<{ compteId: string; email: string }> {
