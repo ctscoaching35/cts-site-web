@@ -70,7 +70,8 @@ export async function envoyerRelancesDues(maintenant = Date.now()) {
       await service.from('relances').update({ envoyee_le: new Date().toISOString() }).eq('email', email);
       envoyees += 1;
     } catch (e) {
-      console.error(`Relance de ${email} :`, e);
+      // Sans l'adresse : un journal de Vercel n'a pas à garder d'e-mail (E5, CTS_LANCEMENT_CADRAGE.md).
+      console.error('Relance non envoyée :', e instanceof Error ? e.message : e);
     }
   }
   return envoyees;
