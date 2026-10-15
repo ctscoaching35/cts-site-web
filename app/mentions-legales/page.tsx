@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { PageLegale, Section } from '@/components/PageLegale';
-import { mediateur, vendeur } from '@/lib/legal';
+import { mediateur, plansVisibles, vendeur } from '@/lib/legal';
 
 // Les mentions légales (loi pour la confiance dans l'économie numérique ; CTS_LANCEMENT_CADRAGE.md dans le dépôt du
 // moteur, L5 et C5 ; écrites le 15/10/2026, relues par le coach).
@@ -9,17 +9,21 @@ export const metadata: Metadata = {
   description: 'Éditeur, hébergement et contact du site CTS Coaching.',
 };
 
-export default function MentionsLegales() {
+// Lit la porte des plans (cookie, session) : calculée à chaque visite.
+export const dynamic = 'force-dynamic';
+
+export default async function MentionsLegales() {
+  const plans = await plansVisibles();
   return (
-    <PageLegale titre="Mentions légales">
+    <PageLegale titre="Mentions légales" plans={plans}>
       <Section titre="Éditeur du site">
         <p>
           {vendeur.nom}, {vendeur.forme}, nom commercial {vendeur.nomCommercial}
           <br />
           {vendeur.adresse}
           <br />
-          SIRET {vendeur.siret} · TVA intracommunautaire {vendeur.tvaIntracom} (TVA non applicable aux ventes du site,
-          article 293 B du code général des impôts)
+          SIRET {vendeur.siret} · TVA intracommunautaire {vendeur.tvaIntracom} (TVA non applicable, article 293 B du
+          code général des impôts)
           <br />
           E-mail : <a href={`mailto:${vendeur.email}`}>{vendeur.email}</a> · Téléphone :{' '}
           <a href={`tel:${vendeur.telephoneLien}`}>{vendeur.telephone}</a>
@@ -31,7 +35,7 @@ export default function MentionsLegales() {
         <p>
           Le site et l’app sont hébergés par Vercel Inc., 440 N Barranca Avenue #4133, Covina, CA 91723, États-Unis
           (vercel.com, privacy@vercel.com). Les données des comptes sont hébergées en Irlande par Supabase, et le moteur
-          qui construit les plans en Allemagne par Render : voir la{' '}
+          qui construit les séances en Allemagne par Render : voir la{' '}
           <a href="/confidentialite">politique de confidentialité</a>.
         </p>
       </Section>
@@ -56,8 +60,12 @@ export default function MentionsLegales() {
 
       <Section titre="Conditions et données">
         <p>
-          La vente des plans suit les <a href="/cgv">conditions générales de vente</a>. Ce que nous faisons de tes données
-          est dit dans la <a href="/confidentialite">politique de confidentialité</a>.
+          {plans && (
+            <>
+              La vente des plans suit les <a href="/cgv">conditions générales de vente</a>.{' '}
+            </>
+          )}
+          Ce que nous faisons de tes données est dit dans la <a href="/confidentialite">politique de confidentialité</a>.
         </p>
       </Section>
     </PageLegale>

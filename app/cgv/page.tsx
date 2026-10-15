@@ -1,18 +1,19 @@
 import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import { Liste, PageLegale, Section } from '@/components/PageLegale';
-import { mediateur, vendeur, VERSION_CGV } from '@/lib/legal';
+import { mediateur, plansVisibles, vendeur, VERSION_CGV } from '@/lib/legal';
 import { API_URL } from '@/lib/plan';
 
 // Les conditions générales de vente des plans (CTS_LANCEMENT_CADRAGE.md dans le dépôt du moteur, L5, écrites le
 // 15/10/2026 à partir de ce que le site et l'app font réellement ; relues par le coach). La case du récapitulatif les
 // fait accepter (components/plan/Questionnaire.tsx) ; l'API en garde la date chez Stripe (E4). Les prix viennent de
-// l'API, comme sur la page des plans.
+// l'API, comme sur la page des plans. Fermées comme elle jusqu'au lancement (lib/legal.ts, plansVisibles).
 export const metadata: Metadata = {
   title: 'Conditions générales de vente — CTS Coaching',
   description: 'Les conditions de vente des plans d’entraînement trail CTS Coaching.',
 };
 
-export const revalidate = 3600;
+export const dynamic = 'force-dynamic';
 
 async function prixParMois(): Promise<Record<string, number> | null> {
   try {
@@ -24,6 +25,7 @@ async function prixParMois(): Promise<Record<string, number> | null> {
 }
 
 export default async function CGV() {
+  if (!(await plansVisibles())) notFound();
   const prix = await prixParMois();
   const contact = (
     <>
@@ -32,7 +34,7 @@ export default async function CGV() {
     </>
   );
   return (
-    <PageLegale titre="Conditions générales de vente" version={VERSION_CGV}>
+    <PageLegale titre="Conditions générales de vente" version={VERSION_CGV} plans>
       <Section titre="1. Qui vend">
         <p>
           Les plans d’entraînement vendus sur www.cts-coaching.com le sont par {vendeur.nom}, {vendeur.forme}, sous le

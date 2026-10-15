@@ -76,7 +76,10 @@ export default function Footer() {
           </p>
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
             <a href="/mentions-legales" className="text-white/50 hover:text-teal-light transition-colors">Mentions légales</a>
-            <a href="/cgv" className="text-white/50 hover:text-teal-light transition-colors">CGV</a>
+            {/* Rien des plans avant le lancement (décision coach du 15/10/2026) : le lien CGV avec CTS_PLAN_OUVERT=1. */}
+            {process.env.CTS_PLAN_OUVERT === '1' && (
+              <a href="/cgv" className="text-white/50 hover:text-teal-light transition-colors">CGV</a>
+            )}
             <a href="/confidentialite" className="text-white/50 hover:text-teal-light transition-colors">Confidentialité</a>
             <span className="text-white/40">{footer.legal}</span>
           </div>
