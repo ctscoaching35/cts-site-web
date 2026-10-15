@@ -74,7 +74,12 @@ export default function Footer() {
           <p className="text-white/50 text-xs tracking-wider uppercase">
             {footer.tagline}
           </p>
-          <p className="text-white/40 text-xs">{footer.legal}</p>
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
+            <a href="/mentions-legales" className="text-white/50 hover:text-teal-light transition-colors">Mentions légales</a>
+            <a href="/cgv" className="text-white/50 hover:text-teal-light transition-colors">CGV</a>
+            <a href="/confidentialite" className="text-white/50 hover:text-teal-light transition-colors">Confidentialité</a>
+            <span className="text-white/40">{footer.legal}</span>
+          </div>
         </div>
       </div>
     </footer>

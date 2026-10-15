@@ -393,7 +393,10 @@ export default function Questionnaire({
             <div>
               <label className={labelCls} htmlFor="email">E-mail</label>
               <input id="email" type="email" className={inputCls} required value={c.email} onChange={(e) => maj('email')(e.target.value)} autoComplete="email" />
-              <p className={aideCls}>C’est là que part ton plan.</p>
+              <p className={aideCls}>
+                C’est là que part ton plan. Ce que nous gardons :{' '}
+                <a href="/confidentialite" target="_blank" rel="noopener" className="underline underline-offset-2">politique de confidentialité</a>.
+              </p>
               <label className="flex gap-3 items-start mt-3 cursor-pointer">
                 <input type="checkbox" checked={rappel} onChange={(e) => setRappel(e.target.checked)} className="mt-1 accent-teal" />
                 <span className="text-sm text-indigo/80">

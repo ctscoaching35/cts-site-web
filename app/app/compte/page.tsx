@@ -11,7 +11,7 @@ import { coachConnecte } from '@/lib/app/nolio';
 import Link from 'next/link';
 
 // Le compte (cadrage, 3.6) : l'e-mail, les plans (un par course), la déconnexion, la
-// suppression. Les exports (PDF, agenda) et les pages légales viennent ensuite (1e, 1f).
+// suppression, les liens vers les pages légales (L5). Les exports (PDF, agenda) viennent ensuite (1e).
 export default async function Compte({ searchParams }: { searchParams: Recherche }) {
   const ctx = await contexte(searchParams);
   if (ctx.demonstration) {
@@ -84,6 +84,11 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
         <Deconnexion />
         <Suppression />
         <Avertissement avertissement={ctx.plan.avertissement} />
+        <p className="text-xs text-indigo/60 flex flex-wrap gap-x-4 gap-y-1">
+          <a href="/confidentialite" className="underline underline-offset-2">Confidentialité</a>
+          <a href="/cgv" className="underline underline-offset-2">Conditions de vente</a>
+          <a href="/mentions-legales" className="underline underline-offset-2">Mentions légales</a>
+        </p>
       </main>
     </>
   );
