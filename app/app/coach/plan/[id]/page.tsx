@@ -184,7 +184,7 @@ export default async function ObjectifCoache({ params }: { params: Promise<{ id:
                 const e = envois.find((x) => x.semaine === s.numero);
                 return (
                   <section key={s.numero} className="space-y-2">
-                    <BanniereSemaine semaine={s} />
+                    <BanniereSemaine semaine={s} course={o.plan.course.date} />
                     <ul className="bg-white divide-y divide-indigo/10 text-sm">
                       {s.jours.map((j) => (
                         <li key={j.id} className="flex gap-3 px-3 py-2">
