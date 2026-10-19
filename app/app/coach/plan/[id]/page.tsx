@@ -89,9 +89,9 @@ export default async function ObjectifCoache({ params }: { params: Promise<{ id:
           </p>
         </div>
         <div className="flex flex-wrap gap-2.5">
-          <a href={lienFicheCourse(id)} className="inline-flex items-center min-h-11 px-4 rounded-xl border border-indigo/[0.18] bg-white text-[0.8125rem] font-bold">Fiche de course</a>
+          <a href={lienFicheCourse(id)} target="_blank" rel="noopener" className="inline-flex items-center min-h-11 px-4 rounded-xl border border-indigo/[0.18] bg-white text-[0.8125rem] font-bold">Fiche de course</a>
           {o.pdf && <a href={`/app/coach/plan/${id}/pdf`} className="inline-flex items-center min-h-11 px-4 rounded-xl border border-indigo/[0.18] bg-white text-[0.8125rem] font-bold">Trame en PDF</a>}
-          <a href="https://www.nolio.io/" className="inline-flex items-center min-h-11 px-4 rounded-xl bg-indigo text-white text-[0.8125rem] font-bold">Ouvrir dans Nolio</a>
+          <a href="https://www.nolio.io/" target="_blank" rel="noopener" className="inline-flex items-center min-h-11 px-4 rounded-xl bg-indigo text-white text-[0.8125rem] font-bold">Ouvrir dans Nolio</a>
         </div>
       </div>
 
@@ -239,7 +239,7 @@ export default async function ObjectifCoache({ params }: { params: Promise<{ id:
                       {fichesPrepa.has(c.date) ? ` · fiche de course le ${dateLongue(ajouterJours(c.date, -7) > jour ? ajouterJours(c.date, -7) : jour, true)}` : ''}
                     </span></span>
                   {fichesPrepa.has(c.date) && (
-                    <a href={`${lienFicheCourse(id)}?course=${c.date}`} className="shrink-0 inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">Fiche ›</a>
+                    <a href={`${lienFicheCourse(id)}?course=${c.date}`} target="_blank" rel="noopener" className="shrink-0 inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">Fiche ›</a>
                   )}
                 </div>
               ))}

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import clsx from 'clsx';
+import { useEffect } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 
 // Les cinq onglets (CTS_NOLIO_CADRAGE.md, AP1, décision coach du 19/10/2026) : Accueil (le tableau de bord, et
@@ -38,6 +39,14 @@ const SANS_ONGLETS = ['/app/connexion', '/app/sans-plan', '/app/bienvenue'];
 export default function BarreOnglets() {
   const chemin = usePathname();
   const params = useSearchParams();
+  // Les pages vues dans l'app pendant la session : le bouton retour (Retour) revient d'où l'on vient s'il y en a une.
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('cts-pages-vues', String(Number(sessionStorage.getItem('cts-pages-vues') ?? 0) + 1));
+    } catch {
+      // Sans stockage (navigation privée stricte) : le retour mène à la page parente.
+    }
+  }, [chemin]);
   if (SANS_ONGLETS.includes(chemin) || chemin.startsWith('/app/coach')) return null;
   // Les onglets gardent le plan et le jour de la démonstration.
   const garde = new URLSearchParams();

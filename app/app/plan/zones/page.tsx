@@ -36,7 +36,7 @@ export default async function TesZones({ searchParams }: { searchParams: Recherc
     <>
       <EnTeteApp ctx={ctx} />
       <main className="mx-auto max-w-2xl px-4 py-5 space-y-5">
-        <Link href={lien('/app/plan', ctx)} className="text-teal font-semibold text-sm">‹ Mon plan</Link>
+        <Link href={lien('/app/profil', ctx)} className="inline-flex items-center min-h-11 text-teal font-bold text-sm">‹ Ton profil</Link>
         <h1 className="text-2xl text-indigo">{zones.titre}</h1>
         {zones.intro.map((p) => (
           <p key={p} className="text-indigo/80 leading-relaxed">{p}</p>

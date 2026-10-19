@@ -1,6 +1,7 @@
 import { Fragment } from 'react';
 import StrategieCourse from '@/components/app/StrategieCourse';
 import EnTeteApp from '@/components/app/EnTeteApp';
+import CorpsFichePreparation, { type FichePrep } from '@/components/app/FichePreparation';
 import LienFiche from '@/components/app/LienFiche';
 import ProfilCourse from '@/components/app/ProfilCourse';
 import RepartitionPentes from '@/components/app/RepartitionPentes';
@@ -24,6 +25,26 @@ export default async function TaCourse({ searchParams }: { searchParams: Recherc
   const calculateur = lien('/app/calculateurs/calculateur-nutrition', ctx,
     Object.fromEntries(new URLSearchParams(requeteCalculateurNutrition(plan.course.temps_cible, niveau))));
   const t = profil.troncons;
+  // ?course=AAAA-MM-JJ : la fiche d'une course de préparation (PO3), dans l'app (décision coach du 20/10/2026).
+  const course = (await searchParams).course;
+  if (typeof course === 'string' && !ctx.demonstration) {
+    const { data: fp, error } = await clientService().from('plans').select('fiches_preparation').eq('id', ctx.cle).maybeSingle();
+    const fiche = !error ? ((fp as { fiches_preparation?: Record<string, FichePrep> } | null)?.fiches_preparation ?? {})[course] : undefined;
+    if (fiche) {
+      const calculateurPrep = lien('/app/calculateurs/calculateur-nutrition', ctx,
+        Object.fromEntries(new URLSearchParams(requeteCalculateurNutrition(fiche.course.temps_cible, niveau))));
+      return (
+        <>
+          <EnTeteApp ctx={ctx} />
+          <main className="mx-auto max-w-2xl px-4 py-5 space-y-5">
+            <RetourPlan ctx={ctx} />
+            <CorpsFichePreparation fiche={fiche} calculateur={calculateurPrep}
+              lienFiche={(cle, libelle) => <LienFiche ctx={ctx} href={`/app/bibliotheque/${cle}`} libelle={libelle} />} />
+          </main>
+        </>
+      );
+    }
+  }
   return (
     <>
       <EnTeteApp ctx={ctx} />

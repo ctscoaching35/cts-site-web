@@ -32,6 +32,7 @@ export default function CadreCoach({ actif, demandes = 0, coach, children }: {
         <nav aria-label="Espace coach" className="flex flex-row flex-wrap lg:flex-col gap-1">
           {liens.map(([cle, titre, href]) => (
             <Link key={cle} href={href} aria-current={cle === actif ? 'page' : undefined}
+              {...(cle === 'bibliotheque' ? { target: '_blank', rel: 'noopener' } : {})}
               className={clsx('flex items-center justify-between gap-2 min-h-11 px-3 rounded-[10px] text-sm',
                 cle === actif ? 'bg-white/10 text-white font-bold' : 'text-[#D6D5E6] font-semibold hover:bg-white/5')}>
               <span>{titre}</span>

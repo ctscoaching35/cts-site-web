@@ -10,6 +10,7 @@ import { dateLongue } from '@/lib/app/plan';
 import { clientServeur, clientService } from '@/lib/app/supabase';
 import { coachConnecte } from '@/lib/app/nolio';
 import { donneesTableau } from '@/lib/app/tableauDuPlan';
+import { plansVisibles } from '@/lib/legal';
 
 // Les coachs de CTS, ce qui se dit d'eux (faits publiables, prénoms à l'écrit).
 const COACHS: Record<string, string> = {
@@ -37,6 +38,7 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
     coach = { prenom, texte: COACHS[prenom] ?? 'Kiné du sport.' };
   }
   const estCoach = !ctx.demonstration && Boolean(await coachConnecte());
+  const cgv = await plansVisibles();
   const nom = ctx.plan.athlete.nom;
   return (
     <>
@@ -64,7 +66,7 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
             <p className="text-[0.8125rem] leading-relaxed text-[#D6D5E6]">
               {coach.texte} Il relit ta préparation et peut reprendre la main sur une semaine à tout moment.
             </p>
-            <a href="https://www.nolio.io/" className="inline-flex items-center min-h-11 px-4 rounded-full bg-white text-indigo text-[0.8125rem] font-bold">
+            <a href="https://www.nolio.io/" target="_blank" rel="noopener" className="inline-flex items-center min-h-11 px-4 rounded-full bg-white text-indigo text-[0.8125rem] font-bold">
               Lui écrire dans Nolio
             </a>
           </CarteSombre>
@@ -111,11 +113,12 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
           <Installation />
         </Carte>
 
+        {/* Les documents s'ouvrent dans l'app (décision coach du 20/10/2026) ; les CGV, quand les plans sont en vente. */}
         <nav aria-label="Les documents" className="bg-white rounded-2xl border border-indigo/[0.08] px-[18px]">
-          {[['/cgv', 'Conditions générales'], ['/confidentialite', 'Confidentialité'], ['/mentions-legales', 'Mentions légales']].map(([href, titre]) => (
-            <a key={href} href={href} className="flex items-center justify-between min-h-[52px] border-b last:border-b-0 border-indigo/[0.06] text-sm font-semibold text-indigo">
+          {[...(cgv ? [['cgv', 'Conditions générales']] : []), ['confidentialite', 'Confidentialité'], ['mentions-legales', 'Mentions légales']].map(([slug, titre]) => (
+            <Link key={slug} href={`/app/document/${slug}`} className="flex items-center justify-between min-h-[52px] border-b last:border-b-0 border-indigo/[0.06] text-sm font-semibold text-indigo">
               <span>{titre}</span><span aria-hidden className="text-[#5E5C78]">›</span>
-            </a>
+            </Link>
           ))}
         </nav>
 

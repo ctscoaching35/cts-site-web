@@ -37,7 +37,7 @@ export function CarteNolio({ etat }: { etat: EtatNolio }) {
         <h2 className="font-bold text-indigo">{t.titre}</h2>
       </div>
       <p className="text-sm text-[#4A4866] leading-relaxed">{t.texte}</p>
-      {t.bouton && <a href={NOLIO} className="inline-flex items-center min-h-11 text-sm font-bold text-teal">Ouvrir Nolio ›</a>}
+      {t.bouton && <a href={NOLIO} target="_blank" rel="noopener" className="inline-flex items-center min-h-11 text-sm font-bold text-teal">Ouvrir Nolio ›</a>}
     </Carte>
   );
 }
@@ -211,7 +211,7 @@ export function CetteSemaine({ semaine, ligne, questionnaire }: {
       )}
       <div className="mt-2.5 p-3 rounded-xl bg-sand flex items-center justify-between gap-3">
         <span className="text-xs text-[#4A4866]">Le détail de chaque séance est dans Nolio.</span>
-        <a href={NOLIO} className="shrink-0 inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">Ouvrir Nolio ›</a>
+        <a href={NOLIO} target="_blank" rel="noopener" className="shrink-0 inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">Ouvrir Nolio ›</a>
       </div>
     </Carte>
   );

@@ -7,6 +7,7 @@ import RepartitionPentes from '@/components/app/RepartitionPentes';
 import StrategieCourse from '@/components/app/StrategieCourse';
 import { Lignes, Partie, Puces, Tableau } from '@/components/app/Texte';
 import { planDuJeton } from '@/lib/app/ficheCourse';
+import CorpsFichePreparation, { type FichePrep } from '@/components/app/FichePreparation';
 import { requeteCalculateurNutrition, type Plan } from '@/lib/app/plan';
 import { clientService, supabaseConfigure } from '@/lib/app/supabase';
 
@@ -115,18 +116,7 @@ export default async function FicheCourse({ params, searchParams }: {
   );
 }
 
-// La fiche d'une course de préparation (PO3), rendue par le moteur (/v1/fiche-course) : les mêmes formes que les
-// sections du plan, sans les déterminants physiologiques (ceux de la préparation).
-type FichePrep = {
-  course: { nom: string; date_lettres: string; temps_cible: string };
-  ta_course: Plan['ta_course']; profil: Plan['profil'];
-  determinants: { mecanique: { titre: string; puces: string[] } | null; sans_trace: string | null };
-  jour_j: Plan['jour_j'];
-};
-
 function FichePreparation({ fiche, calculateur }: { fiche: FichePrep; calculateur: string }) {
-  const { profil, determinants: d, jour_j: j } = fiche;
-  const t = profil.troncons;
   const lien = (cle: string, libelle: string) => <a href={`/bibliotheque/${cle}`} className="inline-block text-sm text-teal font-semibold">{libelle} ›</a>;
   return (
     <div className="min-h-screen bg-sand">
@@ -140,44 +130,7 @@ function FichePreparation({ fiche, calculateur }: { fiche: FichePrep; calculateu
         </div>
       </header>
       <main className="mx-auto max-w-2xl px-4 py-5 space-y-5">
-        <h1 className="text-2xl text-indigo leading-tight">{fiche.course.nom}</h1>
-        <div className="bg-white shadow-sm px-4 py-1">
-          <Lignes lignes={fiche.ta_course.lignes} />
-        </div>
-        <Partie titre={profil.titre}>
-          {profil.sans_trace ? (
-            <p>{profil.sans_trace}</p>
-          ) : (
-            <>
-              {profil.points && <ProfilCourse points={profil.points} />}
-              {profil.pentes && <RepartitionPentes pentes={profil.pentes} />}
-            </>
-          )}
-        </Partie>
-        {t && (t.homogene || t.tableau) && (
-          <Partie titre={t.titre}>
-            {t.homogene ? <p>{t.homogene}</p> : t.tableau && <Tableau lignes={t.tableau} />}
-          </Partie>
-        )}
-        {d.mecanique && (
-          <Partie titre={d.mecanique.titre}>
-            <Puces puces={d.mecanique.puces} />
-          </Partie>
-        )}
-        {d.sans_trace && <p className="text-sm text-indigo/75 px-1">{d.sans_trace}</p>}
-        <h2 className="text-2xl text-indigo leading-tight pt-4">{j.titre}</h2>
-        <Partie titre={j.nutrition.titre}>
-          <StrategieCourse lignes={j.nutrition.lignes as [string, string][]} href={calculateur} externe />
-          {lien(j.nutrition.fiche[0], j.nutrition.fiche[1])}
-        </Partie>
-        {j.parties.map((p) => (
-          <Fragment key={p.titre}>
-            {p.titre === 'Après' && j.fiche_ultra && <div className="px-1">{lien(j.fiche_ultra[0], j.fiche_ultra[1])}</div>}
-            <Partie titre={p.titre}>
-              <Puces puces={p.puces} />
-            </Partie>
-          </Fragment>
-        ))}
+        <CorpsFichePreparation fiche={fiche} calculateur={calculateur} lienFiche={lien} externe />
         <p className="text-xs text-indigo/50 text-center pb-6">Ce lien est personnel : ne le partage pas.</p>
       </main>
     </div>
