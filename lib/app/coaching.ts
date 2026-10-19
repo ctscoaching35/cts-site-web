@@ -6,6 +6,7 @@
  * dans Nolio par l'API v2, avec la clé du coach.
  */
 import { API_URL } from '@/lib/plan';
+import { actionsTrame, dateDe, empreinte, type Voulu } from './trameNolio';
 import { lienFicheCourse } from './ficheCourse';
 import { ajouterJours, type Plan, type Semaine } from './plan';
 import { appelNolio, convertirIdsV1, listeNolio, moiNolio, nolioConfigure, refusNolio } from './nolio';
@@ -238,9 +239,7 @@ export function profilDe(a: Pick<FicheAthlete, 'fc_seuil1' | 'vc_ms' | 'fc_seuil
   );
 }
 
-// Une note ou un bandeau n'a pas de révision dans l'API : sa version est ce qu'il contient.
-const empreinte = (n: Record<string, unknown>) =>
-  JSON.stringify([n.name ?? '', n.date_start ?? '', n.date_end ?? null, n.note_type ?? null, String(n.color ?? '').toLowerCase()]);
+// Une note ou un bandeau n'a pas de révision dans l'API : sa version est ce qu'il contient (empreinte, trameNolio.ts).
 // Pour les messages au coach : le nom, son article et son accord (« la note retouchée », « le bandeau retouché »).
 const NOM: Record<Genre, [string, string, string]> = { seance: ['la', 'séance', 'e'], note: ['la', 'note de repos', 'e'], cycle: ['le', 'bandeau', ''] };
 
@@ -375,6 +374,71 @@ export async function verifierEnvois(planId: string, nolioAthlete: string, plan:
     console.error('Vérification Nolio :', e instanceof Error ? e.message : e);
     return sans;
   }
+}
+
+// La trame déjà posée dans Nolio, réalignée sur un plan refait la nuit (lib/app/actualisation.ts ; décision coach du
+// 19/10/2026) : à partir de la semaine prochaine, un bandeau ou un rappel de fiche qui a changé est réécrit, celui que
+// le plan n'a plus est retiré, un nouveau est posé. La semaine en cours et les passées ne bougent pas ; ce que le coach
+// a retouché ou supprimé dans Nolio est gardé, comme dans une mise à jour de semaine. Sur un échec, ce qui est fait
+// reste noté et l'erreur remonte.
+export async function realignerTrame(c: Cible, cle: string, aujourdhui: string): Promise<{ changes: number; gardees: number }> {
+  const envoi = c.envois.find((e) => e.semaine === cle);
+  if (!envoi || !c.nolioAthlete) return { changes: 0, gardees: 0 };
+  const d = await destinataire(c.nolioAthlete);
+  const voulus = new Map<string, Voulu>();
+  for (const s of c.plan.semaines.filter((x) => x.lundi && x.lundi > aujourdhui)) {
+    const { cycle, renfo } = await seancesDuMoteur(c.plan, c.planId, { ...s, jours: [] }, c.profil, c.niveau, true);
+    if (cycle) voulus.set(`${cle}:${s.numero}`, { genre: 'cycle', corps: cycle });
+    for (const f of renfo) {
+      const note = f.note as Record<string, unknown> | null;
+      if (note && String(note.date_start ?? '') > aujourdhui) voulus.set(f.id, { genre: 'note', corps: note });
+    }
+  }
+  const actions = actionsTrame(envoi.seances, voulus, await versions(d, aujourdhui, ajouterJours(c.plan.course.date, 1)), aujourdhui);
+  // Ce qui est noté de la trame : ce qui est passé ou fait, puis ce qui reste à faire, tel qu'avant.
+  const garde: SeanceEnvoyee[] = [];
+  const restants = actions.flatMap((a) => (a.quoi === 'poser' ? [] : [a.x]));
+  let changes = 0;
+  let gardees = 0;
+  try {
+    for (const a of actions) {
+      if (a.quoi !== 'poser') restants.shift();
+      if (a.quoi === 'garder') {
+        garde.push(a.x);
+        if (a.touche) gardees += 1;
+        continue;
+      }
+      if (a.quoi === 'poser') {
+        const cree = await creer(d, a.jourId, a.voulu.corps, a.voulu.genre);
+        if (cree.erreur) throw new Error(cree.erreur);
+        if (!cree.deja) {
+          garde.push(cree);
+          changes += 1;
+        }
+        continue;
+      }
+      const id = String(a.x.nolio_id);
+      const genre = genreDe(a.x);
+      if (a.quoi === 'reecrire') {
+        const r = await appelNolio('PATCH', `${CHEMINS[genre]}${id}/${requete(d)}`, corpsPatch(a.voulu.corps, genre));
+        if (r.statut !== 200) {
+          restants.unshift(a.x);
+          throw new Error(refusNolio(r, `la mise à jour de la trame du ${dateDe(a.x)}`));
+        }
+        garde.push({ jour_id: a.x.jour_id, nolio_id: id, genre, revision: empreinte(r.corps ?? a.voulu.corps) });
+      } else {
+        const r = await appelNolio('DELETE', `${CHEMINS[genre]}${id}/${requete(d)}`);
+        if (r.statut !== 204 && r.statut !== 200 && r.statut !== 404) {
+          restants.unshift(a.x);
+          throw new Error(refusNolio(r, `le retrait de la trame du ${dateDe(a.x)}`));
+        }
+      }
+      changes += 1;
+    }
+  } finally {
+    await garderEnvoi(c.coachId, c.planId, cle, [...garde, ...restants]);
+  }
+  return { changes, gardees };
 }
 
 export type BilanMiseAJour = {

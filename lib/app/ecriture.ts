@@ -55,7 +55,7 @@ export type Realise = {
 // Les clés de nolio_envois qui ne sont pas des semaines : la trame (bandeaux et fiches de tout le plan), les
 // questionnaires du dimanche, la note de bilan d'une semaine (« S9:bilan ») et la note d'un ajustement en cours de
 // semaine (« S9-jeudi:fatigue »).
-const TRAME = 'trame';
+export const TRAME = 'trame';
 const QUESTIONNAIRES = 'questionnaires';
 const COULEUR_NOTE = '#0C6E5F';
 const JOURS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
