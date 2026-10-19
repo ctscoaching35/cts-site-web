@@ -59,16 +59,17 @@ const QUESTIONNAIRES = 'questionnaires';
 const COULEUR_NOTE = '#0C6E5F';
 const JOURS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
 const LIBELLES = JOURS.map((j) => j[0].toUpperCase() + j.slice(1));
-// Le questionnaire du dimanche (décision coach du 19/10/2026, question 13) : quatre questions courtes.
+// Le questionnaire du dimanche (décision coach du 19/10/2026, question 13) : quatre questions courtes. Sans `order` :
+// Nolio le compte à partir de 0 et le déduit de la place dans la liste (refus du 19/10/2026, essai sur « (toi) »).
 export const QUESTIONNAIRE_SEMAINE = {
   name: 'Ta semaine prochaine',
   description: 'Une minute : tes séances de la semaine prochaine s’écrivent ce soir à partir de tes réponses.',
   items: [
-    { order: 1, question: 'Quels jours peux-tu courir la semaine prochaine ?', type: 'multiple_choices', is_mandatory: true,
+    { question: 'Quels jours peux-tu courir la semaine prochaine ?', type: 'multiple_choices', is_mandatory: true,
       choices: { choices: LIBELLES } },
-    { order: 2, question: 'Quel jour pour ta sortie longue ?', type: 'unique_choice', is_mandatory: true, choices: { choices: LIBELLES } },
-    { order: 3, question: 'Combien de séances veux-tu faire ?', type: 'number', is_mandatory: true, unit: 'séances' },
-    { order: 4, question: 'As-tu dû arrêter de courir cette semaine (blessure, maladie) ?', type: 'boolean', is_mandatory: true },
+    { question: 'Quel jour pour ta sortie longue ?', type: 'unique_choice', is_mandatory: true, choices: { choices: LIBELLES } },
+    { question: 'Combien de séances veux-tu faire ?', type: 'number', is_mandatory: true, unit: 'séances' },
+    { question: 'As-tu dû arrêter de courir cette semaine (blessure, maladie) ?', type: 'boolean', is_mandatory: true },
   ],
 };
 
@@ -594,8 +595,8 @@ export const QUESTIONNAIRE_PAROLE = {
   name: 'Ton test de la parole',
   description: 'Deux réponses : elles règlent tes repères d’endurance.',
   items: [
-    { order: 1, question: 'Ta FC au premier palier où tu ne parlais plus confortablement ?', type: 'number', is_mandatory: true, unit: 'bpm' },
-    { order: 2, question: 'Ton allure à ce palier (par exemple 6:00) ?', type: 'short_text', is_mandatory: false },
+    { question: 'Ta FC au premier palier où tu ne parlais plus confortablement ?', type: 'number', is_mandatory: true, unit: 'bpm' },
+    { question: 'Ton allure à ce palier (par exemple 6:00) ?', type: 'short_text', is_mandatory: false },
   ],
 };
 
