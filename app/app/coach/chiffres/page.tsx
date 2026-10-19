@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import EnTeteCoach from '@/components/app/EnTeteCoach';
+import CadreCoach from '@/components/app/CadreCoach';
 import { chiffresParSemaine } from '@/lib/app/mesure';
 import { exigerCoach } from '@/lib/app/nolio';
 import { supabaseConfigure } from '@/lib/app/supabase';
@@ -22,8 +22,7 @@ export default async function Chiffres() {
   const semaines = await chiffresParSemaine();
   return (
     <>
-      <EnTeteCoach />
-      <main className="mx-auto max-w-4xl px-4 py-5 space-y-5">
+      <CadreCoach actif="chiffres">
         <h1 className="text-2xl text-indigo">Les chiffres de la vente</h1>
         <p className="text-sm text-indigo/70 leading-relaxed">
           Combien de personnes passent chaque étape, semaine par semaine. Les étapes sont comptées sans aucune
@@ -31,9 +30,9 @@ export default async function Chiffres() {
           sont dans Vercel, onglet Analytics.
         </p>
         {semaines.length === 0 ? (
-          <p className="text-sm text-indigo/70 bg-white shadow-sm p-4">Rien encore : les chiffres arrivent avec les premières visites.</p>
+          <p className="text-sm text-indigo/70 bg-white rounded-2xl border border-indigo/[0.08] p-4">Rien encore : les chiffres arrivent avec les premières visites.</p>
         ) : (
-          <div className="bg-white shadow-sm overflow-x-auto">
+          <div className="bg-white rounded-2xl border border-indigo/[0.08] overflow-x-auto">
             <table className="w-full text-sm text-indigo">
               <thead>
                 <tr className="text-left text-xs uppercase tracking-cts text-indigo/60">
@@ -56,7 +55,7 @@ export default async function Chiffres() {
             </table>
           </div>
         )}
-      </main>
+      </CadreCoach>
     </>
   );
 }

@@ -1,0 +1,55 @@
+import Image from 'next/image';
+import Link from 'next/link';
+import clsx from 'clsx';
+
+// Le cadre de l'espace coach (maquettes validées par le coach le 19/10/2026) : un menu à gauche sur ordinateur, au-dessus
+// du contenu sur téléphone (Tes athlètes, Suivi des 7 jours, Objectifs demandés, Chiffres de la vente, Bibliothèque),
+// le coach et un lien vers l'app d'un athlète.
+export type RubriqueCoach = 'athletes' | 'suivi' | 'demandes' | 'chiffres';
+
+export default function CadreCoach({ actif, demandes = 0, coach, children }: {
+  actif: RubriqueCoach; demandes?: number; coach?: string; children: React.ReactNode;
+}) {
+  const liens: [RubriqueCoach | 'bibliotheque', string, string][] = [
+    ['athletes', 'Tes athlètes', '/app/coach'],
+    ['suivi', 'Suivi des 7 jours', '/app/coach/suivi'],
+    ['demandes', 'Objectifs demandés', '/app/coach#demandes'],
+    ['chiffres', 'Chiffres de la vente', '/app/coach/chiffres'],
+    ['bibliotheque', 'Bibliothèque', '/bibliotheque'],
+  ];
+  return (
+    <div className="min-h-screen flex flex-wrap bg-sand text-indigo">
+      <aside className="flex-[1_1_220px] lg:max-w-[260px] bg-indigo text-white px-4 py-5 lg:py-6 flex flex-col gap-5">
+        <Link href="/app/coach" className="flex items-center gap-2.5 px-2">
+          <span className="w-10 h-10 rounded-full bg-white flex items-center justify-center shrink-0">
+            <Image src="/logo/cts-logo-white.png" alt="CTS Coaching" width={32} height={32} className="w-8 h-8 object-contain" />
+          </span>
+          <span>
+            <span className="block text-xs font-bold tracking-[0.12em]">CTS COACHING</span>
+            <span className="block text-[0.6875rem] text-[#B9B8CC]">Espace coach</span>
+          </span>
+        </Link>
+        <nav aria-label="Espace coach" className="flex flex-row flex-wrap lg:flex-col gap-1">
+          {liens.map(([cle, titre, href]) => (
+            <Link key={cle} href={href} aria-current={cle === actif ? 'page' : undefined}
+              className={clsx('flex items-center justify-between gap-2 min-h-11 px-3 rounded-[10px] text-sm',
+                cle === actif ? 'bg-white/10 text-white font-bold' : 'text-[#D6D5E6] font-semibold hover:bg-white/5')}>
+              <span>{titre}</span>
+              {cle === 'demandes' && demandes > 0 && (
+                <span className="min-w-[22px] h-[22px] px-1 rounded-full bg-[#2BB39B] text-[#10302B] text-xs font-extrabold inline-flex items-center justify-center">{demandes}</span>
+              )}
+            </Link>
+          ))}
+        </nav>
+        <div className="hidden lg:flex mt-auto p-3 rounded-xl bg-white/[0.06] flex-col gap-1">
+          {coach && <span className="text-xs font-bold">{coach}</span>}
+          <span className="text-[0.6875rem] text-[#B9B8CC]">Nolio relié par la clé de l’API</span>
+          <Link href="/app" className="inline-flex items-center min-h-9 text-xs font-bold text-[#8FD1C3]">Voir l’app d’un athlète ›</Link>
+        </div>
+      </aside>
+      <main className="flex-[999_1_560px] min-w-0 px-4 py-5 sm:px-8 sm:py-8">
+        <div className="max-w-5xl space-y-6">{children}</div>
+      </main>
+    </div>
+  );
+}

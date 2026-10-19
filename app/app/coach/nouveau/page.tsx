@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import CadreCoach from '@/components/app/CadreCoach';
 import Questionnaire from '@/components/plan/Questionnaire';
 import { exigerCoach } from '@/lib/app/nolio';
 import { questionnairePrerempli } from '@/lib/app/coaching';
@@ -18,10 +19,10 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
   // OM1 : l'objectif demandé par le coaché, ses réponses à relire ; sa trace part avec la demande.
   const demande = suite && typeof r.demande === 'string' ? await demandeDuCoach(coach.compteId, r.demande) : null;
   return (
-    <div className="min-h-screen bg-sand">
-      <main className="mx-auto max-w-3xl px-4 sm:px-6 py-8 sm:py-12">
-        <Link href={suite ? `/app/coach/athlete/${suite.athlete.id}` : '/app/coach'} className="text-teal font-semibold text-sm">
-          ‹ {suite ? suite.athlete.nom : 'Espace coach'}
+    <CadreCoach actif="athletes">
+      <div className="max-w-3xl">
+        <Link href={suite ? `/app/coach/athlete/${suite.athlete.id}` : '/app/coach'} className="inline-flex items-center min-h-9 text-[0.8125rem] font-bold text-teal">
+          ‹ {suite ? suite.athlete.nom : 'Tes athlètes'}
         </Link>
         <div className="my-6 px-2">
           <div className="eyebrow text-teal mb-3">Athlète coaché</div>
@@ -38,7 +39,7 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
         </div>
         <Questionnaire coach emailCoach={coach.email} athleteId={suite?.athlete.id} demandeId={demande?.id}
           initial={demande ? { ...demande.champs, nom: suite?.athlete.nom ?? '' } : suite?.initial} />
-      </main>
-    </div>
+      </div>
+    </CadreCoach>
   );
 }

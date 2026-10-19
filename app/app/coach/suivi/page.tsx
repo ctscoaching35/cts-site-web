@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import EnTeteCoach from '@/components/app/EnTeteCoach';
+import CadreCoach from '@/components/app/CadreCoach';
 import { AnnulerSemaine } from '@/components/app/GestesEcriture';
 import { ajustementsDuCoach, type Ajustement } from '@/lib/app/ecriture';
 import { accordRecu, retirerAccord } from '@/lib/app/actionsSuivi';
@@ -47,8 +47,7 @@ export default async function SuiviCoach() {
   if (!nolioConfigure()) {
     return (
       <>
-        <EnTeteCoach />
-        <main className="mx-auto max-w-2xl px-4 py-5"><p className="text-sm text-indigo/75">La clé de l’API Nolio manque dans Vercel (NOLIO_API_KEY).</p></main>
+        <CadreCoach actif="suivi"><p className="text-sm text-indigo/75">La clé de l’API Nolio manque dans Vercel (NOLIO_API_KEY).</p></CadreCoach>
       </>
     );
   }
@@ -69,9 +68,7 @@ export default async function SuiviCoach() {
   }
   return (
     <>
-      <EnTeteCoach />
-      <main className="mx-auto max-w-2xl px-4 py-5 space-y-5">
-        <Link href="/app/coach" className="text-teal font-semibold text-sm">‹ Espace coach</Link>
+      <CadreCoach actif="suivi">
         <div>
           <h1 className="text-2xl text-indigo">Suivi des 7 derniers jours</h1>
           <p className="text-sm text-indigo/70 leading-relaxed mt-1">
@@ -81,7 +78,7 @@ export default async function SuiviCoach() {
           </p>
         </div>
         {ajustements.length > 0 && (
-          <section className="bg-white shadow-sm p-4 space-y-2">
+          <section className="bg-white rounded-2xl border border-indigo/[0.08] p-4 space-y-2">
             <h2 className="eyebrow text-indigo/60">Ajustements automatiques ({ajustements.length})</h2>
             <p className="text-sm text-indigo/70">
               Ceux des semaines écrites ces 8 derniers jours. Annuler réécrit la semaine sans eux et la met à jour dans
@@ -108,10 +105,10 @@ export default async function SuiviCoach() {
           </section>
         )}
 
-        {erreur && <p className="text-sm text-indigo/75 bg-white shadow-sm p-4">{erreur}</p>}
+        {erreur && <p className="text-sm text-indigo/75 bg-white rounded-2xl border border-indigo/[0.08] p-4">{erreur}</p>}
 
         {lignes.length > 0 && (
-          <ul className="bg-white shadow-sm divide-y divide-indigo/10">
+          <ul className="bg-white rounded-2xl border border-indigo/[0.08] divide-y divide-indigo/10">
             {lignes.map(({ athlete, suivi, erreur: e }) => (
               <li key={athlete.id} className="p-4 space-y-2">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -146,7 +143,7 @@ export default async function SuiviCoach() {
         )}
 
         {sansAccord.length > 0 && (
-          <section className="bg-white shadow-sm p-4 space-y-2">
+          <section className="bg-white rounded-2xl border border-indigo/[0.08] p-4 space-y-2">
             <h2 className="eyebrow text-indigo/60">Sans accord ({sansAccord.length})</h2>
             <p className="text-sm text-indigo/70">
               Envoie-leur le message d’accord dans Nolio ; quand l’un répond oui, coche « Accord reçu » : sa réponse
@@ -164,7 +161,7 @@ export default async function SuiviCoach() {
             </ul>
           </section>
         )}
-      </main>
+      </CadreCoach>
     </>
   );
 }

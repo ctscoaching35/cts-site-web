@@ -1,29 +1,36 @@
 import Link from 'next/link';
+import clsx from 'clsx';
 import { notFound } from 'next/navigation';
-import EnTeteCoach from '@/components/app/EnTeteCoach';
+import CadreCoach from '@/components/app/CadreCoach';
 import FormulaireValeurs from '@/components/app/FormulaireValeurs';
 import InvitationApp from '@/components/app/InvitationApp';
+import { Carte, PastilleDate, Surtitre } from '@/components/app/Ui';
 import { associerNolio, retirerAcces, retirerAthlete } from '@/lib/app/actionsCoaching';
 import { adresseDuCompte } from '@/lib/app/espaceAthlete';
 import { ficheAthlete } from '@/lib/app/coaching';
+import { initiales } from '@/lib/app/contexte';
+import { demandesDuCoach } from '@/lib/app/demandes';
 import { athletesNolio, ErreurNolio, exigerCoach, nolioConfigure, type AthleteNolio } from '@/lib/app/nolio';
 import { dateLongue } from '@/lib/app/plan';
 import { allureDepuisVitesse } from '@/lib/app/allureCoach';
-import { supabaseConfigure } from '@/lib/app/supabase';
+import { clientService, supabaseConfigure } from '@/lib/app/supabase';
+import type { CourseSecondaire } from '@/lib/app/tableauDuPlan';
 
 // Toujours calculée à la visite : la page lit la session du coach.
 export const dynamic = 'force-dynamic';
 
-// La fiche d'un athlète coaché (CTS_NOLIO_CADRAGE.md, N8, N9) : ses objectifs successifs, « Nouvel objectif »,
-// son nom Nolio, ses valeurs.
+// La fiche d'un athlète coaché (CTS_NOLIO_CADRAGE.md, N8, N9, T6 ; maquette validée par le coach le 19/10/2026) : ses
+// objectifs et leurs courses de préparation, « Nouvel objectif », son accès à l'app ; ses repères, son compte Nolio.
 export default async function FicheAthleteCoache({ params }: { params: Promise<{ id: string }> }) {
   if (!supabaseConfigure()) notFound();
   const coach = await exigerCoach();
   const { id } = await params;
   const a = await ficheAthlete(coach.compteId, id);
   if (!a) notFound();
+  const service = clientService();
   const relie = nolioConfigure();
   const adresse = await adresseDuCompte(a.compte_id).catch(() => null);
+  const demandes = await demandesDuCoach(coach.compteId).catch(() => []);
   let liste: AthleteNolio[] = [];
   let erreur: string | null = null;
   try {
@@ -33,82 +40,148 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
     console.error('Athlètes Nolio :', message);
     erreur = e instanceof ErreurNolio ? message : 'Nolio ne répond pas pour l’instant : réessaie dans un moment.';
   }
+  const { data: accord } = a.nolio_athlete_id
+    ? await service.from('nolio_accords').select('accord_le').eq('coach_id', coach.compteId).eq('nolio_athlete_id', a.nolio_athlete_id).maybeSingle()
+    : { data: null };
+  const { data: plans } = a.objectifs.length
+    ? await service.from('plans').select('id, parametres, demarre_le, depart_prevu, donnees->course->>distance_km, donnees->course->>dplus_m')
+      .in('id', a.objectifs.map((o) => o.plan_id))
+    : { data: [] };
+  const etat = new Map((plans ?? []).map((p) => [p.id as string, p as Record<string, unknown>]));
+  const jour = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
+  const prochain = a.objectifs.find((o) => o.course_date >= jour)?.plan_id ?? null;
+  const nomNolio = liste.find((x) => x.id === a.nolio_athlete_id)?.name ?? null;
+  const pastilles: [string, boolean][] = [
+    [a.nolio_athlete_id ? 'Nolio relié' : 'Nolio à associer', Boolean(a.nolio_athlete_id)],
+    [accord ? 'Accord de lecture reçu' : 'Sans accord de lecture', Boolean(accord)],
+    [a.compte_id ? 'App : ouverte' : 'App : à inviter', Boolean(a.compte_id)],
+  ];
   return (
-    <>
-      <EnTeteCoach />
-      <main className="mx-auto max-w-2xl px-4 py-5 space-y-5">
-        <Link href="/app/coach" className="text-teal font-semibold text-sm">‹ Espace coach</Link>
-        <div>
-          <div className="eyebrow text-teal mb-1">Athlète coaché</div>
-          <h1 className="text-2xl text-indigo leading-tight">{a.nom}</h1>
+    <CadreCoach actif="athletes" demandes={demandes.length}>
+      <Link href="/app/coach" className="inline-flex items-center min-h-9 text-[0.8125rem] font-bold text-teal">‹ Tes athlètes</Link>
+      <div className="flex flex-wrap items-center gap-4 !mt-2">
+        <span className="w-14 h-14 rounded-full bg-[#E1EFEA] text-teal-dark flex items-center justify-center text-lg font-extrabold">{initiales(a.nom)}</span>
+        <div className="flex-[1_1_240px]">
+          <h1 className="text-[1.75rem] font-extrabold tracking-tight">{a.nom}</h1>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {pastilles.map(([texte, bien]) => (
+              <span key={texte} className={clsx('text-[0.72rem] font-bold px-2.5 py-1 rounded-xl',
+                bien ? 'bg-[#E3EFE9] text-teal' : 'bg-[#F6ECD8] text-[#7A520D]')}>{texte}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-5 items-start">
+        <div className="flex-[1_1_380px] min-w-0 space-y-5">
+          <Carte className="!p-5 space-y-3">
+            <div className="flex justify-between items-center gap-3">
+              <Surtitre>Ses objectifs</Surtitre>
+              <Link href={`/app/coach/nouveau?athlete=${a.id}`} className="inline-flex items-center min-h-10 px-3.5 rounded-[10px] bg-teal text-white text-[0.8125rem] font-bold">
+                + Nouvel objectif
+              </Link>
+            </div>
+            {a.objectifs.length === 0 && <p className="text-sm text-[#4A4866]">Aucun pour l’instant.</p>}
+            {a.objectifs.map((o) => {
+              const p = etat.get(o.plan_id);
+              const principal = o.plan_id === prochain;
+              const preps = (((p?.parametres as Record<string, unknown> | null)?.courses_secondaires ?? []) as CourseSecondaire[])
+                .slice().sort((x, y) => x.date.localeCompare(y.date));
+              const statut = o.course_date < jour ? 'couru'
+                : !p?.parametres ? 'envoyé en entier'
+                  : p.demarre_le ? `en route dans Nolio depuis le ${dateLongue(String(p.demarre_le).slice(0, 10), true)}`
+                    : p.depart_prevu ? `démarre le ${dateLongue(String(p.depart_prevu), true)}` : 'pas encore démarré';
+              const distance = p?.distance_km ? `${Math.round(Number(p.distance_km))} km` : null;
+              const dplus = p?.dplus_m ? `${Number(p.dplus_m).toLocaleString('fr-FR')} m D+` : null;
+              return (
+                <div key={o.plan_id} className="space-y-2">
+                  <Link href={`/app/coach/plan/${o.plan_id}`}
+                    className={clsx('flex items-center gap-3.5 p-3.5 rounded-xl', principal ? 'bg-indigo text-white' : 'border border-indigo/[0.12] text-indigo')}>
+                    <PastilleDate iso={o.course_date} sombre={principal} />
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-[0.9375rem] font-bold">{o.course_nom}{principal ? ' · objectif principal' : ''}</span>
+                      <span className={clsx('block text-[0.78rem]', principal ? 'text-[#D6D5E6]' : 'text-[#5E5C78]')}>
+                        {[distance, dplus, statut].filter(Boolean).join(' · ')}
+                      </span>
+                    </span>
+                    <span aria-hidden>›</span>
+                  </Link>
+                  {preps.filter((c) => c.date >= jour).map((c) => (
+                    <div key={`${c.date}-${c.nom}`} className="ml-4 flex items-center gap-3 p-3 rounded-xl border border-indigo/[0.12]">
+                      <PastilleDate iso={c.date} />
+                      <span className="text-[0.84rem]"><strong>{c.nom}</strong> · préparation · {c.distance_km} km{c.dplus_m ? ` · ${c.dplus_m} m D+` : ''}</span>
+                    </div>
+                  ))}
+                  {principal && Boolean(p?.parametres) && !p?.demarre_le && !p?.depart_prevu && (
+                    <div className="flex flex-wrap items-center gap-3 p-3.5 rounded-xl bg-[#E1EFEA]">
+                      <span className="flex-[1_1_240px] text-[0.8125rem] leading-relaxed text-[#0B4A40]">Pas encore démarré dans Nolio : la trame, ses questionnaires et sa semaine partent au départ.</span>
+                      <Link href={`/app/coach/plan/${o.plan_id}`} className="inline-flex items-center min-h-11 px-4 rounded-[10px] bg-teal text-white text-[0.8125rem] font-bold">Démarrer dans Nolio</Link>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </Carte>
+
+          <Carte className="!p-5 space-y-3">
+            <Surtitre>Dans l’app</Surtitre>
+            <p className="text-sm leading-relaxed text-[#4A4866]">
+              {adresse
+                ? `Son espace est ouvert (${adresse}) : son tableau de bord, ses données, son profil, la bibliothèque. Ses séances restent dans Nolio.`
+                : `${a.nom.split(' ')[0]} n’a pas encore accès à l’app. Invité, il reçoit un code à cette adresse pour s’y connecter, et voit son tableau de bord, ses données, son profil et la bibliothèque. Ses séances restent dans Nolio.`}
+            </p>
+            <InvitationApp athleteId={a.id} adresse={adresse} />
+            {a.compte_id && (
+              <form action={retirerAcces.bind(null, a.id)}>
+                <button type="submit" className="text-xs text-[#5E5C78] underline underline-offset-2">Retirer son accès</button>
+              </form>
+            )}
+          </Carte>
         </div>
 
-        <section className="bg-white shadow-sm p-4 space-y-3">
-          <h2 className="eyebrow text-indigo/60">Ses objectifs</h2>
-          {a.objectifs.length === 0 && <p className="text-sm text-indigo/70">Aucun pour l’instant.</p>}
-          <ul className="divide-y divide-indigo/10">
-            {a.objectifs.map((o) => (
-              <li key={o.plan_id}>
-                <Link href={`/app/coach/plan/${o.plan_id}`} className="flex justify-between gap-3 py-2 text-sm">
-                  <span className="font-semibold text-indigo">{o.course_nom}</span>
-                  <span className="text-indigo/60">{o.course_date ? dateLongue(o.course_date, true) : ''} ›</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-          <Link href={`/app/coach/nouveau?athlete=${a.id}`} className="btn btn-primary !py-2.5 inline-block">Nouvel objectif</Link>
-        </section>
+        <div className="flex-[1_1_320px] min-w-0 space-y-5">
+          <Carte className="!p-5 space-y-3">
+            <Surtitre>Ses repères</Surtitre>
+            <p className="text-[0.8125rem] leading-relaxed text-[#4A4866]">
+              Avec eux, les séances partent avec une allure sur le plat ou une FC, puis le RPE ; sans eux, au RPE, et le test
+              s’écrit à la place d’une séance. Gardés seulement avec son accord, celui du Suivi.
+            </p>
+            <FormulaireValeurs athleteId={a.id} fc1={a.fc_seuil1} vs1Allure={a.v_seuil1_ms ? allureDepuisVitesse(a.v_seuil1_ms) : null}
+              vcAllure={a.vc_ms ? allureDepuisVitesse(a.vc_ms) : null} fc2={a.fc_seuil2} />
+          </Carte>
 
-        <section className="bg-white shadow-sm p-4 space-y-2">
-          <h2 className="eyebrow text-indigo/60">Dans Nolio</h2>
-          {!relie ? (
-            <p className="text-sm text-indigo/75">La clé de l’API Nolio manque dans Vercel (NOLIO_API_KEY).</p>
-          ) : erreur ? (
-            <p className="text-sm text-indigo/75">{erreur}</p>
-          ) : (
-            <form action={associerNolio.bind(null, a.id)} className="flex flex-wrap items-center gap-2">
-              <select name="nolio_id" defaultValue={a.nolio_athlete_id ?? ''} className="border border-indigo/20 px-2 py-2 text-sm text-indigo bg-white">
-                <option value="" disabled>Choisis son nom</option>
-                {liste.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
-              </select>
-              <button type="submit" className="text-sm font-semibold text-teal">{a.nolio_athlete_id ? 'Changer' : 'Associer'}</button>
-              {a.nolio_athlete_id && (
-                <span className="text-sm text-indigo/70">Associé à {liste.find((x) => x.id === a.nolio_athlete_id)?.name ?? 'un athlète que Nolio ne retrouve pas : choisis à nouveau son nom'}.</span>
-              )}
-            </form>
-          )}
-        </section>
+          <Carte className="!p-5 space-y-3">
+            <Surtitre>Son compte Nolio</Surtitre>
+            {!relie ? (
+              <p className="text-sm text-[#4A4866]">La clé de l’API Nolio manque dans Vercel (NOLIO_API_KEY).</p>
+            ) : erreur ? (
+              <p className="text-sm text-[#4A4866]">{erreur}</p>
+            ) : (
+              <form action={associerNolio.bind(null, a.id)} className="space-y-2">
+                {a.nolio_athlete_id && (
+                  <p className="text-[0.8125rem] text-[#4A4866]">Associé à {nomNolio ?? 'un athlète que Nolio ne retrouve pas : choisis à nouveau son nom'}.</p>
+                )}
+                <div className="flex flex-wrap items-center gap-2">
+                  <select name="nolio_id" defaultValue={a.nolio_athlete_id ?? ''} aria-label="Son nom dans Nolio"
+                    className="flex-1 min-w-[12rem] min-h-11 rounded-[10px] border border-indigo/20 px-3 text-sm text-indigo bg-white">
+                    <option value="" disabled>Choisis son nom</option>
+                    {liste.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+                  </select>
+                  <button type="submit" className="min-h-11 px-4 rounded-[10px] border border-teal text-teal text-sm font-bold">{a.nolio_athlete_id ? 'Changer' : 'Associer'}</button>
+                </div>
+              </form>
+            )}
+          </Carte>
+        </div>
+      </div>
 
-        <section className="bg-white shadow-sm p-4 space-y-2">
-          <h2 className="eyebrow text-indigo/60">Dans l’app</h2>
-          <p className="text-sm text-indigo/70">
-            {adresse
-              ? `Son espace est ouvert (${adresse}) : tableau de bord, trame de ses objectifs, graphiques, fiches. Ses séances restent dans Nolio.`
-              : 'Son tableau de bord dans l’app : ses objectifs et leur trame, ses graphiques (avec son accord du Suivi), sa fiche de course, la bibliothèque. Il s’y connecte par un code reçu à cette adresse.'}
-          </p>
-          <InvitationApp athleteId={a.id} adresse={adresse} />
-          {a.compte_id && (
-            <form action={retirerAcces.bind(null, a.id)}>
-              <button type="submit" className="text-xs text-indigo/50 underline underline-offset-2">Retirer son accès</button>
-            </form>
-          )}
-        </section>
-
-        <section className="bg-white shadow-sm p-4 space-y-2">
-          <h2 className="eyebrow text-indigo/60">Ses valeurs</h2>
-          <p className="text-sm text-indigo/70">Avec elles, les séances partent avec une allure sur le plat ou une FC, puis le RPE. Sans elles, au RPE. Gardées seulement avec son accord, celui du Suivi (« Accord reçu »).</p>
-          <FormulaireValeurs athleteId={a.id} fc1={a.fc_seuil1} vs1Allure={a.v_seuil1_ms ? allureDepuisVitesse(a.v_seuil1_ms) : null}
-            vcAllure={a.vc_ms ? allureDepuisVitesse(a.vc_ms) : null} fc2={a.fc_seuil2} />
-        </section>
-
-        <details className="text-sm text-indigo/70">
-          <summary className="cursor-pointer">Retirer cet athlète</summary>
-          <p className="mt-2">Sa fiche, ses objectifs et leurs PDF quittent ton espace coach. Les séances déjà envoyées restent dans Nolio.</p>
-          <form action={retirerAthlete.bind(null, a.id)} className="mt-2">
-            <button type="submit" className="underline underline-offset-2">Retirer {a.nom}</button>
-          </form>
-        </details>
-      </main>
-    </>
+      <details className="text-[0.8125rem] text-[#5E5C78]">
+        <summary className="cursor-pointer min-h-9">Retirer cet athlète</summary>
+        <p className="mt-2">Sa fiche, ses objectifs et leurs PDF quittent ton espace coach. Les séances déjà envoyées restent dans Nolio.</p>
+        <form action={retirerAthlete.bind(null, a.id)} className="mt-2">
+          <button type="submit" className="underline underline-offset-2">Retirer {a.nom}</button>
+        </form>
+      </details>
+    </CadreCoach>
   );
 }
