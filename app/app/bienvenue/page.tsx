@@ -6,7 +6,8 @@ import { contexte, lien, type Recherche } from '@/lib/app/contexte';
 
 // L'écran de bienvenue (cadrage, 2.6), à la première ouverture sur un appareil : la course et
 // la date de départ, sur quoi le plan se construit (la couverture du PDF), l'installation sur
-// l'écran d'accueil, l'avertissement santé à lire avant d'entrer.
+// l'écran d'accueil, l'avertissement santé à lire avant d'entrer (un acheteur : faux pour un coaché, que son coach
+// suit, décision coach du 19/10/2026 ; les CGV, article 4, y renvoient l'acheteur).
 export default async function Bienvenue({ searchParams }: { searchParams: Recherche }) {
   const ctx = await contexte(searchParams);
   const { plan } = ctx;
@@ -52,7 +53,7 @@ export default async function Bienvenue({ searchParams }: { searchParams: Recher
         <Installation />
       </section>
 
-      <Avertissement avertissement={plan.avertissement} />
+      {!ctx.coache && <Avertissement avertissement={plan.avertissement} />}
 
       <form action={entrer}>
         <button type="submit" className="btn btn-primary w-full">Entrer dans mon plan</button>

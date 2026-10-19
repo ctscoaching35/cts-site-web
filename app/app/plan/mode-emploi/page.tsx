@@ -92,7 +92,8 @@ export default async function ModeEmploi({ searchParams }: { searchParams: Reche
           />
         </Partie>
 
-        <Avertissement avertissement={plan.avertissement} />
+        {/* L'avertissement santé, pour un acheteur seulement (décision coach du 19/10/2026). */}
+        {!ctx.coache && <Avertissement avertissement={plan.avertissement} />}
       </main>
     </>
   );

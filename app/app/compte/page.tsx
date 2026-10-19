@@ -20,7 +20,7 @@ const COACHS: Record<string, string> = {
 
 // Le compte (cadrage, 3.6 ; AP1 et maquette validée par le coach le 19/10/2026) : qui il est, son coach (un coaché),
 // Nolio et ses données (l'accord de lecture, T5), l'app sur l'écran d'accueil, les documents, la déconnexion, la
-// suppression ; l'avertissement santé.
+// suppression ; l'avertissement santé, pour un acheteur seulement (décision coach du 19/10/2026).
 export default async function Compte({ searchParams }: { searchParams: Recherche }) {
   const ctx = await contexte(searchParams);
   const d = await donneesTableau(ctx);
@@ -130,7 +130,7 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
             <Suppression />
           </>
         )}
-        <Avertissement avertissement={ctx.plan.avertissement} />
+        {!ctx.coache && <Avertissement avertissement={ctx.plan.avertissement} />}
       </main>
     </>
   );
