@@ -113,6 +113,11 @@ function profilDemonstration(r: Record<string, string | string[] | undefined>): 
     v_seuil1_ms: v1 === null ? null : v1 / 3.6 };
 }
 
+// Le prénom de l'athlète (le premier mot du nom donné au questionnaire) et ses initiales, pour l'accueil et l'en-tête.
+export const prenom = (nom: string | undefined) => (nom ?? '').trim().split(/\s+/)[0] ?? '';
+export const initiales = (nom: string | undefined) =>
+  (nom ?? '').trim().split(/\s+/).filter(Boolean).slice(0, 2).map((m) => m[0]?.toUpperCase() ?? '').join('') || 'CTS';
+
 // Un lien de l'app ; en démonstration, il garde le plan, le jour et le profil simulés.
 export const lien = (chemin: string, ctx: Contexte, extra: Record<string, string> = {}) => {
   const simule = ctx.demonstration

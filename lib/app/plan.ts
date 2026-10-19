@@ -100,6 +100,9 @@ export type Jour = {
   definition_du_jour?: string | null;
   // Les repères de « Tes zones » (moteur v8.311) : absents d'un plan plus ancien.
   reperes?: Reperes | null;
+  // La couleur de la séance dans Nolio (V5, moteur 8.330), que l'app reprend : absente d'un plan plus ancien (la
+  // couleur de la famille la remplace).
+  couleur?: string | null;
   // La classe du jour pour les règles du déplacement, et s'il est fixe (moteur v8.313) : absent d'un
   // plan plus ancien.
   placement?: Placement | null;

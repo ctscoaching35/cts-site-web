@@ -12,7 +12,7 @@ export function Deconnexion() {
         await seDeconnecter();
       }}
     >
-      <button type="submit" className="w-full bg-white shadow-sm p-4 text-left font-semibold text-indigo">
+      <button type="submit" className="w-full min-h-12 rounded-xl bg-white border border-indigo/20 text-sm font-bold text-indigo">
         Me déconnecter
       </button>
     </form>
@@ -26,7 +26,7 @@ export function Suppression() {
         await oublierCeQueLAppareilAGarde();
         await supprimerCompte(formulaire);
       }}
-      className="bg-white shadow-sm p-4 space-y-3"
+      className="bg-white rounded-2xl border border-indigo/[0.08] p-[18px] space-y-3"
     >
       <h2 className="font-bold text-indigo">Supprimer mon compte</h2>
       <p className="text-sm text-indigo/70">Ton compte, tes plans et leurs PDF sont effacés, sans retour possible.</p>

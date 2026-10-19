@@ -5,7 +5,7 @@
  */
 import type { Contexte } from './contexte';
 import { trameDuPlan, type LigneTrame, type Realise } from './ecriture';
-import { ajouterJours } from './plan';
+import { ajouterJours, type Semaine } from './plan';
 import { clientService } from './supabase';
 import { trameDesDonnees, type Fiche } from './tableau';
 
@@ -17,7 +17,8 @@ export type DonneesTableau = {
   // Les courses secondaires ajoutées (O2).
   courses: CourseSecondaire[];
 };
-export type CourseSecondaire = { nom: string; date: string; distance_km: number; dplus_m: number };
+// chrono : le chrono visé (PO3), absent d'une course ajoutée avant le 20/10/2026.
+export type CourseSecondaire = { nom: string; date: string; distance_km: number; dplus_m: number; chrono?: string | null };
 
 export async function donneesTableau(ctx: Contexte): Promise<DonneesTableau> {
   if (ctx.demonstration) return demonstration(ctx);
@@ -69,4 +70,13 @@ function demonstration(ctx: Contexte): DonneesTableau {
       };
     });
   return { trame, realises, fiches: [], nolio: 'actif', accord: true, ecrit: true, courses: [] };
+}
+
+// La semaine telle qu'elle est partie dans Nolio (semaines_ecrites, ajustements compris) ; sinon celle du plan
+// (un plan envoyé en entier, la démonstration, une semaine pas encore écrite).
+export async function semaineEcrite(ctx: Contexte, numero: string): Promise<Semaine | null> {
+  const duPlan = ctx.plan.semaines.find((s) => s.numero === numero) ?? null;
+  if (ctx.demonstration) return duPlan;
+  const { data } = await clientService().from('semaines_ecrites').select('donnees').eq('plan_id', ctx.cle).eq('numero', numero).maybeSingle();
+  return (data?.donnees as Semaine | undefined) ?? duPlan;
 }

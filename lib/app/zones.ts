@@ -193,3 +193,40 @@ export function lireDistance(texte: string): number | null {
   if (!Number.isFinite(n) || n <= 0) return null;
   return n < 50 ? Math.round(n * 1000) : Math.round(n);
 }
+
+// LE PROFIL DU COUREUR (CTS_NOLIO_CADRAGE.md, AP4, décision coach du 19/10/2026 : la règle du calculateur « Ton profil
+// de traileur », public/calculateur.html, à l'identique). Le coefficient de Riegel : 1 + la pente de ln(vitesse) en
+// fonction de ln(durée), RAMENÉ au test de référence (5:00, 12:00, 16:40) pour cette VC et cette D′ (décision coach
+// du 13/10/2026) ; sous 0,90 (un repère de coach), « plutôt rapide », sinon « plutôt endurant ». Rien sans D′ : le
+// profil se tire du test de vitesse critique.
+export function coefficientRiegel(vc_ms: number, d_prime_m: number): number {
+  const REF = [300, 720, 1000];
+  const lnv = (t: number) => Math.log(vc_ms + d_prime_m / t);
+  const lx = REF.reduce((a, t) => a + Math.log(t), 0) / REF.length;
+  const ly = REF.reduce((a, t) => a + lnv(t), 0) / REF.length;
+  const lxy = REF.reduce((a, t) => a + (Math.log(t) - lx) * (lnv(t) - ly), 0);
+  const lxx = REF.reduce((a, t) => a + (Math.log(t) - lx) ** 2, 0);
+  return 1 + lxy / lxx;
+}
+
+export type ProfilCoureur = { coefficient: number; nom: string; texte: string; loin: string; pres: string; note: string };
+export function profilCoureur(p: Pick<Profil, 'vc_ms' | 'd_prime_m'>): ProfilCoureur | null {
+  if (p.vc_ms === null || p.d_prime_m === null || !p.d_prime_m) return null;
+  const r = coefficientRiegel(p.vc_ms, p.d_prime_m);
+  const rapide = r < 0.9;
+  const coef = r.toFixed(2).replace('.', ',');
+  return {
+    coefficient: r,
+    nom: rapide ? 'Plutôt rapide' : 'Plutôt endurant',
+    texte: rapide
+      ? `Ton coefficient de Riegel est de ${coef} : ta vitesse baisse plus que la moyenne quand l’effort s’allonge. Ta marge de progrès est surtout en endurance : tenir plus longtemps une plus grande part de ta vitesse.`
+      : `Ton coefficient de Riegel est de ${coef} : tu tiens bien ta vitesse quand l’effort s’allonge. Ta marge de progrès est surtout en vitesse, sur les efforts courts.`,
+    loin: rapide
+      ? 'Travaille ton point faible, l’endurance : des blocs longs juste sous ta vitesse critique, du tempo, du seuil 1 et du volume d’endurance. Garde quelques rappels de vitesse.'
+      : 'Travaille ton point faible, la vitesse : des intervalles courts au-dessus de ta vitesse critique, des côtes courtes, des accélérations. Garde ton volume d’endurance.',
+    pres: rapide
+      ? 'Appuie-toi sur ta vitesse, ton point fort, et sur la spécificité de ton épreuve : sa durée, son dénivelé, son allure de course. Sur un format long, des sorties longues sur un terrain proche de la course.'
+      : 'Appuie-toi sur ton endurance, ton point fort, et sur la spécificité de ton épreuve : sa durée, son dénivelé, son allure de course. Sur un format court, des séances à l’allure de course.',
+    note: 'Le repère de 0,90 est un repère de coach. Ce profil oriente l’entraînement ; tes sensations et ton objectif décident.',
+  };
+}

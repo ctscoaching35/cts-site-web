@@ -37,24 +37,25 @@ export function AnnulerSemaine({ planId, numero }: { planId: string; numero: str
 
 export function AjouterCourse({ planId }: { planId: string }) {
   const [etat, action, enCours] = useActionState<EtatGeste, FormData>(ajouterCourse.bind(null, planId), null);
-  const champ = 'w-full border border-indigo/20 px-2 py-2 text-sm text-indigo bg-white';
+  const champ = 'mt-1.5 w-full min-h-11 rounded-[10px] border border-indigo/20 px-3 text-sm font-normal text-indigo bg-white';
   return (
     <form action={action} className="space-y-3">
-      <div className="grid grid-cols-2 gap-2">
-        <label className="col-span-2 text-xs text-indigo/70">Nom de la course
-          <input name="nom" className={champ} maxLength={80} />
-        </label>
-        <label className="text-xs text-indigo/70">Date
+      <label className="block text-xs font-semibold text-indigo">Nom de la course
+        <input name="nom" className={champ} maxLength={80} placeholder="Trail de…" />
+      </label>
+      <div className="grid grid-cols-2 gap-2.5">
+        <label className="block text-xs font-semibold text-indigo">Date
           <input name="date" type="date" required className={champ} />
         </label>
-        <label className="text-xs text-indigo/70">Distance (km)
+        <label className="block text-xs font-semibold text-indigo">Distance (km)
           <input name="distance_km" inputMode="decimal" required className={champ} />
         </label>
-        <label className="text-xs text-indigo/70">D+ (m)
+        <label className="block text-xs font-semibold text-indigo">D+ (m)
           <input name="dplus_m" inputMode="numeric" className={champ} />
         </label>
       </div>
-      <button type="submit" disabled={enCours} className="text-sm font-semibold text-teal disabled:opacity-50">
+      <button type="submit" disabled={enCours}
+        className="w-full min-h-12 rounded-xl bg-teal text-white text-sm font-bold disabled:opacity-50">
         {enCours ? 'Vérification…' : 'Ajouter la course'}
       </button>
       <Message etat={etat} />

@@ -55,7 +55,8 @@ export function trameDesDonnees(plan: Plan): LigneTrame[] {
 export type Pilier = { cle: 'assiduite' | 'sorties_longues' | 'cles' | 'fraicheur'; titre: string; valeur: number; detail: string };
 export type Verdict = { libelle: string; ton: 'bien' | 'retrait' | 'retard' };
 export type Jalon = { titre: string; atteint: boolean };
-export type Jauge = { semaine: number | null; total: number; piliers: Pilier[]; verdict: Verdict | null; jalons: Jalon[] };
+// score : la moyenne des piliers, de 0 à 1 (la montagne de l'accueil se remplit d'autant, AP2) ; null avant deux semaines.
+export type Jauge = { semaine: number | null; total: number; piliers: Pilier[]; verdict: Verdict | null; score: number | null; jalons: Jalon[] };
 
 const ECART_HOOPER = 3;
 const VERDICT_BIEN = 0.85;
@@ -113,7 +114,7 @@ export function jaugeDuPlan(trame: LigneTrame[], realises: Realise[], aujourdhui
   const verdict: Verdict | null = score === null ? null
     : score >= VERDICT_BIEN ? { libelle: 'Sur la bonne voie', ton: 'bien' }
       : score >= VERDICT_RETRAIT ? { libelle: 'Un peu en retrait', ton: 'retrait' } : { libelle: 'En retard sur la trame', ton: 'retard' };
-  return { semaine: rang >= 0 ? rang + 1 : null, total: trame.length, piliers, verdict, jalons: jalons(trame, faits, rang, pic) };
+  return { semaine: rang >= 0 ? rang + 1 : null, total: trame.length, piliers, verdict, score, jalons: jalons(trame, faits, rang, pic) };
 }
 
 function jalons(trame: LigneTrame[], faits: Realise[], rang: number, pic: number): Jalon[] {

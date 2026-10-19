@@ -1,21 +1,20 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import EncartProfil from '@/components/app/EncartProfil';
 import EnTeteApp from '@/components/app/EnTeteApp';
 import {
-  CarteNolio, FicheDuMoment, GraphiqueHooper, GraphiqueVolume, JaugePiliers, SemaineDeLaTrame,
+  CarteNolio, CarteObjectif, CetteSemaine, CoursesPreparation, FicheDuMoment, Piliers,
 } from '@/components/app/TableauDeBord';
 import { COOKIE_BIENVENUE } from '@/lib/app/bienvenue';
-import { contexte, lien, type Recherche } from '@/lib/app/contexte';
+import { contexte, lien, prenom, type Recherche } from '@/lib/app/contexte';
 import { dateLongue, joursEntre, moment } from '@/lib/app/plan';
-import { barresDeVolume, ficheDuMoment, jaugeDuPlan, momentDe, pointsHooper } from '@/lib/app/tableau';
-import { donneesTableau } from '@/lib/app/tableauDuPlan';
+import { ficheDuMoment, jaugeDuPlan, momentDe } from '@/lib/app/tableau';
+import { donneesTableau, semaineEcrite } from '@/lib/app/tableauDuPlan';
 
-// Le tableau de bord (CTS_NOLIO_CADRAGE.md dans le dépôt du moteur, T1, décisions coach du 18-19/10/2026) : les
-// séances vivent dans Nolio ; ici la course et le compte à rebours, où en est l'athlète dans Nolio, la semaine de la
-// trame, la jauge, le volume et le Hooper, la fiche du moment.
-export default async function TableauDeBord({ searchParams }: { searchParams: Recherche }) {
+// L'accueil (CTS_NOLIO_CADRAGE.md dans le dépôt du moteur, T1, AP1, AP2 ; maquette validée par le coach le
+// 19/10/2026) : les séances vivent dans Nolio ; ici l'objectif et sa montagne, les piliers, les courses de
+// préparation, la semaine en cours, la fiche du moment. Les données, le profil et la bibliothèque ont leur onglet.
+export default async function Accueil({ searchParams }: { searchParams: Recherche }) {
   const ctx = await contexte(searchParams);
   // La première fois sur cet appareil : l'écran de bienvenue (cadrage, 2.6), lu avant d'entrer.
   if (!(await cookies()).get(COOKIE_BIENVENUE)) redirect(lien('/app/bienvenue', ctx));
@@ -24,58 +23,37 @@ export default async function TableauDeBord({ searchParams }: { searchParams: Re
   const etape = moment(plan, jour);
   const restants = joursEntre(jour, plan.course.date);
   const rang = d.trame.findIndex((l) => l.lundi && momentDe(l.lundi, jour) === 'encours');
+  const ligne = rang >= 0 ? d.trame[rang] : null;
+  const semaine = ligne ? await semaineEcrite(ctx, ligne.numero) : null;
   const jauge = jaugeDuPlan(d.trame, d.realises, jour);
   const fiche = ficheDuMoment(d.fiches, jour);
+  const nom = prenom(plan.athlete.nom);
+  // Une course de préparation s'ajoute dans l'objectif, tant que la course est à venir et le plan écrit semaine par
+  // semaine.
+  const ajout = d.ecrit && !ctx.demonstration && plan.course.date >= jour ? `${lien('/app/plan', ctx)}#ajouter-course` : null;
   return (
     <>
       <EnTeteApp ctx={ctx} />
-      <main className="mx-auto max-w-2xl px-4 py-5 space-y-6">
+      <main className="mx-auto max-w-2xl px-4 pt-5 pb-6 space-y-4">
         <div>
-          <div className="eyebrow text-teal mb-1">{dateLongue(jour)}</div>
-          <div className="flex items-baseline justify-between gap-4">
-            <h1 className="text-2xl text-indigo">{plan.course.nom}</h1>
-            {restants > 0 && <span className="text-sm font-bold text-indigo/70 whitespace-nowrap">J-{restants}</span>}
-          </div>
-          <p className="text-sm text-indigo/60">{plan.course.date_lettres} · {plan.course.format_clair}</p>
+          <div className="text-xs font-semibold text-[#5E5C78] first-letter:uppercase">{dateLongue(jour)}</div>
+          <h1 className="mt-1 text-[1.625rem] font-extrabold text-indigo tracking-tight">{nom ? `Bonjour ${nom}` : 'Bonjour'}</h1>
         </div>
 
+        <CarteObjectif plan={plan} restants={restants} jauge={jauge} etape={etape} href={lien('/app/plan', ctx)} />
         {etape !== 'apres' && <CarteNolio etat={d.nolio} />}
 
-        {etape === 'avant' && (
-          <div className="bg-white shadow-sm p-4 border-l-4 border-teal">
-            <p className="font-bold text-indigo">{plan.couverture.debut}</p>
-            <p className="text-sm text-indigo/60 mt-1">{plan.couverture.rendez_vous}</p>
-          </div>
-        )}
-
-        {etape === 'pendant' && rang >= 0 && (
-          <section className="space-y-2">
-            <h2 className="eyebrow text-indigo/60">Cette semaine</h2>
-            <SemaineDeLaTrame ligne={d.trame[rang]} rang={rang + 1} total={d.trame.length} />
-            <Link href={lien('/app/plan', ctx)} className="inline-block text-teal font-semibold text-sm">Tout ton plan ›</Link>
-          </section>
-        )}
-
         {etape !== 'apres' && restants <= 7 && (
-          <Link href={lien('/app/plan/jour-j', ctx)} className="block bg-teal text-white p-4 shadow-sm">
-            <span className="eyebrow text-white/70 block mb-1">Semaine de course</span>
+          <Link href={lien('/app/plan/jour-j', ctx)} className="block bg-teal text-white rounded-2xl p-[18px]">
+            <span className="block text-[0.6875rem] font-bold tracking-[0.14em] uppercase text-white/70 mb-1">Semaine de course</span>
             <span className="font-bold text-lg">{plan.jour_j.titre} ›</span>
           </Link>
         )}
 
+        {etape !== 'avant' && <Piliers jauge={jauge} />}
+        {etape !== 'apres' && <CoursesPreparation courses={d.courses.filter((c) => c.date >= jour)} ajout={ajout} />}
+        {etape === 'pendant' && <CetteSemaine semaine={semaine} ligne={ligne} questionnaire={d.ecrit && restants > 7} />}
         {fiche && etape !== 'apres' && <FicheDuMoment fiche={fiche.fiche} avenir={fiche.avenir} ctx={ctx} />}
-        {etape !== 'avant' && <JaugePiliers jauge={jauge} />}
-        {d.ecrit && <GraphiqueVolume barres={barresDeVolume(d.trame, d.realises, jour)} />}
-        {d.accord && <GraphiqueHooper points={pointsHooper(d.trame, d.realises, jour)} />}
-        {/* Les repères d'un coaché sont posés par son coach (T8) : pas d'invitation aux tests. */}
-        {etape !== 'apres' && !ctx.coache && <EncartProfil ctx={ctx} />}
-
-        {etape === 'apres' && (
-          <div className="bg-white shadow-sm p-4 text-indigo space-y-2">
-            <p><span className="font-bold">{plan.course.nom}</span> — {plan.course.date_lettres}</p>
-            <Link href={lien('/app/plan', ctx)} className="text-teal font-semibold text-sm">Revoir ton plan ›</Link>
-          </div>
-        )}
       </main>
     </>
   );
