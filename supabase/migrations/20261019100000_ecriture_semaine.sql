@@ -6,6 +6,9 @@
 -- plans : un plan qui porte des paramètres s'écrit semaine par semaine (sans eux, l'ancien envoi en entier, T11) ;
 -- l'état de l'écriture d'une semaine à l'autre ; pour un acheteur, son athlète Nolio et où en est son invitation
 -- (P1 à P4), l'adresse Nolio qu'il a donnée (effacée une fois l'invitation partie) et son accord de lecture (T5).
+-- Le tout dans une transaction : une ligne qui échoue, et rien ne s'applique.
+
+begin;
 
 alter table public.plans
   add column parametres jsonb,
@@ -82,3 +85,5 @@ alter table public.objectifs_demandes enable row level security;
 
 -- Les athlètes coachés invités dans l'app (T6) : leur compte, relié à leur fiche.
 alter table public.athletes_coaches add column compte_id uuid references public.comptes (id) on delete set null;
+
+commit;
