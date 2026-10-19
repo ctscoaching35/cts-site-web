@@ -147,10 +147,17 @@ export default async function Confidentialite() {
             tes sensations, tes commentaires et ton questionnaire Hooper, au moment où il l’ouvre, sans en garder de
             copie ;
           </li>
+          <li>
+            chaque dimanche, tes séances de la semaine suivante s’écrivent d’après ta semaine écoulée, avec les mêmes
+            lectures ; nous gardons un résumé chiffré de chaque semaine (charge, séances faites, plus longue sortie,
+            Hooper), pour ajuster tes séances et afficher tes graphiques dans ton espace CTS ;
+          </li>
+          <li>si ton coach t’ouvre un espace dans l’app, nous gardons ton adresse e-mail, pour ta connexion ;</li>
           <li>nous gardons ton nom, ton identifiant Nolio et la date de ton accord.</li>
         </Liste>
         <p>
-          Retirer ton accord efface tes repères et arrête la lecture. Personne d’autre que ton coach ne voit ces données.
+          Retirer ton accord efface tes repères et ces résumés, et arrête la lecture. Personne d’autre que ton coach et toi
+          ne voit ces données.
           Les séances écrites dans ton calendrier restent dans Nolio, qui applique sa propre politique de
           confidentialité. Ta fiche de course est une page à lien privé, que seuls ceux qui ont le lien peuvent ouvrir.
         </p>
