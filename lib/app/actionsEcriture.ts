@@ -6,7 +6,7 @@
  */
 import { revalidatePath } from 'next/cache';
 import { API_URL } from '@/lib/plan';
-import { annulerAjustements, demarrerObjectif, objectifEcrit, retirerAccordLecture } from './ecriture';
+import { annulerAjustements, demarrerObjectif, objectifEcrit, poserCourse, retirerAccordLecture } from './ecriture';
 import { coachConnecte } from './nolio';
 import { clientServeur, clientService } from './supabase';
 
@@ -81,6 +81,11 @@ export async function ajouterCourse(planId: string, _e: EtatGeste, form: FormDat
   if (!verdict.ok) return { ok: false, message: verdict.message ?? 'Cette course ne peut pas s’ajouter au plan.' };
   const courses = [...((o.parametres.courses_secondaires as unknown[]) ?? []), course];
   await clientService().from('plans').update({ parametres: { ...o.parametres, courses_secondaires: courses } }).eq('id', planId);
+  // OM3 : la course dans le calendrier Nolio, si l'objectif y est déjà ; sinon elle part au démarrage.
+  const { data: depart } = await clientService().from('plans').select('demarre_le').eq('id', planId).maybeSingle();
+  if (depart?.demarre_le) {
+    await poserCourse(o, course, false).catch((e) => console.error(`Course de ${planId} non posée dans Nolio :`, e instanceof Error ? e.message : e));
+  }
   revalidatePath('/app/plan');
   revalidatePath(`/app/coach/plan/${planId}`);
   return { ok: true, message: `Course ajoutée : les jours autour d’elle s’ajustent dans tes semaines.${verdict.message ? ` ${verdict.message}` : ''}` };

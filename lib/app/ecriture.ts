@@ -345,6 +345,10 @@ export async function demarrerObjectif(planId: string): Promise<string> {
   try {
     await envoyerTrame(o, aujourdhui);
     await programmerQuestionnaires(o, dimancheSuivant(debut.lundi < aujourdhui ? aujourdhui : debut.lundi));
+    // OM3 : l'objectif et ses courses de préparation, en compétitions dans Nolio.
+    const { course } = o.plan;
+    await poserCourse(o, { nom: course.nom, date: course.date, distance_km: course.distance_km, dplus_m: course.dplus_m }, true);
+    for (const c of ((o.parametres.courses_secondaires ?? []) as Course[])) if (c.date >= aujourdhui) await poserCourse(o, c, false);
     const deja = o.envois.some((e) => e.semaine === debut.numero);
     if (!deja) await ecrireEtEnvoyer(o, debut.numero, null, { depuis: aujourdhui > debut.lundi ? aujourdhui : undefined });
     if (!o.coache) await rangerAcheteur(o);
@@ -474,6 +478,32 @@ export async function retirerAccordLecture(planId: string): Promise<void> {
       if (r && r.statut !== 204 && r.statut !== 200 && r.statut !== 404) console.error(`Questionnaire de ${planId} non retiré de Nolio : ${r.statut}`);
     }
   }
+}
+
+// ─── Les courses dans Nolio (OM3, décision coach du 19/10/2026) ─────────────
+
+// Le « Trail » du catalogue de Nolio (cts_nolio.SPORT_TRAIL, GET /api/v2/sports/).
+const SPORT_TRAIL = 'spt_YprHS7jgV5vdsz0';
+export type Course = { nom: string; date: string; distance_km: number; dplus_m: number };
+
+// Une course posée en compétition dans le calendrier Nolio de l'athlète : l'objectif principal (trophée d'or) ou une
+// course de préparation (d'argent) ; une compétition déjà posée ce jour-là (par le coach ou l'athlète) n'est pas
+// doublée, ni une course déjà posée par le site.
+export async function poserCourse(o: Objectif, c: Course, principale: boolean) {
+  const cle = `course:${c.date}`;
+  if (!o.nolioAthlete || o.envois.some((e) => e.semaine === cle)) return;
+  const d = await destinataire(o.nolioAthlete);
+  const deja = await listeNolio<{ id: string; date_start: string }>(
+    `planned/competitions/?date_from=${c.date}&date_to=${c.date}${d.moi ? '' : `&athlete=${d.usr}`}`).catch(() => []);
+  if (deja.length) return;
+  const corps = {
+    name: c.nom, event: c.nom, date_start: c.date, sport: SPORT_TRAIL, goal_type: principale ? 'a' : 'b',
+    distance: { value: c.distance_km, unit: 'km' }, elevation_gain: { value: c.dplus_m, unit: 'm' },
+  };
+  const r = await appelNolio('POST', 'planned/competitions/', d.moi ? corps : { ...corps, athletes: [d.usr] });
+  if (r.statut !== 201 && r.statut !== 200) throw new Error(refusNolio(r, `la course du ${c.date}`));
+  await garderEnvoi(o.coachId, o.planId, cle, [{ jour_id: cle, nolio_id: String(r.corps?.id ?? ''), genre: 'note' }]);
+  o.envois.push({ semaine: cle, envoye_le: new Date().toISOString(), seances: [] });
 }
 
 // ─── Les tests dans Nolio (TN1 à TN4, décisions coach du 19/10/2026) ─────────
