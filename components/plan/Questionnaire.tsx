@@ -602,7 +602,9 @@ export default function Questionnaire({
         </div>
       </Section>
 
-      <Section numero={7} titre="Avant de commencer">
+      {/* La blessure en cours (décision coach du 19/10/2026) : gardée pour les plans achetés (le garde-fou d'O1 et des
+          CGV), retirée du coaching individualisé, où le coach connaît son athlète et où rien n'était transmis. */}
+      {!coach && <Section numero={7} titre="Avant de commencer">
         {(['blessure'] as const).map((q) => (
           <div key={q}>
             <p className="font-bold text-indigo mb-3">{textes.sante[q]}</p>
@@ -618,7 +620,7 @@ export default function Questionnaire({
           </div>
         ))}
         <p className="text-sm text-indigo/60">Cette réponse reste sur ta page : elle sert seulement à t’afficher un conseil avant de générer ton plan.</p>
-      </Section>
+      </Section>}
 
       {refus && (
         <p role="alert" className="bg-white border-l-4 border-red-400 p-5 text-indigo leading-relaxed">{refus}</p>
