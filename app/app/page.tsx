@@ -4,17 +4,17 @@ import { redirect } from 'next/navigation';
 import EncartProfil from '@/components/app/EncartProfil';
 import EnTeteApp from '@/components/app/EnTeteApp';
 import {
-  CarteNolio, FicheDuMoment, GraphiqueCharge, GraphiqueHooper, JaugePiliers, SemaineDeLaTrame,
+  CarteNolio, FicheDuMoment, GraphiqueHooper, GraphiqueVolume, JaugePiliers, SemaineDeLaTrame,
 } from '@/components/app/TableauDeBord';
 import { COOKIE_BIENVENUE } from '@/lib/app/bienvenue';
 import { contexte, lien, type Recherche } from '@/lib/app/contexte';
 import { dateLongue, joursEntre, moment } from '@/lib/app/plan';
-import { barresDeCharge, ficheDuMoment, jaugeDuPlan, momentDe, pointsHooper } from '@/lib/app/tableau';
+import { barresDeVolume, ficheDuMoment, jaugeDuPlan, momentDe, pointsHooper } from '@/lib/app/tableau';
 import { donneesTableau } from '@/lib/app/tableauDuPlan';
 
 // Le tableau de bord (CTS_NOLIO_CADRAGE.md dans le dépôt du moteur, T1, décisions coach du 18-19/10/2026) : les
 // séances vivent dans Nolio ; ici la course et le compte à rebours, où en est l'athlète dans Nolio, la semaine de la
-// trame, la jauge, la charge et le Hooper, la fiche du moment.
+// trame, la jauge, le volume et le Hooper, la fiche du moment.
 export default async function TableauDeBord({ searchParams }: { searchParams: Recherche }) {
   const ctx = await contexte(searchParams);
   // La première fois sur cet appareil : l'écran de bienvenue (cadrage, 2.6), lu avant d'entrer.
@@ -65,7 +65,7 @@ export default async function TableauDeBord({ searchParams }: { searchParams: Re
 
         {fiche && etape !== 'apres' && <FicheDuMoment fiche={fiche.fiche} avenir={fiche.avenir} ctx={ctx} />}
         {etape !== 'avant' && <JaugePiliers jauge={jauge} />}
-        {d.avecCharge && <GraphiqueCharge barres={barresDeCharge(d.trame, d.realises, jour)} />}
+        {d.ecrit && <GraphiqueVolume barres={barresDeVolume(d.trame, d.realises, jour)} />}
         {d.accord && <GraphiqueHooper points={pointsHooper(d.trame, d.realises, jour)} />}
         {/* Les repères d'un coaché sont posés par son coach (T8) : pas d'invitation aux tests. */}
         {etape !== 'apres' && !ctx.coache && <EncartProfil ctx={ctx} />}

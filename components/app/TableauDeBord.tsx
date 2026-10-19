@@ -107,13 +107,13 @@ export function JaugePiliers({ jauge }: { jauge: Jauge }) {
   );
 }
 
-// ─── La charge de la semaine (T10) ────────────────────────────────────────
+// ─── Le volume de la semaine (T10 ; en durées, décision coach du 19/10/2026) ───
 
 const L = 300;
 const H = 110;
 const BAS = 92;
 
-export function GraphiqueCharge({ barres }: { barres: Barre[] }) {
+export function GraphiqueVolume({ barres }: { barres: Barre[] }) {
   if (!barres.length) return null;
   const pas = L / barres.length;
   const pic = Math.max(1, ...barres.map((b) => Math.max(b.prevue, b.faite ?? 0)));
@@ -121,15 +121,15 @@ export function GraphiqueCharge({ barres }: { barres: Barre[] }) {
   const faites = barres.some((b) => b.faite !== null);
   return (
     <section className="bg-white shadow-sm px-4 py-3 space-y-2">
-      <h2 className="text-[0.7rem] font-semibold tracking-cts uppercase text-teal">Ta charge, semaine par semaine</h2>
-      <svg viewBox={`0 0 ${L} ${H}`} className="w-full h-auto" role="img" aria-label="La charge faite à côté de la charge prévue, chaque semaine">
+      <h2 className="text-[0.7rem] font-semibold tracking-cts uppercase text-teal">Ton volume, semaine par semaine</h2>
+      <svg viewBox={`0 0 ${L} ${H}`} className="w-full h-auto" role="img" aria-label="Les heures faites à côté des heures prévues, chaque semaine">
         {barres.map((b, i) => {
           const x = i * pas;
           const w = pas * 0.8;
           const avenir = b.moment !== 'passee';
           return (
             <g key={b.numero}>
-              <title>{`${b.numero} : prévue ${b.prevue}${b.faite !== null ? `, faite ${b.faite}` : ''}`}</title>
+              <title>{`${b.numero} : ${enHeures(b.prevue)} prévues${b.faite !== null ? `, ${enHeures(b.faite)} faites` : ''}`}</title>
               <rect x={x + pas * 0.1} y={BAS - h(b.prevue)} width={w} height={h(b.prevue)}
                 fill={avenir ? 'none' : '#E4E3EE'} stroke={avenir ? '#8A94A8' : 'none'} strokeDasharray={avenir ? '3 2' : undefined} strokeWidth={0.8} />
               {b.faite !== null && (
@@ -143,13 +143,13 @@ export function GraphiqueCharge({ barres }: { barres: Barre[] }) {
         })}
       </svg>
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-indigo/70">
-        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 bg-[#E4E3EE]" />prévue</span>
-        {faites && <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 bg-teal" />faite</span>}
+        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 bg-[#E4E3EE]" />prévu</span>
+        {faites && <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 bg-teal" />fait</span>}
         <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 border border-dashed border-[#8A94A8]" />à venir</span>
         <span className="flex items-center gap-1.5"><span className="text-teal">●</span>week-end choc</span>
         <span className="flex items-center gap-1.5"><span className="w-2.5 h-1 bg-[#BEE4DE]" />affûtage</span>
       </div>
-      <p className="text-xs text-indigo/60">La charge d’une séance : ton RPE multiplié par sa durée. Elle se met à jour chaque dimanche.</p>
+      <p className="text-xs text-indigo/60">Tes heures de course de chaque semaine, faites à côté des prévues. Elles se mettent à jour chaque dimanche.</p>
     </section>
   );
 }

@@ -14,8 +14,6 @@ import { trameDesDonnees, type Fiche } from './tableau';
 export type EtatNolio = 'a_inviter' | 'en_cours' | 'invite' | 'actif' | 'refuse' | 'sorti' | 'coache' | null;
 export type DonneesTableau = {
   trame: LigneTrame[]; realises: Realise[]; fiches: Fiche[]; nolio: EtatNolio; accord: boolean; ecrit: boolean;
-  // Avec la charge visée de la trame (un plan écrit semaine par semaine) : le graphique de charge a un sens.
-  avecCharge: boolean;
   // Les courses secondaires ajoutées (O2).
   courses: CourseSecondaire[];
 };
@@ -29,7 +27,7 @@ export async function donneesTableau(ctx: Contexte): Promise<DonneesTableau> {
   const accordCoache = ctx.coache ? await accordDuCoache(ctx.cle) : false;
   if (!p?.parametres) {
     return { trame: trameDesDonnees(ctx.plan), realises: [], fiches: [], nolio: ctx.coache ? 'coache' : null, accord: false, ecrit: false,
-      avecCharge: false, courses: [] };
+      courses: [] };
   }
   const trame = await trameDuPlan(ctx.cle);
   const { data: lignes } = await service.from('semaines_ecrites').select('numero, realise').eq('plan_id', ctx.cle).not('realise', 'is', null);
@@ -38,7 +36,7 @@ export async function donneesTableau(ctx: Contexte): Promise<DonneesTableau> {
   return {
     trame: trame?.semaines ?? trameDesDonnees(ctx.plan), realises, fiches: trame?.fiches ?? [],
     nolio: ctx.coache ? 'coache' : (p.nolio_statut ?? null) as EtatNolio, accord: ctx.coache ? accordCoache : Boolean(p.accord_lecture_le),
-    ecrit: true, avecCharge: Boolean(trame),
+    ecrit: true,
     courses: (((p.parametres as Record<string, unknown>).courses_secondaires ?? []) as CourseSecondaire[])
       .slice().sort((a, b) => a.date.localeCompare(b.date)),
   };
@@ -70,5 +68,5 @@ function demonstration(ctx: Contexte): DonneesTableau {
         dplus_m: null, hooper: 8 + (i % 3) + (i % 7 === 6 ? 3 : 0),
       };
     });
-  return { trame, realises, fiches: [], nolio: 'actif', accord: true, ecrit: true, avecCharge: true, courses: [] };
+  return { trame, realises, fiches: [], nolio: 'actif', accord: true, ecrit: true, courses: [] };
 }

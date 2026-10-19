@@ -2,7 +2,7 @@
  * Le tableau de bord de l'athlète (CTS_NOLIO_CADRAGE.md dans le dépôt du moteur, T1, T4, T10 ; décisions coach du
  * 18-19/10/2026) : ses séances vivent dans Nolio, l'app montre où il en est. La trame (une ligne par semaine), ce
  * qui a été fait chaque semaine écoulée (moteur 8.327, rangé le dimanche avec la semaine), la jauge par piliers, les
- * barres de charge, le Hooper du dimanche et la fiche du moment. Rien n'est lu dans Nolio à l'ouverture : tout vient
+ * barres de volume, le Hooper du dimanche et la fiche du moment. Rien n'est lu dans Nolio à l'ouverture : tout vient
  * de la base, écrit par le passage du dimanche.
  *
  * Choix faits en construisant, à montrer au coach : les seuils du verdict (85 % et 65 % de la moyenne des piliers),
@@ -138,14 +138,16 @@ function jalons(trame: LigneTrame[], faits: Realise[], rang: number, pic: number
 
 // ─── Les graphiques (T10) ─────────────────────────────────────────────────
 
-// Une barre par semaine : les 8 dernières faites à côté de leur prévue, la semaine en cours et celles à venir en
-// pointillés (prévues), le week-end choc et l'affûtage marqués.
+// Une barre par semaine, en minutes de course (décision coach du 19/10/2026 : les durées, la même mesure des deux
+// côtés ; la charge prévue se compte par segments et le RPE de l'athlète vaut pour toute la séance, elles ne se
+// comparent pas) : les 8 dernières faites à côté de leur prévue (celle de la semaine écrite), la semaine en cours et
+// celles à venir en pointillés (la trame), le week-end choc et l'affûtage marqués.
 export type Barre = { numero: string; prevue: number; faite: number | null; moment: Moment; choc: boolean; affutage: boolean; type: string };
-export function barresDeCharge(trame: LigneTrame[], realises: Realise[], aujourdhui: string): Barre[] {
+export function barresDeVolume(trame: LigneTrame[], realises: Realise[], aujourdhui: string): Barre[] {
   const parNumero = new Map(realises.map((r) => [r.numero, r]));
   const barres = trame.filter((l) => l.lundi).map((l) => {
     const r = parNumero.get(l.numero);
-    return { numero: l.numero, prevue: r?.charge_prevue ?? l.charge ?? 0, faite: r ? r.charge_faite : null,
+    return { numero: l.numero, prevue: r?.duree_prevue_min ?? Math.round(l.volume_h * 60), faite: r ? r.duree_faite_min : null,
       moment: momentDe(l.lundi, aujourdhui), choc: l.week_end_choc, affutage: enAffutage(l), type: l.type };
   });
   const passees = barres.filter((b) => b.moment === 'passee');
