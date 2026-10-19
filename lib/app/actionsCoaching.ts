@@ -8,7 +8,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { envoyerSemaine, ficheAthlete, mettreAJourSemaine, objectifCoache } from './coaching';
 import { fermerEspace, ouvrirEspace } from './espaceAthlete';
-import { objectifEcrit, zonesVersNolio } from './ecriture';
+import { objectifEcrit, retirerDeNolio, zonesVersNolio } from './ecriture';
 import { coachConnecte } from './nolio';
 import { lireAllure } from './allureCoach';
 import { clientService } from './supabase';
@@ -159,12 +159,16 @@ async function supprimerPlans(coachId: string, planIds: string[]) {
   }
 }
 
-// Retirer un objectif : son plan et son PDF partent ; ce qui est dans Nolio y reste.
+// Retirer un objectif : son plan et son PDF partent. Écrit semaine par semaine, ce qu'il a posé dans Nolio et qui est
+// encore à venir en part aussi (décision coach du 19/10/2026) ; le passé reste. Envoyé en entier (avant le 19/10/2026),
+// ce qui est dans Nolio y reste.
 export async function retirerObjectif(planId: string): Promise<void> {
   const coach = await coachConnecte();
   if (!coach) return;
   const o = await objectifCoache(coach.compteId, planId);
   if (!o) return;
+  const soucis = await retirerDeNolio(planId).catch((e) => [e instanceof Error ? e.message : String(e)]);
+  if (soucis.length) console.error(`Retrait de ${planId} : resté dans Nolio — ${soucis.join(' ; ')}`);
   await supprimerPlans(coach.compteId, [planId]);
   revalidatePath('/app/coach');
   redirect(`/app/coach/athlete/${o.athlete.id}`);

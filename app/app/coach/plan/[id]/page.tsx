@@ -132,7 +132,11 @@ export default async function ObjectifCoache({ params }: { params: Promise<{ id:
 
         <details className="text-sm text-indigo/70">
           <summary className="cursor-pointer">Retirer cet objectif</summary>
-          <p className="mt-2">Son plan et son PDF quittent ton espace coach. Les séances déjà envoyées restent dans Nolio.</p>
+          <p className="mt-2">
+            {ecriture?.parametres
+              ? 'Son plan et son PDF quittent ton espace coach. Dans Nolio, ce qu’il a posé et qui est encore à venir part aussi (bandeaux, notes, séances, questionnaires, course) ; le passé reste.'
+              : 'Son plan et son PDF quittent ton espace coach. Les séances déjà envoyées restent dans Nolio.'}
+          </p>
           <form action={retirerObjectif.bind(null, id)} className="mt-2">
             <button type="submit" className="underline underline-offset-2">Retirer {o.plan.course.nom}</button>
           </form>

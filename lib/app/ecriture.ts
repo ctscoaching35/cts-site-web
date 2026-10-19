@@ -563,6 +563,56 @@ export async function retirerAccordLecture(planId: string): Promise<void> {
   }
 }
 
+// Le retrait d'un objectif écrit semaine par semaine (décision coach du 19/10/2026) : ce qu'il a posé dans Nolio et qui
+// est encore à venir (à partir de demain) en part — bandeaux, notes, séances, compétitions, et la suite de ses
+// séries de questionnaires ; le passé reste (les séances faites, les questionnaires remplis). Seuls les éléments que
+// l'objectif a lui-même posés (nolio_envois) sont touchés. Rend ce qui n'a pas pu partir, [] si tout va.
+export async function retirerDeNolio(planId: string): Promise<string[]> {
+  const o = await objectifEcrit(planId);
+  if (!o?.nolioAthlete || !o.envois.length) return [];
+  const d = await destinataire(o.nolioAthlete);
+  const qui = d.moi ? '' : `athlete=${d.usr}`;
+  // Demain et après : une séance du jour a pu être faite, elle reste reliée à ce qui a été couru.
+  const demain = ajouterJours(aujourdhuiParis(), 1);
+  const au = ajouterJours(o.plan.course.date, 1);
+  const poses = new Set(o.envois.flatMap((e) => e.seances as SeanceEnvoyee[]).map((s) => String(s.nolio_id ?? '')).filter(Boolean));
+  const soucis: string[] = [];
+  const retirer = async (chemin: string, quoi: string) => {
+    const r = await appelNolio('DELETE', `${chemin}${chemin.includes('?') ? (qui ? `&${qui}` : '') : (qui ? `?${qui}` : '')}`).catch(() => null);
+    if (!r || (r.statut !== 204 && r.statut !== 200 && r.statut !== 404)) soucis.push(r ? refusNolio(r, quoi) : `${quoi} : Nolio injoignable`);
+  };
+  for (const [genre, quoi] of [['trainings', 'une séance'], ['notes', 'une note'], ['cycles', 'un bandeau'], ['competitions', 'une course']]) {
+    const avenir = await listeNolio<{ id: string; date_start: string }>(`planned/${genre}/?date_from=${demain}&date_to=${au}${qui ? `&${qui}` : ''}`);
+    for (const x of avenir) if (poses.has(x.id) && x.date_start.slice(0, 10) >= demain) await retirer(`planned/${genre}/${x.id}/`, quoi);
+  }
+  // Les questionnaires : une série part à partir de sa première occurrence à venir (`following`), un questionnaire seul
+  // (le soir d'un test de la parole) part s'il est à venir.
+  const quiz = [...poses].filter((id) => id.startsWith('pqz_'));
+  if (quiz.length) {
+    const series = new Set<string>();
+    for (const id of quiz) {
+      const r = await appelNolio('GET', `planned/quizzes/${id}/${qui ? `?${qui}` : ''}`).catch(() => null);
+      const serie = r?.statut === 200 ? (r.corps?.recurrence as { id?: string } | null | undefined)?.id : undefined;
+      if (serie) series.add(serie);
+    }
+    type Quiz = { id: string; date_start: string; recurrence?: { id?: string } | null };
+    const avenir = (await listeNolio<Quiz>(`planned/quizzes/?date_from=${demain}&date_to=${au}${qui ? `&${qui}` : ''}`))
+      .filter((q) => q.date_start.slice(0, 10) >= demain).sort((a, b) => a.date_start.localeCompare(b.date_start));
+    const faites = new Set<string>();
+    for (const q of avenir) {
+      const serie = q.recurrence?.id;
+      if (serie && series.has(serie)) {
+        if (faites.has(serie)) continue;
+        faites.add(serie);
+        await retirer(`planned/quizzes/${q.id}/?recurrence_action=following`, 'les questionnaires');
+      } else if (!serie && poses.has(q.id)) {
+        await retirer(`planned/quizzes/${q.id}/`, 'un questionnaire');
+      }
+    }
+  }
+  return soucis;
+}
+
 // ─── Les courses dans Nolio (OM3, décision coach du 19/10/2026) ─────────────
 
 // Le « Trail » du catalogue de Nolio (cts_nolio.SPORT_TRAIL, GET /api/v2/sports/).
