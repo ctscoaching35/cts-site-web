@@ -51,5 +51,18 @@ create policy "semaines_ecrites : chacun lit celles de ses plans" on public.sema
   for select to authenticated using (
     exists (select 1 from public.plans p where p.id = plan_id and p.compte_id = (select auth.uid())));
 
+-- Les tests lus dans Nolio (TN3, TN4, décisions coach du 19/10/2026) : chaque test écrit une seule fois lu ; ce qui en
+-- est sorti (la valeur, ou pourquoi elle n'a pas pu se lire), pour le coach et pour corriger les garde-fous.
+create table public.tests_lus (
+  plan_id uuid not null references public.plans (id) on delete cascade,
+  jour_id text not null,
+  cle text not null check (cle in ('parole', 'vitesse_critique', 'fc_seuil2')),
+  statut text not null check (statut in ('lu', 'illisible', 'sans_reponse', 'non_fait')),
+  resultat jsonb not null default '{}'::jsonb,
+  lu_le timestamptz not null default now(),
+  primary key (plan_id, jour_id)
+);
+alter table public.tests_lus enable row level security;
+
 -- Les athlètes coachés invités dans l'app (T6) : leur compte, relié à leur fiche.
 alter table public.athletes_coaches add column compte_id uuid references public.comptes (id) on delete set null;

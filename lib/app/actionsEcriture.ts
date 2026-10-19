@@ -95,7 +95,7 @@ export async function retirerMonAccord(planId: string, _e: EtatGeste): Promise<E
     await retirerAccordLecture(planId);
     revalidatePath('/app');
     revalidatePath('/app/compte');
-    return { ok: true, message: 'C’est fait : l’app ne lit plus ton RPE, ton ressenti ni ton Hooper, et ce qu’elle en avait gardé est effacé.' };
+    return { ok: true, message: 'C’est fait : l’app ne lit plus ton RPE, ton ressenti, ton Hooper ni tes séances test, et ce qu’elle en avait gardé est effacé. Tes repères restent dans « Tes zones », où tu peux les effacer.' };
   } catch (e) {
     console.error(`Retrait de l'accord ${planId} :`, e instanceof Error ? e.message : e);
     return { ok: false, message: 'Le retrait n’a pas abouti : réessaie dans un moment.' };

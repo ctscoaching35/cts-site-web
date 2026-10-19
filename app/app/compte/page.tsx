@@ -81,8 +81,9 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
             <h2 className="eyebrow text-indigo/60">Ton accord de lecture</h2>
             <p className="text-sm text-indigo/75 leading-relaxed">
               Depuis le {dateLongue(String(affiche.accord_lecture_le).slice(0, 10), true)}, l’app lit dans Nolio tes séances
-              faites, ton RPE, ton ressenti et ton Hooper, seulement pour ajuster ton plan et afficher tes graphiques. Sans
-              cet accord, ton plan suit sa trame, ton questionnaire du dimanche et tes séances faites ou manquées.
+              faites, ton RPE, ton ressenti et ton Hooper, et la trace de tes séances test pour en tirer tes repères,
+              seulement pour ajuster ton plan et afficher tes graphiques. Sans cet accord, ton plan suit sa trame, ton
+              questionnaire du dimanche et tes séances faites ou manquées, et tu donnes toi-même tes repères.
             </p>
             <RetirerAccord planId={ctx.cle} />
           </section>

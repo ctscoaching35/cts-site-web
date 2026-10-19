@@ -22,6 +22,8 @@ import { appelNolio, coachs, listeNolio, refusNolio } from './nolio';
 import { ajouterJours, type Plan, type Semaine } from './plan';
 import { clientService } from './supabase';
 import type { Fiche } from './tableau';
+import { fcSeuil2DuTest, lireParole, vcDuTest, type Flux, type Tour } from './tests';
+import { allure, kmh } from './zones';
 
 export type Etat = Record<string, unknown>;
 // compteAthlete : le compte d'un coaché invité dans l'app (T6) ; ses gestes (une course, le veto) valent comme ceux du
@@ -243,6 +245,7 @@ export async function ecrireEtEnvoyer(o: Objectif, numero: string, retours: Reto
 } = {}): Promise<SortieMoteur> {
   const sortie = await moteur<SortieMoteur>('/v1/semaine', {
     parametres: o.parametres, numero, etat: o.etat, retours, sans_ajustement: Boolean(options.sansAjustement),
+    valeurs: valeursConnues(o),
   });
   const service = clientService();
   if (sortie.parametres) {
@@ -263,6 +266,7 @@ export async function ecrireEtEnvoyer(o: Objectif, numero: string, retours: Reto
     plan_id: o.planId, numero, donnees: sortie.semaine, notes: sortie.notes, journal: sortie.journal, bilan: sortie.bilan,
     sans_ajustement: Boolean(options.sansAjustement), etat_avant: o.etat, ecrite_le: new Date().toISOString(),
   });
+  await programmerParole(o, semaine);
   if (sortie.realise) {
     await service.from('semaines_ecrites').update({ realise: sortie.realise }).eq('plan_id', o.planId).eq('numero', sortie.realise.numero);
   }
@@ -457,13 +461,178 @@ export async function retirerAccordLecture(planId: string): Promise<void> {
   const service = clientService();
   await service.from('plans').update({ accord_lecture_le: null }).eq('id', planId);
   await service.from('semaines_ecrites').update({ realise: null }).eq('plan_id', planId);
+  await service.from('tests_lus').delete().eq('plan_id', planId);
   const hooper = o.envois.find((e) => e.semaine === QUESTIONNAIRES)?.seances.find((s) => s.jour_id === 'questionnaire:hooper');
-  if (hooper?.nolio_id && o.nolioAthlete) {
+  // Les questionnaires du soir des tests de la parole à venir (TN4) quittent Nolio avec le Hooper.
+  const paroles = o.envois.filter((e) => e.semaine.endsWith(':parole')).flatMap((e) => e.seances as SeanceEnvoyee[]);
+  if (o.nolioAthlete) {
     const d = await destinataire(o.nolioAthlete);
-    const r = await appelNolio('DELETE', `planned/quizzes/${hooper.nolio_id}/?recurrence_action=all${d.moi ? '' : `&athlete=${d.usr}`}`)
-      .catch(() => null);
-    if (r && r.statut !== 204 && r.statut !== 200 && r.statut !== 404) console.error(`Hooper de ${planId} non retiré de Nolio : ${r.statut}`);
+    for (const [q, recurrence] of [...(hooper ? [[hooper, 'all'] as const] : []), ...paroles.map((p) => [p, 'one'] as const)]) {
+      if (!q.nolio_id) continue;
+      const r = await appelNolio('DELETE', `planned/quizzes/${q.nolio_id}/?recurrence_action=${recurrence}${d.moi ? '' : `&athlete=${d.usr}`}`)
+        .catch(() => null);
+      if (r && r.statut !== 204 && r.statut !== 200 && r.statut !== 404) console.error(`Questionnaire de ${planId} non retiré de Nolio : ${r.statut}`);
+    }
   }
+}
+
+// ─── Les tests dans Nolio (TN1 à TN4, décisions coach du 19/10/2026) ─────────
+
+// Les valeurs connues de l'athlète, que le moteur lit pour écrire ses tests tant qu'une manque (TN1) ; « lecture » :
+// avec l'accord, le site lit le résultat dans Nolio, sinon les textes du test renvoient à l'app.
+function valeursConnues(o: Objectif) {
+  return { fc_seuil1: 'fc_seuil1' in o.profil, vc: 'vc_ms' in o.profil, fc_seuil2: 'fc_seuil2' in o.profil, lecture: o.accordLecture };
+}
+
+const testEcrit = (j: Semaine['jours'][number]) =>
+  (j.reperes as { test?: { cle?: string; ecrit?: boolean } | null } | null | undefined)?.test?.ecrit
+    ? (j.reperes as { test: { cle: string } }).test.cle : null;
+
+// TN4 : le soir du test de la parole, deux questions dans Nolio (avec l'accord de lecture ; sinon l'app).
+export const QUESTIONNAIRE_PAROLE = {
+  name: 'Ton test de la parole',
+  description: 'Deux réponses : elles règlent tes repères d’endurance.',
+  items: [
+    { order: 1, question: 'Ta FC au premier palier où tu ne parlais plus confortablement ?', type: 'number', is_mandatory: true, unit: 'bpm' },
+    { order: 2, question: 'Ton allure à ce palier (par exemple 6:00) ?', type: 'short_text', is_mandatory: false },
+  ],
+};
+
+async function programmerParole(o: Objectif, semaine: Semaine) {
+  if (!o.accordLecture || !o.nolioAthlete) return;
+  const d = await destinataire(o.nolioAthlete);
+  for (const j of semaine.jours) {
+    const cle = `${j.id}:parole`;
+    if (testEcrit(j) !== 'parole' || !j.date_iso || o.envois.some((e) => e.semaine === cle)) continue;
+    const r = await appelNolio('POST', 'planned/quizzes/', d.moi ? { ...QUESTIONNAIRE_PAROLE, date_start: j.date_iso, hour_start: '20:00' }
+      : { ...QUESTIONNAIRE_PAROLE, date_start: j.date_iso, hour_start: '20:00', athletes: [d.usr] });
+    if (r.statut !== 201 && r.statut !== 200) throw new Error(refusNolio(r, 'le questionnaire du test de la parole'));
+    await garderEnvoi(o.coachId, o.planId, cle, [{ jour_id: cle, nolio_id: String(r.corps?.id ?? ''), genre: 'note' }]);
+  }
+}
+
+// Les valeurs lues d'un test : dans « Tes zones » pour un acheteur, sur la fiche pour un coaché (T8) ; elles comptent
+// dès la semaine écrite le dimanche suivant.
+type Valeurs = { vc_ms?: number; d_prime_m?: number; fc_seuil1?: number; v_seuil1_ms?: number | null; fc_seuil2?: number };
+async function enregistrerValeurs(o: Objectif, v: Valeurs) {
+  const service = clientService();
+  const jour = aujourdhuiParis();
+  const r3 = (x: number) => Math.round(x * 1000) / 1000;
+  if (o.coache) {
+    const { data: c } = await service.from('coaching').select('athlete_id').eq('plan_id', o.planId).maybeSingle();
+    if (!c) return;
+    await service.from('athletes_coaches').update({
+      ...(v.vc_ms ? { vc_ms: r3(v.vc_ms) } : {}), ...(v.fc_seuil1 ? { fc_seuil1: v.fc_seuil1 } : {}),
+      ...(v.v_seuil1_ms ? { v_seuil1_ms: r3(v.v_seuil1_ms) } : {}), ...(v.fc_seuil2 ? { fc_seuil2: v.fc_seuil2 } : {}),
+    }).eq('id', c.athlete_id);
+    return;
+  }
+  await service.from('zones').upsert({
+    plan_id: o.planId, compte_id: o.compteId, maj_le: new Date().toISOString(),
+    ...(v.vc_ms ? { vc_ms: r3(v.vc_ms), d_prime_m: Math.round(v.d_prime_m ?? 0), vc_le: jour } : {}),
+    ...(v.fc_seuil1 ? { fc_seuil1: v.fc_seuil1, fc_seuil1_le: jour } : {}),
+    ...(v.v_seuil1_ms ? { v_seuil1_ms: r3(v.v_seuil1_ms) } : {}),
+    ...(v.fc_seuil2 ? { fc_seuil2: v.fc_seuil2, fc_seuil2_le: jour } : {}),
+  });
+}
+
+// La séance faite d'un test, ses tours et sa trace (204 : une séance sans fichier ; une source qui interdit la
+// transmission rend des flux vides).
+async function seanceFaite(o: Objectif, jourId: string, dateIso: string, au: string) {
+  const prevue = o.envois.flatMap((e) => e.seances as SeanceEnvoyee[]).find((s) => s.jour_id === jourId && s.nolio_id);
+  if (!prevue) return null;
+  const d = await destinataire(o.nolioAthlete);
+  const q = d.moi ? '' : `athlete=${d.usr}`;
+  const reels = await listeNolio<{ id: string; planned?: string | null }>(
+    `real/trainings/?date_from=${dateIso}&date_to=${au}&fields=id,planned${q ? `&${q}` : ''}`);
+  const reel = reels.find((r) => r.planned === String(prevue.nolio_id));
+  if (!reel) return null;
+  const l = await appelNolio('GET', `real/trainings/${reel.id}/laps/${q ? `?${q}` : ''}`);
+  const tours = (l.statut === 200 ? (l.corps?.data ?? []) : []) as Tour[];
+  const f = await appelNolio('GET', `real/trainings/${reel.id}/streams/${q ? `?${q}` : ''}`);
+  const c = f.statut === 200 ? f.corps : null;
+  const flux: Flux | null = c ? { temps: (c.stream_time ?? []) as number[], distance: (c.stream_distance ?? []) as number[],
+    fc: (c.stream_heartrate ?? []) as number[] } : null;
+  return { tours, flux: flux && flux.temps.length ? flux : null };
+}
+
+export type TestLu = { plan: string; coache: boolean; texte: string };
+
+// Chaque jour (TN3, TN4) : les tests écrits ces 7 derniers jours, pas encore lus, avec l'accord de lecture. Lu et
+// valable : enregistré, une note le dit ; illisible : la note renvoie à l'app ; pas encore fait ou pas encore
+// synchronisé : relu le lendemain, puis abandonné au bout de 3 jours (le test revient à la prochaine séance qui s'y
+// prête, puisque la valeur manque toujours).
+export async function lireLesTests(planId: string): Promise<TestLu[]> {
+  const o = await objectifEcrit(planId);
+  if (!o?.nolioAthlete || !o.accordLecture) return [];
+  const service = clientService();
+  const aujourdhui = aujourdhuiParis();
+  const { data: ecrites } = await service.from('semaines_ecrites').select('donnees').eq('plan_id', planId)
+    .gte('ecrite_le', new Date(Date.now() - 21 * 86400_000).toISOString());
+  const { data: lus } = await service.from('tests_lus').select('jour_id').eq('plan_id', planId);
+  const dejaLus = new Set((lus ?? []).map((l) => l.jour_id as string));
+  const sortie: TestLu[] = [];
+  for (const j of (ecrites ?? []).flatMap((e) => ((e.donnees as Semaine | null)?.jours ?? []))) {
+    const cle = testEcrit(j);
+    if (!cle || !j.date_iso || j.date_iso >= aujourdhui || j.date_iso < ajouterJours(aujourdhui, -7) || dejaLus.has(j.id)) continue;
+    const garder = (statut: string, resultat: Record<string, unknown>) =>
+      service.from('tests_lus').upsert({ plan_id: planId, jour_id: j.id, cle, statut, resultat, lu_le: new Date().toISOString() });
+    const abandon = j.date_iso < ajouterJours(aujourdhui, -3);
+    const lienZones = `${site.url}/app/plan/zones`;
+    if (cle === 'parole') {
+      const d = await destinataire(o.nolioAthlete);
+      const resultats = await listeNolio<{ id: string; name?: string; items: { question: string; value: unknown }[] }>(
+        `real/quiz_results/?date_from=${j.date_iso}&date_to=${aujourdhui}${d.moi ? '' : `&athlete=${d.usr}`}`).catch(() => []);
+      const r = resultats.find((x) => x.name === QUESTIONNAIRE_PAROLE.name);
+      const reponse = (n: number) => r?.items.find((i) => i.question === QUESTIONNAIRE_PAROLE.items[n].question)?.value;
+      const v = r ? lireParole(reponse(0), reponse(1)) : null;
+      if (v) {
+        await enregistrerValeurs(o, v);
+        const texte = `Ta FC au seuil 1 : ${v.fc_seuil1} bpm${v.v_seuil1_ms ? ` à ${allure(v.v_seuil1_ms)}/km` : ''}. Tes endurances la prennent en repère dès dimanche.`;
+        await garderNote(o, `${j.id}:resultat`, aujourdhui, 'Ton test de la parole', texte);
+        await garder('lu', v);
+        sortie.push({ plan: planId, coache: o.coache, texte });
+      } else if (r || abandon) {
+        if (r) await garderNote(o, `${j.id}:resultat`, aujourdhui, 'Ton test de la parole',
+          `Ta réponse ne se lit pas : donne ta FC au seuil 1 dans ton app, ${lienZones}`);
+        await garder(r ? 'illisible' : 'sans_reponse', {});
+      }
+      continue;
+    }
+    const faite = await seanceFaite(o, j.id, j.date_iso, aujourdhui);
+    if (!faite) {
+      if (abandon) await garder('non_fait', {});
+      continue;
+    }
+    if (cle === 'vitesse_critique') {
+      const r = vcDuTest(faite.tours, faite.flux);
+      if ('erreur' in r) {
+        await garderNote(o, `${j.id}:resultat`, aujourdhui, 'Ton test de vitesse critique',
+          `Ton test n’a pas pu se lire tout seul (${r.erreur.toLowerCase().replace(/\.$/, '')}) : donne tes deux distances dans ton app, ${lienZones}`);
+        await garder('illisible', { erreur: r.erreur });
+        continue;
+      }
+      await enregistrerValeurs(o, { vc_ms: r.vc_ms, d_prime_m: r.d_prime_m });
+      const texte = `Ta vitesse critique : ${kmh(r.vc_ms)} km/h (${allure(r.vc_ms)}/km). Tes allures sur le plat partent avec tes séances dès dimanche.`;
+      await garderNote(o, `${j.id}:resultat`, aujourdhui, 'Ton test de vitesse critique', texte);
+      await garder('lu', r);
+      sortie.push({ plan: planId, coache: o.coache, texte });
+    } else if (cle === 'fc_seuil2') {
+      const fc = fcSeuil2DuTest(faite.tours, faite.flux);
+      if (fc === null) {
+        await garderNote(o, `${j.id}:resultat`, aujourdhui, 'Ta FC au seuil 2',
+          `Ta FC au seuil 2 n’a pas pu se lire toute seule : donne-la dans ton app, ${lienZones}`);
+        await garder('illisible', {});
+        continue;
+      }
+      await enregistrerValeurs(o, { fc_seuil2: fc });
+      const texte = `Ta FC au seuil 2 : ${fc} bpm. Tes séances de seuil 2 la prennent en repère dès dimanche.`;
+      await garderNote(o, `${j.id}:resultat`, aujourdhui, 'Ta FC au seuil 2', texte);
+      await garder('lu', { fc_seuil2: fc });
+      sortie.push({ plan: planId, coache: o.coache, texte });
+    }
+  }
+  return sortie;
 }
 
 // ─── L'acheteur dans l'équipe Nolio (P1 à P4) ─────────────────────────────
@@ -559,6 +728,7 @@ export async function reinviter(): Promise<Compte[]> {
 // question 20).
 export async function passageQuotidien(): Promise<Compte[]> {
   const comptes: Compte[] = [];
+  const tests: TestLu[] = [];
   for (const planId of await plansActifs()) {
     try {
       const c = await fatigueDuJour(planId);
@@ -566,9 +736,16 @@ export async function passageQuotidien(): Promise<Compte[]> {
     } catch (e) {
       comptes.push({ plan: planId, quoi: 'fatigue non lue', erreur: e instanceof Error ? e.message : String(e) });
     }
+    try {
+      const lus = await lireLesTests(planId);
+      tests.push(...lus);
+      comptes.push(...lus.map((t) => ({ plan: planId, quoi: 'test lu', coache: t.coache })));
+    } catch (e) {
+      comptes.push({ plan: planId, quoi: 'tests non lus', erreur: e instanceof Error ? e.message : String(e) });
+    }
   }
   comptes.push(...await reinviter());
-  await resumeAuCoach(comptes.filter((c) => c.coache && c.journal?.length));
+  await resumeAuCoach(comptes.filter((c) => c.coache && c.journal?.length), tests.filter((t) => t.coache));
   return comptes;
 }
 
@@ -603,7 +780,7 @@ export async function ajustementsDuCoach(coachId: string): Promise<Ajustement[]>
 }
 
 // Un e-mail par jour au plus : les ajustements de la journée chez les coachés (le dimanche, ceux de la semaine écrite).
-async function resumeAuCoach(fatigues: Compte[]) {
+async function resumeAuCoach(fatigues: Compte[], tests: TestLu[] = []) {
   const service = clientService();
   const debut = `${aujourdhuiParis()}T00:00:00`;
   const { data: ecrites } = await service.from('semaines_ecrites').select('plan_id, numero, journal').gte('ecrite_le', debut);
@@ -620,7 +797,10 @@ async function resumeAuCoach(fatigues: Compte[]) {
     const nom = nomDe.get(f.plan);
     if (nom) lignes.push(`${nom} : ${f.quoi} (fatigue franche).`);
   }
-  if (!lignes.length) return;
-  await prevenirCoach(`Tes coachés : ${lignes.length} ajustement${lignes.length > 1 ? 's' : ''} aujourd’hui`,
-    `${lignes.join('\n')}\n\nChaque ajustement s’annule dans ton Suivi (${site.url}/app/coach/suivi).`);
+  // TN3 : les valeurs lues dans un test, posées sur la fiche du coaché ; le coach les corrige sur sa fiche.
+  const valeurs = tests.map((t) => nomDe.get(t.plan) && `${nomDe.get(t.plan)} : ${t.texte.split('.')[0]}.`).filter(Boolean) as string[];
+  if (!lignes.length && !valeurs.length) return;
+  await prevenirCoach(`Tes coachés : ${lignes.length + valeurs.length} nouveauté${lignes.length + valeurs.length > 1 ? 's' : ''} aujourd’hui`,
+    [lignes.length ? `${lignes.join('\n')}\n\nChaque ajustement s’annule dans ton Suivi (${site.url}/app/coach/suivi).` : '',
+      valeurs.length ? `Tests lus, valeurs posées sur leur fiche :\n${valeurs.join('\n')}` : ''].filter(Boolean).join('\n\n'));
 }

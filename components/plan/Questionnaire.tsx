@@ -359,9 +359,10 @@ export default function Questionnaire({
             <label className="flex gap-3 items-start mt-4 cursor-pointer">
               <input type="checkbox" checked={accordLecture} onChange={(e) => setAccordLecture(e.target.checked)} className="mt-1 accent-teal" />
               <span className="text-indigo">
-                J’accepte que l’app lise dans Nolio mes séances faites, mon RPE, mon ressenti et mon Hooper, seulement
+                J’accepte que l’app lise dans Nolio mes séances faites, mon RPE, mon ressenti et mon Hooper, et la trace de
+                mes séances test (distance, FC) pour en tirer mes repères (FC aux seuils, allures) et les garder, seulement
                 pour ajuster mon plan et afficher mes graphiques. Je peux retirer cet accord à tout moment.{' '}
-                <span className="text-indigo/70">Facultatif : sans lui, ton plan suit sa trame, sans ajustement à ta fatigue.</span>
+                <span className="text-indigo/70">Facultatif : sans lui, ton plan suit sa trame, sans ajustement à ta fatigue, et tu donnes toi-même tes repères dans l’app.</span>
               </span>
             </label>
           )}
