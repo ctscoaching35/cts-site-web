@@ -82,13 +82,14 @@ export function jaugeDuPlan(trame: LigneTrame[], realises: Realise[], aujourdhui
     piliers.push({ cle: 'assiduite', titre: 'Assiduité', valeur: Math.min(1, tenue / prevue),
       detail: `${pct(tenue / prevue)} de la charge prévue · ${somme(faits.map((r) => r.seances_faites))} séances faites sur ${somme(faits.map((r) => r.seances_prevues))}` });
   }
-  const slPrevues = faits.map((r) => r.sl_prevue_min).filter((v): v is number => v !== null);
-  const pic = Math.max(0, ...trame.map((l) => l.sl_min ?? 0));
-  if (slPrevues.length) {
+  // Les sorties longues tenues, comme les autres piliers (décision coach du 19/10/2026 : rien de l'avenir, plus de « la
+  // plus longue du plan ») : celles demandées les semaines écoulées, faites à 90 % au moins de leur durée.
+  const slDemandees = faits.filter((r) => r.sl_prevue_min !== null && r.sl_prevue_min > 0);
+  if (slDemandees.length) {
+    const tenues = slDemandees.filter((r) => (r.sl_faite_min ?? 0) >= 0.9 * (r.sl_prevue_min as number)).length;
     const faite = Math.max(0, ...faits.map((r) => r.sl_faite_min ?? 0));
-    const visee = Math.max(...slPrevues);
-    piliers.push({ cle: 'sorties_longues', titre: 'Sorties longues', valeur: Math.min(1, faite / visee),
-      detail: `Ta plus longue : ${faite ? enHeures(faite) : 'pas encore'} · la plus longue du plan : ${enHeures(pic)}` });
+    piliers.push({ cle: 'sorties_longues', titre: 'Sorties longues', valeur: tenues / slDemandees.length,
+      detail: `${tenues} tenue${tenues > 1 ? 's' : ''} sur ${slDemandees.length} · ta plus longue : ${faite ? enHeures(faite) : 'pas encore'}` });
   }
   const clesPrevues = somme(faits.map((r) => r.cles_prevues));
   if (clesPrevues > 0) {
