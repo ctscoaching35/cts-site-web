@@ -113,7 +113,7 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
           <Installation />
         </Carte>
 
-        {/* Les documents s'ouvrent dans l'app (décision coach du 20/10/2026) ; les CGV, quand les plans sont en vente. */}
+        {/* Les documents s'ouvrent dans l'app (décision coach du 19/10/2026) ; les CGV, quand les plans sont en vente. */}
         <nav aria-label="Les documents" className="bg-white rounded-2xl border border-indigo/[0.08] px-[18px]">
           {[...(cgv ? [['cgv', 'Conditions générales']] : []), ['confidentialite', 'Confidentialité'], ['mentions-legales', 'Mentions légales']].map(([slug, titre]) => (
             <Link key={slug} href={`/app/document/${slug}`} className="flex items-center justify-between min-h-[52px] border-b last:border-b-0 border-indigo/[0.06] text-sm font-semibold text-indigo">

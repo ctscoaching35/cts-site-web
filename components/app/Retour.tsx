@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 
-// Le retour de l'app (décision coach du 20/10/2026 : des boutons retour partout où il en manque) : la page d'où l'on
+// Le retour de l'app (décision coach du 19/10/2026 : des boutons retour partout où il en manque) : la page d'où l'on
 // vient quand il y en a une dans l'app, sinon la page parente.
 export default function Retour({ href, libelle }: { href: string; libelle: string }) {
   const router = useRouter();

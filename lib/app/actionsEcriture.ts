@@ -93,7 +93,7 @@ export async function ajouterCourse(planId: string, _e: EtatGeste, form: FormDat
   const service = clientService();
   await service.from('plans').update({ parametres: { ...o.parametres, courses_secondaires: courses } }).eq('id', planId);
   // PO3 : sa fiche de course, sans plan, avec sa trace si elle est donnée ; gardée par sa date (après la migration du
-  // 20/10/2026 : sans elle, la course s'ajoute sans fiche).
+  // 19/10/2026 : sans elle, la course s'ajoute sans fiche).
   const gpx = form.get('gpx');
   const traceDonnee = gpx instanceof File && gpx.size > 0;
   const envoi = new FormData();

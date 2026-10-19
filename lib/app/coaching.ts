@@ -19,7 +19,7 @@ export type FicheAthlete = {
   // Son compte dans l'app, quand le coach l'y a invité (T6).
   compte_id: string | null;
   // Son profil (PO1), sa D′ (AP4), la date et la source de chaque repère : null ou vides tant que la migration du
-  // 20/10/2026 n'est pas passée.
+  // 19/10/2026 n'est pas passée.
   profil: Record<string, string | string[]> | null; d_prime_m: number | null;
   // source : « test » lu dans Nolio, « test_coach » un test saisi par le coach, « coach » une valeur saisie.
   reperes_sources: Record<string, { le: string; source: 'test' | 'test_coach' | 'coach' }>;

@@ -33,7 +33,7 @@ export default async function MesDonnees({ searchParams }: { searchParams: Reche
             <p>Tes premières données arrivent le dimanche soir qui suit ta première semaine : ta charge, ton volume et ton Hooper, semaine après semaine.</p>
           </Carte>
         )}
-        {/* Le coaching individualisé dit une semaine par son lundi, pas par son numéro (décision coach du 20/10/2026). */}
+        {/* Le coaching individualisé dit une semaine par son lundi, pas par son numéro (décision coach du 19/10/2026). */}
         {d.accord && <GraphiqueCharge realises={d.realises} parDate={ctx.coache} />}
         <GraphiqueVolume barres={barres} parDate={ctx.coache} />
         {d.accord && <GraphiqueHooper points={points} parDate={ctx.coache} />}

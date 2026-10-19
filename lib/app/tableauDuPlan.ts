@@ -17,7 +17,7 @@ export type DonneesTableau = {
   // Les courses secondaires ajoutées (O2).
   courses: CourseSecondaire[];
 };
-// chrono : le chrono visé (PO3), absent d'une course ajoutée avant le 20/10/2026.
+// chrono : le chrono visé (PO3), absent d'une course ajoutée avant le 19/10/2026.
 export type CourseSecondaire = { nom: string; date: string; distance_km: number; dplus_m: number; chrono?: string | null };
 
 export async function donneesTableau(ctx: Contexte): Promise<DonneesTableau> {
@@ -81,7 +81,7 @@ export async function semaineEcrite(ctx: Contexte, numero: string): Promise<Sema
   return (data?.donnees as Semaine | undefined) ?? duPlan;
 }
 
-// Les courses de préparation qui ont leur fiche de course (PO3), par leur date ; vide avant la migration du 20/10/2026.
+// Les courses de préparation qui ont leur fiche de course (PO3), par leur date ; vide avant la migration du 19/10/2026.
 export async function fichesDePreparation(planId: string): Promise<Set<string>> {
   const { data, error } = await clientService().from('plans').select('fiches_preparation').eq('id', planId).maybeSingle();
   if (error || !data) return new Set();

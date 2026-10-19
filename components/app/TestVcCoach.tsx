@@ -3,7 +3,7 @@
 import { useActionState } from 'react';
 import { enregistrerTestVc, type EtatCoach } from '@/lib/app/actionsCoaching';
 
-// Le test de vitesse critique d'un coaché, saisi par son coach (décision coach du 20/10/2026) : la date du test et ses
+// Le test de vitesse critique d'un coaché, saisi par son coach (décision coach du 19/10/2026) : la date du test et ses
 // deux efforts, durée et distance ; le même calcul que dans l'app.
 export default function TestVcCoach({ athleteId, aujourdhui }: { athleteId: string; aujourdhui: string }) {
   const [etat, action, enCours] = useActionState<EtatCoach, FormData>(enregistrerTestVc.bind(null, athleteId), null);

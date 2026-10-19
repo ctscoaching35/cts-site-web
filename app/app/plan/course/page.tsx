@@ -23,7 +23,7 @@ export default async function TaCourse({ searchParams }: { searchParams: Recherc
   const calculateur = lien('/app/calculateurs/calculateur-nutrition', ctx,
     Object.fromEntries(new URLSearchParams(requeteCalculateurNutrition(plan.course.temps_cible, niveau))));
   const t = profil.troncons;
-  // ?course=AAAA-MM-JJ : la fiche d'une course de préparation (PO3), dans l'app (décision coach du 20/10/2026).
+  // ?course=AAAA-MM-JJ : la fiche d'une course de préparation (PO3), dans l'app (décision coach du 19/10/2026).
   const course = (await searchParams).course;
   if (typeof course === 'string' && !ctx.demonstration) {
     const { data: fp, error } = await clientService().from('plans').select('fiches_preparation').eq('id', ctx.cle).maybeSingle();

@@ -15,6 +15,6 @@ export default async function Fiche({
   const { slug } = await params;
   const fiche = ficheParSlug(lireBibliotheque(), slug);
   if (!fiche) notFound();
-  // Dans l'app jusqu'au bout (décision coach du 20/10/2026) : sans l'en-tête du site, ses liens restent dans l'app.
+  // Dans l'app jusqu'au bout (décision coach du 19/10/2026) : sans l'en-tête du site, ses liens restent dans l'app.
   return <CadreSite src={`/bibliotheque/${fiche.slug}`} titre={fiche.titre} retour={{ href: lien('/app/bibliotheque', ctx), libelle: 'Retour' }} />;
 }

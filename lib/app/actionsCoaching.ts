@@ -69,7 +69,7 @@ export async function enregistrerValeurs(athleteId: string, _e: EtatCoach, form:
     fc_seuil2: fc2.valeur === null ? null : Math.round(fc2.valeur),
   }).eq('id', athleteId).eq('coach_id', coach.compteId);
   if (error) return { ok: false, message: 'L’enregistrement n’a pas abouti. Réessaie.' };
-  // La source de chaque repère changé (saisi par le coach), après la migration du 20/10/2026 seulement.
+  // La source de chaque repère changé (saisi par le coach), après la migration du 19/10/2026 seulement.
   if (avant) {
     const jour = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
     const nouveau: Record<string, number | null> = {
@@ -227,12 +227,12 @@ export async function enregistrerProfil(athleteId: string, _e: EtatCoach, form: 
   const { error } = await clientService().from('athletes_coaches')
     .update({ profil: { niveau, terrain, jours_disponibles: jours, jour_sl: jourSl, freq_hebdo: String(freq) } })
     .eq('id', athleteId).eq('coach_id', coach.compteId);
-  if (error) return { ok: false, message: 'L’enregistrement n’a pas abouti : la migration du 20/10/2026 est-elle passée ?' };
+  if (error) return { ok: false, message: 'L’enregistrement n’a pas abouti : la migration du 19/10/2026 est-elle passée ?' };
   revalidatePath(`/app/coach/athlete/${athleteId}`);
   return { ok: true, message: 'C’est enregistré. Son prochain objectif partira de ce profil ; sa préparation en cours garde le sien.' };
 }
 
-// Le test de vitesse critique d'un coaché, saisi par son coach (décision coach du 20/10/2026 : quand l'athlète ne le
+// Le test de vitesse critique d'un coaché, saisi par son coach (décision coach du 19/10/2026 : quand l'athlète ne le
 // fait pas, ou que la lecture automatique dans Nolio n'a pas abouti) : ses deux efforts (durée, distance), le même
 // calcul que dans l'app (lib/app/zones.ts, vitesseCritique), la date du test. La VC et la D′ (son profil de coureur,
 // AP4) vont sur sa fiche, sa source « test saisi par le coach » ; un test écrit dans ses semaines et pas encore lu

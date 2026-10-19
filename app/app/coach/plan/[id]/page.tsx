@@ -64,7 +64,7 @@ export default async function ObjectifCoache({ params }: { params: Promise<{ id:
     .sort((a, b) => Number(a.numero.slice(1)) - Number(b.numero.slice(1)));
   const jauge = trame ? jaugeDuPlan(trame.semaines, realises, jour) : null;
   const prochaine = trame?.semaines.find((l) => l.lundi && momentDe(l.lundi, jour) === 'avenir') ?? null;
-  // Le coaching individualisé dit une semaine par son lundi, pas par son numéro (décision coach du 20/10/2026).
+  // Le coaching individualisé dit une semaine par son lundi, pas par son numéro (décision coach du 19/10/2026).
   const lundiDe = new Map((trame?.semaines ?? []).map((l) => [l.numero, l.lundi]));
   const preps = (((ecriture?.parametres as Record<string, unknown> | null)?.courses_secondaires ?? []) as CourseSecondaire[])
     .slice().sort((a, b) => a.date.localeCompare(b.date));

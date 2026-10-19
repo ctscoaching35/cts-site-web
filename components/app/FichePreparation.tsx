@@ -6,7 +6,7 @@ import type { Plan } from '@/lib/app/plan';
 
 // La fiche d'une course de préparation (PO3), rendue par le moteur (/v1/fiche-course) : les mêmes formes que les
 // sections du plan, sans les déterminants physiologiques (ceux de la préparation). Le même corps dans la fiche privée
-// et dans l'app (décision coach du 20/10/2026 : tout reste dans l'app).
+// et dans l'app (décision coach du 19/10/2026 : tout reste dans l'app).
 export type FichePrep = {
   course: { nom: string; date_lettres: string; temps_cible: string };
   ta_course: Plan['ta_course']; profil: Plan['profil'];

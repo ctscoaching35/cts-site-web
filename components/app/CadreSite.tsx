@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Retour from './Retour';
 
 // Une page du site ouverte dans l'app (une fiche, un calculateur, un document), sous la barre d'onglets (décision
-// coach du 20/10/2026 : « tout reste dans l'app ») : sans l'en-tête ni le pied du site ; ses liens restent dans l'app
+// coach du 19/10/2026 : « tout reste dans l'app ») : sans l'en-tête ni le pied du site ; ses liens restent dans l'app
 // (une fiche, un calculateur, un document s'ouvrent à leur place dans l'app), un lien vers un autre site s'ouvre
 // dans un nouvel onglet.
 const DOCUMENTS = ['cgv', 'confidentialite', 'mentions-legales'];

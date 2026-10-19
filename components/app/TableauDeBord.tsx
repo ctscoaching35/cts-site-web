@@ -68,7 +68,7 @@ export function Montagne({ score, ton }: { score: number | null; ton: keyof type
 }
 
 // coache : le coaching individualisé parle en « J- » jusqu'à l'objectif, sans « semaine x sur N » (décision coach du
-// 20/10/2026) ; un plan acheté garde ses semaines.
+// 19/10/2026) ; un plan acheté garde ses semaines.
 export function CarteObjectif({ plan, restants, jauge, etape, href, coache = false }: {
   plan: Plan; restants: number; jauge: Jauge; etape: 'avant' | 'pendant' | 'apres'; href: string; coache?: boolean;
 }) {

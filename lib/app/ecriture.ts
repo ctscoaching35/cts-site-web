@@ -409,7 +409,7 @@ export async function demarrerObjectif(planId: string): Promise<Depart> {
     const { course } = o.plan;
     await poserCourse(o, { nom: course.nom, date: course.date, distance_km: course.distance_km, dplus_m: course.dplus_m }, true);
     for (const c of ((o.parametres.courses_secondaires ?? []) as Course[])) if (c.date >= aujourdhui) await poserCourse(o, c, false);
-    // PO4 : la fiche de chaque course de préparation à venir (après la migration du 20/10/2026).
+    // PO4 : la fiche de chaque course de préparation à venir (après la migration du 19/10/2026).
     const { data: fp } = await service.from('plans').select('fiches_preparation').eq('id', planId).maybeSingle();
     const fiches = ((fp as { fiches_preparation?: Record<string, unknown> } | null)?.fiches_preparation ?? {});
     for (const c of ((o.parametres.courses_secondaires ?? []) as Course[])) if (c.date >= aujourdhui && fiches[c.date]) await poserFichePreparation(o, c);
@@ -744,7 +744,7 @@ async function enregistrerValeurs(o: Objectif, v: Valeurs) {
       ...(v.vc_ms ? { vc_ms: r3(v.vc_ms) } : {}), ...(v.fc_seuil1 ? { fc_seuil1: v.fc_seuil1 } : {}),
       ...(v.v_seuil1_ms ? { v_seuil1_ms: r3(v.v_seuil1_ms) } : {}), ...(v.fc_seuil2 ? { fc_seuil2: v.fc_seuil2 } : {}),
     }).eq('id', c.athlete_id);
-    // La D′ (AP4) et la source de chaque repère (lu dans un test), après la migration du 20/10/2026 seulement.
+    // La D′ (AP4) et la source de chaque repère (lu dans un test), après la migration du 19/10/2026 seulement.
     const { data: avant } = await service.from('athletes_coaches').select('*').eq('id', c.athlete_id).maybeSingle();
     if (avant && 'reperes_sources' in avant) {
       const sources = { ...((avant.reperes_sources ?? {}) as Record<string, unknown>) };

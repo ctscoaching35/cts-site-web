@@ -61,7 +61,7 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
           </p>
         </div>
 
-        {/* Plus de PDF dans l'app (décision coach du 20/10/2026) : la préparation vit et s'ajuste semaine après semaine ;
+        {/* Plus de PDF dans l'app (décision coach du 19/10/2026) : la préparation vit et s'ajuste semaine après semaine ;
             l'acheteur garde celui de l'e-mail de bienvenue. */}
         <Link href={lien('/app/plan/course', ctx)} className="bg-indigo text-white rounded-[14px] p-3.5 flex items-center justify-between gap-3">
           <span className="flex flex-col gap-1">
@@ -113,7 +113,7 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
                 <li key={l.numero} id={l.numero}
                   className={clsx('grid grid-cols-[44px_4px_1fr_auto] gap-x-2.5 items-center min-h-[52px] scroll-mt-20',
                     m === 'encours' ? 'bg-[#E1EFEA] -mx-2.5 px-2.5 rounded-xl min-h-14' : 'border-t border-indigo/[0.06]')}>
-                  {/* Un coaché : la semaine se dit en jours avant son objectif, pas par son numéro (décision coach du 20/10/2026). */}
+                  {/* Un coaché : la semaine se dit en jours avant son objectif, pas par son numéro (décision coach du 19/10/2026). */}
                   <span className={clsx('text-xs whitespace-nowrap', m === 'encours' ? 'font-extrabold text-teal-dark' : 'font-bold text-[#5E5C78]')}>
                     {ctx.coache && l.lundi ? jMoins(l.lundi, course.date) : l.numero}
                   </span>
