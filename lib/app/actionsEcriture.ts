@@ -24,9 +24,12 @@ export async function demarrerDansNolio(planId: string, _e: EtatGeste): Promise<
   const o = await objectifEcrit(planId);
   if (!coachId || !o || o.coachId !== coachId) return { ok: false, message: 'Réservé au coach de cet objectif.' };
   try {
-    const numero = await demarrerObjectif(planId);
+    const depart = await demarrerObjectif(planId);
     revalidatePath(`/app/coach/plan/${planId}`);
-    return { ok: true, message: `C’est parti : la trame, les questionnaires du dimanche et la semaine ${numero.replace('S', '')} sont dans Nolio. La suite s’écrit chaque dimanche.` };
+    if ('prevu' in depart) {
+      return { ok: true, message: `Programmé : un objectif à la fois. Il démarrera tout seul le ${new Date(`${depart.prevu}T12:00:00Z`).toLocaleDateString('fr-FR')}, après la récupération de ${depart.apres}.` };
+    }
+    return { ok: true, message: `C’est parti : la trame, les questionnaires du dimanche et la semaine ${depart.numero.replace('S', '')} sont dans Nolio. La suite s’écrit chaque dimanche.` };
   } catch (e) {
     console.error(`Départ dans Nolio de ${planId} :`, e instanceof Error ? e.message : e);
     return { ok: false, message: e instanceof Error ? e.message : 'Le départ n’a pas abouti.' };

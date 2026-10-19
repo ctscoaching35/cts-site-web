@@ -94,11 +94,14 @@ export async function questionnairePrerempli(coachId: string, athleteId: string)
   const dernier = athlete?.objectifs[athlete.objectifs.length - 1];
   if (!athlete || !dernier) return null;
   const { data } = await clientService().from('plans').select('intake').eq('id', dernier.plan_id).single();
-  const intake = (data?.intake ?? {}) as Record<string, unknown>;
+  return { athlete, initial: { ...reponsesSansLaCourse(data?.intake), nom: athlete.nom } };
+}
+
+// Les réponses d'un objectif, sans celles de sa course : le point de départ du suivant (N9, OM1).
+export function reponsesSansLaCourse(intake: unknown): Record<string, string | string[]> {
   const COURSE = ['format', 'duree_mois', 'course_nom', 'date_course', 'distance_km', 'dplus_m', 'dmoins_m', 'temps_cible', 'coupure'];
-  const garde = Object.fromEntries(Object.entries(intake).filter(([k]) => !COURSE.includes(k))
+  return Object.fromEntries(Object.entries((intake ?? {}) as Record<string, unknown>).filter(([k]) => !COURSE.includes(k))
     .map(([k, v]) => [k, Array.isArray(v) ? v.map(String) : String(v ?? '')]));
-  return { athlete, initial: { ...garde, nom: athlete.nom } as Record<string, string | string[]> };
 }
 
 // Les jours d'une semaine traduits par le moteur (cts_nolio), avec les valeurs de l'athlète (N8) : la séance, ou

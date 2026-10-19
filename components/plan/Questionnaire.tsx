@@ -67,15 +67,23 @@ function Choix({
 }
 
 // coach : le questionnaire rempli par le coach pour un athlète coaché (CTS_NOLIO_CADRAGE.md, N1, N2) : sans
-// paiement ni brouillon gardé, le plan part dans son espace coach.
+// paiement ni brouillon gardé, le plan part dans son espace coach. demande (OM1, 19/10/2026) : le même, rempli par le
+// coaché dans l'app, qui part en demande chez son coach ; demandeId : le coach lance l'objectif d'une demande. Sans
+// coach, initial préremplit le « Nouvel objectif » d'un acheteur depuis l'app.
 export default function Questionnaire({
-  coach = false, emailCoach = '', athleteId, initial,
-}: { coach?: boolean; emailCoach?: string; athleteId?: string; initial?: Record<string, string | string[]> } = {}) {
+  coach = false, emailCoach = '', athleteId, initial, demande = false, demandeId,
+}: {
+  coach?: boolean; emailCoach?: string; athleteId?: string; initial?: Record<string, string | string[]>; demande?: boolean;
+  demandeId?: string;
+} = {}) {
   const [config, setConfig] = useState<ConfigPlan | null>(null);
   const [erreurConfig, setErreurConfig] = useState('');
   // En mode coach : l'e-mail est celui du coach (rien n'est envoyé à l'athlète, N5) ; un nouvel objectif part des
   // réponses du précédent (N9).
-  const [c, setC] = useState<Champs>(coach ? { ...champsVides, ...(initial as Partial<Champs>), email: emailCoach } : champsVides);
+  // Le coaching individualisé n'a pas de durée (QD1, décision coach du 19/10/2026) : « auto », fixée par l'API à la
+  // commande, la formule qui couvre le temps jusqu'à la course.
+  const [c, setC] = useState<Champs>(coach ? { ...champsVides, ...(initial as Partial<Champs>), email: emailCoach, duree_mois: 'auto' }
+    : { ...champsVides, ...((initial ?? {}) as Partial<Champs>) });
   const [gpx, setGpx] = useState<File | null>(null);
   // Trace vérifiée dès son choix, sans rien bloquer (audit du 27/09/2026, T3 ; décision coach
   // du 28/09/2026) : l'athlète apprenait après avoir payé qu'elle était illisible.
@@ -105,7 +113,8 @@ export default function Questionnaire({
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then(setConfig)
       .catch(() => setErreurConfig('Le service de génération ne répond pas. Réessaie dans quelques minutes.'));
-    if (coach) return;
+    // Un questionnaire prérempli (« Nouvel objectif » dans l'app) ne reprend pas de brouillon.
+    if (coach || initial) return;
     try {
       const brouillon = localStorage.getItem(CLE_BROUILLON);
       // La réponse de santé n'est jamais reprise d'un brouillon, même ancien.
@@ -179,7 +188,7 @@ export default function Questionnaire({
       const n = { ...p };
       // Le format suit la distance (audit du questionnaire du 01/10/2026, F4).
       n.format = formatDepuisDistance(n.distance_km, config);
-      if (n.duree_mois && !(formatOuvert(n, config) ? config.durees_par_format[n.format] ?? [] : []).map(String).includes(n.duree_mois)) n.duree_mois = '';
+      if (!coach && n.duree_mois && !(formatOuvert(n, config) ? config.durees_par_format[n.format] ?? [] : []).map(String).includes(n.duree_mois)) n.duree_mois = '';
       if (n.jour_sl && !n.jours_disponibles.includes(n.jour_sl)) n.jour_sl = '';
       // Plafond du niveau (second audit, D4) : passer en débutant avec 5 séances ou plus
       // vide le champ, comme les autres réponses devenues invalides.
@@ -250,6 +259,7 @@ export default function Questionnaire({
     donnees.append('intake', JSON.stringify(intakePourApi(c)));
     if (gpx) donnees.append('gpx', gpx);
     if (coach && athleteId) donnees.append('athlete_id', athleteId);
+    if (coach && demandeId) donnees.append('demande_id', demandeId);
     if (!coach && debutImmediat) donnees.append('execution_immediate', '1');
     // La case de l'avertissement accepte aussi les CGV : l'API en garde la date chez Stripe, avec le paiement (E4).
     if (!coach && confirme) donnees.append('cgv_acceptees', '1');
@@ -258,7 +268,7 @@ export default function Questionnaire({
     if (!coach) compterEtape('paiement');
     if (coach) {
       try {
-        const r = await fetch('/app/coach/athletes', { method: 'POST', body: donnees });
+        const r = await fetch(demande ? '/app/objectif/demande' : '/app/coach/athletes', { method: 'POST', body: donnees });
         const corps = await r.json().catch(() => null);
         if (r.ok && corps?.page) {
           window.location.href = corps.page;
@@ -301,7 +311,7 @@ export default function Questionnaire({
     const lignes: [string, string][] = [
       ['Nom', c.nom], ...(coach ? [] : [['E-mail', c.email] as [string, string]]), ['Niveau', nomNiveau],
       ['En ce moment', `${c.volume_hebdo_actuel} de course par semaine · plus longue sortie ${c.sortie_longue_actuelle}`],
-      ['Formule', `${nomFormat} — ${c.duree_mois} mois`],
+      ['Formule', coach ? `${nomFormat} — jusqu’à la course` : `${nomFormat} — ${c.duree_mois} mois`],
       ['Course', `${c.course_nom}, le ${new Date(`${c.date_course}T00:00:00`).toLocaleDateString('fr-FR')}`],
       ['Parcours', `${nombreFr(c.distance_km)} km, ${nombreFr(c.dplus_m)} m D+${c.dmoins_m ? `, ${nombreFr(c.dmoins_m)} m D−` : ''}${gpx ? ` · trace ${gpx.name}` : ' · sans trace GPX'}`],
       ['Temps cible', c.temps_cible], ['Terrain', nomTerrain],
@@ -345,7 +355,9 @@ export default function Questionnaire({
           <label className="flex gap-3 items-start mt-6 cursor-pointer">
             <input type="checkbox" checked={confirme} onChange={(e) => setConfirme(e.target.checked)} className="mt-1 accent-teal" />
             <span className="text-indigo font-semibold">
-              {coach ? (
+              {demande ? (
+                'J’ai lu cet avertissement et je veux envoyer mon objectif à mon coach.'
+              ) : coach ? (
                 'J’ai lu cet avertissement et je veux générer mon plan.'
               ) : (
                 <>
@@ -383,13 +395,15 @@ export default function Questionnaire({
 
         <section className="bg-indigo text-white p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
           <div>
-            <div className="eyebrow text-teal-light mb-2">{coach ? `Plan de ${c.nom}` : 'Ton plan'} · {c.duree_mois} mois</div>
+            <div className="eyebrow text-teal-light mb-2">{demande ? 'Ton objectif · jusqu’à la course' : coach ? `Plan de ${c.nom} · jusqu’à la course` : `Ton plan · ${c.duree_mois} mois`}</div>
             {!coach && <div className="text-4xl font-black">{prix} €</div>}
           </div>
           <button type="button" onClick={generer} disabled={bloque || envoi} className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed">
             {envoi
-              ? (coach ? 'Génération…' : 'Vérification…')
-              : coach
+              ? (demande ? 'Envoi…' : coach ? 'Génération…' : 'Vérification…')
+              : demande
+                ? 'Envoyer à mon coach →'
+                : coach
                 ? 'Générer le plan de l’athlète →'
                 : config.mode_paiement === 'test'
                   ? 'Générer mon plan (test, sans paiement) →'
@@ -487,13 +501,20 @@ export default function Questionnaire({
           <input id="distance" type="number" step="0.1" min="0.1" inputMode="decimal" className={inputCls} required value={c.distance_km} onChange={(e) => maj('distance_km')(e.target.value)} />
           <p className="text-sm text-teal mt-2 leading-relaxed">{notePourFormat ?? 'Le format de ta course se déduit de sa distance.'}</p>
         </div>
-        <div>
-          <label className={labelCls} htmlFor="duree">Durée du plan</label>
-          <select id="duree" className={inputCls} required value={c.duree_mois} onChange={(e) => maj('duree_mois')(e.target.value)} disabled={!durees.length}>
-            <option value="">{durees.length ? '— choisir —' : c.format ? 'Aucune durée : ce format n’est pas ouvert à ton niveau' : 'Indique d’abord la distance de ta course'}</option>
-            {durees.map((d) => <option key={d} value={String(d)}>{d} mois — {config.prix_eur_par_mois[String(d)]} €</option>)}
-          </select>
-        </div>
+        {coach ? (
+          <p className="text-sm text-indigo/75 leading-relaxed">
+            La préparation part du lundi qui vient et va jusqu’à la course : 24 semaines au plus (16 pour un trail court),
+            prise en route si la course est plus proche.
+          </p>
+        ) : (
+          <div>
+            <label className={labelCls} htmlFor="duree">Durée du plan</label>
+            <select id="duree" className={inputCls} required value={c.duree_mois} onChange={(e) => maj('duree_mois')(e.target.value)} disabled={!durees.length}>
+              <option value="">{durees.length ? '— choisir —' : c.format ? 'Aucune durée : ce format n’est pas ouvert à ton niveau' : 'Indique d’abord la distance de ta course'}</option>
+              {durees.map((d) => <option key={d} value={String(d)}>{d} mois — {config.prix_eur_par_mois[String(d)]} €</option>)}
+            </select>
+          </div>
+        )}
       </Section>
 
       <Section numero={4} titre="Ta course">

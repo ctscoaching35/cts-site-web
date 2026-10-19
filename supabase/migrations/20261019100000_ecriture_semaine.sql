@@ -19,7 +19,9 @@ alter table public.plans
   -- ensemble (le webhook de Nolio et le retour de paiement).
   add column demarre_le timestamptz,
   -- La trame (moteur, /v1/trame), gardée pour « Mon plan » et les graphiques ; effacée quand les paramètres changent.
-  add column trame jsonb;
+  add column trame jsonb,
+  -- Un objectif programmé après la course d'un autre du même athlète (OM4) : il démarre ce jour-là, tout seul.
+  add column depart_prevu date;
 comment on column public.plans.parametres is
   'Paramètres de la réécriture semaine par semaine (cts_semaine) : réponses sans nom ni e-mail, jour de la commande, '
   'valeurs de la trace, courses secondaires. Null : un plan envoyé en entier (avant le 19/10/2026).';
@@ -63,6 +65,20 @@ create table public.tests_lus (
   primary key (plan_id, jour_id)
 );
 alter table public.tests_lus enable row level security;
+
+-- Les demandes d'objectif d'un coaché (OM1, décision coach du 19/10/2026) : le questionnaire rempli dans l'app, sa
+-- trace dans le stockage (plans-pdf/demandes/), en attente du coach qui la relit et lance l'objectif.
+create table public.objectifs_demandes (
+  id uuid primary key default gen_random_uuid(),
+  athlete_id uuid not null references public.athletes_coaches (id) on delete cascade,
+  coach_id uuid not null references public.comptes (id) on delete cascade,
+  champs jsonb not null,
+  gpx_chemin text,
+  statut text not null default 'a_valider' check (statut in ('a_valider', 'validee', 'retiree')),
+  plan_id uuid references public.plans (id) on delete set null,
+  cree_le timestamptz not null default now()
+);
+alter table public.objectifs_demandes enable row level security;
 
 -- Les athlètes coachés invités dans l'app (T6) : leur compte, relié à leur fiche.
 alter table public.athletes_coaches add column compte_id uuid references public.comptes (id) on delete set null;

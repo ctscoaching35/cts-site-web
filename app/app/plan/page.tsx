@@ -4,10 +4,34 @@ import EnTeteApp from '@/components/app/EnTeteApp';
 import { AjouterCourse } from '@/components/app/GestesEcriture';
 import { Avertissement } from '@/components/app/Texte';
 import { BANNIERE } from '@/lib/app/charte';
-import { contexte, lien, type Recherche } from '@/lib/app/contexte';
+import { choisirPlan } from '@/lib/app/actionsPlan';
+import { contexte, lien, plansDuCompte, type PlanDuCompte, type Recherche } from '@/lib/app/contexte';
+import { demandesDeLAthlete, ficheDuCompte } from '@/lib/app/demandes';
+import { clientServeur, clientService } from '@/lib/app/supabase';
 import { dateLongue } from '@/lib/app/plan';
 import { enHeures, momentDe } from '@/lib/app/tableau';
-import { donneesTableau } from '@/lib/app/tableauDuPlan';
+import { donneesTableau, type CourseSecondaire } from '@/lib/app/tableauDuPlan';
+
+// « Mes objectifs » (OM2, décision coach du 19/10/2026) : chaque objectif majeur du compte (les siens, ceux que son
+// coach lui prépare), en cours, à venir ou passé, et ses courses de préparation ; un toucher l'affiche ; les demandes
+// d'un coaché en attente ; « Nouvel objectif ».
+async function mesObjectifs() {
+  const { data } = await (await clientServeur()).auth.getClaims();
+  const compteId = String(data?.claims?.sub ?? '');
+  const liste = await plansDuCompte(compteId);
+  const { data: params } = liste.length
+    ? await clientService().from('plans').select('id, parametres').in('id', liste.map((p) => p.id))
+    : { data: [] };
+  const prep = new Map((params ?? []).map((p) => [p.id as string,
+    (((p.parametres as Record<string, unknown> | null)?.courses_secondaires ?? []) as CourseSecondaire[]).slice().sort((a, b) => a.date.localeCompare(b.date))]));
+  const aujourdhui = new Date().toISOString().slice(0, 10);
+  const fiche = await ficheDuCompte(compteId);
+  return {
+    liste: liste.map((p: PlanDuCompte) => ({ ...p, preparations: prep.get(p.id) ?? [] })),
+    enCours: liste.find((p) => p.course_date >= aujourdhui)?.id ?? null,
+    demandes: fiche ? await demandesDeLAthlete(fiche.id) : [],
+  };
+}
 
 // Mon plan (CTS_NOLIO_CADRAGE.md dans le dépôt du moteur, T1 : il absorbe le calendrier) : ce que dit la couverture
 // du PDF, la trame semaine par semaine rangée par bloc (type, volume prévu, séances clés, week-end choc annoncé
@@ -16,6 +40,8 @@ export default async function MonPlan({ searchParams }: { searchParams: Recherch
   const ctx = await contexte(searchParams);
   const { plan, jour } = ctx;
   const d = await donneesTableau(ctx);
+  const r = await searchParams;
+  const objectifs = ctx.demonstration ? null : await mesObjectifs();
   const parties: [string, string][] = [
     ['/app/plan/ensemble', plan.architecture.titre],
     ['/app/plan/course', plan.ta_course.titre],
@@ -52,6 +78,43 @@ export default async function MonPlan({ searchParams }: { searchParams: Recherch
           <p className="font-semibold text-indigo">{plan.couverture.debut}</p>
           <p className="text-sm text-indigo/60">{plan.couverture.rendez_vous}</p>
         </div>
+
+        {r.demande === 'envoyee' && (
+          <p className="bg-white border-l-4 border-teal shadow-sm p-4 text-sm text-indigo" role="status">
+            Ta demande est partie chez ton coach : il la relit et lance ta préparation.
+          </p>
+        )}
+        {objectifs && (
+          <section className="bg-white shadow-sm p-4 space-y-2" aria-labelledby="objectifs">
+            <h2 id="objectifs" className="eyebrow text-indigo/60">Mes objectifs</h2>
+            <ul className="divide-y divide-indigo/10">
+              {objectifs.liste.map((o) => (
+                <li key={o.id} className="py-2">
+                  <form action={choisirPlan.bind(null, o.id)}>
+                    <button type="submit" disabled={o.id === ctx.cle} className="w-full flex justify-between items-baseline gap-3 text-sm text-left disabled:cursor-default">
+                      <span className="font-semibold text-indigo">{o.course_nom}</span>
+                      <span className={o.id === ctx.cle ? 'text-teal font-semibold' : 'text-indigo/60'}>
+                        {o.id === ctx.cle ? 'Affiché' : `${o.course_date < jour ? 'Passé' : o.id === objectifs.enCours ? 'En cours' : 'À venir'} · ${dateLongue(o.course_date, true)}`}
+                      </span>
+                    </button>
+                  </form>
+                  {o.preparations.length > 0 && (
+                    <ul className="mt-1 pl-3 space-y-0.5 text-xs text-indigo/65">
+                      {o.preparations.map((c) => <li key={`${c.date}-${c.nom}`}>{c.nom} · {dateLongue(c.date)}</li>)}
+                    </ul>
+                  )}
+                </li>
+              ))}
+              {objectifs.demandes.map((dm) => (
+                <li key={dm.id} className="py-2 flex justify-between gap-3 text-sm">
+                  <span className="font-semibold text-indigo">{String(dm.champs.course_nom ?? '')}</span>
+                  <span className="text-indigo/60">En attente de ton coach</span>
+                </li>
+              ))}
+            </ul>
+            <Link href="/app/objectif/nouveau" className="inline-block text-sm font-semibold text-teal">Nouvel objectif ›</Link>
+          </section>
+        )}
 
         <section className="space-y-3" aria-labelledby="semaines">
           <h2 id="semaines" className="eyebrow text-indigo/60">Semaine par semaine</h2>

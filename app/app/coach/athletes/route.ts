@@ -16,6 +16,18 @@ export async function POST(request: NextRequest) {
   const enTete = { 'X-CTS-Coach': cle };
   const formulaire = await request.formData();
   const athleteDemande = String(formulaire.get('athlete_id') ?? '');
+  // OM1 : un objectif demandé par le coaché ; sa trace, gardée avec la demande, part si le coach n'en donne pas d'autre.
+  const demandeId = String(formulaire.get('demande_id') ?? '');
+  const service0 = clientService();
+  const { data: demande } = demandeId
+    ? await service0.from('objectifs_demandes').select('id, gpx_chemin').eq('id', demandeId).eq('coach_id', coach.compteId).maybeSingle()
+    : { data: null };
+  formulaire.delete('demande_id');
+  const gpxDonne = formulaire.get('gpx');
+  if (demande?.gpx_chemin && !(gpxDonne instanceof File && gpxDonne.size > 0)) {
+    const { data: trace } = await service0.storage.from('plans-pdf').download(demande.gpx_chemin);
+    if (trace) formulaire.set('gpx', new File([trace], 'trace.gpx', { type: 'application/gpx+xml' }));
+  }
   const r1 = await fetch(`${API_URL}/v1/checkout`, { method: 'POST', body: formulaire, headers: enTete, cache: 'no-store' });
   const c1 = await r1.json().catch(() => null);
   if (!r1.ok || !c1?.session_id) {
@@ -65,5 +77,6 @@ export async function POST(request: NextRequest) {
     await service.from('plans').delete().eq('id', plan.id);
     return NextResponse.json({ message: 'Le plan n’a pas pu être rangé. Réessaie.' }, { status: 500 });
   }
+  if (demande) await service.from('objectifs_demandes').update({ statut: 'validee', plan_id: plan.id }).eq('id', demande.id);
   return NextResponse.json({ page: `/app/coach/plan/${plan.id}` });
 }

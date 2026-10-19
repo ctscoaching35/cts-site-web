@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { athletesCoaches } from '@/lib/app/coaching';
+import { demandesDuCoach } from '@/lib/app/demandes';
 import { dateLongue } from '@/lib/app/plan';
 import EnTeteCoach from '@/components/app/EnTeteCoach';
 import { supabaseConfigure } from '@/lib/app/supabase';
@@ -27,11 +28,28 @@ export default async function Coach() {
     }
   }
   const coaches = await athletesCoaches(coach.compteId);
+  const demandes = await demandesDuCoach(coach.compteId).catch(() => []);
   return (
     <>
       <EnTeteCoach />
       <main className="mx-auto max-w-2xl px-4 py-5 space-y-5">
         <h1 className="text-2xl text-indigo">Coach</h1>
+        {/* OM1 : les nouveaux objectifs demandés par les coachés dans l'app, à relire et lancer. */}
+        {demandes.length > 0 && (
+          <section className="bg-white shadow-sm p-4 space-y-2 border-l-4 border-teal">
+            <h2 className="eyebrow text-indigo/60">Objectifs demandés ({demandes.length})</h2>
+            <ul className="divide-y divide-indigo/10">
+              {demandes.map((d) => (
+                <li key={d.id}>
+                  <Link href={`/app/coach/nouveau?athlete=${d.athlete_id}&demande=${d.id}`} className="flex justify-between gap-3 py-2 text-sm">
+                    <span className="font-semibold text-indigo">{d.nom}</span>
+                    <span className="text-indigo/60 text-right">{String(d.champs.course_nom ?? '')} · {d.champs.date_course ? dateLongue(String(d.champs.date_course), true) : ''} ›</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
         <section className="bg-white shadow-sm p-4 space-y-3">
           <h2 className="eyebrow text-indigo/60">Tes athlètes coachés</h2>
           {coaches.length === 0 && <p className="text-sm text-indigo/70">Aucun pour l’instant.</p>}
