@@ -16,6 +16,9 @@ export default async function CalculateurApp({
   const { slug } = await params;
   const calculateur = calculateurParSlug(lireCalculateurs(), slug);
   if (!calculateur) notFound();
+  // Ouvert depuis une fiche de course : la durée et le niveau passent au calculateur, qui les prérempli.
+  const r = await searchParams;
+  const prerempli = new URLSearchParams(['heures', 'minutes', 'niveau'].flatMap((k) => (typeof r[k] === 'string' ? [[k, r[k] as string]] : []))).toString();
   // Le cadre occupe l'écran jusqu'à la barre d'onglets (h-16 et la zone sûre, BarreOnglets).
   return (
     <div className="fixed inset-x-0 top-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-10 flex flex-col bg-sand">
@@ -27,7 +30,7 @@ export default async function CalculateurApp({
           <span className="text-sm font-bold truncate">{calculateur.titre}</span>
         </div>
       </div>
-      <iframe src={`/${calculateur.slug}`} title={calculateur.titre} className="flex-1 w-full border-0 bg-white" />
+      <iframe src={`/${calculateur.slug}${prerempli ? `?${prerempli}` : ''}`} title={calculateur.titre} className="flex-1 w-full border-0 bg-white" />
     </div>
   );
 }

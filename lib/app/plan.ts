@@ -309,3 +309,18 @@ export const jourDuMois = (iso: string) => enDate(iso).getUTCDate();
 
 // Lundi = 0 … dimanche = 6.
 export const rangDansSemaine = (iso: string) => (enDate(iso).getUTCDay() + 6) % 7;
+
+// Le calculateur « Ta nutrition en course » prérempli depuis une fiche de course (décision coach du 20/10/2026 : les
+// repères du moteur, puis le calculateur pour la stratégie détaillée) : la durée visée (« 2h15 ») et le niveau du
+// questionnaire, que le calculateur lit dans son adresse ; l'athlète ajoute son poids, les conditions, sa sueur.
+export function requeteCalculateurNutrition(temps: string, niveau?: string | null): string {
+  const m = /(\d{1,2})\s*h\s*(\d{0,2})/.exec(temps ?? '');
+  const params = new URLSearchParams();
+  if (m) {
+    params.set('heures', String(Number(m[1])));
+    if (m[2]) params.set('minutes', String(Number(m[2])));
+  }
+  const n = { debutant: 'deb', intermediaire: 'int', confirme: 'exp' }[niveau ?? ''];
+  if (n) params.set('niveau', n);
+  return params.toString();
+}

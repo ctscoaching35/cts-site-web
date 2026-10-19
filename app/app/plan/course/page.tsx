@@ -1,12 +1,14 @@
 import { Fragment } from 'react';
+import Link from 'next/link';
 import EnTeteApp from '@/components/app/EnTeteApp';
 import LienFiche from '@/components/app/LienFiche';
 import ProfilCourse from '@/components/app/ProfilCourse';
 import RepartitionPentes from '@/components/app/RepartitionPentes';
 import RetourPlan from '@/components/app/RetourPlan';
 import { Lignes, Partie, Puces, Tableau } from '@/components/app/Texte';
-import { contexte, type Recherche } from '@/lib/app/contexte';
-import { cheminFiche } from '@/lib/app/plan';
+import { contexte, lien, type Recherche } from '@/lib/app/contexte';
+import { cheminFiche, requeteCalculateurNutrition } from '@/lib/app/plan';
+import { clientService } from '@/lib/app/supabase';
 
 // Ta fiche de course (cadrage, 3.4 ; maquette validée le 19/10/2026 : « profil, tronçons, ravitaillement ») : la fiche,
 // le profil et ses pentes, ton terrain, les tronçons, les déterminants de la performance, puis ton jour J et ta
@@ -15,6 +17,12 @@ export default async function TaCourse({ searchParams }: { searchParams: Recherc
   const ctx = await contexte(searchParams);
   const { plan } = ctx;
   const { profil, terrain, determinants: d, jour_j: j } = plan;
+  // Le niveau du questionnaire, pour préremplir le calculateur de nutrition (rien en démonstration).
+  const { data: q } = ctx.demonstration ? { data: null }
+    : await clientService().from('plans').select('intake').eq('id', ctx.cle).maybeSingle();
+  const niveau = String(((q?.intake ?? {}) as Record<string, unknown>).niveau ?? '');
+  const calculateur = lien('/app/calculateurs/calculateur-nutrition', ctx,
+    Object.fromEntries(new URLSearchParams(requeteCalculateurNutrition(plan.course.temps_cible, niveau))));
   const t = profil.troncons;
   return (
     <>
@@ -68,6 +76,13 @@ export default async function TaCourse({ searchParams }: { searchParams: Recherc
         <h2 id="jour-j" className="text-2xl text-indigo leading-tight pt-4 scroll-mt-20">{j.titre}</h2>
         <Partie titre={j.nutrition.titre}>
           <Lignes lignes={j.nutrition.lignes} />
+          <p className="text-sm text-indigo/75 leading-relaxed">
+            Ces repères sont ceux de tes sorties longues. Pour ta stratégie détaillée (ton poids, la chaleur, ta sueur, ce que
+            tu prends et quand) :
+          </p>
+          <Link href={calculateur} className="inline-flex items-center min-h-12 px-5 rounded-xl bg-teal text-white text-sm font-bold">
+            Construis ta stratégie détaillée
+          </Link>
           <LienFiche ctx={ctx} href={cheminFiche(plan, j.nutrition.fiche[0])} libelle={j.nutrition.fiche[1]} />
         </Partie>
         {j.parties.map((p) => (

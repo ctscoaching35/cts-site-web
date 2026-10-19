@@ -6,7 +6,7 @@ import ProfilCourse from '@/components/app/ProfilCourse';
 import RepartitionPentes from '@/components/app/RepartitionPentes';
 import { Lignes, Partie, Puces, Tableau } from '@/components/app/Texte';
 import { planDuJeton } from '@/lib/app/ficheCourse';
-import type { Plan } from '@/lib/app/plan';
+import { requeteCalculateurNutrition, type Plan } from '@/lib/app/plan';
 import { clientService, supabaseConfigure } from '@/lib/app/supabase';
 
 // Lue à chaque visite : le plan peut avoir été refait.
@@ -25,15 +25,18 @@ export default async function FicheCourse({ params, searchParams }: {
   if (!planId) notFound();
   const course = (await searchParams).course;
   if (typeof course === 'string') {
-    const { data: fp, error } = await clientService().from('plans').select('fiches_preparation').eq('id', planId).maybeSingle();
+    const { data: fp, error } = await clientService().from('plans').select('fiches_preparation, intake').eq('id', planId).maybeSingle();
     const fiche = !error ? ((fp as { fiches_preparation?: Record<string, FichePrep> } | null)?.fiches_preparation ?? {})[course] : undefined;
     if (!fiche) notFound();
-    return <FichePreparation fiche={fiche} />;
+    const niveau = String(((fp?.intake ?? {}) as Record<string, unknown>).niveau ?? '');
+    return <FichePreparation fiche={fiche} calculateur={`/calculateur-nutrition?${requeteCalculateurNutrition(fiche.course.temps_cible, niveau)}`} />;
   }
-  const { data } = await clientService().from('plans').select('donnees').eq('id', planId).maybeSingle();
+  const { data } = await clientService().from('plans').select('donnees, intake').eq('id', planId).maybeSingle();
   const plan = data?.donnees as Plan | undefined;
   if (!plan) notFound();
   const { profil, terrain, determinants: d, jour_j: j } = plan;
+  const calculateur = `/calculateur-nutrition?${requeteCalculateurNutrition(plan.course.temps_cible,
+    String(((data?.intake ?? {}) as Record<string, unknown>).niveau ?? ''))}`;
   const t = profil.troncons;
   const fiche = (cle: string) => plan.pour_aller_plus_loin.fiches.find((f) => f.cle === cle);
   const lien = (cle: string, libelle: string) => {
@@ -95,6 +98,13 @@ export default async function FicheCourse({ params, searchParams }: {
         <h2 className="text-2xl text-indigo leading-tight pt-4">{j.titre}</h2>
         <Partie titre={j.nutrition.titre}>
           <Lignes lignes={j.nutrition.lignes} />
+          <p className="text-sm text-indigo/75 leading-relaxed">
+            Ces repères sont ceux de tes sorties longues. Pour ta stratégie détaillée (ton poids, la chaleur, ta sueur, ce que
+            tu prends et quand) :
+          </p>
+          <a href={calculateur} className="inline-flex items-center min-h-12 px-5 rounded-xl bg-teal text-white text-sm font-bold">
+            Construis ta stratégie détaillée
+          </a>
           {lien(j.nutrition.fiche[0], j.nutrition.fiche[1])}
         </Partie>
         {j.parties.map((p) => (
@@ -114,13 +124,13 @@ export default async function FicheCourse({ params, searchParams }: {
 // La fiche d'une course de préparation (PO3), rendue par le moteur (/v1/fiche-course) : les mêmes formes que les
 // sections du plan, sans les déterminants physiologiques (ceux de la préparation).
 type FichePrep = {
-  course: { nom: string; date_lettres: string };
+  course: { nom: string; date_lettres: string; temps_cible: string };
   ta_course: Plan['ta_course']; profil: Plan['profil'];
   determinants: { mecanique: { titre: string; puces: string[] } | null; sans_trace: string | null };
   jour_j: Plan['jour_j'];
 };
 
-function FichePreparation({ fiche }: { fiche: FichePrep }) {
+function FichePreparation({ fiche, calculateur }: { fiche: FichePrep; calculateur: string }) {
   const { profil, determinants: d, jour_j: j } = fiche;
   const t = profil.troncons;
   const lien = (cle: string, libelle: string) => <a href={`/bibliotheque/${cle}`} className="inline-block text-sm text-teal font-semibold">{libelle} ›</a>;
@@ -164,6 +174,13 @@ function FichePreparation({ fiche }: { fiche: FichePrep }) {
         <h2 className="text-2xl text-indigo leading-tight pt-4">{j.titre}</h2>
         <Partie titre={j.nutrition.titre}>
           <Lignes lignes={j.nutrition.lignes} />
+          <p className="text-sm text-indigo/75 leading-relaxed">
+            Ces repères sont ceux de tes sorties longues. Pour ta stratégie détaillée (ton poids, la chaleur, ta sueur, ce que
+            tu prends et quand) :
+          </p>
+          <a href={calculateur} className="inline-flex items-center min-h-12 px-5 rounded-xl bg-teal text-white text-sm font-bold">
+            Construis ta stratégie détaillée
+          </a>
           {lien(j.nutrition.fiche[0], j.nutrition.fiche[1])}
         </Partie>
         {j.parties.map((p) => (

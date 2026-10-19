@@ -295,6 +295,15 @@
   ['heures', 'minutes', 'poids'].forEach(function (id) { $(id).addEventListener('input', calculer); });
   ['cond_frais', 'cond_tempere', 'cond_chaud', 'cond_humide', 'nuit', 'niveau_deb', 'niveau_int', 'niveau_exp', 'intestin_non', 'intestin_cours', 'intestin_oui', 'sueur_faible', 'sueur_moderee', 'sueur_elevee'].forEach(function (id) { $(id).addEventListener('change', calculer); });
   $('imprimer').addEventListener('click', function () { window.print(); });
+  // Ouvert depuis une fiche de course (décision coach du 20/10/2026) : la durée de la course et le niveau, dans
+  // l'adresse (?heures=2&minutes=15&niveau=int), préremplis ; le reste (poids, conditions, sueur…) se remplit ici.
+  (function () {
+    var q = new URLSearchParams(window.location.search);
+    var h = q.get('heures'), m = q.get('minutes'), n = q.get('niveau');
+    if (h && /^\d{1,2}$/.test(h)) $('heures').value = h;
+    if (m && /^\d{1,2}$/.test(m)) $('minutes').value = m;
+    if (n && ['deb', 'int', 'exp'].indexOf(n) >= 0) $('niveau_' + n).checked = true;
+  })();
   calculer();
 })();
 </script>
