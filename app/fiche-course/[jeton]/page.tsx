@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
-import { Fragment } from 'react';
 import { notFound } from 'next/navigation';
 import ProfilCourse from '@/components/app/ProfilCourse';
 import RepartitionPentes from '@/components/app/RepartitionPentes';
@@ -17,7 +16,7 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Ta fiche course — CTS Coaching', robots: { index: false, follow: false } };
 
 // La fiche de course d'un athlète coaché (CTS_NOLIO_CADRAGE.md dans le dépôt du moteur, F2) : « Ta course » et « Ton
-// jour J » de son plan, le même contenu que l'app et le PDF, par un lien privé, sans compte. Un lien faux : introuvable.
+// jour J » de son plan, le même contenu que l'app, par un lien privé, sans compte. Un lien faux : introuvable.
 // ?course=AAAA-MM-JJ (PO3, PO4) : la fiche d'une de ses courses de préparation, sans plan à elle.
 export default async function FicheCourse({ params, searchParams }: {
   params: Promise<{ jeton: string }>; searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -40,11 +39,6 @@ export default async function FicheCourse({ params, searchParams }: {
   const calculateur = `/calculateur-nutrition?${requeteCalculateurNutrition(plan.course.temps_cible,
     String(((data?.intake ?? {}) as Record<string, unknown>).niveau ?? ''))}`;
   const t = profil.troncons;
-  const fiche = (cle: string) => plan.pour_aller_plus_loin.fiches.find((f) => f.cle === cle);
-  const lien = (cle: string, libelle: string) => {
-    const f = fiche(cle);
-    return f ? <a href={f.url} className="inline-block text-sm text-teal font-semibold">{libelle} ›</a> : null;
-  };
   return (
     <div className="min-h-screen bg-sand">
       <header className="bg-indigo text-white">
@@ -99,17 +93,9 @@ export default async function FicheCourse({ params, searchParams }: {
 
         <h2 className="text-2xl text-indigo leading-tight pt-4">{j.titre}</h2>
         <Partie titre={j.nutrition.titre}>
-          <StrategieCourse lignes={j.nutrition.lignes as [string, string][]} href={calculateur} externe />
-          {lien(j.nutrition.fiche[0], j.nutrition.fiche[1])}
+          <StrategieCourse lignes={j.nutrition.lignes as [string, string][]} href={calculateur}
+            fiche={(slug) => `/bibliotheque/${slug}`} ultra={Boolean(j.fiche_ultra)} externe />
         </Partie>
-        {j.parties.map((p) => (
-          <Fragment key={p.titre}>
-            {p.titre === 'Après' && j.fiche_ultra && <div className="px-1">{lien(j.fiche_ultra[0], j.fiche_ultra[1])}</div>}
-            <Partie titre={p.titre}>
-              <Puces puces={p.puces} />
-            </Partie>
-          </Fragment>
-        ))}
         <p className="text-xs text-indigo/50 text-center pb-6">Ce lien est personnel : ne le partage pas.</p>
       </main>
     </div>
@@ -117,7 +103,6 @@ export default async function FicheCourse({ params, searchParams }: {
 }
 
 function FichePreparation({ fiche, calculateur }: { fiche: FichePrep; calculateur: string }) {
-  const lien = (cle: string, libelle: string) => <a href={`/bibliotheque/${cle}`} className="inline-block text-sm text-teal font-semibold">{libelle} ›</a>;
   return (
     <div className="min-h-screen bg-sand">
       <header className="bg-indigo text-white">
@@ -130,7 +115,7 @@ function FichePreparation({ fiche, calculateur }: { fiche: FichePrep; calculateu
         </div>
       </header>
       <main className="mx-auto max-w-2xl px-4 py-5 space-y-5">
-        <CorpsFichePreparation fiche={fiche} calculateur={calculateur} lienFiche={lien} externe />
+        <CorpsFichePreparation fiche={fiche} calculateur={calculateur} cheminFiche={(slug) => `/bibliotheque/${slug}`} externe />
         <p className="text-xs text-indigo/50 text-center pb-6">Ce lien est personnel : ne le partage pas.</p>
       </main>
     </div>

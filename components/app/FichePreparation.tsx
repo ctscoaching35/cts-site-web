@@ -1,4 +1,3 @@
-import { Fragment } from 'react';
 import ProfilCourse from './ProfilCourse';
 import RepartitionPentes from './RepartitionPentes';
 import StrategieCourse from './StrategieCourse';
@@ -15,8 +14,8 @@ export type FichePrep = {
   jour_j: Plan['jour_j'];
 };
 
-export default function CorpsFichePreparation({ fiche, calculateur, lienFiche, externe = false }: {
-  fiche: FichePrep; calculateur: string; lienFiche: (cle: string, libelle: string) => React.ReactNode; externe?: boolean;
+export default function CorpsFichePreparation({ fiche, calculateur, cheminFiche, externe = false }: {
+  fiche: FichePrep; calculateur: string; cheminFiche: (slug: string) => string; externe?: boolean;
 }) {
   const { profil, determinants: d, jour_j: j } = fiche;
   const t = profil.troncons;
@@ -49,17 +48,9 @@ export default function CorpsFichePreparation({ fiche, calculateur, lienFiche, e
       {d.sans_trace && <p className="text-sm text-indigo/75 px-1">{d.sans_trace}</p>}
       <h2 className="text-2xl text-indigo leading-tight pt-4">{j.titre}</h2>
       <Partie titre={j.nutrition.titre}>
-        <StrategieCourse lignes={j.nutrition.lignes as [string, string][]} href={calculateur} externe={externe} />
-        {lienFiche(j.nutrition.fiche[0], j.nutrition.fiche[1])}
+        <StrategieCourse lignes={j.nutrition.lignes as [string, string][]} href={calculateur} fiche={cheminFiche}
+          ultra={Boolean(j.fiche_ultra)} externe={externe} />
       </Partie>
-      {j.parties.map((p) => (
-        <Fragment key={p.titre}>
-          {p.titre === 'Après' && j.fiche_ultra && <div className="px-1">{lienFiche(j.fiche_ultra[0], j.fiche_ultra[1])}</div>}
-          <Partie titre={p.titre}>
-            <Puces puces={p.puces} />
-          </Partie>
-        </Fragment>
-      ))}
     </>
   );
 }

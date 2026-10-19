@@ -1,19 +1,17 @@
-import { Fragment } from 'react';
 import StrategieCourse from '@/components/app/StrategieCourse';
 import EnTeteApp from '@/components/app/EnTeteApp';
 import CorpsFichePreparation, { type FichePrep } from '@/components/app/FichePreparation';
-import LienFiche from '@/components/app/LienFiche';
 import ProfilCourse from '@/components/app/ProfilCourse';
 import RepartitionPentes from '@/components/app/RepartitionPentes';
 import RetourPlan from '@/components/app/RetourPlan';
 import { Lignes, Partie, Puces, Tableau } from '@/components/app/Texte';
 import { contexte, lien, type Recherche } from '@/lib/app/contexte';
-import { cheminFiche, requeteCalculateurNutrition } from '@/lib/app/plan';
+import { requeteCalculateurNutrition } from '@/lib/app/plan';
 import { clientService } from '@/lib/app/supabase';
 
 // Ta fiche de course (cadrage, 3.4 ; maquette validée le 19/10/2026 : « profil, tronçons, ravitaillement ») : la fiche,
 // le profil et ses pentes, ton terrain, les tronçons, les déterminants de la performance, puis ton jour J et ta
-// stratégie nutritionnelle de course (cts_contenu), comme la fiche de course privée des coachés.
+// stratégie de course et les fiches qui la préparent (StrategieCourse), comme la fiche de course privée des coachés.
 export default async function TaCourse({ searchParams }: { searchParams: Recherche }) {
   const ctx = await contexte(searchParams);
   const { plan } = ctx;
@@ -39,7 +37,7 @@ export default async function TaCourse({ searchParams }: { searchParams: Recherc
           <main className="mx-auto max-w-2xl px-4 py-5 space-y-5">
             <RetourPlan ctx={ctx} />
             <CorpsFichePreparation fiche={fiche} calculateur={calculateurPrep}
-              lienFiche={(cle, libelle) => <LienFiche ctx={ctx} href={`/app/bibliotheque/${cle}`} libelle={libelle} />} />
+              cheminFiche={(slug) => lien(`/app/bibliotheque/${slug}`, ctx)} />
           </main>
         </>
       );
@@ -96,22 +94,9 @@ export default async function TaCourse({ searchParams }: { searchParams: Recherc
 
         <h2 id="jour-j" className="text-2xl text-indigo leading-tight pt-4 scroll-mt-20">{j.titre}</h2>
         <Partie titre={j.nutrition.titre}>
-          <StrategieCourse lignes={j.nutrition.lignes as [string, string][]} href={calculateur} />
-          <LienFiche ctx={ctx} href={cheminFiche(plan, j.nutrition.fiche[0])} libelle={j.nutrition.fiche[1]} />
+          <StrategieCourse lignes={j.nutrition.lignes as [string, string][]} href={calculateur}
+            fiche={(slug) => lien(`/app/bibliotheque/${slug}`, ctx)} ultra={Boolean(j.fiche_ultra)} />
         </Partie>
-        {j.parties.map((p) => (
-          <Fragment key={p.titre}>
-            {/* La fiche ultra se lit après la course, comme sur le PDF. */}
-            {p.titre === 'Après' && j.fiche_ultra && (
-              <div className="px-1">
-                <LienFiche ctx={ctx} href={cheminFiche(plan, j.fiche_ultra[0])} libelle={j.fiche_ultra[1]} />
-              </div>
-            )}
-            <Partie titre={p.titre}>
-              <Puces puces={p.puces} />
-            </Partie>
-          </Fragment>
-        ))}
       </main>
     </>
   );
