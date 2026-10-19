@@ -18,6 +18,10 @@ export type FicheAthlete = {
   objectifs: Objectif[];
   // Son compte dans l'app, quand le coach l'y a invité (T6).
   compte_id: string | null;
+  // Son profil (PO1), sa D′ (AP4), la date et la source de chaque repère : null ou vides tant que la migration du
+  // 20/10/2026 n'est pas passée.
+  profil: Record<string, string | string[]> | null; d_prime_m: number | null;
+  reperes_sources: Record<string, { le: string; source: 'test' | 'coach' }>;
 };
 // Une séance envoyée : son jour du plan, son identifiant Nolio (« ptrn_… » ; un nombre pour un envoi de la v1,
 // converti à la visite suivante), sa révision à l'envoi (V4 : une révision changée, le coach l'a retouchée), et
@@ -48,6 +52,8 @@ export async function athletesCoaches(coachId: string): Promise<FicheAthlete[]> 
   return (athletes ?? []).map((a) => ({
     id: a.id, nom: a.nom, nolio_athlete_id: a.nolio_athlete_id, fc_seuil1: a.fc_seuil1, vc_ms: a.vc_ms, fc_seuil2: a.fc_seuil2,
     v_seuil1_ms: a.v_seuil1_ms ?? null, compte_id: a.compte_id ?? null,
+    profil: (a.profil ?? null) as FicheAthlete['profil'], d_prime_m: a.d_prime_m ?? null,
+    reperes_sources: (a.reperes_sources ?? {}) as FicheAthlete['reperes_sources'],
     objectifs: ((lignes ?? []) as LigneCoaching[]).filter((l) => l.athlete_id === a.id).map(objectif)
       .sort((x, y) => x.course_date.localeCompare(y.course_date)),
   }));
@@ -95,7 +101,9 @@ export async function questionnairePrerempli(coachId: string, athleteId: string)
   if (!athlete || !dernier) return null;
   const { data } = await clientService().from('plans').select('intake').eq('id', dernier.plan_id).single();
   const charge = await chargeDepuisNolio(coachId, athlete.nolio_athlete_id).catch(() => null);
-  return { athlete, initial: { ...reponsesSansLaCourse(data?.intake), nom: athlete.nom, ...(charge ?? {}) }, nolio: Boolean(charge) };
+  // PO1 : le profil de sa fiche, s'il a été modifié depuis, l'emporte sur les réponses du dernier objectif.
+  return { athlete, initial: { ...reponsesSansLaCourse(data?.intake), ...(athlete.profil ?? {}), nom: athlete.nom, ...(charge ?? {}) },
+    nolio: Boolean(charge) };
 }
 
 // QD4 (décision coach du 19/10/2026) : la charge du moment d'un coaché, lue dans ses séances Nolio avec son accord du

@@ -10,14 +10,18 @@ import type { Recherche } from '@/lib/app/contexte';
 export const dynamic = 'force-dynamic';
 
 // « Ajouter un athlète » (CTS_NOLIO_CADRAGE.md, N2) : le coach remplit le questionnaire à la place de son
-// athlète ; le plan se génère sans paiement et rejoint son espace coach. « Nouvel objectif » (N9) : le même,
-// prérempli avec les réponses du dernier objectif de l'athlète, sauf la course.
+// athlète ; le plan se génère sans paiement et rejoint son espace coach. « Nouvel objectif » (N9, PO1, PO2) : le
+// questionnaire court, son profil repris du dernier objectif ; seules sa charge du moment (préremplie depuis Nolio) et
+// la course se demandent. Une course de préparation s'ajoute à son objectif en cours.
 export default async function NouvelAthlete({ searchParams }: { searchParams: Recherche }) {
   const coach = await exigerCoach();
   const r = await searchParams;
   const suite = typeof r.athlete === 'string' ? await questionnairePrerempli(coach.compteId, r.athlete) : null;
   // OM1 : l'objectif demandé par le coaché, ses réponses à relire ; sa trace part avec la demande.
   const demande = suite && typeof r.demande === 'string' ? await demandeDuCoach(coach.compteId, r.demande) : null;
+  const court = Boolean(suite && !demande);
+  const jour = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
+  const enCours = suite?.athlete.objectifs.find((o) => o.course_date >= jour) ?? null;
   return (
     <CadreCoach actif="athletes">
       <div className="max-w-3xl">
@@ -31,13 +35,25 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
             {demande
               ? `Sa demande du ${new Date(demande.cree_le).toLocaleDateString('fr-FR')} : relis ses réponses, corrige si besoin, et lance l’objectif.${demande.gpx_chemin ? ' Sa trace part avec la demande.' : ''}`
               : suite?.nolio
-              ? 'Ses réponses du dernier objectif sont reprises, et sa charge du moment est lue dans ses séances Nolio (volume et plus longue sortie des 4 dernières semaines, arrêt sur 2 mois) : relis-la, et saisis la course.'
+              ? 'Son profil est déjà rempli : seules sa charge du moment et la course sont demandées. Sa charge est préremplie depuis Nolio, sur ses 4 dernières semaines : relis et corrige si besoin.'
               : suite
-              ? 'Ses réponses du dernier objectif sont reprises : mets à jour sa charge du moment et saisis la course.'
+              ? 'Son profil est déjà rempli : seules sa charge du moment et la course sont demandées.'
               : 'Remplis le questionnaire avec ses réponses. Le plan se génère sans paiement et rejoint ton espace coach.'}
           </p>
         </div>
-        <Questionnaire coach emailCoach={coach.email} athleteId={suite?.athlete.id} demandeId={demande?.id}
+        {court && (
+          <div role="group" aria-label="Genre d’objectif" className="inline-flex mb-6 p-1 rounded-xl bg-sand-dark gap-1">
+            <span aria-current="true" className="inline-flex items-center min-h-11 px-4 rounded-[9px] bg-white text-indigo text-sm font-bold shadow-sm">Objectif principal</span>
+            {enCours ? (
+              <Link href={`/app/coach/plan/${enCours.plan_id}#ajouter-course`} className="inline-flex items-center min-h-11 px-4 rounded-[9px] text-[#4A4866] text-sm font-semibold">
+                Course de préparation
+              </Link>
+            ) : (
+              <span className="inline-flex items-center min-h-11 px-4 text-[#8B89A3] text-sm font-semibold" title="Sans objectif principal en cours">Course de préparation</span>
+            )}
+          </div>
+        )}
+        <Questionnaire coach court={court} emailCoach={coach.email} athleteId={suite?.athlete.id} demandeId={demande?.id}
           initial={demande ? { ...demande.champs, nom: suite?.athlete.nom ?? '' } : suite?.initial} />
       </div>
     </CadreCoach>

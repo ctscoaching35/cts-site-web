@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import CadreCoach from '@/components/app/CadreCoach';
 import FormulaireValeurs from '@/components/app/FormulaireValeurs';
 import InvitationApp from '@/components/app/InvitationApp';
+import ProfilAthlete from '@/components/app/ProfilAthlete';
 import { Carte, PastilleDate, Surtitre } from '@/components/app/Ui';
 import { associerNolio, retirerAcces, retirerAthlete } from '@/lib/app/actionsCoaching';
 import { adresseDuCompte } from '@/lib/app/espaceAthlete';
@@ -12,6 +13,7 @@ import { initiales } from '@/lib/app/contexte';
 import { demandesDuCoach } from '@/lib/app/demandes';
 import { athletesNolio, ErreurNolio, exigerCoach, nolioConfigure, type AthleteNolio } from '@/lib/app/nolio';
 import { dateLongue } from '@/lib/app/plan';
+import { textes } from '@/lib/plan';
 import { allureDepuisVitesse } from '@/lib/app/allureCoach';
 import { clientService, supabaseConfigure } from '@/lib/app/supabase';
 import type { CourseSecondaire } from '@/lib/app/tableauDuPlan';
@@ -48,6 +50,26 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
       .in('id', a.objectifs.map((o) => o.plan_id))
     : { data: [] };
   const etat = new Map((plans ?? []).map((p) => [p.id as string, p as Record<string, unknown>]));
+  // PO1 : son profil, celui de sa fiche s'il a été modifié, sinon celui de son dernier objectif.
+  const dernier = a.objectifs[a.objectifs.length - 1];
+  const { data: intake } = dernier ? await service.from('plans').select('intake').eq('id', dernier.plan_id).maybeSingle() : { data: null };
+  const deLIntake = (intake?.intake ?? {}) as Record<string, string | string[]>;
+  const profil: Record<string, string | string[]> = a.profil ?? Object.fromEntries(
+    ['niveau', 'terrain', 'jours_disponibles', 'jour_sl', 'freq_hebdo'].filter((k) => deLIntake[k] !== undefined).map((k) => [k, deLIntake[k]]));
+  const lignesProfil: [string, string][] = [
+    ['Niveau', textes.niveau.options.find((o) => o.valeur === profil.niveau)?.titre ?? '—'],
+    ['Terrain', textes.terrain.options.find((o) => o.valeur === profil.terrain)?.titre ?? '—'],
+    ['Disponibilités', profil.freq_hebdo ? `${profil.freq_hebdo} séances · ${(Array.isArray(profil.jours_disponibles) ? profil.jours_disponibles : []).map((j) => j.slice(0, 3)).join(', ')} · sortie longue le ${profil.jour_sl}` : '—'],
+  ];
+  const source = (cle: 'fc_seuil1' | 'vc_ms' | 'fc_seuil2') => {
+    const x = a.reperes_sources[cle];
+    return x ? `${x.source === 'test' ? 'test lu dans Nolio' : 'saisi par toi'} le ${dateLongue(x.le, true)}` : null;
+  };
+  const reperes: [string, string | null, string | null][] = [
+    ['FC au seuil 1', a.fc_seuil1 ? `${a.fc_seuil1} bpm` : null, source('fc_seuil1')],
+    ['Vitesse critique', a.vc_ms ? `${allureDepuisVitesse(a.vc_ms)} /km` : null, source('vc_ms')],
+    ['FC au seuil 2', a.fc_seuil2 ? `${a.fc_seuil2} bpm` : null, source('fc_seuil2')],
+  ];
   const jour = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
   const prochain = a.objectifs.find((o) => o.course_date >= jour)?.plan_id ?? null;
   const nomNolio = liste.find((x) => x.id === a.nolio_athlete_id)?.name ?? null;
@@ -140,15 +162,45 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
         </div>
 
         <div className="flex-[1_1_320px] min-w-0 space-y-5">
-          <Carte className="!p-5 space-y-3">
+          <Carte className="!p-5 space-y-1">
             <Surtitre>Ses repères</Surtitre>
-            <p className="text-[0.8125rem] leading-relaxed text-[#4A4866]">
-              Avec eux, les séances partent avec une allure sur le plat ou une FC, puis le RPE ; sans eux, au RPE, et le test
-              s’écrit à la place d’une séance. Gardés seulement avec son accord, celui du Suivi.
-            </p>
-            <FormulaireValeurs athleteId={a.id} fc1={a.fc_seuil1} vs1Allure={a.v_seuil1_ms ? allureDepuisVitesse(a.v_seuil1_ms) : null}
-              vcAllure={a.vc_ms ? allureDepuisVitesse(a.vc_ms) : null} fc2={a.fc_seuil2} />
+            <ul className="pt-1.5">
+              {reperes.map(([titre, valeur, d]) => (
+                <li key={titre} className="flex justify-between items-center gap-3 min-h-12 border-b last:border-b-0 border-indigo/[0.06]">
+                  <span><span className="block text-sm font-bold">{titre}</span>
+                    <span className="block text-[0.72rem] text-[#5E5C78]">{valeur ? d ?? 'sur sa fiche' : 'le test s’écrira à la place d’une séance'}</span></span>
+                  <span className={clsx('font-extrabold', valeur ? 'text-[0.9375rem]' : 'text-[0.8125rem] text-[#8A5E10]')}>{valeur ?? 'à tester'}</span>
+                </li>
+              ))}
+            </ul>
+            <details className="pt-2">
+              <summary className="cursor-pointer min-h-10 flex items-center text-[0.8125rem] font-bold text-teal">Modifier ses repères</summary>
+              <p className="mb-3 text-[0.8125rem] leading-relaxed text-[#4A4866]">
+                Avec eux, les séances partent avec une allure sur le plat ou une FC, puis le RPE ; sans eux, au RPE, et le test
+                s’écrit à la place d’une séance. Gardés seulement avec son accord, celui du Suivi.
+              </p>
+              <FormulaireValeurs athleteId={a.id} fc1={a.fc_seuil1} vs1Allure={a.v_seuil1_ms ? allureDepuisVitesse(a.v_seuil1_ms) : null}
+                vcAllure={a.vc_ms ? allureDepuisVitesse(a.vc_ms) : null} fc2={a.fc_seuil2} />
+            </details>
           </Carte>
+
+          {Object.keys(profil).length > 0 && (
+            <Carte className="!p-5 space-y-1">
+              <Surtitre>Son profil</Surtitre>
+              <dl className="pt-1.5">
+                {lignesProfil.map(([cle, valeur]) => (
+                  <div key={cle} className="grid grid-cols-[112px_1fr] gap-x-3 py-2.5 border-b last:border-b-0 border-indigo/[0.06] text-[0.84rem]">
+                    <dt className="font-semibold text-[#5E5C78]">{cle}</dt><dd>{valeur}</dd>
+                  </div>
+                ))}
+              </dl>
+              <p className="pt-1 text-[0.72rem] leading-relaxed text-[#5E5C78]">Rempli une fois. Les disponibilités de chaque semaine viennent ensuite de son questionnaire du dimanche.</p>
+              <details className="pt-2">
+                <summary className="cursor-pointer min-h-10 flex items-center text-[0.8125rem] font-bold text-teal">Modifier son profil</summary>
+                <div className="pt-2"><ProfilAthlete athleteId={a.id} profil={profil} /></div>
+              </details>
+            </Carte>
+          )}
 
           <Carte className="!p-5 space-y-3">
             <Surtitre>Son compte Nolio</Surtitre>

@@ -61,6 +61,7 @@ export async function enregistrerValeurs(athleteId: string, _e: EtatCoach, form:
   const aGarder = [fc1.valeur, allure, allureS1, fc2.valeur].some((v) => v !== null);
   if (aGarder && !(await accordDeLAthlete(coach.compteId, athleteId)))
     return { ok: false, message: 'Pas encore son accord : associe-le à Nolio, envoie-lui le message d’accord, puis coche « Accord reçu » dans le Suivi quand il a répondu oui.' };
+  const avant = await ficheAthlete(coach.compteId, athleteId);
   const { error } = await clientService().from('athletes_coaches').update({
     fc_seuil1: fc1.valeur === null ? null : Math.round(fc1.valeur),
     vc_ms: allure === null ? null : Math.round((1000 / allure) * 1000) / 1000,
@@ -68,6 +69,23 @@ export async function enregistrerValeurs(athleteId: string, _e: EtatCoach, form:
     fc_seuil2: fc2.valeur === null ? null : Math.round(fc2.valeur),
   }).eq('id', athleteId).eq('coach_id', coach.compteId);
   if (error) return { ok: false, message: 'L’enregistrement n’a pas abouti. Réessaie.' };
+  // La source de chaque repère changé (saisi par le coach), après la migration du 20/10/2026 seulement.
+  if (avant) {
+    const jour = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
+    const nouveau: Record<string, number | null> = {
+      fc_seuil1: fc1.valeur === null ? null : Math.round(fc1.valeur), fc_seuil2: fc2.valeur === null ? null : Math.round(fc2.valeur),
+      vc_ms: allure === null ? null : Math.round((1000 / allure) * 1000) / 1000,
+    };
+    const sources = { ...avant.reperes_sources } as Record<string, unknown>;
+    let change = false;
+    for (const cle of ['fc_seuil1', 'vc_ms', 'fc_seuil2'] as const) {
+      if (nouveau[cle] === avant[cle]) continue;
+      change = true;
+      if (nouveau[cle] === null) delete sources[cle];
+      else sources[cle] = { le: jour, source: 'coach' };
+    }
+    if (change) await clientService().from('athletes_coaches').update({ reperes_sources: sources }).eq('id', athleteId).eq('coach_id', coach.compteId);
+  }
   revalidatePath(`/app/coach/athlete/${athleteId}`);
   // ZN1 : les mêmes zones dans son Nolio, d'après son objectif écrit semaine par semaine le plus récent.
   const fiche = await ficheAthlete(coach.compteId, athleteId);
@@ -184,4 +202,29 @@ export async function retirerAthlete(athleteId: string): Promise<void> {
   await clientService().from('athletes_coaches').delete().eq('id', athleteId).eq('coach_id', coach.compteId);
   revalidatePath('/app/coach');
   redirect('/app/coach');
+}
+
+// PO1 (décision coach du 19/10/2026) : le profil d'un athlète coaché, modifié à part de ses objectifs, sur sa fiche ;
+// le questionnaire court du prochain objectif le reprend. Le moteur revérifie tout à la génération.
+const JOURS_SEMAINE = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+export async function enregistrerProfil(athleteId: string, _e: EtatCoach, form: FormData): Promise<EtatCoach> {
+  const coach = await coachConnecte();
+  if (!coach) return { ok: false, message: 'Ta session a expiré : reconnecte-toi.' };
+  const { textes } = await import('@/lib/plan');
+  const niveau = String(form.get('niveau') ?? '');
+  const terrain = String(form.get('terrain') ?? '');
+  const jours = form.getAll('jours_disponibles').map(String).filter((j) => JOURS_SEMAINE.includes(j));
+  const jourSl = String(form.get('jour_sl') ?? '');
+  const freq = Number(form.get('freq_hebdo'));
+  if (!textes.niveau.options.some((o) => o.valeur === niveau) || !textes.terrain.options.some((o) => o.valeur === terrain))
+    return { ok: false, message: 'Choisis son niveau et son terrain.' };
+  if (!jours.length || !jours.includes(jourSl)) return { ok: false, message: 'Coche ses jours disponibles, dont celui de sa sortie longue.' };
+  if (!Number.isInteger(freq) || freq < 1 || freq > Math.min(7, jours.length))
+    return { ok: false, message: 'Le nombre de séances doit tenir dans ses jours disponibles.' };
+  const { error } = await clientService().from('athletes_coaches')
+    .update({ profil: { niveau, terrain, jours_disponibles: jours, jour_sl: jourSl, freq_hebdo: String(freq) } })
+    .eq('id', athleteId).eq('coach_id', coach.compteId);
+  if (error) return { ok: false, message: 'L’enregistrement n’a pas abouti : la migration du 20/10/2026 est-elle passée ?' };
+  revalidatePath(`/app/coach/athlete/${athleteId}`);
+  return { ok: true, message: 'C’est enregistré. Son prochain objectif partira de ce profil ; sa préparation en cours garde le sien.' };
 }

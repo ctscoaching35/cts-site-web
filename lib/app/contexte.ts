@@ -95,9 +95,11 @@ async function profilDuPlan(planId: string): Promise<Profil> {
 async function profilDuCoache(planId: string): Promise<Profil> {
   const service = clientService();
   const { data: c } = await service.from('coaching').select('athlete_id').eq('plan_id', planId).maybeSingle();
-  const { data: a } = c ? await service.from('athletes_coaches').select('fc_seuil1, vc_ms, fc_seuil2, v_seuil1_ms').eq('id', c.athlete_id).maybeSingle()
+  // « * » : la D′ (AP4, pour son profil de coureur) n'existe qu'après la migration du 20/10/2026.
+  const { data: a } = c ? await service.from('athletes_coaches').select('*').eq('id', c.athlete_id).maybeSingle()
     : { data: null };
-  return a ? { ...PROFIL_VIDE, fc_seuil1: a.fc_seuil1, vc_ms: a.vc_ms, fc_seuil2: a.fc_seuil2, v_seuil1_ms: a.v_seuil1_ms ?? null } : PROFIL_VIDE;
+  return a ? { ...PROFIL_VIDE, fc_seuil1: a.fc_seuil1, vc_ms: a.vc_ms, fc_seuil2: a.fc_seuil2, v_seuil1_ms: a.v_seuil1_ms ?? null,
+    d_prime_m: a.d_prime_m ?? null } : PROFIL_VIDE;
 }
 
 const CHAMPS_PROFIL = ['fc_seuil1', 'fc_seuil1_le', 'vc_ms', 'd_prime_m', 'vc_le', 'fc_seuil2', 'fc_seuil2_le', 'v_seuil1_ms'] as const;

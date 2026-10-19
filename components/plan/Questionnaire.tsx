@@ -69,12 +69,14 @@ function Choix({
 // coach : le questionnaire rempli par le coach pour un athlète coaché (CTS_NOLIO_CADRAGE.md, N1, N2) : sans
 // paiement ni brouillon gardé, le plan part dans son espace coach. demande (OM1, 19/10/2026) : le même, rempli par le
 // coaché dans l'app, qui part en demande chez son coach ; demandeId : le coach lance l'objectif d'une demande. Sans
-// coach, initial préremplit le « Nouvel objectif » d'un acheteur depuis l'app.
+// coach, initial préremplit le « Nouvel objectif » d'un acheteur depuis l'app. court (PO1, décision coach du 19/10/2026) :
+// un athlète déjà connu, son profil rempli une fois (repris d'initial) ; seules sa charge du moment (PO2, préremplie) et
+// la course se demandent.
 export default function Questionnaire({
-  coach = false, emailCoach = '', athleteId, initial, demande = false, demandeId,
+  coach = false, emailCoach = '', athleteId, initial, demande = false, demandeId, court = false,
 }: {
   coach?: boolean; emailCoach?: string; athleteId?: string; initial?: Record<string, string | string[]>; demande?: boolean;
-  demandeId?: string;
+  demandeId?: string; court?: boolean;
 } = {}) {
   const [config, setConfig] = useState<ConfigPlan | null>(null);
   const [erreurConfig, setErreurConfig] = useState('');
@@ -435,7 +437,7 @@ export default function Questionnaire({
 
   return (
     <form onSubmit={versRecap} className="space-y-6">
-      <Section numero={1} titre="Toi">
+      {!court && <Section numero={1} titre="Toi">
         <div className="grid sm:grid-cols-2 gap-6">
           <div>
             <label className={labelCls} htmlFor="nom">Nom / prénom</label>
@@ -471,17 +473,21 @@ export default function Questionnaire({
             </div>
           )}
         </div>
-      </Section>
+      </Section>}
 
-      <Section numero={2} titre="Ton niveau">
-        <p className={aideCls}>{textes.niveau.aide}</p>
-        <div className="space-y-3">
-          {textes.niveau.options.map((o) => (
-            <Choix key={o.valeur} nom="niveau" valeur={o.valeur} courant={c.niveau} onChange={maj('niveau')}
-              titre={o.titre} description={o.description} detail={o.formats} />
-          ))}
-        </div>
-        <p className="text-sm text-indigo/60 italic">{textes.niveau.note}</p>
+      <Section numero={court ? 1 : 2} titre={court ? (demande ? 'Ta charge du moment' : 'Sa charge du moment') : 'Ton niveau'}>
+        {!court && (
+          <>
+            <p className={aideCls}>{textes.niveau.aide}</p>
+            <div className="space-y-3">
+              {textes.niveau.options.map((o) => (
+                <Choix key={o.valeur} nom="niveau" valeur={o.valeur} courant={c.niveau} onChange={maj('niveau')}
+                  titre={o.titre} description={o.description} detail={o.formats} />
+              ))}
+            </div>
+            <p className="text-sm text-indigo/60 italic">{textes.niveau.note}</p>
+          </>
+        )}
         <div>
           <p className="font-bold text-indigo mb-2">{textes.charge.titre}</p>
           <p className="text-sm text-indigo/60 leading-relaxed mb-4">{textes.charge.aide}</p>
@@ -529,7 +535,7 @@ export default function Questionnaire({
         )}
       </Section>}
 
-      <Section numero={coach ? 3 : 4} titre="Ta course">
+      <Section numero={court ? 2 : coach ? 3 : 4} titre={court && !demande ? 'Sa course' : 'Ta course'}>
         {coach && (
           <>
             {blocDistance}
@@ -582,16 +588,16 @@ export default function Questionnaire({
         </div>
       </Section>
 
-      <Section numero={coach ? 4 : 5} titre="Ton terrain d’entraînement">
+      {!court && <Section numero={coach ? 4 : 5} titre="Ton terrain d’entraînement">
         <div className="grid sm:grid-cols-2 gap-3">
           {textes.terrain.options.map((o) => (
             <Choix key={o.valeur} nom="terrain" valeur={o.valeur} courant={c.terrain} onChange={maj('terrain')}
               titre={o.titre} description={o.description} />
           ))}
         </div>
-      </Section>
+      </Section>}
 
-      <Section numero={coach ? 5 : 6} titre="Ta disponibilité">
+      {!court && <Section numero={coach ? 5 : 6} titre="Ta disponibilité">
         <p className={aideCls}>{textes.disponibilite.aide}</p>
         <div>
           <span className={labelCls}>Jours disponibles pour t’entraîner</span>
@@ -621,7 +627,7 @@ export default function Questionnaire({
             {plancher?.note && <p className={aideCls}>{plancher.note}</p>}
           </div>
         </div>
-      </Section>
+      </Section>}
 
       {/* La blessure en cours (décision coach du 19/10/2026) : gardée pour les plans achetés (le garde-fou d'O1 et des
           CGV), retirée du coaching individualisé, où le coach connaît son athlète et où rien n'était transmis. */}

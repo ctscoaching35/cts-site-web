@@ -11,7 +11,7 @@ import { Carte, CarteSombre, PastilleDate, Surtitre } from '@/components/app/Ui'
 import { retirerObjectif } from '@/lib/app/actionsCoaching';
 import { objectifCoache, verifierEnvois } from '@/lib/app/coaching';
 import { demandesDuCoach } from '@/lib/app/demandes';
-import { trameDuPlan, type Realise } from '@/lib/app/ecriture';
+import { annonceDepart, trameDuPlan, type Realise } from '@/lib/app/ecriture';
 import { lienFicheCourse } from '@/lib/app/ficheCourse';
 import { exigerCoach } from '@/lib/app/nolio';
 import { ajouterJours, dateLongue } from '@/lib/app/plan';
@@ -58,6 +58,8 @@ export default async function ObjectifCoache({ params }: { params: Promise<{ id:
   const envois = nolio ? await verifierEnvois(id, nolio, o.plan, o.envois) : o.envois.map((e) => ({ ...e, retouchees: 0, supprimees: 0 }));
   const jour = aujourdhuiParis();
   const trame = ecriture?.parametres ? await trameDuPlan(id).catch(() => null) : null;
+  // PC1 : avant le départ, la date où l'écriture commencera si le coach a déjà posé des séances.
+  const annonce = ecriture?.parametres && !ecriture.demarre_le && !ecriture.depart_prevu && nolio ? await annonceDepart(id) : null;
   const realises = (ecrites ?? []).map((w) => w.realise as Realise | null).filter((r): r is Realise => Boolean(r))
     .sort((a, b) => Number(a.numero.slice(1)) - Number(b.numero.slice(1)));
   const jauge = trame ? jaugeDuPlan(trame.semaines, realises, jour) : null;
@@ -103,6 +105,15 @@ export default async function ObjectifCoache({ params }: { params: Promise<{ id:
                     {o.plan.couverture.debut} La trame (bandeaux et fiches), les questionnaires du dimanche et la semaine en cours
                     partent au départ ; chaque dimanche, la semaine suivante s’écrit d’après la précédente.
                   </p>
+                  {annonce && (
+                    <p className="p-3.5 rounded-xl bg-[#E1EFEA] text-[0.8125rem] leading-relaxed text-[#0B4A40]">
+                      Tu as déjà posé ses séances jusqu’au {dateLongue(annonce.derniere, true)} : l’écriture commence le lundi{' '}
+                      {dateLongue(annonce.lundi, true)}. Rien n’est écrasé.
+                    </p>
+                  )}
+                  {ecriture.depart_prevu && (
+                    <p className="text-[0.8125rem] font-semibold text-teal">Programmé : il démarre tout seul le {dateLongue(String(ecriture.depart_prevu), true)}.</p>
+                  )}
                   <DemarrerNolio planId={id} actif={Boolean(nolio)} />
                 </div>
               ) : (
@@ -215,7 +226,7 @@ export default async function ObjectifCoache({ params }: { params: Promise<{ id:
           )}
 
           {ecriture?.parametres && (
-            <Carte className="!p-5 space-y-3">
+            <Carte id="ajouter-course" className="!p-5 space-y-3 scroll-mt-6">
               <Surtitre>Ses courses de préparation</Surtitre>
               {preps.length === 0 && <p className="text-[0.8125rem] text-[#4A4866]">Aucune pour l’instant.</p>}
               {preps.map((c) => (
@@ -226,7 +237,7 @@ export default async function ObjectifCoache({ params }: { params: Promise<{ id:
                 </div>
               ))}
               {course.date >= jour && (
-                <details className="text-sm">
+                <details className="text-sm" open={preps.length === 0}>
                   <summary className="cursor-pointer flex items-center justify-center min-h-11 rounded-xl border-[1.5px] border-dashed border-teal/45 text-[0.8125rem] font-bold text-teal list-none">
                     + Ajouter une course de préparation
                   </summary>

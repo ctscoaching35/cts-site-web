@@ -27,7 +27,10 @@ export async function demarrerDansNolio(planId: string, _e: EtatGeste): Promise<
     const depart = await demarrerObjectif(planId);
     revalidatePath(`/app/coach/plan/${planId}`);
     if ('prevu' in depart) {
-      return { ok: true, message: `Programmé : un objectif à la fois. Il démarrera tout seul le ${new Date(`${depart.prevu}T12:00:00Z`).toLocaleDateString('fr-FR')}, après la récupération de ${depart.apres}.` };
+      const le = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('fr-FR');
+      return { ok: true, message: depart.raison === 'seances'
+        ? `Programmé : tes séances déjà posées vont jusqu’au ${le(depart.apres)}. L’écriture commencera toute seule le lundi ${le(depart.prevu)} ; rien n’est écrasé.`
+        : `Programmé : un objectif à la fois. Il démarrera tout seul le ${le(depart.prevu)}, après la récupération de ${depart.apres}.` };
     }
     return { ok: true, message: `C’est parti : la trame, les questionnaires du dimanche et la semaine ${depart.numero.replace('S', '')} sont dans Nolio. La suite s’écrit chaque dimanche.` };
   } catch (e) {
