@@ -8,7 +8,7 @@ import { choisirPlan } from '@/lib/app/actionsPlan';
 import { contexte, lien, plansDuCompte, type PlanDuCompte, type Recherche } from '@/lib/app/contexte';
 import { demandesDeLAthlete, ficheDuCompte } from '@/lib/app/demandes';
 import { clientServeur, clientService } from '@/lib/app/supabase';
-import { dateLongue } from '@/lib/app/plan';
+import { dateLongue, jMoins } from '@/lib/app/plan';
 import { enHeures, jaugeDuPlan, momentDe } from '@/lib/app/tableau';
 import { donneesTableau, fichesDePreparation, type CourseSecondaire } from '@/lib/app/tableauDuPlan';
 
@@ -111,9 +111,12 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
                 l.sl_min ? `SL ${enHeures(l.sl_min)}` : null].filter(Boolean);
               return (
                 <li key={l.numero} id={l.numero}
-                  className={clsx('grid grid-cols-[34px_4px_1fr_auto] gap-x-2.5 items-center min-h-[52px] scroll-mt-20',
+                  className={clsx('grid grid-cols-[44px_4px_1fr_auto] gap-x-2.5 items-center min-h-[52px] scroll-mt-20',
                     m === 'encours' ? 'bg-[#E1EFEA] -mx-2.5 px-2.5 rounded-xl min-h-14' : 'border-t border-indigo/[0.06]')}>
-                  <span className={clsx('text-xs', m === 'encours' ? 'font-extrabold text-teal-dark' : 'font-bold text-[#5E5C78]')}>{l.numero}</span>
+                  {/* Un coaché : la semaine se dit en jours avant son objectif, pas par son numéro (décision coach du 20/10/2026). */}
+                  <span className={clsx('text-xs whitespace-nowrap', m === 'encours' ? 'font-extrabold text-teal-dark' : 'font-bold text-[#5E5C78]')}>
+                    {ctx.coache && l.lundi ? jMoins(l.lundi, course.date) : l.numero}
+                  </span>
                   <span className="w-1 h-8 rounded-sm" style={{ backgroundColor: BANNIERE[l.type] ?? '#2F2D4E' }} aria-hidden />
                   <span className="min-w-0 py-1.5">
                     <span className={clsx('block text-[0.8125rem] text-indigo', m === 'encours' ? 'font-extrabold' : 'font-bold')}>

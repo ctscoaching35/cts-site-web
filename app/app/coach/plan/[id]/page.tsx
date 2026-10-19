@@ -14,7 +14,7 @@ import { demandesDuCoach } from '@/lib/app/demandes';
 import { annonceDepart, trameDuPlan, type Realise } from '@/lib/app/ecriture';
 import { lienFicheCourse } from '@/lib/app/ficheCourse';
 import { exigerCoach } from '@/lib/app/nolio';
-import { ajouterJours, dateLongue } from '@/lib/app/plan';
+import { ajouterJours, dateLongue, jMoins, jourMois } from '@/lib/app/plan';
 import { aujourdhuiParis } from '@/lib/app/signauxSuivi';
 import { allureDepuisVitesse } from '@/lib/app/allureCoach';
 import { clientService, supabaseConfigure } from '@/lib/app/supabase';
@@ -64,6 +64,8 @@ export default async function ObjectifCoache({ params }: { params: Promise<{ id:
     .sort((a, b) => Number(a.numero.slice(1)) - Number(b.numero.slice(1)));
   const jauge = trame ? jaugeDuPlan(trame.semaines, realises, jour) : null;
   const prochaine = trame?.semaines.find((l) => l.lundi && momentDe(l.lundi, jour) === 'avenir') ?? null;
+  // Le coaching individualisé dit une semaine par son lundi, pas par son numéro (décision coach du 20/10/2026).
+  const lundiDe = new Map((trame?.semaines ?? []).map((l) => [l.numero, l.lundi]));
   const preps = (((ecriture?.parametres as Record<string, unknown> | null)?.courses_secondaires ?? []) as CourseSecondaire[])
     .slice().sort((a, b) => a.date.localeCompare(b.date));
   const fichesPrepa = ecriture?.parametres ? await fichesDePreparation(id) : new Set<string>();
@@ -82,7 +84,7 @@ export default async function ObjectifCoache({ params }: { params: Promise<{ id:
           <h1 className="mt-1.5 text-[1.75rem] font-extrabold tracking-tight">{course.nom}</h1>
           <p className="mt-1.5 text-sm text-[#5E5C78]">
             {dateLongue(course.date, true)} · {Math.round(course.distance_km)} km · {course.dplus_m.toLocaleString('fr-FR')} m D+
-            {course.temps_cible ? ` · chrono visé ${course.temps_cible}` : ''}{jauge?.semaine ? ` · semaine ${jauge.semaine} sur ${jauge.total}` : ''}
+            {course.temps_cible ? ` · chrono visé ${course.temps_cible}` : ''}{course.date >= jour ? ` · ${jMoins(jour, course.date)}` : ''}
           </p>
           <p className="mt-1 text-[0.8125rem] text-[#5E5C78]">
             {nolio ? 'Associé à Nolio.' : 'Pas encore associé à Nolio : choisis son nom sur sa fiche.'} {valeurs ? `Cibles : ${valeurs}.` : 'Sans valeurs : cibles au RPE.'}
@@ -120,7 +122,7 @@ export default async function ObjectifCoache({ params }: { params: Promise<{ id:
                 <>
                   {prochaine && (
                     <div className="flex gap-3.5 p-3.5 rounded-xl border border-dashed border-indigo/[0.22]">
-                      <span className="w-8 text-[0.8125rem] font-extrabold text-[#5E5C78]">{prochaine.numero}</span>
+                      <span className="w-12 text-[0.8125rem] font-extrabold text-[#5E5C78]">{jourMois(prochaine.lundi)}</span>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-bold">S’écrit dimanche {dateLongue(ajouterJours(prochaine.lundi, -1), true)}, vers 18 h</p>
                         <p className="mt-1 text-[0.8125rem] text-[#4A4866] leading-relaxed">
@@ -138,7 +140,9 @@ export default async function ObjectifCoache({ params }: { params: Promise<{ id:
                     const lus = (tests ?? []).filter((t) => String(t.jour_id).startsWith(`${w.numero}-`) || String(t.jour_id).startsWith(`${w.numero}:`));
                     return (
                       <div key={w.numero} className={clsx('flex gap-3.5 p-3.5 rounded-xl', ajuste ? 'bg-[#FBF3F5] border border-[#EBC9D3]' : 'bg-sand')}>
-                        <span className={clsx('w-8 text-[0.8125rem] font-extrabold', ajuste ? 'text-[#8A2E4A]' : 'text-teal')}>{w.numero}</span>
+                        <span className={clsx('w-12 text-[0.8125rem] font-extrabold', ajuste ? 'text-[#8A2E4A]' : 'text-teal')}>
+                          {lundiDe.get(String(w.numero)) ? jourMois(lundiDe.get(String(w.numero)) as string) : w.numero}
+                        </span>
                         <div className="flex-1 min-w-0 space-y-2">
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="text-sm font-bold">

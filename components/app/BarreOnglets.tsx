@@ -50,7 +50,7 @@ export default function BarreOnglets() {
   if (SANS_ONGLETS.includes(chemin) || chemin.startsWith('/app/coach')) return null;
   // Les onglets gardent le plan et le jour de la démonstration.
   const garde = new URLSearchParams();
-  for (const cle of ['plan', 'jour', 'fc1', 'vc', 'fc2', 'v1', 'retours']) {
+  for (const cle of ['plan', 'jour', 'fc1', 'vc', 'fc2', 'v1', 'retours', 'coache']) {
     const valeur = params.get(cle);
     if (valeur) garde.set(cle, valeur);
   }

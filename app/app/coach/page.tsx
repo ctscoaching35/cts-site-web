@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import CadreCoach from '@/components/app/CadreCoach';
 import { Carte, Surtitre } from '@/components/app/Ui';
 import { vueDuCoach, type ARegarder } from '@/lib/app/espaceCoach';
-import { dateLongue } from '@/lib/app/plan';
+import { dateLongue, jMoins } from '@/lib/app/plan';
 import { clientService, supabaseConfigure } from '@/lib/app/supabase';
 import { athletesNolio, ErreurNolio, exigerCoach, nolioConfigure, type AthleteNolio } from '@/lib/app/nolio';
 
@@ -96,7 +96,7 @@ export default async function Coach() {
           <div className="mt-2 overflow-x-auto">
             <div className="min-w-[760px]">
               <div className="grid grid-cols-[1.3fr_1.6fr_0.8fr_1.3fr_0.9fr_1.3fr] gap-x-3 py-2.5 text-[0.656rem] font-bold tracking-[0.08em] uppercase text-[#5E5C78] border-b border-indigo/10">
-                <span>Athlète</span><span>Objectif</span><span>Semaine</span><span>Préparation</span><span>Nolio · App</span><span>Ensuite</span>
+                <span>Athlète</span><span>Objectif</span><span>Avant la course</span><span>Préparation</span><span>Nolio · App</span><span>Ensuite</span>
               </div>
               {vue.athletes.map((a) => {
                 const o = a.objectif;
@@ -105,7 +105,7 @@ export default async function Coach() {
                     className="grid grid-cols-[1.3fr_1.6fr_0.8fr_1.3fr_0.9fr_1.3fr] gap-x-3 items-center min-h-14 text-[0.84rem] border-b last:border-b-0 border-indigo/[0.06] hover:bg-sand/50">
                     <span className="font-bold">{a.nom}</span>
                     <span className={o ? '' : 'text-[#5E5C78]'}>{o ? `${o.course_nom} · ${dateLongue(o.course_date, true)}` : 'Aucun objectif'}</span>
-                    <span className={o?.semaine ? '' : 'text-[#5E5C78]'}>{o?.semaine && o.total ? `S${o.semaine} / ${o.total}` : '—'}</span>
+                    <span className={o && o.course_date >= jour ? '' : 'text-[#5E5C78]'}>{o && o.course_date >= jour ? jMoins(jour, o.course_date) : '—'}</span>
                     <span className="inline-flex items-center gap-2">
                       {o?.verdict ? (
                         <><span className="w-[9px] h-[9px] rounded-full" style={{ backgroundColor: TON[o.verdict.ton] }} aria-hidden />{o.verdict.libelle}</>

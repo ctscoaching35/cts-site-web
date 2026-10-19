@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import CadreCoach from '@/components/app/CadreCoach';
+import { jourMois } from '@/lib/app/plan';
 import { AnnulerSemaine } from '@/components/app/GestesEcriture';
 import { ajustementsDuCoach, type Ajustement } from '@/lib/app/ecriture';
 import { accordRecu, retirerAccord } from '@/lib/app/actionsSuivi';
@@ -89,7 +90,7 @@ export default async function SuiviCoach() {
                 <li key={`${a.planId}-${a.numero}`} className="py-2 space-y-1 text-sm">
                   <div className="font-semibold text-indigo">
                     <Link href={`/app/coach/plan/${a.planId}`} className="hover:underline">{a.nom}</Link>
-                    <span className="font-normal text-indigo/60"> · semaine {a.numero.slice(1)}{a.raisons.length > 0 && ` · ${a.raisons.join(', ')}`}</span>
+                    <span className="font-normal text-indigo/60"> · {a.lundi ? `semaine du ${jourMois(a.lundi)}` : `semaine ${a.numero.slice(1)}`}{a.raisons.length > 0 && ` · ${a.raisons.join(', ')}`}</span>
                   </div>
                   {a.bilan && <p className="text-indigo/75">{a.bilan}</p>}
                   {a.raisons.length > 0 && <AnnulerSemaine planId={a.planId} numero={a.numero} />}

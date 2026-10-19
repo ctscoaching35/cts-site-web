@@ -61,7 +61,8 @@ export async function contexte(recherche: Recherche): Promise<Contexte> {
     const cle = typeof r.plan === 'string' && r.plan in EXEMPLES ? r.plan : 'L4';
     const plan = verifierSchema(EXEMPLES[cle].plan);
     const jour = jourDemande ?? jourParDefaut(plan);
-    return { cle, plan, jour, demonstration: true, profil: profilDemonstration(r), exemple: r.retours === 'exemple', coache: false };
+    // ?coache=1 : la version d'un coaché (J-, semaines par leur lundi), en démonstration seulement.
+    return { cle, plan, jour, demonstration: true, profil: profilDemonstration(r), exemple: r.retours === 'exemple', coache: r.coache === '1' };
   }
 
   const supabase = await clientServeur();
@@ -130,6 +131,7 @@ export const lien = (chemin: string, ctx: Contexte, extra: Record<string, string
         ...(ctx.profil.fc_seuil2 !== null ? { fc2: String(ctx.profil.fc_seuil2) } : {}),
         ...(ctx.profil.v_seuil1_ms !== null ? { v1: (ctx.profil.v_seuil1_ms * 3.6).toFixed(1) } : {}),
         ...(ctx.exemple ? { retours: 'exemple' } : {}),
+        ...(ctx.coache ? { coache: '1' } : {}),
       }
     : {};
   const params = new URLSearchParams({ ...simule, ...extra });

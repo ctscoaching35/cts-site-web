@@ -143,12 +143,12 @@ function jalons(trame: LigneTrame[], faits: Realise[], rang: number, pic: number
 // côtés ; la charge prévue se compte par segments et le RPE de l'athlète vaut pour toute la séance, elles ne se
 // comparent pas) : les 8 dernières faites à côté de leur prévue (celle de la semaine écrite), la semaine en cours et
 // celles à venir en pointillés (la trame), le week-end choc et l'affûtage marqués.
-export type Barre = { numero: string; prevue: number; faite: number | null; moment: Moment; choc: boolean; affutage: boolean; type: string };
+export type Barre = { numero: string; lundi: string; prevue: number; faite: number | null; moment: Moment; choc: boolean; affutage: boolean; type: string };
 export function barresDeVolume(trame: LigneTrame[], realises: Realise[], aujourdhui: string): Barre[] {
   const parNumero = new Map(realises.map((r) => [r.numero, r]));
   const barres = trame.filter((l) => l.lundi).map((l) => {
     const r = parNumero.get(l.numero);
-    return { numero: l.numero, prevue: r?.duree_prevue_min ?? Math.round(l.volume_h * 60), faite: r ? r.duree_faite_min : null,
+    return { numero: l.numero, lundi: l.lundi, prevue: r?.duree_prevue_min ?? Math.round(l.volume_h * 60), faite: r ? r.duree_faite_min : null,
       moment: momentDe(l.lundi, aujourdhui), choc: l.week_end_choc, affutage: enAffutage(l), type: l.type };
   });
   const passees = barres.filter((b) => b.moment === 'passee');
@@ -156,12 +156,12 @@ export function barresDeVolume(trame: LigneTrame[], realises: Realise[], aujourd
 }
 
 // Le Hooper du dimanche, semaine par semaine, et sa zone habituelle.
-export type PointHooper = { numero: string; valeur: number | null; zone: number | null };
+export type PointHooper = { numero: string; lundi: string; valeur: number | null; zone: number | null };
 export function pointsHooper(trame: LigneTrame[], realises: Realise[], aujourdhui: string): PointHooper[] {
   const parNumero = new Map(realises.map((r) => [r.numero, r.hooper]));
   const passees = trame.filter((l) => l.lundi && momentDe(l.lundi, aujourdhui) === 'passee');
   const valeurs = passees.map((l) => parNumero.get(l.numero) ?? null);
-  return passees.map((l, i) => ({ numero: l.numero, valeur: valeurs[i], zone: zoneHooper(valeurs, i) })).slice(-12);
+  return passees.map((l, i) => ({ numero: l.numero, lundi: l.lundi, valeur: valeurs[i], zone: zoneHooper(valeurs, i) })).slice(-12);
 }
 export const ECART_ZONE_HOOPER = ECART_HOOPER;
 

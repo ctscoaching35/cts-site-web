@@ -1003,7 +1003,7 @@ const REGLES_EN_CLAIR: Record<string, string> = {
 
 // Le Suivi du coach (décision 8 du document des règles) : les ajustements de ses coachés écrits ces 8 derniers jours,
 // chacun avec son geste : « Annuler » pour ceux du dimanche, « Garder la séance d'origine » pour une séance allégée.
-export type Ajustement = { planId: string; nom: string; numero: string; raisons: string[]; bilan: string | null; allegees: { id: string; nom: string }[] };
+export type Ajustement = { planId: string; nom: string; numero: string; lundi: string | null; raisons: string[]; bilan: string | null; allegees: { id: string; nom: string }[] };
 export async function ajustementsDuCoach(coachId: string): Promise<Ajustement[]> {
   const service = clientService();
   const { data: coaching } = await service.from('coaching').select('plan_id, athlete_nom').eq('coach_id', coachId);
@@ -1020,6 +1020,7 @@ export async function ajustementsDuCoach(coachId: string): Promise<Ajustement[]>
     if (!journal.length && !allegees.length) continue;
     liste.push({
       planId: e.plan_id as string, nom: nomDe.get(e.plan_id as string) ?? '', numero: e.numero as string,
+      lundi: (e.donnees as Semaine | null)?.lundi ?? null,
       raisons: [...new Set(journal.map((j) => REGLES_EN_CLAIR[j.regle ?? ''] ?? j.regle ?? ''))], bilan: e.bilan as string | null, allegees,
     });
   }
