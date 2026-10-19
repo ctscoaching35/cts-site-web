@@ -114,25 +114,37 @@ export function jaugeDuPlan(trame: LigneTrame[], realises: Realise[], aujourdhui
   const verdict: Verdict | null = score === null ? null
     : score >= VERDICT_BIEN ? { libelle: 'Sur la bonne voie', ton: 'bien' }
       : score >= VERDICT_RETRAIT ? { libelle: 'Un peu en retrait', ton: 'retrait' } : { libelle: 'En retard sur la trame', ton: 'retard' };
-  return { semaine: rang >= 0 ? rang + 1 : null, total: trame.length, piliers, verdict, score, jalons: jalons(trame, faits, rang, pic) };
+  return { semaine: rang >= 0 ? rang + 1 : null, total: trame.length, piliers, verdict, score, jalons: jalons(trame, faits, rang) };
 }
 
-function jalons(trame: LigneTrame[], faits: Realise[], rang: number, pic: number): Jalon[] {
+// Les jalons : ce que l'athlète accomplit, sans durée fixée d'avance (décision coach du 19/10/2026 : plus de « première
+// sortie de 2 h » ni de « plus longue sortie du plan ») — une semaine complète, quatre semaines assidues d'affilée, un
+// bloc bouclé (toutes ses semaines assidues), dix séances clés réussies (quand la préparation en compte au moins dix),
+// un week-end choc bouclé (s'il y en a), l'affûtage.
+function jalons(trame: LigneTrame[], faits: Realise[], rang: number): Jalon[] {
   const choc = new Set(trame.filter((l) => l.week_end_choc).map((l) => l.numero));
-  const plusLongue = Math.max(0, ...faits.map((r) => r.sl_faite_min ?? 0));
+  const assidue = (r: Realise) => r.charge_prevue > 0 && r.charge_tenue >= 0.9 * r.charge_prevue;
   let suite = 0;
   let quatre = false;
   for (const r of faits) {
-    suite = r.charge_prevue > 0 && r.charge_tenue >= 0.9 * r.charge_prevue ? suite + 1 : 0;
+    suite = assidue(r) ? suite + 1 : 0;
     quatre ||= suite >= 4;
   }
+  const parNumero = new Map(faits.map((r) => [r.numero, r]));
+  const blocs = [...new Set(trame.map((l) => l.bloc))].map((b) => trame.filter((l) => l.bloc === b));
+  const blocBoucle = blocs.some((semaines) => semaines.every((l) => {
+    const r = parNumero.get(l.numero);
+    return r !== undefined && assidue(r);
+  }));
+  const clesPrevues = trame.reduce((n, l) => n + l.seances_cles.length, 0);
+  const clesReussies = faits.reduce((n, r) => n + r.cles_reussies, 0);
   const debutAffutage = trame.findIndex(enAffutage);
   return [
     { titre: 'Une première semaine complète', atteint: faits.some((r) => r.seances_faites >= r.seances_prevues) },
-    ...(pic >= 135 ? [{ titre: 'Ta première sortie de 2 h', atteint: plusLongue >= 120 }] : []),
     { titre: 'Quatre semaines assidues d’affilée', atteint: quatre },
+    { titre: 'Un bloc bouclé', atteint: blocBoucle },
+    ...(clesPrevues >= 10 ? [{ titre: 'Dix séances clés réussies', atteint: clesReussies >= 10 }] : []),
     ...(choc.size ? [{ titre: 'Un week-end choc bouclé', atteint: faits.some((r) => choc.has(r.numero) && r.seances_faites >= r.seances_prevues) }] : []),
-    ...(pic > 0 ? [{ titre: 'Ta plus longue sortie du plan', atteint: plusLongue >= 0.9 * pic }] : []),
     ...(debutAffutage >= 0 ? [{ titre: 'L’affûtage', atteint: rang >= debutAffutage }] : []),
   ];
 }
