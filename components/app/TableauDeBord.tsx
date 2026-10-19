@@ -67,10 +67,10 @@ export function Montagne({ score, ton }: { score: number | null; ton: keyof type
   );
 }
 
-// coache : le coaching individualisé parle en « J- » jusqu'à l'objectif, sans « semaine x sur N » (décision coach du
-// 19/10/2026) ; un plan acheté garde ses semaines.
-export function CarteObjectif({ plan, restants, jauge, etape, href, coache = false }: {
-  plan: Plan; restants: number; jauge: Jauge; etape: 'avant' | 'pendant' | 'apres'; href: string; coache?: boolean;
+// Un compte à rebours en « J- » jusqu'à l'objectif, sans « semaine x sur N », pour tous, plans achetés compris
+// (décisions coach du 19/10/2026 : « on part de l'objectif et on revient jusqu'au jour J »).
+export function CarteObjectif({ plan, restants, jauge, etape, href }: {
+  plan: Plan; restants: number; jauge: Jauge; etape: 'avant' | 'pendant' | 'apres'; href: string;
 }) {
   return (
     <CarteSombre className="space-y-3.5">
@@ -80,16 +80,11 @@ export function CarteObjectif({ plan, restants, jauge, etape, href, coache = fal
           <h2 className="mt-1.5 text-[1.625rem] font-extrabold leading-tight">{plan.course.nom}</h2>
           <p className="mt-1.5 text-[0.8125rem] text-[#D6D5E6]">{dateLongue(plan.course.date)} · {plan.course.format_clair}</p>
         </div>
-        {restants > 0 && (coache ? (
+        {restants > 0 && (
           <div className="shrink-0 text-center bg-white/10 rounded-xl px-3 py-2.5">
             <div className="text-[1.375rem] font-extrabold leading-none">J-{restants}</div>
           </div>
-        ) : (
-          <div className="shrink-0 text-center bg-white/10 rounded-xl px-3 py-2">
-            <div className="text-[1.375rem] font-extrabold leading-none">{restants}</div>
-            <div className="text-[0.625rem] font-semibold tracking-[0.08em] text-[#D6D5E6]">{restants > 1 ? 'JOURS' : 'JOUR'}</div>
-          </div>
-        ))}
+        )}
       </div>
       <Montagne score={jauge.score} ton={jauge.verdict?.ton ?? null} />
       {etape === 'avant' ? (
@@ -97,12 +92,9 @@ export function CarteObjectif({ plan, restants, jauge, etape, href, coache = fal
       ) : etape === 'apres' ? (
         <p className="text-[0.9375rem] font-bold">Ta course est derrière toi : bravo pour le chemin.</p>
       ) : (
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            {jauge.verdict && <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: REMPLI[jauge.verdict.ton] }} aria-hidden />}
-            <span className="text-base font-bold">{jauge.verdict?.libelle ?? 'Ta préparation est lancée'}</span>
-          </div>
-          {jauge.semaine && !coache && <span className="text-xs text-[#D6D5E6] whitespace-nowrap">Semaine {jauge.semaine} sur {jauge.total}</span>}
+        <div className="flex items-center gap-2">
+          {jauge.verdict && <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: REMPLI[jauge.verdict.ton] }} aria-hidden />}
+          <span className="text-base font-bold">{jauge.verdict?.libelle ?? 'Ta préparation est lancée'}</span>
         </div>
       )}
       <Link href={href} className="inline-flex items-center min-h-11 px-4 rounded-full bg-white text-indigo text-[0.8125rem] font-bold">
@@ -243,12 +235,12 @@ const L = 326;
 
 // La charge de chaque semaine écoulée (RPE de séance × durée, Foster), et sa moyenne sur 4 semaines ; sans prévu à
 // côté (décision coach du 19/10/2026 : calculé autrement, la comparaison serait biaisée).
-// parDate : une semaine se dit par son lundi (le coaching individualisé), sinon par son numéro.
-const etiquette = (numero: string, lundi: string | undefined, parDate: boolean) => (parDate && lundi ? jourMois(lundi) : numero);
-const laSemaine = (numero: string, lundi: string | undefined, parDate: boolean) =>
-  parDate && lundi ? `la semaine du ${jourMois(lundi)}` : `la semaine ${numero.replace('S', '')}`;
+// Une semaine se dit par son lundi, pour tous (décision coach du 19/10/2026) ; par son numéro seulement sans date.
+const etiquette = (numero: string, lundi: string | undefined) => (lundi ? jourMois(lundi) : numero);
+const laSemaine = (numero: string, lundi: string | undefined) =>
+  lundi ? `la semaine du ${jourMois(lundi)}` : `la semaine ${numero.replace('S', '')}`;
 
-export function GraphiqueCharge({ realises, parDate = false }: { realises: Realise[]; parDate?: boolean }) {
+export function GraphiqueCharge({ realises }: { realises: Realise[] }) {
   const semaines = realises.filter((r) => r.rpe_lu && r.charge_faite > 0).slice(-10);
   if (semaines.length < 2) return null;
   const moyenne = (i: number) => {
@@ -269,7 +261,7 @@ export function GraphiqueCharge({ realises, parDate = false }: { realises: Reali
       <div className="flex flex-wrap items-baseline gap-2">
         <span className="text-[1.625rem] font-extrabold text-indigo">{Math.round(derniere.charge_faite).toLocaleString('fr-FR')}</span>
         <span className="text-xs text-[#5E5C78]">
-          {laSemaine(derniere.numero, derniere.lundi, parDate)}{moyDerniere !== null ? ` · moyenne sur 4 semaines : ${Math.round(moyDerniere).toLocaleString('fr-FR')}` : ''}
+          {laSemaine(derniere.numero, derniere.lundi)}{moyDerniere !== null ? ` · moyenne sur 4 semaines : ${Math.round(moyDerniere).toLocaleString('fr-FR')}` : ''}
         </span>
       </div>
       <svg viewBox={`0 0 ${L} 160`} className="block w-full h-auto" role="img" aria-label="Ta charge par semaine, avec ta moyenne sur quatre semaines">
@@ -284,7 +276,7 @@ export function GraphiqueCharge({ realises, parDate = false }: { realises: Reali
           <g key={r.numero}>
             <title>{`${r.numero} : ${Math.round(r.charge_faite)}`}</title>
             <rect x={30 + i * pas + pas * 0.22} y={y(r.charge_faite)} width={pas * 0.56} height={bas - y(r.charge_faite)} rx="3" fill="#0C6E5F" />
-            <text x={30 + i * pas + pas / 2} y="154" fontSize="9" fill="#5E5C78" textAnchor="middle">{etiquette(r.numero, r.lundi, parDate)}</text>
+            <text x={30 + i * pas + pas / 2} y="154" fontSize="9" fill="#5E5C78" textAnchor="middle">{etiquette(r.numero, r.lundi)}</text>
           </g>
         ))}
         {ligne.length >= 2 && <polyline points={ligne.join(' ')} fill="none" stroke="#2F2D4E" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />}
@@ -299,7 +291,7 @@ export function GraphiqueCharge({ realises, parDate = false }: { realises: Reali
 
 // ─── Mes données : le volume (T10, en durées) ─────────────────────────────
 
-export function GraphiqueVolume({ barres, parDate = false }: { barres: Barre[]; parDate?: boolean }) {
+export function GraphiqueVolume({ barres }: { barres: Barre[] }) {
   if (!barres.length) return null;
   const H = 140;
   const BAS = 120;
@@ -315,7 +307,7 @@ export function GraphiqueVolume({ barres, parDate = false }: { barres: Barre[]; 
       {passee && (
         <div className="flex flex-wrap items-baseline gap-2">
           <span className="text-[1.625rem] font-extrabold text-indigo">{enHeures(passee.faite ?? 0)}</span>
-          <span className="text-xs text-[#5E5C78]">{laSemaine(passee.numero, passee.lundi, parDate)}, sur {enHeures(passee.prevue)} prévues</span>
+          <span className="text-xs text-[#5E5C78]">{laSemaine(passee.numero, passee.lundi)}, sur {enHeures(passee.prevue)} prévues</span>
         </div>
       )}
       <svg viewBox={`0 0 ${L} ${H}`} className="block w-full h-auto" role="img" aria-label="Tes heures de course par semaine, faites à côté des prévues">
@@ -337,7 +329,7 @@ export function GraphiqueVolume({ barres, parDate = false }: { barres: Barre[]; 
               {b.faite !== null && <rect x={x + pas * 0.24} y={BAS - h(b.faite)} width={pas * 0.52} height={h(b.faite)} rx="3" fill="#0C6E5F" />}
               {(barres.length <= 9 || i % 2 === 0 || b.moment === 'encours') && (
                 <text x={x + pas / 2} y={BAS + 14} fontSize="9" fontWeight={b.moment === 'encours' ? 700 : 600}
-                  fill={b.moment === 'encours' ? '#2F2D4E' : '#5E5C78'} textAnchor="middle">{etiquette(b.numero, b.lundi, parDate)}</text>
+                  fill={b.moment === 'encours' ? '#2F2D4E' : '#5E5C78'} textAnchor="middle">{etiquette(b.numero, b.lundi)}</text>
               )}
             </g>
           );
@@ -353,7 +345,7 @@ export function GraphiqueVolume({ barres, parDate = false }: { barres: Barre[]; 
 
 // ─── Mes données : le Hooper du dimanche (T10) ────────────────────────────
 
-export function GraphiqueHooper({ points, parDate = false }: { points: PointHooper[]; parDate?: boolean }) {
+export function GraphiqueHooper({ points }: { points: PointHooper[] }) {
   const valeurs = points.filter((p) => p.valeur !== null);
   if (valeurs.length < 2) return null;
   const BAS = 120;
@@ -374,7 +366,7 @@ export function GraphiqueHooper({ points, parDate = false }: { points: PointHoop
       <div className="flex flex-wrap items-baseline gap-2">
         <span className="text-[1.625rem] font-extrabold text-indigo">{dernier.valeur}</span>
         <span className="text-xs text-[#5E5C78]">
-          {laSemaine(dernier.numero, dernier.lundi, parDate)}{dernier.zone !== null ? (auDessus(dernier) ? ' · au-dessus de ta zone habituelle' : ' · dans ta zone habituelle') : ''}
+          {laSemaine(dernier.numero, dernier.lundi)}{dernier.zone !== null ? (auDessus(dernier) ? ' · au-dessus de ta zone habituelle' : ' · dans ta zone habituelle') : ''}
         </span>
       </div>
       <svg viewBox={`0 0 ${L} ${BAS + 18}`} className="block w-full h-auto" role="img" aria-label="Ton Hooper chaque dimanche, et ta zone habituelle">
@@ -391,7 +383,7 @@ export function GraphiqueHooper({ points, parDate = false }: { points: PointHoop
           </circle>
         ))}
         {points.map((p, i) => (i % 2 === 0 || i === points.length - 1) && (
-          <text key={`t-${p.numero}`} x={x(i)} y={BAS + 14} fontSize="9" fill="#5E5C78" textAnchor="middle">{etiquette(p.numero, p.lundi, parDate)}</text>
+          <text key={`t-${p.numero}`} x={x(i)} y={BAS + 14} fontSize="9" fill="#5E5C78" textAnchor="middle">{etiquette(p.numero, p.lundi)}</text>
         ))}
       </svg>
       <p className={clsx('text-xs leading-relaxed text-[#4A4866]')}>

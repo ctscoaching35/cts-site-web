@@ -325,8 +325,7 @@ export function requeteCalculateurNutrition(temps: string, niveau?: string | nul
   return params.toString();
 }
 
-// Le coaching individualisé parle en jours avant l'objectif, pas en semaines (décision coach du 19/10/2026 : « il n'y a
-// pas vraiment de nombre de semaines, on parlera plutôt en J- en se basant sur l'objectif ») : « J-61 » ; une semaine
-// se dit par son lundi, « 19/10 ». Les plans achetés gardent leurs semaines (une durée choisie).
+// L'app parle en jours avant l'objectif, pas en semaines (décisions coach du 19/10/2026 : « on parlera plutôt en J- en
+// se basant sur l'objectif », pour tous, plans achetés compris) : « J-61 » ; une semaine se dit par son lundi, « 19/10 ».
 export const jMoins = (de: string, course: string) => `J-${Math.max(0, joursEntre(de, course))}`;
 export const jourMois = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;

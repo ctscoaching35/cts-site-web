@@ -40,7 +40,7 @@ export default async function Accueil({ searchParams }: { searchParams: Recherch
           <h1 className="mt-1 text-[1.625rem] font-extrabold text-indigo tracking-tight">{nom ? `Bonjour ${nom}` : 'Bonjour'}</h1>
         </div>
 
-        <CarteObjectif plan={plan} restants={restants} jauge={jauge} etape={etape} href={lien('/app/plan', ctx)} coache={ctx.coache} />
+        <CarteObjectif plan={plan} restants={restants} jauge={jauge} etape={etape} href={lien('/app/plan', ctx)} />
         {etape !== 'apres' && <CarteNolio etat={d.nolio} />}
 
         {etape !== 'apres' && restants <= 7 && (

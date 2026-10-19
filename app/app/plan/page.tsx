@@ -113,9 +113,9 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
                 <li key={l.numero} id={l.numero}
                   className={clsx('grid grid-cols-[44px_4px_1fr_auto] gap-x-2.5 items-center min-h-[52px] scroll-mt-20',
                     m === 'encours' ? 'bg-[#E1EFEA] -mx-2.5 px-2.5 rounded-xl min-h-14' : 'border-t border-indigo/[0.06]')}>
-                  {/* Un coaché : la semaine se dit en jours avant son objectif, pas par son numéro (décision coach du 19/10/2026). */}
+                  {/* La semaine se dit en jours avant l'objectif, pas par son numéro (décisions coach du 19/10/2026). */}
                   <span className={clsx('text-xs whitespace-nowrap', m === 'encours' ? 'font-extrabold text-teal-dark' : 'font-bold text-[#5E5C78]')}>
-                    {ctx.coache && l.lundi ? jMoins(l.lundi, course.date) : l.numero}
+                    {l.lundi ? jMoins(l.lundi, course.date) : l.numero}
                   </span>
                   <span className="w-1 h-8 rounded-sm" style={{ backgroundColor: BANNIERE[l.type] ?? '#2F2D4E' }} aria-hidden />
                   <span className="min-w-0 py-1.5">

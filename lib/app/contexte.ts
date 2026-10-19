@@ -61,7 +61,7 @@ export async function contexte(recherche: Recherche): Promise<Contexte> {
     const cle = typeof r.plan === 'string' && r.plan in EXEMPLES ? r.plan : 'L4';
     const plan = verifierSchema(EXEMPLES[cle].plan);
     const jour = jourDemande ?? jourParDefaut(plan);
-    // ?coache=1 : la version d'un coaché (J-, semaines par leur lundi), en démonstration seulement.
+    // ?coache=1 : la version d'un coaché (ses repères posés par son coach), en démonstration seulement.
     return { cle, plan, jour, demonstration: true, profil: profilDemonstration(r), exemple: r.retours === 'exemple', coache: r.coache === '1' };
   }
 
