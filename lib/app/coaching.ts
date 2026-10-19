@@ -341,6 +341,13 @@ export async function verifierEnvois(planId: string, nolioAthlete: string, plan:
     const dansNolio = await versions(d, ajouterJours(lundis[0], -1), ajouterJours(lundis[lundis.length - 1], 7));
     const etats: EtatEnvoi[] = [];
     for (const e of envois) {
+      // Seules les semaines se revoient : la trame, les questionnaires (que `versions` ne lit pas), les courses et les
+      // notes de bilan gardent leur ligne, qui sert à les retrouver dans Nolio (défaut vu le 19/10/2026, essai sur
+      // « (toi) » : chaque visite effaçait celle des questionnaires).
+      if (!plan.semaines.some((s) => s.numero === e.semaine)) {
+        etats.push({ ...e, retouchees: 0, supprimees: 0 });
+        continue;
+      }
       const envoyees = e.seances.filter((s) => s.nolio_id !== null);
       const presentes = envoyees.filter((s) => !s.supprimee && dansNolio.has(String(s.nolio_id)));
       if (envoyees.length && !presentes.length) {

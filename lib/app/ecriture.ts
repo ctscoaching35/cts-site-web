@@ -31,7 +31,7 @@ export type Etat = Record<string, unknown>;
 // propriétaire du plan.
 export type Objectif = Cible & {
   compteId: string; parametres: Record<string, unknown>; etat: Etat | null; accordLecture: boolean; coache: boolean;
-  compteAthlete: string | null;
+  compteAthlete: string | null; tempsH: number;
 };
 export type RetourSeance = {
   id: string; date: string; faite: boolean; duree_min: number | null; rpe: number | null; ressenti: number | null; dplus_m: number | null;
@@ -108,6 +108,7 @@ export async function objectifEcrit(planId: string): Promise<Objectif | null> {
   const base = {
     planId, compteId: p.compte_id as string, plan: p.donnees as Plan, parametres: p.parametres as Record<string, unknown>,
     etat: (p.etat_ecriture ?? null) as Etat | null, niveau, envois: (envois ?? []) as Envoi[], avecTrame: false,
+    tempsH: heures((p.intake as Record<string, unknown> | null)?.temps_cible),
   };
   const { data: c } = await service.from('coaching').select('athlete_id, coach_id').eq('plan_id', planId).maybeSingle();
   if (c?.athlete_id) {
@@ -341,10 +342,16 @@ export async function demarrerObjectif(planId: string): Promise<Depart> {
   const aujourdhui = aujourdhuiParis();
   const debut = o.plan.semaines.find((s) => s.lundi && ajouterJours(s.lundi, 6) >= aujourdhui);
   if (!debut?.lundi) throw new Error('La course est passée.');
-  // OM4 : un objectif majeur à la fois. Un objectif déjà en route dont la course vient après : celui-ci est une course
-  // de préparation. Un objectif dont la course vient avant : celui-ci démarre le lundi après sa récupération.
+  // OM4 : un objectif majeur à la fois, dans l'ordre des dates. Un objectif déjà en route dont la course vient après et
+  // dont la préparation commence avant que celui-ci soit fini (sa récupération, puis la semaine qui serait sa reprise) :
+  // celui-ci est une course de préparation. Une préparation qui commence plus tard (QD2, 24 semaines avant sa course)
+  // ne gêne pas : les deux se suivent (défaut vu le 19/10/2026, essai sur « (toi) » : Gela, qui commençait en mars
+  // 2027, bloquait Menestrail, couru en décembre 2026). Un objectif dont la course vient avant : celui-ci démarre le
+  // lundi après sa récupération.
   const autres = await autresObjectifs(o);
-  const enRoute = autres.find((q) => q.demarre && q.course_date >= aujourdhui && q.course_date > o.plan.course.date);
+  const fini = ajouterJours(debutApres({ course_date: o.plan.course.date, temps_h: o.tempsH }), 7);
+  const enRoute = autres.find((q) => q.demarre && q.course_date >= aujourdhui && q.course_date > o.plan.course.date
+    && !(q.debut && q.debut > fini));
   if (enRoute) {
     throw new Error(`Cet objectif tombe avant ${enRoute.course_nom} (${enRoute.course_date}), déjà en route : ajoute-le plutôt comme course de préparation, ou retire l’autre objectif.`);
   }
@@ -354,7 +361,10 @@ export async function demarrerObjectif(planId: string): Promise<Depart> {
     await clientService().from('plans').update({ depart_prevu: apres.lundi }).eq('id', planId);
     return { prevu: apres.lundi, apres: apres.q.course_nom };
   }
-  const reprise = Boolean(apres && apres.lundi >= ajouterJours(aujourdhui, -7));
+  // La reprise allégée : la première semaine écrite suit de près la récupération (pas une préparation qui commence des
+  // semaines plus tard, QD2).
+  const premier = debut.lundi > aujourdhui ? debut.lundi : aujourdhui;
+  const reprise = Boolean(apres && apres.lundi >= ajouterJours(premier, -7));
   // Un seul départ à la fois : le premier appel prend la main ; en cas d'échec il la rend, pour un nouvel essai.
   const service = clientService();
   const { data: pris } = await service.from('plans').update({ demarre_le: new Date().toISOString() })
@@ -378,7 +388,7 @@ export async function demarrerObjectif(planId: string): Promise<Depart> {
 }
 
 // Les autres objectifs écrits semaine par semaine du même athlète (sa fiche de coaché, ou son compte d'acheteur).
-type Voisin = { id: string; course_nom: string; course_date: string; temps_h: number; demarre: boolean };
+type Voisin = { id: string; course_nom: string; course_date: string; temps_h: number; demarre: boolean; debut: string | null };
 async function autresObjectifs(o: Objectif): Promise<Voisin[]> {
   const service = clientService();
   const { data: coaching } = await service.from('coaching').select('plan_id, athlete_id');
@@ -393,11 +403,12 @@ async function autresObjectifs(o: Objectif): Promise<Voisin[]> {
   }
   ids = ids.filter((id) => id !== o.planId);
   if (!ids.length) return [];
-  const { data } = await service.from('plans').select('id, course_nom, course_date, intake, demarre_le').in('id', ids)
-    .not('parametres', 'is', null);
+  const { data } = await service.from('plans').select('id, course_nom, course_date, intake, demarre_le, debut:donnees->semaines->0->>lundi')
+    .in('id', ids).not('parametres', 'is', null);
   return (data ?? []).map((p) => ({
     id: p.id as string, course_nom: p.course_nom as string, course_date: p.course_date as string,
     temps_h: heures((p.intake as Record<string, unknown> | null)?.temps_cible), demarre: Boolean(p.demarre_le),
+    debut: (p.debut ?? null) as string | null,
   }));
 }
 
@@ -408,7 +419,7 @@ function heures(brut: unknown): number {
 }
 
 // Le lundi qui suit la récupération d'une course (O3 : un jour sans séance dure par heure de course, 2 au moins).
-function debutApres(q: Voisin): string {
+function debutApres(q: Pick<Voisin, 'course_date' | 'temps_h'>): string {
   const fin = ajouterJours(q.course_date, Math.max(2, Math.ceil(q.temps_h)));
   const rang = (new Date(`${fin}T12:00:00Z`).getUTCDay() + 6) % 7;
   return ajouterJours(fin, 7 - rang);
