@@ -29,6 +29,8 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
           <p className="text-indigo/70 mt-2">
             {demande
               ? `Sa demande du ${new Date(demande.cree_le).toLocaleDateString('fr-FR')} : relis ses réponses, corrige si besoin, et lance l’objectif.${demande.gpx_chemin ? ' Sa trace part avec la demande.' : ''}`
+              : suite?.nolio
+              ? 'Ses réponses du dernier objectif sont reprises, et sa charge du moment est lue dans ses séances Nolio (volume et plus longue sortie des 4 dernières semaines, arrêt sur 2 mois) : relis-la, et saisis la course.'
               : suite
               ? 'Ses réponses du dernier objectif sont reprises : mets à jour sa charge du moment et saisis la course.'
               : 'Remplis le questionnaire avec ses réponses. Le plan se génère sans paiement et rejoint ton espace coach.'}

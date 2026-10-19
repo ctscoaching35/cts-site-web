@@ -19,8 +19,11 @@ export default async function NouvelObjectif() {
   if (!compteId) redirect('/app/connexion?suite=/app/objectif/nouveau');
   const fiche = await ficheDuCompte(compteId);
   let initial: Record<string, string | string[]>;
+  let depuisNolio = false;
   if (fiche) {
-    initial = (await questionnairePrerempli(fiche.coach_id, fiche.id))?.initial ?? { nom: fiche.nom };
+    const suite = await questionnairePrerempli(fiche.coach_id, fiche.id);
+    initial = suite?.initial ?? { nom: fiche.nom };
+    depuisNolio = Boolean(suite?.nolio);
   } else {
     const dernier = (await plansDuCompte(compteId)).filter((p) => !p.coache).pop();
     const { data: p } = dernier ? await supabase.from('plans').select('intake').eq('id', dernier.id).maybeSingle() : { data: null };
@@ -36,7 +39,7 @@ export default async function NouvelObjectif() {
           <h1 className="text-3xl sm:text-4xl text-indigo leading-tight">Ta prochaine course</h1>
           <p className="text-indigo/70 mt-2">
             {fiche
-              ? 'Tes réponses du dernier objectif sont reprises : mets à jour ce que tu cours en ce moment et saisis ta course. Ton coach relit ta demande et lance ta préparation.'
+              ? `Tes réponses du dernier objectif sont reprises${depuisNolio ? ', et ce que tu cours en ce moment est lu dans tes séances Nolio : relis-le' : ' : mets à jour ce que tu cours en ce moment'} et saisis ta course. Ton coach relit ta demande et lance ta préparation.`
               : 'Tes réponses du dernier plan sont reprises : mets à jour ce que tu cours en ce moment et saisis ta course.'}
           </p>
           {/* OM4 : un objectif majeur à la fois ; une course avant l'objectif en cours est une course de préparation. */}

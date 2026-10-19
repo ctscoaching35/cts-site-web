@@ -49,6 +49,9 @@ export default async function ObjectifCoache({ params }: { params: Promise<{ id:
             {nolio ? 'Associé à Nolio.' : 'Pas encore associé à Nolio : choisis son nom sur sa fiche.'}
             {' '}{valeurs ? `Cibles : ${valeurs}.` : 'Sans valeurs : cibles au RPE.'}
           </p>
+          {/* Le début de la préparation, ou la semaine où elle est prise en route (QD1 : sans durée, la formule qui
+              couvre le temps jusqu'à la course peut commencer avant aujourd'hui). */}
+          <p className="text-sm text-indigo/70 mt-1">{o.plan.couverture.debut}</p>
           {o.pdf && <a href={`/app/coach/plan/${id}/pdf`} className="inline-block mt-2 text-sm text-teal font-semibold">Télécharger le PDF ›</a>}
         </div>
 

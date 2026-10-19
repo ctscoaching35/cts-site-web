@@ -171,12 +171,12 @@ export default function Questionnaire({
   // Le format se déduit de la distance (F4) : un format que le niveau n'ouvre pas ne propose
   // aucune durée, et la note sous la distance dit pourquoi.
   const durees = config && formatOuvert(c, config) ? config.durees_par_format[c.format] ?? [] : [];
-  const notePourFormat = config ? noteFormat(c, config) : null;
+  const notePourFormat = config ? noteFormat(c, config, coach) : null;
   const joursCoches = (config?.jours ?? []).filter((j) => c.jours_disponibles.includes(j));
   const plancher = config ? plancherSeances(c, config) : null;
   const freqMin = plancher?.min ?? 3;
   const freqMax = plancher?.max ?? 7;
-  const reperes = config ? reperesChrono(c, config) : null;
+  const reperes = config ? reperesChrono(c, config, coach) : null;
   const bande = config ? bandeTempsCible(c, config) : null;
   const alerteSl = config ? alerteSortieLongue(c, config) : null;
   const alertes = useMemo(() => (config ? avertissements(c, config) : []), [c, config]);
@@ -319,7 +319,10 @@ export default function Questionnaire({
     ];
     // L'avertissement santé se lit et se coche à chaque fois (décision coach du 07/10/2026), avec
     // les points propres à l'athlète au-dessus quand il y en a.
-    const bloque = !confirme || (!coach && !debutImmediat);
+    // QD5 (décision coach du 19/10/2026) : le coach lance l'objectif sans avertissement à cocher ; le coaché qui envoie
+    // sa demande coche un avertissement propre au coaching (BROUILLON) ; l'acheteur, celui du plan automatique.
+    const sansAvertissement = coach && !demande;
+    const bloque = (!sansAvertissement && !confirme) || (!coach && !debutImmediat);
     return (
       <div className="space-y-6">
         <section className="bg-white border border-indigo/10 p-6 sm:p-8">
@@ -346,13 +349,21 @@ export default function Questionnaire({
               </ul>
             </>
           )}
-          {config.avertissement && (
+          {demande ? (
+            <div className="space-y-3 text-indigo/80 leading-relaxed">
+              <div className="eyebrow text-teal">À lire avant d’envoyer</div>
+              <p>
+                Ton coach relit tes réponses avant de lancer ta préparation. Si une douleur ou une blessure t’empêche de
+                courir normalement, dis-le-lui : vous adapterez ensemble. Ce plan ne remplace pas un avis médical.
+              </p>
+            </div>
+          ) : !coach && config.avertissement && (
             <div className="space-y-3 text-indigo/80 leading-relaxed">
               <div className="eyebrow text-teal">{config.avertissement.surtitre}</div>
               {config.avertissement.paragraphes.map((p) => <p key={p}>{p}</p>)}
             </div>
           )}
-          <label className="flex gap-3 items-start mt-6 cursor-pointer">
+          {!sansAvertissement && <label className="flex gap-3 items-start mt-6 cursor-pointer">
             <input type="checkbox" checked={confirme} onChange={(e) => setConfirme(e.target.checked)} className="mt-1 accent-teal" />
             <span className="text-indigo font-semibold">
               {demande ? (
@@ -366,7 +377,7 @@ export default function Questionnaire({
                 </>
               )}
             </span>
-          </label>
+          </label>}
           {!coach && (
             <label className="flex gap-3 items-start mt-4 cursor-pointer">
               <input type="checkbox" checked={accordLecture} onChange={(e) => setAccordLecture(e.target.checked)} className="mt-1 accent-teal" />

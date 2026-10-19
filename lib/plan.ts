@@ -167,7 +167,11 @@ export function avertissements(c: Champs, config: ConfigPlan, aujourdhui = new D
 }
 
 /** Repères de chrono, une aide jamais un contrôle : km-effort / vitesse, arrondi à 5 min. */
-export function reperesChrono(c: Champs, config: ConfigPlan): string | null {
+// coach : le questionnaire du coaching individualisé (QD6, décision coach du 19/10/2026) : les mêmes portes, sans
+// renvoyer au coaching qu'il est en train de faire.
+const HORS_DU_MOTEUR = 'Le moteur ne construit pas ce cas : à préparer toi-même, hors du parcours automatique.';
+
+export function reperesChrono(c: Champs, config: ConfigPlan, coach = false): string | null {
   const vitesses = config.reperes_km_effort_h[c.format];
   const km = parseFloat(c.distance_km.replace(',', '.'));
   const dp = parseFloat(c.dplus_m.replace(',', '.')) || 0;
@@ -187,7 +191,8 @@ export function reperesChrono(c: Champs, config: ConfigPlan): string | null {
     plafond !== undefined && h > plafond ? `plus de ${plafond}h` : fmt(h)
   );
   const fin = depasse
-    ? ` Au-delà de ${plafond}h, c’est hors du plafond de ce plan : un coaching individualisé est plus adapté.`
+    ? (coach ? ` Au-delà de ${plafond}h, c’est hors du plafond de ce plan. ${HORS_DU_MOTEUR}`
+      : ` Au-delà de ${plafond}h, c’est hors du plafond de ce plan : un coaching individualisé est plus adapté.`)
     : ' Choisis d’après ta propre expérience de course.';
   return `Ta course fait ${Math.round(ke)} km-effort (km + D+/100). Repères de chrono sur ce format : allure rapide ${rapide}, allure moyenne ${moyenne}, allure prudente ${prudente}.${fin}`;
 }
@@ -216,7 +221,7 @@ export function formatOuvert(c: Champs, config: ConfigPlan): boolean {
  * Ce que le formulaire dit sous la distance : le format de la course, ou, s'il n'est pas ouvert
  * au niveau, la phrase du refus 0 de l'API (cts_intake.valider_champs), avant de la recevoir.
  */
-export function noteFormat(c: Champs, config: ConfigPlan): string | null {
+export function noteFormat(c: Champs, config: ConfigPlan, coach = false): string | null {
   if (!c.format) return null;
   const nom = (code: string) => {
     const f = config.formats.find((x) => x.code === code);
@@ -224,7 +229,8 @@ export function noteFormat(c: Champs, config: ConfigPlan): string | null {
   };
   if (formatOuvert(c, config)) return `Ta course est un ${nom(c.format)}.`;
   const ouverts = config.formats_par_niveau[c.niveau] ?? [];
-  return `Une course de ${c.distance_km.replace('.', ',')} km est un ${nom(c.format)} : ce format n’est pas ouvert à ton niveau. Choisis une course ${ouverts.map((f) => `de ${nom(f)}`).join(' ou ')}, ou oriente-toi vers un coaching individualisé.`;
+  const debut = `Une course de ${c.distance_km.replace('.', ',')} km est un ${nom(c.format)} : ce format n’est pas ouvert à ton niveau. Choisis une course ${ouverts.map((f) => `de ${nom(f)}`).join(' ou ')}`;
+  return coach ? `${debut}. ${HORS_DU_MOTEUR}` : `${debut}, ou oriente-toi vers un coaching individualisé.`;
 }
 
 /** Temps saisi -> heures, la même lecture que l'API (cts_intake.parse_temps_cible) ; null si illisible. */
