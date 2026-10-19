@@ -23,7 +23,8 @@ import { ajouterJours, type Plan, type Semaine } from './plan';
 import { clientService } from './supabase';
 import type { Fiche } from './tableau';
 import { fcSeuil2DuTest, lireParole, vcDuTest, type Flux, type Tour } from './tests';
-import { allure, kmh } from './zones';
+import { allure, kmh, PROFIL_VIDE } from './zones';
+import { ecrireZonesNolio } from './zonesNolio';
 
 export type Etat = Record<string, unknown>;
 // compteAthlete : le compte d'un coaché invité dans l'app (T6) ; ses gestes (une course, le veto) valent comme ceux du
@@ -618,6 +619,8 @@ async function enregistrerValeurs(o: Objectif, v: Valeurs) {
   const service = clientService();
   const jour = aujourdhuiParis();
   const r3 = (x: number) => Math.round(x * 1000) / 1000;
+  // ZN1 : les zones CTS dans le Nolio de l'athlète, avec la nouvelle valeur.
+  await zonesVersNolio(o, v);
   if (o.coache) {
     const { data: c } = await service.from('coaching').select('athlete_id').eq('plan_id', o.planId).maybeSingle();
     if (!c) return;
@@ -634,6 +637,16 @@ async function enregistrerValeurs(o: Objectif, v: Valeurs) {
     ...(v.v_seuil1_ms ? { v_seuil1_ms: r3(v.v_seuil1_ms) } : {}),
     ...(v.fc_seuil2 ? { fc_seuil2: v.fc_seuil2, fc_seuil2_le: jour } : {}),
   });
+}
+
+// ZN1 : les zones CTS dans le Nolio de l'athlète, d'après son profil (et une valeur qui vient d'arriver).
+export async function zonesVersNolio(o: Objectif, v: Valeurs = {}): Promise<string[]> {
+  if (!o.nolioAthlete) return [];
+  const d = await destinataire(o.nolioAthlete);
+  const p = { ...PROFIL_VIDE, ...o.profil, ...Object.fromEntries(Object.entries(v).filter(([, x]) => x !== null && x !== undefined)) };
+  const soucis = await ecrireZonesNolio(d.usr, d.moi, p, o.plan.zones).catch((e) => [e instanceof Error ? e.message : String(e)]);
+  if (soucis.length) console.error(`Zones Nolio du plan ${o.planId} :`, soucis.join(' ; '));
+  return soucis;
 }
 
 // La séance faite d'un test, ses tours et sa trace (204 : une séance sans fichier ; une source qui interdit la

@@ -6,6 +6,7 @@
  * explicite de l'athlète (Z2) ; un consentement déjà donné pour ce plan vaut pour les tests suivants.
  */
 import { revalidatePath } from 'next/cache';
+import { objectifEcrit, zonesVersNolio } from './ecriture';
 import { clientServeur, clientService } from './supabase';
 import { lireDistance, lireDuree, vitesseCritique } from './zones';
 
@@ -30,6 +31,9 @@ async function enregistrer(planId: string, consentement: boolean, valeurs: Recor
     console.error(`Tes zones, plan ${planId} :`, error.message);
     return { ok: false, message: 'L’enregistrement n’a pas abouti. Réessaie dans un moment.' };
   }
+  // ZN1 : les mêmes zones dans Nolio, pour un plan écrit semaine par semaine.
+  const o = await objectifEcrit(planId).catch(() => null);
+  if (o) await zonesVersNolio(o).catch(() => null);
   revalidatePath('/app', 'layout');
   return { ok: true, message: 'C’est enregistré : tes séances affichent leurs nouveaux repères.' };
 }

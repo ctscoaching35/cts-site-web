@@ -8,6 +8,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { envoyerSemaine, ficheAthlete, mettreAJourSemaine, objectifCoache } from './coaching';
 import { fermerEspace, ouvrirEspace } from './espaceAthlete';
+import { objectifEcrit, zonesVersNolio } from './ecriture';
 import { coachConnecte } from './nolio';
 import { lireAllure } from './allureCoach';
 import { clientService } from './supabase';
@@ -68,7 +69,12 @@ export async function enregistrerValeurs(athleteId: string, _e: EtatCoach, form:
   }).eq('id', athleteId).eq('coach_id', coach.compteId);
   if (error) return { ok: false, message: 'L’enregistrement n’a pas abouti. Réessaie.' };
   revalidatePath(`/app/coach/athlete/${athleteId}`);
-  return { ok: true, message: 'C’est enregistré. Les prochaines semaines envoyées partiront avec ces valeurs.' };
+  // ZN1 : les mêmes zones dans son Nolio, d'après son objectif écrit semaine par semaine le plus récent.
+  const fiche = await ficheAthlete(coach.compteId, athleteId);
+  const dernier = fiche?.objectifs[fiche.objectifs.length - 1];
+  const o = dernier ? await objectifEcrit(dernier.plan_id).catch(() => null) : null;
+  const soucis = o ? await zonesVersNolio(o) : [];
+  return { ok: true, message: `C’est enregistré. Les prochaines semaines envoyées partiront avec ces valeurs.${soucis.length ? ` Zones Nolio : ${soucis.join(' ; ')}.` : ''}` };
 }
 
 // T6 : inviter un athlète coaché dans l'app ; « Retirer l'accès » délie son compte de sa fiche.
