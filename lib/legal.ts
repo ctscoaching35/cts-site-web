@@ -47,4 +47,4 @@ export async function plansVisibles(): Promise<boolean> {
 }
 
 export const VERSION_CGV = '19 octobre 2026';
-export const VERSION_CONFIDENTIALITE = '19 octobre 2026';
+export const VERSION_CONFIDENTIALITE = '20 octobre 2026';

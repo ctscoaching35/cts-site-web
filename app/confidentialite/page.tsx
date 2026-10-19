@@ -140,8 +140,10 @@ export default async function Confidentialite() {
         <p>Avec ton accord, donné par écrit dans la messagerie Nolio et que tu peux retirer à tout moment :</p>
         <Liste>
           <li>
-            l’espace de ton coach garde tes repères d’entraînement (fréquence cardiaque aux seuils, allures), le
-            questionnaire de ta course et ton plan, pour écrire tes séances dans ton calendrier Nolio ;
+            l’espace de ton coach garde ton profil de coureur (tes réponses au questionnaire), tes repères
+            d’entraînement (fréquence cardiaque aux seuils, vitesse critique, allures) avec la date et l’origine de chaque
+            test, tes objectifs, tes courses de préparation et leur fiche de course, et ta préparation, pour écrire tes
+            séances dans ton calendrier Nolio ;
           </li>
           <li>
             le tableau de suivi de ton coach lit dans Nolio tes séances prévues et réalisées, avec ton effort ressenti,
@@ -153,7 +155,11 @@ export default async function Confidentialite() {
             lectures ; nous gardons un résumé chiffré de chaque semaine (charge, séances faites, plus longue sortie,
             Hooper), pour ajuster tes séances et afficher tes graphiques dans ton espace CTS ;
           </li>
-          <li>si ton coach t’ouvre un espace dans l’app, nous gardons ton adresse e-mail, pour ta connexion ;</li>
+          <li>
+            si ton coach t’ouvre un espace dans l’app, nous gardons ton adresse e-mail, pour ta connexion par un code
+            envoyé par e-mail ; un objectif que tu y demandes (ton questionnaire, et la trace GPX si tu en joins une)
+            arrive dans l’espace de ton coach ;
+          </li>
           <li>nous gardons ton nom, ton identifiant Nolio et la date de ton accord.</li>
         </Liste>
         <p>
