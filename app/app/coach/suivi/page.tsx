@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import EnTeteCoach from '@/components/app/EnTeteCoach';
+import { AnnulerSemaine } from '@/components/app/GestesEcriture';
+import { ajustementsDuCoach, type Ajustement } from '@/lib/app/ecriture';
 import { accordRecu, retirerAccord } from '@/lib/app/actionsSuivi';
 import { athletesNolio, ErreurNolio, exigerCoach, moiNolio, nolioConfigure, type AthleteNolio } from '@/lib/app/nolio';
 import { accords, aujourdhuiParis, lireSuivi, seuilsSuivi, type GenreSignal, type Suivi } from '@/lib/app/suivi';
@@ -50,6 +52,8 @@ export default async function SuiviCoach() {
       </>
     );
   }
+  // Les ajustements viennent de la base, pas de Nolio : ils s'affichent même quand Nolio ne répond pas.
+  const ajustements: Ajustement[] = await ajustementsDuCoach(coach.compteId).catch(() => []);
   let lignes: Ligne[] = [];
   let sansAccord: AthleteNolio[] = [];
   let erreur: string | null = null;
@@ -76,6 +80,34 @@ export default async function SuiviCoach() {
             (FC, allures) sur leur fiche, et le retirer les efface.
           </p>
         </div>
+        {ajustements.length > 0 && (
+          <section className="bg-white shadow-sm p-4 space-y-2">
+            <h2 className="eyebrow text-indigo/60">Ajustements automatiques ({ajustements.length})</h2>
+            <p className="text-sm text-indigo/70">
+              Ceux des semaines écrites ces 8 derniers jours. Annuler réécrit la semaine sans eux et la met à jour dans
+              Nolio ; ce que tu as retouché toi-même dans Nolio reste.
+            </p>
+            <ul className="divide-y divide-indigo/10">
+              {ajustements.map((a) => (
+                <li key={`${a.planId}-${a.numero}`} className="py-2 space-y-1 text-sm">
+                  <div className="font-semibold text-indigo">
+                    <Link href={`/app/coach/plan/${a.planId}`} className="hover:underline">{a.nom}</Link>
+                    <span className="font-normal text-indigo/60"> · semaine {a.numero.slice(1)}{a.raisons.length > 0 && ` · ${a.raisons.join(', ')}`}</span>
+                  </div>
+                  {a.bilan && <p className="text-indigo/75">{a.bilan}</p>}
+                  {a.raisons.length > 0 && <AnnulerSemaine planId={a.planId} numero={a.numero} />}
+                  {a.allegees.map((j) => (
+                    <p key={j.id} className="text-indigo/75">
+                      {j.nom} allégée en EF (fatigue franche) ·{' '}
+                      <Link href={`/app/garder?plan=${a.planId}&seance=${encodeURIComponent(j.id)}`} className="font-semibold text-teal">Garder la séance d’origine</Link>
+                    </p>
+                  ))}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         {erreur && <p className="text-sm text-indigo/75 bg-white shadow-sm p-4">{erreur}</p>}
 
         {lignes.length > 0 && (

@@ -6,6 +6,9 @@
  *
  * Les phrases du plan viennent du moteur (cadrage, D3) : la date de début dite par la couverture
  * (« Ta préparation commence le… », ou la semaine rejointe).
+ *
+ * Un plan écrit semaine par semaine (depuis le 19/10/2026, CTS_NOLIO_CADRAGE.md, P1 et T1) : ses séances vivent
+ * dans Nolio, l'invitation part à part, l'app devient son tableau de bord. BROUILLON, à valider par le coach.
  */
 import type { Plan } from './plan';
 
@@ -20,15 +23,27 @@ const sansBalises = (texte: string) => texte.replace(/<[^>]+>/g, '');
 const echapper = (texte: string) =>
   texte.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-export function contenuBienvenue(plan: Plan, lienApp: string) {
+// nolio : l'adresse où part l'invitation Nolio, pour un plan écrit semaine par semaine ; null pour un plan d'avant.
+export function contenuBienvenue(plan: Plan, lienApp: string, nolio: { adresse: string } | null = null) {
   const nom = plan.athlete.nom.trim();
   const { course } = plan;
+  const connexion = 'Sur un autre appareil, l’app te demande l’adresse e-mail qui reçoit ce message, puis t’y ' +
+    'envoie un code à 6 chiffres pour te connecter.';
   const paragraphes = [
     `Ton plan pour ${course.nom}, le ${course.date_lettres}, est prêt. ${sansBalises(plan.couverture.debut)}`,
-    'Chaque séance t’y attend au jour le jour, avec le calendrier, ton parcours et les fiches de la bibliothèque. ' +
-      'Pour y revenir facilement, ajoute l’app à l’écran d’accueil de ton téléphone : elle te montre comment à ' +
-      'la première ouverture. Sur un autre appareil, l’app te demande l’adresse e-mail qui reçoit ce message, ' +
-      'puis t’y envoie un code à 6 chiffres pour te connecter.',
+    ...(nolio ? [
+      'Tes séances vivent dans Nolio, l’application d’entraînement que nous utilisons avec tous nos athlètes. ' +
+        `Nolio t’envoie une invitation à rejoindre l’équipe CTS, à ${nolio.adresse} (pense à regarder dans tes ` +
+        'indésirables) : accepte-la, et ton plan s’installe dans ton calendrier Nolio. Chaque dimanche, Nolio te pose ' +
+        'quelques questions sur ta semaine à venir, et la semaine suivante s’écrit d’après tes réponses et ta semaine écoulée.',
+      'L’app CTS est ton tableau de bord : ta course et le compte à rebours, la vue d’ensemble de ton plan, ta fiche ' +
+        'de course et les fiches de la bibliothèque. Pour y revenir facilement, ajoute-la à l’écran d’accueil de ton ' +
+        `téléphone : elle te montre comment à la première ouverture. ${connexion}`,
+    ] : [
+      'Chaque séance t’y attend au jour le jour, avec le calendrier, ton parcours et les fiches de la bibliothèque. ' +
+        'Pour y revenir facilement, ajoute l’app à l’écran d’accueil de ton téléphone : elle te montre comment à ' +
+        `la première ouverture. ${connexion}`,
+    ]),
     'Ton plan est aussi joint en PDF, à garder ou à imprimer.',
     'Une question sur ton plan ? Réponds simplement à cet e-mail.',
     // La confirmation de l'achat sur un support durable, avec la renonciation au droit de rétractation que
@@ -37,10 +52,11 @@ export function contenuBienvenue(plan: Plan, lienApp: string) {
       'n’ouvre donc plus de droit de rétractation (article L221-28 du Code de la consommation).',
   ];
   const signature = 'Juliette et Romain — CTS Coaching';
+  const bouton = nolio ? 'Ouvrir mon tableau de bord' : 'Ouvrir mon plan';
   const texte = [
     `Bonjour ${nom},`,
     paragraphes[0],
-    `Ouvrir mon plan : ${lienApp}`,
+    `${bouton} : ${lienApp}`,
     ...paragraphes.slice(1),
     signature,
   ].join('\n\n');
@@ -49,7 +65,7 @@ export function contenuBienvenue(plan: Plan, lienApp: string) {
 <div style="max-width:560px;margin:0 auto;background:#ffffff;padding:32px 28px;font-family:Helvetica,Arial,sans-serif;font-size:16px;color:#2F2D4E">
 ${p(`Bonjour ${echapper(nom)},`)}
 ${p(echapper(paragraphes[0]))}
-<p style="margin:24px 0"><a href="${echapper(lienApp)}" style="display:inline-block;background:#0C6E5F;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 24px">Ouvrir mon plan</a></p>
+<p style="margin:24px 0"><a href="${echapper(lienApp)}" style="display:inline-block;background:#0C6E5F;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 24px">${bouton}</a></p>
 ${paragraphes.slice(1).map((x) => p(echapper(x))).join('\n')}
 <p style="margin:24px 0 0;line-height:1.55;font-weight:bold">${signature}</p>
 </div></body></html>`;
@@ -61,13 +77,14 @@ export async function envoyerBienvenue(
   plan: Plan,
   lienApp: string,
   pdf: { nom: string; contenu: ArrayBuffer },
+  nolio: { adresse: string } | null = null,
 ) {
   const cle = process.env.BREVO_API_KEY?.trim();
   if (!cle) {
     console.warn(`E-mail de bienvenue non envoyé (${plan.course.nom}) : BREVO_API_KEY absente.`);
     return;
   }
-  const { sujet, texte, html } = contenuBienvenue(plan, lienApp);
+  const { sujet, texte, html } = contenuBienvenue(plan, lienApp, nolio);
   const reponse = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: { 'api-key': cle, 'Content-Type': 'application/json', Accept: 'application/json' },

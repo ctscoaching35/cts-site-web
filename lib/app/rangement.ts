@@ -133,7 +133,8 @@ export async function rangerLePlan(sessionId: string, origine: string) {
       await service.from('plans').update({ pdf_chemin: chemin }).eq('id', plan.id);
       // Le plan est rangé : un e-mail qui échoue ne le défait pas, il se signale dans le journal.
       try {
-        await envoyerBienvenue(email, donnees, `${origine}/app`, { nom: nomDuPdf(reponsePdf), contenu: pdf });
+        await envoyerBienvenue(email, donnees, `${origine}/app`, { nom: nomDuPdf(reponsePdf), contenu: pdf },
+          corps.parametres ? { adresse: corps.acheteur?.nolio_email || email } : null);
       } catch (e) {
         console.error(`E-mail de bienvenue de l'achat ${sessionId} :`, e);
       }

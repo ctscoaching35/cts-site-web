@@ -521,6 +521,31 @@ const REGLES_EN_CLAIR: Record<string, string> = {
   R5: 'disponibilités', R7: 'séance en plus', O3: 'course secondaire',
 };
 
+// Le Suivi du coach (décision 8 du document des règles) : les ajustements de ses coachés écrits ces 8 derniers jours,
+// chacun avec son geste : « Annuler » pour ceux du dimanche, « Garder la séance d'origine » pour une séance allégée.
+export type Ajustement = { planId: string; nom: string; numero: string; raisons: string[]; bilan: string | null; allegees: { id: string; nom: string }[] };
+export async function ajustementsDuCoach(coachId: string): Promise<Ajustement[]> {
+  const service = clientService();
+  const { data: coaching } = await service.from('coaching').select('plan_id, athlete_nom').eq('coach_id', coachId);
+  const nomDe = new Map((coaching ?? []).map((c) => [c.plan_id as string, c.athlete_nom as string]));
+  if (!nomDe.size) return [];
+  const depuis = new Date(Date.now() - 8 * 86400_000).toISOString();
+  const { data: ecrites } = await service.from('semaines_ecrites').select('plan_id, numero, journal, bilan, donnees, sans_ajustement')
+    .in('plan_id', [...nomDe.keys()]).gte('ecrite_le', depuis);
+  const liste: Ajustement[] = [];
+  for (const e of ecrites ?? []) {
+    const journal = e.sans_ajustement ? [] : ((e.journal ?? []) as { regle?: string }[]);
+    const jours = ((e.donnees as Semaine | null)?.jours ?? []) as (Semaine['jours'][number] & { origine?: { seance?: string } })[];
+    const allegees = jours.filter((j) => j.origine).map((j) => ({ id: j.id, nom: j.origine?.seance ?? j.id }));
+    if (!journal.length && !allegees.length) continue;
+    liste.push({
+      planId: e.plan_id as string, nom: nomDe.get(e.plan_id as string) ?? '', numero: e.numero as string,
+      raisons: [...new Set(journal.map((j) => REGLES_EN_CLAIR[j.regle ?? ''] ?? j.regle ?? ''))], bilan: e.bilan as string | null, allegees,
+    });
+  }
+  return liste.sort((a, b) => a.nom.localeCompare(b.nom, 'fr') || a.numero.localeCompare(b.numero, 'fr', { numeric: true }));
+}
+
 // Un e-mail par jour au plus : les ajustements de la journée chez les coachés (le dimanche, ceux de la semaine écrite).
 async function resumeAuCoach(fatigues: Compte[]) {
   const service = clientService();
