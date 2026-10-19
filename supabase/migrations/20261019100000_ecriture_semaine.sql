@@ -11,10 +11,13 @@ alter table public.plans
   add column parametres jsonb,
   add column etat_ecriture jsonb,
   add column nolio_athlete_id text,
-  add column nolio_statut text check (nolio_statut in ('a_inviter', 'invite', 'actif', 'refuse', 'sorti')),
+  add column nolio_statut text check (nolio_statut in ('a_inviter', 'en_cours', 'invite', 'actif', 'refuse', 'sorti')),
   add column nolio_email text,
   add column accord_lecture_le timestamptz,
-  add column coach_id uuid references public.comptes (id) on delete set null;
+  add column coach_id uuid references public.comptes (id) on delete set null,
+  -- Le départ dans Nolio (trame, questionnaires, première semaine), posé une seule fois même si deux appels arrivent
+  -- ensemble (le webhook de Nolio et le retour de paiement).
+  add column demarre_le timestamptz;
 comment on column public.plans.parametres is
   'Paramètres de la réécriture semaine par semaine (cts_semaine) : réponses sans nom ni e-mail, jour de la commande, '
   'valeurs de la trace, courses secondaires. Null : un plan envoyé en entier (avant le 19/10/2026).';

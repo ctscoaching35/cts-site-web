@@ -91,6 +91,12 @@ export default function Questionnaire({
   // case est cochée ; l'accord part au serveur avec l'e-mail, rien d'autre (lib/app/relance.ts).
   const [rappel, setRappel] = useState(false);
   const rappelEnregistre = useRef('');
+  // NOLIO (CTS_NOLIO_CADRAGE.md dans le dépôt du moteur, P1 et T5 ; décisions coach du 18-19/10/2026) : les séances
+  // arrivent dans Nolio ; l'acheteur y est invité avec l'adresse de l'achat, ou celle de son compte Nolio s'il en a un
+  // sous une autre adresse ; et, s'il le veut, l'app lit son RPE, son ressenti et son Hooper pour ajuster son plan.
+  const [autreNolio, setAutreNolio] = useState(false);
+  const [nolioEmail, setNolioEmail] = useState('');
+  const [accordLecture, setAccordLecture] = useState(false);
   const [envoi, setEnvoi] = useState(false);
   const [refus, setRefus] = useState('');
 
@@ -247,6 +253,8 @@ export default function Questionnaire({
     if (!coach && renonce) donnees.append('renonciation_retractation', '1');
     // La case de l'avertissement accepte aussi les CGV : l'API en garde la date chez Stripe, avec le paiement (E4).
     if (!coach && confirme) donnees.append('cgv_acceptees', '1');
+    if (!coach && autreNolio && nolioEmail.trim()) donnees.append('nolio_email', nolioEmail.trim());
+    if (!coach && accordLecture) donnees.append('accord_lecture', '1');
     if (!coach) compterEtape('paiement');
     if (coach) {
       try {
@@ -349,6 +357,16 @@ export default function Questionnaire({
           </label>
           {!coach && (
             <label className="flex gap-3 items-start mt-4 cursor-pointer">
+              <input type="checkbox" checked={accordLecture} onChange={(e) => setAccordLecture(e.target.checked)} className="mt-1 accent-teal" />
+              <span className="text-indigo">
+                J’accepte que l’app lise dans Nolio mes séances faites, mon RPE, mon ressenti et mon Hooper, seulement
+                pour ajuster mon plan et afficher mes graphiques. Je peux retirer cet accord à tout moment.{' '}
+                <span className="text-indigo/70">Facultatif : sans lui, ton plan suit sa trame, sans ajustement à ta fatigue.</span>
+              </span>
+            </label>
+          )}
+          {!coach && (
+            <label className="flex gap-3 items-start mt-4 cursor-pointer">
               <input type="checkbox" checked={renonce} onChange={(e) => setRenonce(e.target.checked)} className="mt-1 accent-teal" />
               <span className="text-indigo">
                 <span className="font-semibold">Je demande à recevoir mon plan dès mon paiement, et je renonce à mon droit de rétractation de 14 jours.</span>{' '}
@@ -394,9 +412,21 @@ export default function Questionnaire({
               <label className={labelCls} htmlFor="email">E-mail</label>
               <input id="email" type="email" className={inputCls} required value={c.email} onChange={(e) => maj('email')(e.target.value)} autoComplete="email" />
               <p className={aideCls}>
-                C’est là que part ton plan. Ce que nous gardons :{' '}
+                C’est là que part ton plan, et c’est avec elle que tu rejoins Nolio, où arrivent tes séances. Ce que nous
+                gardons :{' '}
                 <a href="/confidentialite" target="_blank" rel="noopener" className="underline underline-offset-2">politique de confidentialité</a>.
               </p>
+              <label className="flex gap-3 items-start mt-3 cursor-pointer">
+                <input type="checkbox" checked={autreNolio} onChange={(e) => setAutreNolio(e.target.checked)} className="mt-1 accent-teal" />
+                <span className="text-sm text-indigo/80">J’ai déjà un compte Nolio avec une autre adresse.</span>
+              </label>
+              {autreNolio && (
+                <div className="mt-2">
+                  <label className={labelCls} htmlFor="nolio_email">Adresse de ton compte Nolio</label>
+                  <input id="nolio_email" type="email" className={inputCls} value={nolioEmail}
+                    onChange={(e) => setNolioEmail(e.target.value)} autoComplete="off" />
+                </div>
+              )}
               <label className="flex gap-3 items-start mt-3 cursor-pointer">
                 <input type="checkbox" checked={rappel} onChange={(e) => setRappel(e.target.checked)} className="mt-1 accent-teal" />
                 <span className="text-sm text-indigo/80">

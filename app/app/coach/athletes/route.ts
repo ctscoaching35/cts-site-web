@@ -36,6 +36,8 @@ export async function POST(request: NextRequest) {
     compte_id: coach.compteId, course_nom: donnees.course.nom, course_date: donnees.course.date,
     debut_plan: donnees.course.date_debut_plan, schema: donnees.schema, version_moteur: donnees.version_moteur,
     donnees, intake: c2.intake ?? {},
+    // L'écriture semaine par semaine (T3, 19/10/2026) : les paramètres du moteur ; le coach démarre l'objectif dans Nolio.
+    ...(c2.parametres ? { parametres: c2.parametres, coach_id: coach.compteId } : {}),
   }).select('id').single();
   if (error || !plan) {
     console.error('Plan coaché :', error?.message);

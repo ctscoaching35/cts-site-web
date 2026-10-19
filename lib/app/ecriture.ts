@@ -296,11 +296,21 @@ export async function demarrerObjectif(planId: string): Promise<string> {
   const aujourdhui = aujourdhuiParis();
   const debut = o.plan.semaines.find((s) => s.lundi && ajouterJours(s.lundi, 6) >= aujourdhui);
   if (!debut?.lundi) throw new Error('La course est passée.');
-  await envoyerTrame(o, aujourdhui);
-  await programmerQuestionnaires(o, dimancheSuivant(debut.lundi < aujourdhui ? aujourdhui : debut.lundi));
-  const deja = o.envois.some((e) => e.semaine === debut.numero);
-  if (!deja) await ecrireEtEnvoyer(o, debut.numero, null, { depuis: aujourdhui > debut.lundi ? aujourdhui : undefined });
-  if (!o.coache) await rangerAcheteur(o);
+  // Un seul départ à la fois : le premier appel prend la main ; en cas d'échec il la rend, pour un nouvel essai.
+  const service = clientService();
+  const { data: pris } = await service.from('plans').update({ demarre_le: new Date().toISOString() })
+    .eq('id', planId).is('demarre_le', null).select('id');
+  if (!pris?.length) return debut.numero;
+  try {
+    await envoyerTrame(o, aujourdhui);
+    await programmerQuestionnaires(o, dimancheSuivant(debut.lundi < aujourdhui ? aujourdhui : debut.lundi));
+    const deja = o.envois.some((e) => e.semaine === debut.numero);
+    if (!deja) await ecrireEtEnvoyer(o, debut.numero, null, { depuis: aujourdhui > debut.lundi ? aujourdhui : undefined });
+    if (!o.coache) await rangerAcheteur(o);
+  } catch (e) {
+    await service.from('plans').update({ demarre_le: null }).eq('id', planId);
+    throw e;
+  }
   return debut.numero;
 }
 
@@ -446,14 +456,18 @@ export async function prevenirCoach(sujet: string, texte: string) {
 // son plan part tout de suite. Équipe pleine ou Nolio indisponible : nouvel essai chaque jour, le coach prévenu.
 export async function inviterAcheteur(planId: string, emailAchat: string): Promise<string> {
   const service = clientService();
-  const { data: p } = await service.from('plans').select('nolio_email, nolio_statut, nolio_athlete_id, course_nom').eq('id', planId).single();
-  if (p?.nolio_statut === 'actif' || p?.nolio_statut === 'invite') return p.nolio_statut;
+  // Une seule invitation à la fois (le webhook de Stripe et le retour de paiement arrivent ensemble).
+  const { data: pris } = await service.from('plans').update({ nolio_statut: 'en_cours' })
+    .eq('id', planId).eq('nolio_statut', 'a_inviter').select('nolio_email, course_nom');
+  const p = pris?.[0];
+  if (!p) return 'deja';
   const equipeId = await equipeDuCoach();
   const email = String(p?.nolio_email || emailAchat).trim();
   const r = equipeId ? await appelNolio('POST', `team/teams/${equipeId}/invitations/`, { email, role: 'athlete' }) : null;
   if (!r || (r.statut !== 201 && r.statut !== 200)) {
     const pleine = r?.statut === 400;
     await service.from('plans').update({ nolio_statut: 'a_inviter' }).eq('id', planId);
+    console.error(`Invitation Nolio du plan ${planId} :`, r ? refusNolio(r, 'l’invitation') : 'équipe introuvable');
     await prevenirCoach(pleine ? 'Plan CTS : ton équipe Nolio est pleine' : 'Plan CTS : invitation Nolio à refaire',
       `${pleine ? 'Ton équipe Nolio est pleine' : 'Nolio n’a pas répondu'} pour l’acheteur du plan « ${p?.course_nom ?? ''} ». `
       + 'Le site réessaie chaque jour ; libère une place ou vérifie ton offre Nolio.');

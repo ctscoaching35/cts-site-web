@@ -10,9 +10,12 @@
  *    retour et le webhook de Stripe (app/api/stripe/webhook) appellent tous deux cette fonction, parfois au
  *    même instant : un plan par achat (index plans_un_par_achat), le second appel reprend le premier.
  * 4. L'e-mail de bienvenue part avec le PDF, par l'appel qui a rangé le plan, donc une fois.
+ * 5. Un plan écrit semaine par semaine (ses paramètres, moteur 8.325) attend son invitation dans l'équipe Nolio du coach
+ *    (CTS_NOLIO_CADRAGE.md, P1 à P4) : l'appelant la lance après sa réponse (lib/app/ecriture.ts, inviterAcheteur).
  */
 import type { EmailOtpType } from '@supabase/supabase-js';
 import { API_URL } from '@/lib/plan';
+import { compteDuCoach } from './ecriture';
 import { envoyerBienvenue } from './emailBienvenue';
 import { retirerRelance } from './relance';
 import type { Plan } from './plan';
@@ -102,6 +105,13 @@ export async function rangerLePlan(sessionId: string, origine: string) {
         version_moteur: donnees.version_moteur,
         donnees,
         intake: corps.intake ?? {},
+        // L'écriture semaine par semaine (T3) : les paramètres du moteur ; l'invitation Nolio à faire (P1), avec
+        // l'adresse de son compte Nolio s'il l'a donnée ; son accord de lecture (T5).
+        ...(corps.parametres ? {
+          parametres: corps.parametres, nolio_statut: 'a_inviter', coach_id: await compteDuCoach(),
+          nolio_email: corps.acheteur?.nolio_email ?? null,
+          accord_lecture_le: corps.acheteur?.accord_lecture ? new Date().toISOString() : null,
+        } : {}),
       })
       .select('id')
       .single();
@@ -136,6 +146,8 @@ export async function rangerLePlan(sessionId: string, origine: string) {
   const compteNeuf = plans.every((p) => p.achat_id === achat.id);
   return {
     planId,
+    email,
+    aInviter: Boolean(corps.parametres),
     jeton: lien.properties.hashed_token,
     type: lien.properties.verification_type as EmailOtpType,
     sansCode: compteNeuf && Date.now() - Date.parse(achat.paye_le) < SANS_CODE_PENDANT_MS,
