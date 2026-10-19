@@ -1,18 +1,21 @@
 /**
  * Les zones CTS dans Nolio (CTS_NOLIO_CADRAGE.md, ZN1, décision coach du 19/10/2026 : pour tous) : à chaque nouvelle
  * valeur, les mêmes zones que l'app (le tableau de « Tes zones », Z6 et Z7, seuil 1 recoupé), écrites dans les réglages
- * Nolio de l'athlète. Lu le 19/10/2026 sur le compte du coach : 5 zones de FC et 6 d'allure, que l'API règle par
- * enveloppe (`settings/zones/wrappers/{id}/`, bornes en nombres ou en « m:ss », `auto_recompute: false` pour les
- * garder) et nomme au niveau du flux (`settings/zones/streams/{id}/zones/{zone}/`). Droits `settings:read` et
- * `settings:write` sur la clé.
+ * Nolio de l'athlète. Lu le 19/10/2026 sur le compte du coach (lecture seule) : une enveloppe active de FC (5 zones, pour
+ * tous ses sports) et une d'allure (6 zones) ; les sports d'une enveloppe sont des identifiants ; les zones se suivent
+ * sans trou ; une allure se range du plus lent (`min`, « 07:06 ») au plus rapide (`max`). L'API règle les bornes par
+ * enveloppe (`settings/zones/wrappers/{id}/`, `auto_recompute: false` pour les garder) et les noms au niveau du flux
+ * (`settings/zones/streams/{id}/zones/{zone}/`). Droits `settings:read` et `settings:write` sur la clé.
  *
  * ÉCRITURE LIMITÉE AU COMPTE DU COACH (« (toi) ») TANT QUE L'ESSAI N'EST PAS FAIT : POUR_TOUS passe à true après
  * l'essai, avec l'accord du coach.
  *
  * Choix faits en construisant, à montrer au coach : la FC s'écrit avec les deux seuils (5 zones : endurance de seuil 1
  * − 25 à seuil 1 − 5, la plage déjà donnée aux séances ; seuil 1 ; tempo ; seuil 2 ; VO2max de seuil 2 à seuil 2 + 15) ;
- * l'allure avec la VC (6 zones, la récupération bornée en bas à 50 % de la VC) ; un athlète dont Nolio n'a pas le même
- * nombre de zones garde les siennes, et le coach est prévenu.
+ * l'allure avec la VC (6 zones, la récupération bornée à 50 % de la VC ; la VO2max dès 100 % de la VC, sans le trou de
+ * l'app entre 100 et 105 %, comme les zones de Nolio se suivent) ; la FC vaut pour tous les sports de l'athlète (son
+ * enveloppe de FC les couvre tous) ; un athlète dont Nolio n'a pas le même nombre de zones garde les siennes, et le
+ * coach est prévenu.
  */
 import type { Zones } from './plan';
 import { appelNolio, refusNolio } from './nolio';
@@ -20,6 +23,7 @@ import { allure, decalageSeuil1, type Profil } from './zones';
 
 export const POUR_TOUS = false;
 
+// min, max : comme l'enveloppe Nolio les range (la FC du bas vers le haut ; l'allure du plus lent au plus rapide).
 type Borne = { nom: string; min: number | string; max: number | string };
 
 // Les noms des lignes du tableau des zones de l'app (cts_contenu.ZONES_RPE).
@@ -36,7 +40,7 @@ export function zonesFc(p: Profil): Borne[] | null {
   return NOMS_FC.map((nom, i) => ({ nom, min: bornes[i], max: bornes[i + 1] }));
 }
 
-// Les allures, du plus rapide (min, le plus petit temps au km) au plus lent (max), comme Nolio les range.
+// Les allures, chaque zone du plus lent (min) au plus rapide (max), comme l'enveloppe Nolio les range.
 export function zonesAllure(p: Profil, zones: Pick<Zones, 'tableau' | 'recoupement'>): Borne[] | null {
   if (p.vc_ms === null) return null;
   const vc = p.vc_ms;
@@ -48,20 +52,21 @@ export function zonesAllure(p: Profil, zones: Pick<Zones, 'tableau' | 'recoupeme
     [(l[2]?.allure_vc?.[0] ?? 80) + d, (l[2]?.allure_vc?.[1] ?? 85) + d],
     [(l[3]?.allure_vc?.[0] ?? 85) + d, l[3]?.allure_vc?.[1] ?? 92],
     [l[4]?.allure_vc?.[0] ?? 92, l[4]?.allure_vc?.[1] ?? 100],
-    [l[5]?.allure_vc?.[0] ?? 105, l[5]?.allure_vc?.[1] ?? 112],
+    [l[4]?.allure_vc?.[1] ?? 100, l[5]?.allure_vc?.[1] ?? 112],
   ];
   if (pcts.some(([a, b], i) => b <= a || (i && a < pcts[i - 1][0]))) return null;
-  return NOMS_ALLURE.map((nom, i) => ({ nom, min: allure((vc * pcts[i][1]) / 100), max: allure((vc * pcts[i][0]) / 100) }));
+  return NOMS_ALLURE.map((nom, i) => ({ nom, min: allure((vc * pcts[i][0]) / 100), max: allure((vc * pcts[i][1]) / 100) }));
 }
 
-type Enveloppe = { id: string; stream: string; stream_type: string; is_active: boolean; sports: { id: string }[];
-  zones: { id?: string; order?: number; index?: number }[] };
+type Enveloppe = { id: string; stream: string; stream_type: string; is_active: boolean; sports: (string | { id: string })[];
+  zones: { id?: string; order?: number }[] };
 
 // L'enveloppe de la course à pied d'un flux (la première active qui vise la course ou le trail, sinon toutes).
 const COURSE = ['spt_kNYHjuEzDJRiYCX', 'spt_YprHS7jgV5vdsz0'];
 const enveloppe = (liste: Enveloppe[], flux: string) => {
   const actives = liste.filter((w) => w.stream_type === flux && w.is_active);
-  return actives.find((w) => w.sports.some((s) => COURSE.includes(s.id))) ?? actives.find((w) => !w.sports.length) ?? null;
+  const idDe = (s: string | { id: string }) => (typeof s === 'string' ? s : s.id);
+  return actives.find((w) => w.sports.some((s) => COURSE.includes(idDe(s)))) ?? actives.find((w) => !w.sports.length) ?? null;
 };
 
 // Écrit les zones CTS dans le Nolio d'un athlète. Rend ce qui n'a pas pu s'écrire (pour le coach), [] si tout va.
