@@ -172,3 +172,27 @@ export function ficheDuMoment(fiches: Fiche[], aujourdhui: string): { fiche: Fic
   const prochaine = fiches.find((f) => f.date > aujourdhui);
   return prochaine ? { fiche: prochaine, avenir: true } : null;
 }
+
+// ─── La préparation, bloc par bloc ────────────────────────────────────────
+
+// Les blocs de la préparation (décision coach du 19/10/2026 : « juste les blocs avec les qualités qu'on va travailler »,
+// sans volumes ni sorties longues, en J- jusqu'à l'objectif, pour tous) : les semaines de la trame regroupées par bloc,
+// de son premier lundi à son dernier dimanche (la veille de la course au plus tard), avec ce que le bloc développe et ce
+// qu'il entretient, lus dans le tableau du plan (« Ce que tu travailles », « En rappel »).
+export type BlocDuPlan = { nom: string; du: string; au: string; moment: 'fait' | 'encours' | 'avenir'; travail: string[]; rappel: string[] };
+export function blocsDuPlan(trame: LigneTrame[], plan: Plan, aujourdhui: string): BlocDuPlan[] {
+  const [entete = [], ...lignes] = plan.architecture.tableau;
+  const col = (titre: string) => entete.findIndex((e) => e.toLowerCase().startsWith(titre));
+  const [cBloc, cTravail, cRappel] = [col('bloc'), col('ce que tu travailles'), col('en rappel')];
+  const qualites = (bloc: string, c: number) => [...new Set(lignes.filter((l) => l[cBloc] === bloc)
+    .flatMap((l) => (c >= 0 ? String(l[c] ?? '') : '').split(',').map((q) => q.trim()).filter((q) => q && q !== '—')))];
+  const veille = ajouterJours(plan.course.date, -1);
+  const blocs: BlocDuPlan[] = [];
+  for (const l of trame.filter((x) => x.lundi)) {
+    const fin = ajouterJours(l.lundi, 6) < veille ? ajouterJours(l.lundi, 6) : veille;
+    const dernier = blocs[blocs.length - 1];
+    if (dernier && dernier.nom === l.bloc) dernier.au = fin;
+    else blocs.push({ nom: l.bloc, du: l.lundi, au: fin, moment: 'avenir', travail: qualites(l.bloc, cTravail), rappel: qualites(l.bloc, cRappel) });
+  }
+  return blocs.map((b) => ({ ...b, moment: b.au < aujourdhui ? 'fait' : b.du <= aujourdhui ? 'encours' : 'avenir' }));
+}

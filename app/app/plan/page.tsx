@@ -3,13 +3,12 @@ import clsx from 'clsx';
 import EnTeteApp from '@/components/app/EnTeteApp';
 import { AjouterCourse } from '@/components/app/GestesEcriture';
 import { Carte, PastilleDate, Surtitre } from '@/components/app/Ui';
-import { BANNIERE } from '@/lib/app/charte';
 import { choisirPlan } from '@/lib/app/actionsPlan';
 import { contexte, lien, plansDuCompte, type PlanDuCompte, type Recherche } from '@/lib/app/contexte';
 import { demandesDeLAthlete, ficheDuCompte } from '@/lib/app/demandes';
 import { clientServeur, clientService } from '@/lib/app/supabase';
 import { dateLongue, jMoins } from '@/lib/app/plan';
-import { enHeures, jaugeDuPlan, momentDe } from '@/lib/app/tableau';
+import { blocsDuPlan, jaugeDuPlan } from '@/lib/app/tableau';
 import { donneesTableau, fichesDePreparation, type CourseSecondaire } from '@/lib/app/tableauDuPlan';
 
 // « Mes objectifs » (OM2, décision coach du 19/10/2026) : chaque objectif majeur du compte (les siens, ceux que son
@@ -34,9 +33,9 @@ async function mesObjectifs() {
 }
 
 // L'objectif (CTS_NOLIO_CADRAGE.md dans le dépôt du moteur, T1, AP1 ; maquette validée par le coach le 19/10/2026) :
-// ouvert depuis l'accueil, sa fiche de course et sa trame en PDF, ses jalons, sa préparation semaine par semaine
-// (type, volume prévu, séances clés et week-ends choc annoncés d'avance, ce qui a été fait), ses courses de
-// préparation (O2) ; puis les autres objectifs du compte (OM2).
+// ouvert depuis l'accueil, sa fiche de course, ses jalons, sa préparation bloc par bloc (ce que chaque bloc développe,
+// en J- ; décision coach du 19/10/2026, à la place des semaines, de leurs volumes et de leurs sorties longues), ses
+// courses de préparation (O2) ; puis les autres objectifs du compte (OM2).
 export default async function Objectif({ searchParams }: { searchParams: Recherche }) {
   const ctx = await contexte(searchParams);
   const { plan, jour } = ctx;
@@ -44,7 +43,6 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
   const r = await searchParams;
   const objectifs = ctx.demonstration ? null : await mesObjectifs();
   const jauge = jaugeDuPlan(d.trame, d.realises, jour);
-  const faits = new Map(d.realises.map((x) => [x.numero, x]));
   const courseAVenir = plan.course.date >= jour;
   const fichesPrepa = ctx.demonstration ? new Set<string>() : await fichesDePreparation(ctx.cle);
   const { course } = plan;
@@ -95,42 +93,42 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
           </Carte>
         )}
 
-        <Carte className="!pb-2">
-          <Surtitre>Ta préparation semaine par semaine</Surtitre>
-          <p className="mt-1 mb-2.5 text-xs text-[#5E5C78] leading-relaxed">
-            Les séances clés et les week-ends choc sont annoncés d’avance ; le détail s’écrit chaque dimanche dans Nolio.
+        <Carte className="!pb-1.5">
+          <Surtitre>Ta préparation, bloc par bloc</Surtitre>
+          <p className="mt-1 mb-1 text-xs text-[#5E5C78] leading-relaxed">
+            Ce que chaque bloc développe, jusqu’à ton jour J ; tes séances s’écrivent chaque dimanche dans Nolio.
           </p>
-          <ul>
-            {d.trame.map((l) => {
-              const m = l.lundi ? momentDe(l.lundi, jour) : 'avenir';
-              const fait = faits.get(l.numero);
-              const statut = !fait || m !== 'passee' ? null
-                : fait.seances_faites >= fait.seances_prevues ? { signe: '✓', texte: 'semaine complète', ton: 'text-teal' }
-                  : fait.seances_faites > 0 ? { signe: '½', texte: 'semaine en partie faite', ton: 'text-[#8A5E10]' } : null;
-              const cles = [l.week_end_choc ? 'Week-end choc' : null, ...l.seances_cles.filter((c) => c.famille !== 'sl').map((c) => c.seance.split(' — ')[0]),
-                l.sl_min ? `SL ${enHeures(l.sl_min)}` : null].filter(Boolean);
-              return (
-                <li key={l.numero} id={l.numero}
-                  className={clsx('grid grid-cols-[44px_4px_1fr_auto] gap-x-2.5 items-center min-h-[52px] scroll-mt-20',
-                    m === 'encours' ? 'bg-[#E1EFEA] -mx-2.5 px-2.5 rounded-xl min-h-14' : 'border-t border-indigo/[0.06]')}>
-                  {/* La semaine se dit en jours avant l'objectif, pas par son numéro (décisions coach du 19/10/2026). */}
-                  <span className={clsx('text-xs whitespace-nowrap', m === 'encours' ? 'font-extrabold text-teal-dark' : 'font-bold text-[#5E5C78]')}>
-                    {l.lundi ? jMoins(l.lundi, course.date) : l.numero}
-                  </span>
-                  <span className="w-1 h-8 rounded-sm" style={{ backgroundColor: BANNIERE[l.type] ?? '#2F2D4E' }} aria-hidden />
-                  <span className="min-w-0 py-1.5">
-                    <span className={clsx('block text-[0.8125rem] text-indigo', m === 'encours' ? 'font-extrabold' : 'font-bold')}>
-                      {l.type}{m === 'encours' ? ' · cette semaine' : ''}
+          <ol>
+            {blocsDuPlan(d.trame, plan, jour).map((b) => (
+              <li key={b.du} className={clsx('grid grid-cols-[22px_1fr] gap-x-2.5 py-3 border-t border-indigo/[0.06] first:border-t-0',
+                b.moment === 'encours' && 'bg-[#E1EFEA] -mx-2.5 px-2.5 rounded-xl border-t-0')}>
+                <span aria-hidden className={clsx('mt-0.5 w-[18px] h-[18px] rounded-full flex items-center justify-center',
+                  b.moment === 'fait' ? 'bg-teal' : b.moment === 'encours' ? 'bg-teal-dark' : 'border-2 border-indigo/25')}>
+                  {b.moment === 'fait' && (
+                    <svg viewBox="0 0 24 24" className="w-3 h-3" fill="none" stroke="white" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5 10 17 19 7" /></svg>
+                  )}
+                  {b.moment === 'encours' && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                </span>
+                <span className="min-w-0">
+                  <span className="flex items-baseline justify-between gap-3">
+                    <span className={clsx('text-sm text-indigo', b.moment === 'encours' ? 'font-extrabold' : 'font-bold')}>
+                      {b.nom}{b.moment === 'encours' && <span className="ml-2 text-[0.6875rem] font-bold text-teal-dark">tu es ici</span>}
+                      <span className="sr-only">{b.moment === 'fait' ? ', fait' : b.moment === 'encours' ? ', en cours' : ', à venir'}</span>
                     </span>
-                    <span className="block text-[0.72rem] text-[#5E5C78] truncate">{[l.dates.split(' — ')[0], ...cles].join(' · ')}</span>
+                    <span className="text-xs font-bold text-[#5E5C78] whitespace-nowrap">{jMoins(b.du, course.date)} → {jMoins(b.au, course.date)}</span>
                   </span>
-                  <span className={clsx('text-xs font-bold whitespace-nowrap', statut?.ton ?? (m === 'avenir' ? 'text-[#5E5C78] font-semibold' : 'text-teal-dark'))}>
-                    {enHeures(Math.round(l.volume_h * 60))}{statut && <> {statut.signe}<span className="sr-only">, {statut.texte}</span></>}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
+                  {b.travail.length > 0 && (
+                    <span className="block mt-1 text-[0.78rem] text-[#4A4866] leading-snug">
+                      <span className="font-semibold text-indigo">Tu travailles :</span> {b.travail.join(', ')}
+                    </span>
+                  )}
+                  {b.rappel.length > 0 && (
+                    <span className="block mt-0.5 text-[0.75rem] text-[#5E5C78] leading-snug">En rappel : {b.rappel.join(', ')}</span>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ol>
         </Carte>
 
         {d.ecrit && !ctx.demonstration && (
