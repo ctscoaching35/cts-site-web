@@ -21,17 +21,28 @@ import { EXPEDITEUR } from './emailBienvenue';
 import { appelNolio, coachs, listeNolio, refusNolio } from './nolio';
 import { ajouterJours, type Plan, type Semaine } from './plan';
 import { clientService } from './supabase';
+import type { Fiche } from './tableau';
 
 export type Etat = Record<string, unknown>;
 export type Objectif = Cible & {
   compteId: string; parametres: Record<string, unknown>; etat: Etat | null; accordLecture: boolean; coache: boolean;
 };
-export type RetourSeance = { id: string; date: string; faite: boolean; duree_min: number | null; rpe: number | null; ressenti: number | null };
+export type RetourSeance = {
+  id: string; date: string; faite: boolean; duree_min: number | null; rpe: number | null; ressenti: number | null; dplus_m: number | null;
+};
 export type Questionnaire = { jours: string[]; jour_sl: string | null; nb_seances: number | null; arret: boolean };
 export type Retours = { seances: RetourSeance[]; hooper: { date: string; valeur: number }[]; questionnaire?: Questionnaire };
 type SortieMoteur = {
   semaine: Semaine; notes: { regle: string; texte: string }[]; bilan: string | null; journal: Record<string, unknown>[];
   etat: Etat; parametres: Record<string, unknown> | null;
+  // Ce qui a été fait la semaine écoulée (moteur 8.327), rangé avec elle pour le tableau de bord ; null sans retours.
+  realise: Realise | null;
+};
+export type Realise = {
+  numero: string; lundi: string; type: string | null; charge_prevue: number; charge_faite: number; charge_tenue: number; rpe_lu: boolean;
+  seances_prevues: number; seances_faites: number; duree_prevue_min: number; duree_faite_min: number;
+  sl_prevue_min: number | null; sl_faite_min: number | null; cles_prevues: number; cles_reussies: number;
+  dplus_m: number | null; hooper: number | null;
 };
 
 // Les clés de nolio_envois qui ne sont pas des semaines : la trame (bandeaux et fiches de tout le plan), les
@@ -123,12 +134,29 @@ async function moteur<T>(chemin: string, corps: unknown): Promise<T> {
   return r.json() as Promise<T>;
 }
 
+// La charge visée (Foster) : null pour une trame tirée des données d'un plan d'avant (lib/app/tableau.ts).
 export type LigneTrame = {
-  numero: string; type: string; bloc: string; lundi: string; dates: string; volume_h: number; charge: number;
-  seances_cles: { jour: string; seance: string; famille: string }[]; week_end_choc: boolean; passee: boolean;
+  numero: string; type: string; bloc: string; lundi: string; dates: string; volume_h: number; charge: number | null;
+  seances_cles: { jour: string; seance: string; famille: string }[]; week_end_choc: boolean; sl_min: number | null;
+  passee: boolean;
 };
-export const trameDu = (parametres: Record<string, unknown>) =>
-  moteur<{ course: { date: string }; semaines: LigneTrame[] }>('/v1/trame', { parametres });
+export type Trame = { course: { date: string }; semaines: LigneTrame[]; fiches?: Fiche[] };
+export const trameDu = (parametres: Record<string, unknown>, fichesDuPlan?: string[]) =>
+  moteur<Trame>('/v1/trame', { parametres, ...(fichesDuPlan ? { fiches_du_plan: fichesDuPlan } : {}) });
+
+// La trame d'un plan et ses fiches à leur moment, demandées une fois au moteur puis gardées avec lui (« Mon plan »,
+// le tableau de bord) : elle ne change qu'avec ses paramètres (une reprise reconstruite, une séance de plus tenue),
+// qui l'effacent.
+export async function trameDuPlan(planId: string): Promise<Trame | null> {
+  const service = clientService();
+  const { data: p } = await service.from('plans').select('parametres, trame, donnees').eq('id', planId).maybeSingle();
+  if (!p?.parametres) return null;
+  if (p.trame) return p.trame as Trame;
+  const cles = ((p.donnees as Plan | null)?.pour_aller_plus_loin?.fiches ?? []).map((f) => f.cle);
+  const trame = await trameDu(p.parametres as Record<string, unknown>, cles).catch(() => null);
+  if (trame) await service.from('plans').update({ trame }).eq('id', planId);
+  return trame;
+}
 
 // ─── Lire Nolio (avec l'accord de l'athlète pour son RPE, son ressenti et son Hooper ; T5) ─────────────
 
@@ -167,12 +195,14 @@ export async function lireRetours(o: Objectif, du: string, au: string): Promise<
   for (const e of o.envois) for (const s of e.seances as SeanceEnvoyee[])
     if (s.nolio_id && (s.genre ?? 'seance') === 'seance' && !s.jour_id.includes(':')) parNolio.set(String(s.nolio_id), s.jour_id);
   type Reel = { id: string; date_start: string; duration?: { value: number } | null; planned?: string | null;
-    debrief?: { rpe?: number | null; feeling?: number | null } | null };
-  const reels = await listeNolio<Reel>(`real/trainings/?date_from=${du}&date_to=${au}&fields=id,date_start,duration,planned,debrief${qui}`);
+    elevation_gain?: { value: number } | null; debrief?: { rpe?: number | null; feeling?: number | null } | null };
+  const reels = await listeNolio<Reel>(
+    `real/trainings/?date_from=${du}&date_to=${au}&fields=id,date_start,duration,elevation_gain,planned,debrief${qui}`);
   const seances: RetourSeance[] = reels.filter((r) => r.planned && parNolio.has(r.planned)).map((r) => ({
     id: parNolio.get(r.planned as string) as string, date: r.date_start.slice(0, 10), faite: true,
     duree_min: r.duration?.value ? Math.round(r.duration.value / 60) : null,
     rpe: o.accordLecture ? r.debrief?.rpe ?? null : null, ressenti: o.accordLecture ? r.debrief?.feeling ?? null : null,
+    dplus_m: typeof r.elevation_gain?.value === 'number' ? Math.round(r.elevation_gain.value) : null,
   }));
   let hooper: Retours['hooper'] = [];
   const item = o.accordLecture ? await indiceHooper() : null;
@@ -212,7 +242,7 @@ export async function ecrireEtEnvoyer(o: Objectif, numero: string, retours: Reto
   });
   const service = clientService();
   if (sortie.parametres) {
-    await service.from('plans').update({ parametres: sortie.parametres }).eq('id', o.planId);
+    await service.from('plans').update({ parametres: sortie.parametres, trame: null }).eq('id', o.planId);
     o.parametres = sortie.parametres;
   }
   const semaine = options.depuis
@@ -229,6 +259,9 @@ export async function ecrireEtEnvoyer(o: Objectif, numero: string, retours: Reto
     plan_id: o.planId, numero, donnees: sortie.semaine, notes: sortie.notes, journal: sortie.journal, bilan: sortie.bilan,
     sans_ajustement: Boolean(options.sansAjustement), etat_avant: o.etat, ecrite_le: new Date().toISOString(),
   });
+  if (sortie.realise) {
+    await service.from('semaines_ecrites').update({ realise: sortie.realise }).eq('plan_id', o.planId).eq('numero', sortie.realise.numero);
+  }
   await service.from('plans').update({ etat_ecriture: sortie.etat }).eq('id', o.planId);
   o.etat = sortie.etat;
   return sortie;
@@ -408,6 +441,25 @@ export async function annulerAjustements(planId: string, numero: string): Promis
   if (!ecrite) throw new Error('Semaine pas encore écrite');
   o.etat = (ecrite.etat_avant ?? null) as Etat | null;
   await ecrireEtEnvoyer(o, numero, null, { sansAjustement: true });
+}
+
+// T5 : l'acheteur retire son accord de lecture (dans son Compte). La lecture de son RPE, de son ressenti et de son
+// Hooper s'arrête ; les chiffres gardés de ses semaines s'effacent ; son questionnaire Hooper du dimanche quitte
+// Nolio (les réponses déjà envoyées y restent, à lui). Le plan suit sa trame, le questionnaire de la semaine et les
+// séances faites ou manquées, sans ajustement de fatigue ni graphiques.
+export async function retirerAccordLecture(planId: string): Promise<void> {
+  const o = await objectifEcrit(planId);
+  if (!o || o.coache) throw new Error('Plan introuvable');
+  const service = clientService();
+  await service.from('plans').update({ accord_lecture_le: null }).eq('id', planId);
+  await service.from('semaines_ecrites').update({ realise: null }).eq('plan_id', planId);
+  const hooper = o.envois.find((e) => e.semaine === QUESTIONNAIRES)?.seances.find((s) => s.jour_id === 'questionnaire:hooper');
+  if (hooper?.nolio_id && o.nolioAthlete) {
+    const d = await destinataire(o.nolioAthlete);
+    const r = await appelNolio('DELETE', `planned/quizzes/${hooper.nolio_id}/?recurrence_action=all${d.moi ? '' : `&athlete=${d.usr}`}`)
+      .catch(() => null);
+    if (r && r.statut !== 204 && r.statut !== 200 && r.statut !== 404) console.error(`Hooper de ${planId} non retiré de Nolio : ${r.statut}`);
+  }
 }
 
 // ─── L'acheteur dans l'équipe Nolio (P1 à P4) ─────────────────────────────

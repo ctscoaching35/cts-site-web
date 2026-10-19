@@ -17,7 +17,9 @@ alter table public.plans
   add column coach_id uuid references public.comptes (id) on delete set null,
   -- Le départ dans Nolio (trame, questionnaires, première semaine), posé une seule fois même si deux appels arrivent
   -- ensemble (le webhook de Nolio et le retour de paiement).
-  add column demarre_le timestamptz;
+  add column demarre_le timestamptz,
+  -- La trame (moteur, /v1/trame), gardée pour « Mon plan » et les graphiques ; effacée quand les paramètres changent.
+  add column trame jsonb;
 comment on column public.plans.parametres is
   'Paramètres de la réécriture semaine par semaine (cts_semaine) : réponses sans nom ni e-mail, jour de la commande, '
   'valeurs de la trace, courses secondaires. Null : un plan envoyé en entier (avant le 19/10/2026).';
@@ -36,6 +38,8 @@ create table public.semaines_ecrites (
   bilan text,
   sans_ajustement boolean not null default false,
   etat_avant jsonb,
+  -- Ce qui a été fait cette semaine-là (moteur 8.327), rangé le dimanche suivant : la jauge et les graphiques.
+  realise jsonb,
   ecrite_le timestamptz not null default now(),
   primary key (plan_id, numero)
 );

@@ -6,7 +6,7 @@
  */
 import { revalidatePath } from 'next/cache';
 import { API_URL } from '@/lib/plan';
-import { annulerAjustements, demarrerObjectif, objectifEcrit } from './ecriture';
+import { annulerAjustements, demarrerObjectif, objectifEcrit, retirerAccordLecture } from './ecriture';
 import { coachConnecte } from './nolio';
 import { clientServeur, clientService } from './supabase';
 
@@ -82,4 +82,20 @@ export async function ajouterCourse(planId: string, _e: EtatGeste, form: FormDat
   revalidatePath('/app/plan');
   revalidatePath(`/app/coach/plan/${planId}`);
   return { ok: true, message: `Course ajoutée : les jours autour d’elle s’ajustent dans tes semaines.${verdict.message ? ` ${verdict.message}` : ''}` };
+}
+
+// T5 : l'acheteur retire son accord de lecture, depuis son Compte.
+export async function retirerMonAccord(planId: string, _e: EtatGeste): Promise<EtatGeste> {
+  const { compteId } = await qui();
+  const o = await objectifEcrit(planId);
+  if (!o || !compteId || o.compteId !== compteId || o.coache) return { ok: false, message: 'Plan introuvable.' };
+  try {
+    await retirerAccordLecture(planId);
+    revalidatePath('/app');
+    revalidatePath('/app/compte');
+    return { ok: true, message: 'C’est fait : l’app ne lit plus ton RPE, ton ressenti ni ton Hooper, et ce qu’elle en avait gardé est effacé.' };
+  } catch (e) {
+    console.error(`Retrait de l'accord ${planId} :`, e instanceof Error ? e.message : e);
+    return { ok: false, message: 'Le retrait n’a pas abouti : réessaie dans un moment.' };
+  }
 }

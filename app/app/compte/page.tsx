@@ -3,10 +3,10 @@ import { Avertissement } from '@/components/app/Texte';
 import { Deconnexion, Suppression } from '@/components/app/BoutonsCompte';
 import Installation from '@/components/app/Installation';
 import { choisirPlan } from '@/lib/app/actionsPlan';
-import { effacerJournal } from '@/lib/app/actionsJournal';
+import { RetirerAccord } from '@/components/app/GestesEcriture';
 import { contexte, type Recherche } from '@/lib/app/contexte';
 import { dateLongue } from '@/lib/app/plan';
-import { clientServeur } from '@/lib/app/supabase';
+import { clientServeur, clientService } from '@/lib/app/supabase';
 import { coachConnecte } from '@/lib/app/nolio';
 import Link from 'next/link';
 
@@ -36,6 +36,8 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
   // Les plans des athlètes coachés restent dans l'espace coach (CTS_NOLIO_CADRAGE.md).
   const { data: coaches } = await supabase.from('coaching').select('plan_id');
   const plans = (tous ?? []).filter((p) => !(coaches ?? []).some((c) => c.plan_id === p.id));
+  // L'accord de lecture du plan affiché (T5), pour un plan écrit semaine par semaine.
+  const { data: affiche } = await clientService().from('plans').select('parametres, accord_lecture_le').eq('id', ctx.cle).maybeSingle();
   return (
     <>
       <EnTeteApp ctx={ctx} />
@@ -76,10 +78,16 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
           <h2 className="eyebrow text-indigo/60">Ton plan sur ton écran d’accueil</h2>
           <Installation />
         </section>
-        {ctx.journal && (
-          <form action={effacerJournal.bind(null, ctx.cle)} className="bg-white shadow-sm p-4">
-            <button type="submit" className="text-sm font-semibold text-red-700 underline underline-offset-2">Effacer mon journal</button>
-          </form>
+        {affiche?.parametres && affiche.accord_lecture_le && (
+          <section className="bg-white shadow-sm p-4 space-y-2">
+            <h2 className="eyebrow text-indigo/60">Ton accord de lecture</h2>
+            <p className="text-sm text-indigo/75 leading-relaxed">
+              Depuis le {dateLongue(String(affiche.accord_lecture_le).slice(0, 10), true)}, l’app lit dans Nolio tes séances
+              faites, ton RPE, ton ressenti et ton Hooper, seulement pour ajuster ton plan et afficher tes graphiques. Sans
+              cet accord, ton plan suit sa trame, ton questionnaire du dimanche et tes séances faites ou manquées.
+            </p>
+            <RetirerAccord planId={ctx.cle} />
+          </section>
         )}
         <Deconnexion />
         <Suppression />

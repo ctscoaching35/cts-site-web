@@ -4,7 +4,7 @@ import { lien, type Contexte } from '@/lib/app/contexte';
 
 // « Ton plan en un coup d'œil » (cts_pdf_slim._graphique_macro_blocs) : une barre par semaine,
 // sa hauteur le volume, sa couleur le type ; un trait entre deux blocs, l'étoile marque la
-// course. Chaque barre mène à sa semaine ; celle du jour est soulignée.
+// course. Chaque barre mène à sa semaine dans « Mon plan » ; celle du jour est soulignée.
 const L = 240;
 const H = 72;
 const BAS = 64;
@@ -24,7 +24,7 @@ export default function GraphiqueSemaines({ plan, ctx }: { plan: Plan; ctx: Cont
         return (
           <g key={s.numero}>
             {coupure && <line x1={i * pas} x2={i * pas} y1={0} y2={BAS} stroke="#C5D5D2" strokeWidth={0.8} />}
-            <a href={lien('/app/calendrier', ctx, { s: `S${s.numero}` })}>
+            <a href={`${lien('/app/plan', ctx)}#S${s.numero}`}>
               <title>{`S${s.numero}`}</title>
               <rect
                 x={i * pas + pas * 0.07}

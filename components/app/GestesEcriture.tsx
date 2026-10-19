@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
-import { ajouterCourse, annulerSemaine, demarrerDansNolio, type EtatGeste } from '@/lib/app/actionsEcriture';
+import { ajouterCourse, annulerSemaine, demarrerDansNolio, retirerMonAccord, type EtatGeste } from '@/lib/app/actionsEcriture';
 
 // Les gestes de l'écriture semaine par semaine (lib/app/actionsEcriture.ts) : démarrer un objectif dans Nolio, annuler
 // les ajustements d'une semaine, ajouter une course secondaire.
@@ -56,6 +56,19 @@ export function AjouterCourse({ planId }: { planId: string }) {
       </div>
       <button type="submit" disabled={enCours} className="text-sm font-semibold text-teal disabled:opacity-50">
         {enCours ? 'Vérification…' : 'Ajouter la course'}
+      </button>
+      <Message etat={etat} />
+    </form>
+  );
+}
+
+export function RetirerAccord({ planId }: { planId: string }) {
+  const [etat, action, enCours] = useActionState<EtatGeste, FormData>(retirerMonAccord.bind(null, planId), null);
+  if (etat?.ok) return <Message etat={etat} />;
+  return (
+    <form action={action} className="space-y-1">
+      <button type="submit" disabled={enCours} className="text-sm font-semibold text-red-700 underline underline-offset-2 disabled:opacity-50">
+        {enCours ? 'Retrait…' : 'Retirer mon accord'}
       </button>
       <Message etat={etat} />
     </form>

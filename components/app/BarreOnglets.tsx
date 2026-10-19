@@ -4,17 +4,14 @@ import Link from 'next/link';
 import clsx from 'clsx';
 import { usePathname, useSearchParams } from 'next/navigation';
 
-// Les cinq onglets du cadrage (section 3) : en bas sur téléphone, comme une app. Hauteur fixe
-// (h-16, plus la zone sûre de l'iPhone) : la fiche ouverte dans l'app s'accroche juste au-dessus.
+// Les quatre onglets (CTS_NOLIO_CADRAGE.md, T1, 18/10/2026 : les séances vivent dans Nolio, plus de calendrier) : en
+// bas sur téléphone, comme une app. Hauteur fixe (h-16, plus la zone sûre de l'iPhone) : la fiche ouverte dans l'app
+// s'accroche juste au-dessus.
 const trait = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
 const ONGLETS = [
   {
-    chemin: '/app', titre: 'Aujourd’hui',
-    icone: <><circle cx="12" cy="12" r="4" {...trait} /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" {...trait} /></>,
-  },
-  {
-    chemin: '/app/calendrier', titre: 'Calendrier',
-    icone: <><rect x="3" y="5" width="18" height="16" rx="1.5" {...trait} /><path d="M3 10h18M8 3v4M16 3v4" {...trait} /></>,
+    chemin: '/app', titre: 'Tableau de bord',
+    icone: <><path d="M4 18a8 8 0 1 1 16 0" {...trait} /><path d="M12 18l4-6" {...trait} /><circle cx="12" cy="18" r="1.2" {...trait} /></>,
   },
   {
     chemin: '/app/plan', titre: 'Mon plan',
@@ -45,14 +42,11 @@ export default function BarreOnglets() {
   }
   const requete = garde.toString();
   const suite = requete ? `?${requete}` : '';
-  // Une fiche séance s'ouvre depuis le calendrier : c'est lui qui reste allumé ; un calculateur,
-  // depuis la bibliothèque.
+  // Un calculateur s'ouvre depuis la bibliothèque : c'est elle qui reste allumée.
   const actif = (c: string) =>
     c === '/app'
       ? chemin === '/app'
-      : chemin.startsWith(c) ||
-        (c === '/app/calendrier' && chemin.startsWith('/app/seance')) ||
-        (c === '/app/bibliotheque' && chemin.startsWith('/app/calculateurs'));
+      : chemin.startsWith(c) || (c === '/app/bibliotheque' && chemin.startsWith('/app/calculateurs'));
   return (
     <nav
       aria-label="Navigation de l’app"
@@ -61,7 +55,7 @@ export default function BarreOnglets() {
       // (retour du coach du 07/10/2026).
       style={{ paddingLeft: 'max(10px, env(safe-area-inset-left))', paddingRight: 'max(10px, env(safe-area-inset-right))' }}
     >
-      <ul className="mx-auto max-w-2xl grid grid-cols-5">
+      <ul className="mx-auto max-w-2xl grid grid-cols-4">
         {ONGLETS.map((o) => (
           <li key={o.chemin}>
             <Link
