@@ -102,7 +102,8 @@ export default async function Confidentialite() {
             </li>
             <li>
               <strong>Le paiement</strong> se fait chez Stripe, qui reçoit ta carte, ton e-mail et le montant, et garde avec
-              le paiement la date à laquelle tu as accepté les conditions de vente et renoncé au délai de rétractation.
+              le paiement la date à laquelle tu as accepté les conditions de vente et demandé que ta préparation commence
+              tout de suite.
               Nous ne voyons jamais tes numéros de carte.
             </li>
             <li>

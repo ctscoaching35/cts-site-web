@@ -46,10 +46,13 @@ export function contenuBienvenue(plan: Plan, lienApp: string, nolio: { adresse: 
     ]),
     'Ton plan est aussi joint en PDF, à garder ou à imprimer.',
     'Une question sur ton plan ? Réponds simplement à cet e-mail.',
-    // La confirmation de l'achat sur un support durable, avec la renonciation au droit de rétractation que
-    // l'acheteur a cochée avant de payer (Code de la consommation, art. L221-13 et L221-28 ; CTS_LANCEMENT_CADRAGE.md).
-    'Comme tu l’as demandé avant ton paiement, ton plan t’a été livré tout de suite : ce contenu numérique ' +
-      'n’ouvre donc plus de droit de rétractation (article L221-28 du Code de la consommation).',
+    // La confirmation de l'achat sur un support durable, avec la demande de début immédiat que l'acheteur a cochée
+    // avant de payer et son droit de rétractation (Code de la consommation, art. L221-13 et L221-25 ; décision coach du
+    // 19/10/2026 : un service, rétractable 14 jours au prorata).
+    'Comme tu l’as demandé avant ton paiement, ta préparation a commencé tout de suite. Tu peux te rétracter pendant ' +
+      '14 jours à compter de ton paiement, en répondant simplement à cet e-mail : nous te remboursons le prix, moins la ' +
+      'part des jours de préparation déjà écoulés (article L221-25 du Code de la consommation). Le formulaire de ' +
+      'rétractation est dans nos conditions de vente.',
   ];
   const signature = 'Juliette et Romain — CTS Coaching';
   const bouton = nolio ? 'Ouvrir mon tableau de bord' : 'Ouvrir mon plan';

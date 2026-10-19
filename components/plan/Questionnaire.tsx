@@ -83,10 +83,10 @@ export default function Questionnaire({
   const traceDemandee = useRef(0);
   const [etape, setEtape] = useState<'formulaire' | 'recap'>('formulaire');
   const [confirme, setConfirme] = useState(false);
-  // La renonciation au droit de rétractation (CTS_LANCEMENT_CADRAGE.md dans le dépôt du moteur, L5) : un contenu
-  // numérique livré dès le paiement ne s'achète qu'avec l'accord exprès de l'acheteur (Code de la consommation,
-  // art. L221-28, 13°). Pas pour le coach, qui n'achète rien.
-  const [renonce, setRenonce] = useState(false);
+  // Le début immédiat de la préparation (décision coach du 19/10/2026 : un service qui s'exécute semaine après semaine
+  // jusqu'à la course, Code de la consommation, art. L221-25) : il ne commence pendant le délai de rétractation qu'à la
+  // demande expresse de l'acheteur, qui garde son droit de rétractation, remboursé au prorata. Pas pour le coach.
+  const [debutImmediat, setDebutImmediat] = useState(false);
   // La relance (CTS_LANCEMENT_CADRAGE.md dans le dépôt du moteur, L3) : une seule, le lendemain, seulement si la
   // case est cochée ; l'accord part au serveur avec l'e-mail, rien d'autre (lib/app/relance.ts).
   const [rappel, setRappel] = useState(false);
@@ -250,7 +250,7 @@ export default function Questionnaire({
     donnees.append('intake', JSON.stringify(intakePourApi(c)));
     if (gpx) donnees.append('gpx', gpx);
     if (coach && athleteId) donnees.append('athlete_id', athleteId);
-    if (!coach && renonce) donnees.append('renonciation_retractation', '1');
+    if (!coach && debutImmediat) donnees.append('execution_immediate', '1');
     // La case de l'avertissement accepte aussi les CGV : l'API en garde la date chez Stripe, avec le paiement (E4).
     if (!coach && confirme) donnees.append('cgv_acceptees', '1');
     if (!coach && autreNolio && nolioEmail.trim()) donnees.append('nolio_email', nolioEmail.trim());
@@ -309,7 +309,7 @@ export default function Questionnaire({
     ];
     // L'avertissement santé se lit et se coche à chaque fois (décision coach du 07/10/2026), avec
     // les points propres à l'athlète au-dessus quand il y en a.
-    const bloque = !confirme || (!coach && !renonce);
+    const bloque = !confirme || (!coach && !debutImmediat);
     return (
       <div className="space-y-6">
         <section className="bg-white border border-indigo/10 p-6 sm:p-8">
@@ -367,10 +367,10 @@ export default function Questionnaire({
           )}
           {!coach && (
             <label className="flex gap-3 items-start mt-4 cursor-pointer">
-              <input type="checkbox" checked={renonce} onChange={(e) => setRenonce(e.target.checked)} className="mt-1 accent-teal" />
+              <input type="checkbox" checked={debutImmediat} onChange={(e) => setDebutImmediat(e.target.checked)} className="mt-1 accent-teal" />
               <span className="text-indigo">
-                <span className="font-semibold">Je demande à recevoir mon plan dès mon paiement, et je renonce à mon droit de rétractation de 14 jours.</span>{' '}
-                <span className="text-indigo/70">Ton plan est un contenu numérique livré tout de suite : la loi demande ton accord pour te le livrer avant la fin de ce délai.</span>
+                <span className="font-semibold">Je demande que ma préparation commence dès mon paiement.</span>{' '}
+                <span className="text-indigo/70">Tu gardes ton droit de rétractation de 14 jours : si tu l’exerces, tu es remboursé du prix, moins la part des jours de préparation déjà écoulés.</span>
               </span>
             </label>
           )}

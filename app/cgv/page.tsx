@@ -56,27 +56,37 @@ export default async function CGV() {
       </Section>
 
       <Section titre="3. Le plan">
+        {/* Le parcours Nolio (décisions coach des 18-19/10/2026, P1 à P4, T1 à T11, O1 à O3) : BROUILLON à valider. */}
         <p>
-          Un plan d’entraînement de trail, construit automatiquement par la méthode CTS à partir de tes réponses au
+          Une préparation de trail, construite automatiquement par la méthode CTS à partir de tes réponses au
           questionnaire : ta course (date, distance, dénivelé, trace GPX si tu en as une), ton niveau, ce que tu cours en
-          ce moment, ton terrain d’entraînement et tes jours disponibles. Il est construit sans échange avec un coach :
-          personne ne relit tes réponses.
+          ce moment, ton terrain d’entraînement et tes jours disponibles, puis ajustée chaque semaine par des règles
+          automatiques. Elle est construite et ajustée sans échange avec un coach : personne ne relit tes réponses ni tes
+          commentaires.
         </p>
-        <p>Il comprend :</p>
+        <p>Elle comprend :</p>
         <Liste>
           <li>
-            ton plan semaine par semaine jusqu’à ta course, sur la durée choisie (3, 4 ou 6 mois), chaque séance
-            détaillée : échauffement, corps de séance, retour au calme, effort à viser ;
+            ta trame jusqu’à ta course, sur la durée choisie (3, 4 ou 6 mois) : pour chaque semaine, son type, son volume
+            et ses séances clés, les week-ends choc annoncés d’avance ;
           </li>
           <li>
-            l’accès à l’app CTS, où ton plan se suit au jour le jour, avec ton journal de séances, les ajustements de la
-            suite et la bibliothèque de fiches ;
+            une invitation dans l’équipe CTS sur Nolio, la plateforme d’entraînement que nous utilisons (un compte
+            d’athlète gratuit, créé à ton adresse si tu n’en as pas) : tes séances détaillées y sont écrites chaque
+            dimanche pour la semaine suivante, d’après ta semaine écoulée, tes réponses au questionnaire du dimanche et,
+            si tu l’acceptes, ton effort ressenti et ton Hooper ; tu quittes l’équipe une semaine après ta course, ton
+            compte Nolio et tes séances restent à toi ;
           </li>
-          <li>une copie de ton plan en PDF, jointe à l’e-mail de bienvenue.</li>
+          <li>
+            l’accès à l’app CTS, ton tableau de bord : ta course, ta trame, ta jauge de préparation et tes graphiques, ta
+            fiche de course et la bibliothèque de fiches ;
+          </li>
+          <li>le PDF de ton plan, joint à l’e-mail de bienvenue.</li>
         </Liste>
         <p>
-          Il ne comprend pas de suivi par un coach, ni l’envoi des séances sur une montre, et il ne remplace pas un avis
-          médical (article 4).
+          Elle ne comprend ni suivi ni échange avec un coach, ne convient pas à une blessure en cours, et ne remplace pas
+          un avis médical (article 4). Nolio s’utilise dans son application et sur son site, selon ses propres
+          conditions ; l’envoi des séances sur une montre dépend de Nolio et de ta montre.
         </p>
         <p>
           L’app s’ouvre dans un navigateur récent, sur téléphone ou sur ordinateur, et peut s’ajouter à l’écran d’accueil
@@ -134,7 +144,7 @@ export default async function CGV() {
           <li>Tu réponds au questionnaire.</li>
           <li>
             Au récapitulatif, tu relis tes réponses et peux les corriger, tu lis l’avertissement santé, puis tu coches la
-            case qui accepte ces conditions et celle qui demande la livraison immédiate de ton plan (article 8).
+            case qui accepte ces conditions et celle qui demande que ta préparation commence tout de suite (article 8).
           </li>
           <li>Tu payes sur la page de paiement sécurisée de notre prestataire Stripe.</li>
         </Liste>
@@ -152,19 +162,40 @@ export default async function CGV() {
         </p>
       </Section>
 
-      <Section titre="8. Livraison et droit de rétractation">
+      {/* Décision coach du 19/10/2026 : avec Nolio, la préparation s'exécute semaine après semaine jusqu'à la course ;
+          c'est un service, rétractable 14 jours, payé au prorata de ce qui a été fourni (art. L221-25). */}
+      <Section titre="8. Début de ta préparation et droit de rétractation">
         <p>
-          Ton plan est construit dès ton paiement confirmé : il s’affiche sur la page de retour, ton compte est créé et
-          l’e-mail de bienvenue t’est envoyé avec le PDF. Si ton plan n’a pas pu être construit, la page te le dit :
+          Ta préparation commence dès ton paiement confirmé : ton plan s’affiche dans l’app, ton compte est créé, l’e-mail
+          de bienvenue t’est envoyé avec le PDF de ton plan et Nolio t’invite dans l’équipe CTS ; tes séances s’y écrivent
+          ensuite chaque dimanche, jusqu’à ta course. Si ton plan n’a pas pu être construit, la page te le dit :
           écris-nous, nous te le livrons ou, si nous ne le pouvons pas, nous te remboursons intégralement.
         </p>
         <p>
-          Un achat en ligne ouvre en principe un délai de rétractation de 14 jours. Ton plan est un contenu numérique livré
-          dès le paiement : conformément à l’article L221-28, 13°, du code de la consommation, tu ne peux l’acheter qu’en
-          demandant cette livraison immédiate et en renonçant expressément à ton droit de rétractation, par la case prévue
-          au récapitulatif. L’e-mail de bienvenue confirme cet accord. Une fois ton plan livré, tu ne peux donc plus te
-          rétracter ; les garanties légales de l’article 9 restent entières.
+          Tu disposes d’un délai de rétractation de 14 jours à compter de ton paiement, sans avoir à te justifier. Ta
+          préparation commence tout de suite parce que tu l’as demandé expressément, par la case prévue au récapitulatif ;
+          l’e-mail de bienvenue le confirme. Si tu te rétractes, tu nous dois la part du prix qui correspond aux jours de
+          préparation déjà écoulés le jour où tu nous le dis, rapportés à sa durée jusqu’à ta course (article L221-25 du
+          code de la consommation) ; avant la date de début donnée dans ton plan, rien. Nous te remboursons le reste sous
+          14 jours, par le moyen de paiement que tu as utilisé, sans frais. Les garanties légales de l’article 9 restent
+          entières.
         </p>
+        <p>
+          Pour te rétracter, écris-nous {contact}, en le disant clairement ; tu peux utiliser ce formulaire :
+        </p>
+        <div className="border border-indigo/20 p-4 text-sm space-y-2">
+          <p className="font-semibold">Formulaire de rétractation</p>
+          <p>(Complète et renvoie ce formulaire seulement si tu veux te rétracter du contrat.)</p>
+          <p>
+            À l’attention de {vendeur.nom}, {vendeur.nomCommercial}, {vendeur.adresse}, {vendeur.email} :
+          </p>
+          <p>Je vous notifie par la présente ma rétractation du contrat portant sur la prestation de services ci-dessous :</p>
+          <p>Commandé le :</p>
+          <p>Nom :</p>
+          <p>Adresse :</p>
+          <p>Signature (seulement si ce formulaire est envoyé sur papier) :</p>
+          <p>Date :</p>
+        </div>
       </Section>
 
       <Section titre="9. Garanties légales">
