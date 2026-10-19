@@ -221,7 +221,8 @@ export default function Questionnaire({
     // Refus métier vérifiés par l'API avant le récapitulatif : l'athlète ne relit pas
     // ses réponses pour découvrir ensuite qu'elles ne permettent pas de plan.
     try {
-      const r = await fetch(`${API_URL}/v1/verification`, {
+      // Le questionnaire du coaching (?coach=1) : sa durée « auto » et ses refus sans renvoi au coaching (QD1, QD6).
+      const r = await fetch(`${API_URL}/v1/verification${coach ? '?coach=1' : ''}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(intakePourApi(c)),
