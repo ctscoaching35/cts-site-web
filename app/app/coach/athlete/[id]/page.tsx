@@ -239,7 +239,7 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
 
       <details className="text-[0.8125rem] text-[#5E5C78]">
         <summary className="cursor-pointer min-h-9">Retirer cet athlète</summary>
-        <p className="mt-2">Sa fiche, ses objectifs et leurs PDF quittent ton espace coach. Les séances déjà envoyées restent dans Nolio.</p>
+        <p className="mt-2">Sa fiche et ses objectifs quittent ton espace coach. Les séances déjà envoyées restent dans Nolio.</p>
         <form action={retirerAthlete.bind(null, a.id)} className="mt-2">
           <button type="submit" className="underline underline-offset-2">Retirer {a.nom}</button>
         </form>

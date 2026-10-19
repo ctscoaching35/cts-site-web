@@ -90,7 +90,6 @@ export default async function ObjectifCoache({ params }: { params: Promise<{ id:
         </div>
         <div className="flex flex-wrap gap-2.5">
           <a href={lienFicheCourse(id)} target="_blank" rel="noopener" className="inline-flex items-center min-h-11 px-4 rounded-xl border border-indigo/[0.18] bg-white text-[0.8125rem] font-bold">Fiche de course</a>
-          {o.pdf && <a href={`/app/coach/plan/${id}/pdf`} className="inline-flex items-center min-h-11 px-4 rounded-xl border border-indigo/[0.18] bg-white text-[0.8125rem] font-bold">Trame en PDF</a>}
           <a href="https://www.nolio.io/" target="_blank" rel="noopener" className="inline-flex items-center min-h-11 px-4 rounded-xl bg-indigo text-white text-[0.8125rem] font-bold">Ouvrir dans Nolio</a>
         </div>
       </div>
@@ -258,8 +257,8 @@ export default async function ObjectifCoache({ params }: { params: Promise<{ id:
             <summary className="cursor-pointer min-h-8 font-bold text-indigo">Retirer cet objectif</summary>
             <p className="mt-2 mb-3 leading-relaxed">
               {ecriture?.parametres
-                ? 'Son plan et son PDF quittent ton espace coach. Dans Nolio, ce qu’il a posé et qui est encore à venir part aussi (bandeaux, notes, séances, questionnaires, course) ; le passé reste.'
-                : 'Son plan et son PDF quittent ton espace coach. Les séances déjà envoyées restent dans Nolio.'}
+                ? 'Son plan quitte ton espace coach. Dans Nolio, ce qu’il a posé et qui est encore à venir part aussi (bandeaux, notes, séances, questionnaires, course) ; le passé reste.'
+                : 'Son plan quitte ton espace coach. Les séances déjà envoyées restent dans Nolio.'}
             </p>
             <form action={retirerObjectif.bind(null, id)}>
               <button type="submit" className="min-h-11 px-4 rounded-[10px] border border-indigo/25 bg-white text-indigo font-bold">Retirer {course.nom}</button>
