@@ -18,6 +18,7 @@ import {
   type Cible, type Envoi, type SeanceEnvoyee,
 } from './coaching';
 import { EXPEDITEUR } from './emailBienvenue';
+import { lienFicheCourse } from './ficheCourse';
 import { appelNolio, coachs, listeNolio, refusNolio } from './nolio';
 import { ajouterJours, type Plan, type Semaine } from './plan';
 import { clientService } from './supabase';
@@ -408,6 +409,10 @@ export async function demarrerObjectif(planId: string): Promise<Depart> {
     const { course } = o.plan;
     await poserCourse(o, { nom: course.nom, date: course.date, distance_km: course.distance_km, dplus_m: course.dplus_m }, true);
     for (const c of ((o.parametres.courses_secondaires ?? []) as Course[])) if (c.date >= aujourdhui) await poserCourse(o, c, false);
+    // PO4 : la fiche de chaque course de préparation à venir (après la migration du 20/10/2026).
+    const { data: fp } = await service.from('plans').select('fiches_preparation').eq('id', planId).maybeSingle();
+    const fiches = ((fp as { fiches_preparation?: Record<string, unknown> } | null)?.fiches_preparation ?? {});
+    for (const c of ((o.parametres.courses_secondaires ?? []) as Course[])) if (c.date >= aujourdhui && fiches[c.date]) await poserFichePreparation(o, c);
     const deja = o.envois.some((e) => e.semaine === debut.numero);
     if (!deja) await ecrireEtEnvoyer(o, debut.numero, null, { depuis: aujourdhui > debut.lundi ? aujourdhui : undefined, reprise });
     if (!o.coache) await rangerAcheteur(o);
@@ -648,7 +653,25 @@ export async function retirerDeNolio(planId: string): Promise<string[]> {
 
 // Le « Trail » du catalogue de Nolio (cts_nolio.SPORT_TRAIL, GET /api/v2/sports/).
 const SPORT_TRAIL = 'spt_YprHS7jgV5vdsz0';
-export type Course = { nom: string; date: string; distance_km: number; dplus_m: number };
+export type Course = { nom: string; date: string; distance_km: number; dplus_m: number; chrono?: string | null; temps_h?: number | null };
+
+// PO4 (décision coach du 19/10/2026) : la fiche de course d'une course de préparation, en note Nolio une semaine avant
+// (dès aujourd'hui si la course est plus proche), avec son lien privé, comme la fiche de course de l'objectif ; en ocre,
+// la couleur des fiches.
+export async function poserFichePreparation(o: Objectif, c: Course) {
+  const cle = `fiche:${c.date}`;
+  if (!o.nolioAthlete || o.envois.some((e) => e.semaine === cle)) return;
+  const d = await destinataire(o.nolioAthlete);
+  const aujourdhui = aujourdhuiParis();
+  const jour = ajouterJours(c.date, -7) > aujourdhui ? ajouterJours(c.date, -7) : aujourdhui;
+  const cree = await creer(d, cle, {
+    name: `Ta fiche course : ${c.nom}`, date_start: jour, color: '#9A6A12',
+    description: `Ta course de préparation approche : son profil, ses tronçons et ta stratégie de ravitaillement. ${lienFicheCourse(o.planId)}?course=${c.date}`,
+  }, 'note');
+  if (cree.erreur) throw new Error(cree.erreur);
+  await garderEnvoi(o.coachId, o.planId, cle, [cree]);
+  o.envois.push({ semaine: cle, envoye_le: new Date().toISOString(), seances: [cree] });
+}
 
 // Une course posée en compétition dans le calendrier Nolio de l'athlète : l'objectif principal (trophée d'or) ou une
 // course de préparation (d'argent) ; une compétition déjà posée ce jour-là (par le coach ou l'athlète) n'est pas

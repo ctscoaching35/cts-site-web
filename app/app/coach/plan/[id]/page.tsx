@@ -19,7 +19,7 @@ import { aujourdhuiParis } from '@/lib/app/signauxSuivi';
 import { allureDepuisVitesse } from '@/lib/app/allureCoach';
 import { clientService, supabaseConfigure } from '@/lib/app/supabase';
 import { enHeures, jaugeDuPlan, momentDe } from '@/lib/app/tableau';
-import type { CourseSecondaire } from '@/lib/app/tableauDuPlan';
+import { fichesDePreparation, type CourseSecondaire } from '@/lib/app/tableauDuPlan';
 
 // Toujours calculée à la visite : la page lit la session du coach.
 export const dynamic = 'force-dynamic';
@@ -66,6 +66,7 @@ export default async function ObjectifCoache({ params }: { params: Promise<{ id:
   const prochaine = trame?.semaines.find((l) => l.lundi && momentDe(l.lundi, jour) === 'avenir') ?? null;
   const preps = (((ecriture?.parametres as Record<string, unknown> | null)?.courses_secondaires ?? []) as CourseSecondaire[])
     .slice().sort((a, b) => a.date.localeCompare(b.date));
+  const fichesPrepa = ecriture?.parametres ? await fichesDePreparation(id) : new Set<string>();
   const valeurs = [o.athlete.fc_seuil1 && `FC seuil 1 ${o.athlete.fc_seuil1}`, o.athlete.v_seuil1_ms && `allure seuil 1 ${allureDepuisVitesse(o.athlete.v_seuil1_ms)}/km`,
     o.athlete.vc_ms && `VC ${allureDepuisVitesse(o.athlete.vc_ms)}/km`, o.athlete.fc_seuil2 && `FC seuil 2 ${o.athlete.fc_seuil2}`].filter(Boolean).join(' · ');
   const { course } = o.plan;
@@ -232,8 +233,14 @@ export default async function ObjectifCoache({ params }: { params: Promise<{ id:
               {preps.map((c) => (
                 <div key={`${c.date}-${c.nom}`} className="flex items-center gap-3">
                   <PastilleDate iso={c.date} />
-                  <span><span className="block text-sm font-bold">{c.nom}</span>
-                    <span className="block text-xs text-[#5E5C78]">{c.distance_km} km{c.dplus_m ? ` · ${c.dplus_m} m D+` : ''}</span></span>
+                  <span className="flex-1 min-w-0"><span className="block text-sm font-bold">{c.nom}</span>
+                    <span className="block text-xs text-[#5E5C78]">
+                      {c.distance_km} km{c.dplus_m ? ` · ${c.dplus_m} m D+` : ''}{c.chrono ? ` · ${c.chrono}` : ''}
+                      {fichesPrepa.has(c.date) ? ` · fiche de course le ${dateLongue(ajouterJours(c.date, -7) > jour ? ajouterJours(c.date, -7) : jour, true)}` : ''}
+                    </span></span>
+                  {fichesPrepa.has(c.date) && (
+                    <a href={`${lienFicheCourse(id)}?course=${c.date}`} className="shrink-0 inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">Fiche ›</a>
+                  )}
                 </div>
               ))}
               {course.date >= jour && (

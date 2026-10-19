@@ -8,6 +8,9 @@ const nextConfig = {
   // défaut les appareils qui arrivent par le nom du Mac sur le réseau (MonMac.local) ou son
   // adresse locale (192.168.x.x). Développement seulement ; sans effet en production.
   allowedDevOrigins: ['*.local', '192.168.*.*'],
+  // Une course de préparation part avec sa trace GPX (PO3, 19/10/2026), souvent plus d'1 Mo, la limite par défaut des
+  // actions serveur ; 4 Mo restent sous celle des fonctions de Vercel (4,5 Mo).
+  experimental: { serverActions: { bodySizeLimit: '4mb' } },
   images: {
     formats: ['image/avif', 'image/webp'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],

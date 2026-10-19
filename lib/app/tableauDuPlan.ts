@@ -80,3 +80,10 @@ export async function semaineEcrite(ctx: Contexte, numero: string): Promise<Sema
   const { data } = await clientService().from('semaines_ecrites').select('donnees').eq('plan_id', ctx.cle).eq('numero', numero).maybeSingle();
   return (data?.donnees as Semaine | undefined) ?? duPlan;
 }
+
+// Les courses de préparation qui ont leur fiche de course (PO3), par leur date ; vide avant la migration du 20/10/2026.
+export async function fichesDePreparation(planId: string): Promise<Set<string>> {
+  const { data, error } = await clientService().from('plans').select('fiches_preparation').eq('id', planId).maybeSingle();
+  if (error || !data) return new Set();
+  return new Set(Object.keys(((data as { fiches_preparation?: Record<string, unknown> }).fiches_preparation ?? {})));
+}

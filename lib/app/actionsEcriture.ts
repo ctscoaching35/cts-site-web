@@ -6,7 +6,7 @@
  */
 import { revalidatePath } from 'next/cache';
 import { API_URL } from '@/lib/plan';
-import { annulerAjustements, demarrerObjectif, objectifEcrit, poserCourse, retirerAccordLecture } from './ecriture';
+import { annulerAjustements, demarrerObjectif, objectifEcrit, poserCourse, poserFichePreparation, retirerAccordLecture } from './ecriture';
 import { coachConnecte } from './nolio';
 import { clientServeur, clientService } from './supabase';
 
@@ -69,14 +69,18 @@ export async function ajouterCourse(planId: string, _e: EtatGeste, form: FormDat
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < lundiProchain.toISOString().slice(0, 10)) {
     return { ok: false, message: 'Ta course doit tomber à partir de lundi prochain : la semaine en cours est déjà écrite.' };
   }
+  // PO3 : le chrono visé (« 2h15 », « 2:15 », « 135 min ») ; il règle les jours autour de la course et sa fiche.
+  const temps_h = heuresDuChrono(String(form.get('chrono') ?? ''));
   const course = {
     nom: String(form.get('nom') ?? '').trim().slice(0, 80) || 'Course de préparation', date,
     distance_km: Number(String(form.get('distance_km') ?? '').replace(',', '.')),
     dplus_m: Number(String(form.get('dplus_m') ?? '0').replace(',', '.')) || 0,
+    ...(temps_h !== null ? { temps_h, chrono: `${Math.floor(temps_h)}h${String(Math.round((temps_h % 1) * 60)).padStart(2, '0')}` } : {}),
   };
   if (!(course.distance_km > 0 && course.distance_km <= 200) || course.dplus_m < 0 || course.dplus_m > 15000) {
     return { ok: false, message: 'La distance ou le dénivelé ne se lisent pas.' };
   }
+  if (temps_h === null || temps_h < 0.25 || temps_h > 48) return { ok: false, message: 'Le chrono visé ne se lit pas : par exemple 2h15.' };
   const reelles = Object.values(((o.etat ?? {}) as { sl_reelles?: Record<string, number> }).sl_reelles ?? {});
   const r = await fetch(`${API_URL}/v1/course-secondaire`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
@@ -86,15 +90,50 @@ export async function ajouterCourse(planId: string, _e: EtatGeste, form: FormDat
   if (!r.ok || !verdict) return { ok: false, message: verdict?.message ?? 'Le moteur ne répond pas : réessaie dans un moment.' };
   if (!verdict.ok) return { ok: false, message: verdict.message ?? 'Cette course ne peut pas s’ajouter au plan.' };
   const courses = [...((o.parametres.courses_secondaires as unknown[]) ?? []), course];
-  await clientService().from('plans').update({ parametres: { ...o.parametres, courses_secondaires: courses } }).eq('id', planId);
+  const service = clientService();
+  await service.from('plans').update({ parametres: { ...o.parametres, courses_secondaires: courses } }).eq('id', planId);
+  // PO3 : sa fiche de course, sans plan, avec sa trace si elle est donnée ; gardée par sa date (après la migration du
+  // 20/10/2026 : sans elle, la course s'ajoute sans fiche).
+  const gpx = form.get('gpx');
+  const traceDonnee = gpx instanceof File && gpx.size > 0;
+  const envoi = new FormData();
+  envoi.set('corps', JSON.stringify({ parametres: o.parametres, course }));
+  if (traceDonnee) envoi.set('gpx', gpx);
+  const rf = await fetch(`${API_URL}/v1/fiche-course`, { method: 'POST', body: envoi, cache: 'no-store' }).catch(() => null);
+  const fiche = rf?.ok ? await rf.json().catch(() => null) as { trace?: boolean } | null : null;
+  let ficheGardee = false;
+  if (fiche) {
+    const { data: fp, error } = await service.from('plans').select('fiches_preparation').eq('id', planId).maybeSingle();
+    if (!error) {
+      const avant = ((fp as { fiches_preparation?: Record<string, unknown> } | null)?.fiches_preparation ?? {});
+      ficheGardee = !(await service.from('plans').update({ fiches_preparation: { ...avant, [date]: fiche } }).eq('id', planId)).error;
+    }
+  }
   // OM3 : la course dans le calendrier Nolio, si l'objectif y est déjà ; sinon elle part au démarrage.
   const { data: depart } = await clientService().from('plans').select('demarre_le').eq('id', planId).maybeSingle();
   if (depart?.demarre_le) {
     await poserCourse(o, course, false).catch((e) => console.error(`Course de ${planId} non posée dans Nolio :`, e instanceof Error ? e.message : e));
+    // PO4 : sa fiche en note Nolio une semaine avant, avec son lien privé.
+    if (ficheGardee) await poserFichePreparation(o, course).catch((e) => console.error(`Fiche de ${planId} non posée dans Nolio :`, e instanceof Error ? e.message : e));
   }
   revalidatePath('/app/plan');
   revalidatePath(`/app/coach/plan/${planId}`);
-  return { ok: true, message: `Course ajoutée : les jours autour d’elle s’ajustent dans tes semaines.${verdict.message ? ` ${verdict.message}` : ''}` };
+  const surLaFiche = !ficheGardee ? '' : traceDonnee && !fiche?.trace
+    ? ' Sa fiche de course est prête, mais sa trace ne s’est pas lue : le profil reste schématique.'
+    : ' Sa fiche de course est prête, ici et une semaine avant dans Nolio.';
+  return { ok: true, message: `Course ajoutée : les jours autour d’elle s’ajustent dans tes semaines.${verdict.message ? ` ${verdict.message}` : ''}${surLaFiche}` };
+}
+
+// « 2h15 », « 2h », « 2:15 », « 135 min », « 2,5 » : des heures ; null illisible.
+function heuresDuChrono(brut: string): number | null {
+  const t = brut.trim().toLowerCase().replace(',', '.');
+  if (!t) return null;
+  const hm = /^(\d{1,2})\s*[h:]\s*(\d{0,2})$/.exec(t);
+  if (hm) return Number(hm[1]) + Number(hm[2] || 0) / 60;
+  const m = /^(\d{1,4})\s*min$/.exec(t);
+  if (m) return Number(m[1]) / 60;
+  const h = /^(\d{1,2}(?:\.\d+)?)$/.exec(t);
+  return h ? Number(h[1]) : null;
 }
 
 // T5 : l'acheteur retire son accord de lecture, depuis son Compte.

@@ -10,7 +10,8 @@ import { demandesDeLAthlete, ficheDuCompte } from '@/lib/app/demandes';
 import { clientServeur, clientService } from '@/lib/app/supabase';
 import { dateLongue } from '@/lib/app/plan';
 import { enHeures, jaugeDuPlan, momentDe } from '@/lib/app/tableau';
-import { donneesTableau, type CourseSecondaire } from '@/lib/app/tableauDuPlan';
+import { donneesTableau, fichesDePreparation, type CourseSecondaire } from '@/lib/app/tableauDuPlan';
+import { lienFicheCourse } from '@/lib/app/ficheCourse';
 
 // « Mes objectifs » (OM2, décision coach du 19/10/2026) : chaque objectif majeur du compte (les siens, ceux que son
 // coach lui prépare), en cours, à venir ou passé, et ses courses de préparation ; un toucher l'affiche ; les demandes
@@ -46,6 +47,7 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
   const jauge = jaugeDuPlan(d.trame, d.realises, jour);
   const faits = new Map(d.realises.map((x) => [x.numero, x]));
   const courseAVenir = plan.course.date >= jour;
+  const fichesPrepa = ctx.demonstration ? new Set<string>() : await fichesDePreparation(ctx.cle);
   const { course } = plan;
   return (
     <>
@@ -138,10 +140,13 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
             {d.courses.map((c) => (
               <div key={`${c.date}-${c.nom}`} className="flex items-center gap-3">
                 <PastilleDate iso={c.date} />
-                <span>
+                <span className="flex-1 min-w-0">
                   <span className="block text-sm font-bold text-indigo">{c.nom}</span>
-                  <span className="block text-xs text-[#5E5C78]">{c.distance_km} km{c.dplus_m ? ` · ${c.dplus_m} m D+` : ''}</span>
+                  <span className="block text-xs text-[#5E5C78]">{c.distance_km} km{c.dplus_m ? ` · ${c.dplus_m} m D+` : ''}{c.chrono ? ` · objectif ${c.chrono}` : ''}</span>
                 </span>
+                {fichesPrepa.has(c.date) && (
+                  <a href={`${lienFicheCourse(ctx.cle)}?course=${c.date}`} className="shrink-0 inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">Sa fiche ›</a>
+                )}
               </div>
             ))}
             {courseAVenir && (

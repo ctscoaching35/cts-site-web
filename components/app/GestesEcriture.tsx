@@ -53,7 +53,14 @@ export function AjouterCourse({ planId }: { planId: string }) {
         <label className="block text-xs font-semibold text-indigo">D+ (m)
           <input name="dplus_m" inputMode="numeric" className={champ} />
         </label>
+        <label className="block text-xs font-semibold text-indigo">Chrono visé
+          <input name="chrono" required placeholder="2h15" className={champ} />
+        </label>
       </div>
+      <label className="flex flex-col gap-1.5 text-xs font-semibold text-indigo">Trace GPX — facultative
+        <input name="gpx" type="file" accept=".gpx" className="block text-sm font-normal text-indigo file:mr-3 file:min-h-10 file:px-3 file:rounded-[10px] file:border-0 file:bg-[#E1EFEA] file:text-teal-dark file:font-bold" />
+        <span className="font-normal text-[#5E5C78]">Avec elle, sa fiche de course montre son profil et ses tronçons.</span>
+      </label>
       <button type="submit" disabled={enCours}
         className="w-full min-h-12 rounded-xl bg-teal text-white text-sm font-bold disabled:opacity-50">
         {enCours ? 'Vérification…' : 'Ajouter la course'}
