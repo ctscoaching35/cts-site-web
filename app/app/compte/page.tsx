@@ -38,7 +38,8 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
     coach = { prenom, texte: COACHS[prenom] ?? 'Kiné du sport.' };
   }
   const estCoach = !ctx.demonstration && Boolean(await coachConnecte());
-  const cgv = await plansVisibles();
+  // Les CGV ne couvrent pas le coaching individualisé (« accord séparé », article 2) : jamais pour un coaché.
+  const cgv = !ctx.coache && (await plansVisibles());
   const nom = ctx.plan.athlete.nom;
   return (
     <>
