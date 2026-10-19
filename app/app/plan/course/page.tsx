@@ -1,5 +1,5 @@
 import { Fragment } from 'react';
-import Link from 'next/link';
+import StrategieCourse from '@/components/app/StrategieCourse';
 import EnTeteApp from '@/components/app/EnTeteApp';
 import LienFiche from '@/components/app/LienFiche';
 import ProfilCourse from '@/components/app/ProfilCourse';
@@ -75,14 +75,7 @@ export default async function TaCourse({ searchParams }: { searchParams: Recherc
 
         <h2 id="jour-j" className="text-2xl text-indigo leading-tight pt-4 scroll-mt-20">{j.titre}</h2>
         <Partie titre={j.nutrition.titre}>
-          <Lignes lignes={j.nutrition.lignes} />
-          <p className="text-sm text-indigo/75 leading-relaxed">
-            Ces repères sont ceux de tes sorties longues. Pour ta stratégie détaillée (ton poids, la chaleur, ta sueur, ce que
-            tu prends et quand) :
-          </p>
-          <Link href={calculateur} className="inline-flex items-center min-h-12 px-5 rounded-xl bg-teal text-white text-sm font-bold">
-            Construis ta stratégie détaillée
-          </Link>
+          <StrategieCourse lignes={j.nutrition.lignes as [string, string][]} href={calculateur} />
           <LienFiche ctx={ctx} href={cheminFiche(plan, j.nutrition.fiche[0])} libelle={j.nutrition.fiche[1]} />
         </Partie>
         {j.parties.map((p) => (

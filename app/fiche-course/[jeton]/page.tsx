@@ -4,6 +4,7 @@ import { Fragment } from 'react';
 import { notFound } from 'next/navigation';
 import ProfilCourse from '@/components/app/ProfilCourse';
 import RepartitionPentes from '@/components/app/RepartitionPentes';
+import StrategieCourse from '@/components/app/StrategieCourse';
 import { Lignes, Partie, Puces, Tableau } from '@/components/app/Texte';
 import { planDuJeton } from '@/lib/app/ficheCourse';
 import { requeteCalculateurNutrition, type Plan } from '@/lib/app/plan';
@@ -97,14 +98,7 @@ export default async function FicheCourse({ params, searchParams }: {
 
         <h2 className="text-2xl text-indigo leading-tight pt-4">{j.titre}</h2>
         <Partie titre={j.nutrition.titre}>
-          <Lignes lignes={j.nutrition.lignes} />
-          <p className="text-sm text-indigo/75 leading-relaxed">
-            Ces repères sont ceux de tes sorties longues. Pour ta stratégie détaillée (ton poids, la chaleur, ta sueur, ce que
-            tu prends et quand) :
-          </p>
-          <a href={calculateur} className="inline-flex items-center min-h-12 px-5 rounded-xl bg-teal text-white text-sm font-bold">
-            Construis ta stratégie détaillée
-          </a>
+          <StrategieCourse lignes={j.nutrition.lignes as [string, string][]} href={calculateur} externe />
           {lien(j.nutrition.fiche[0], j.nutrition.fiche[1])}
         </Partie>
         {j.parties.map((p) => (
@@ -173,14 +167,7 @@ function FichePreparation({ fiche, calculateur }: { fiche: FichePrep; calculateu
         {d.sans_trace && <p className="text-sm text-indigo/75 px-1">{d.sans_trace}</p>}
         <h2 className="text-2xl text-indigo leading-tight pt-4">{j.titre}</h2>
         <Partie titre={j.nutrition.titre}>
-          <Lignes lignes={j.nutrition.lignes} />
-          <p className="text-sm text-indigo/75 leading-relaxed">
-            Ces repères sont ceux de tes sorties longues. Pour ta stratégie détaillée (ton poids, la chaleur, ta sueur, ce que
-            tu prends et quand) :
-          </p>
-          <a href={calculateur} className="inline-flex items-center min-h-12 px-5 rounded-xl bg-teal text-white text-sm font-bold">
-            Construis ta stratégie détaillée
-          </a>
+          <StrategieCourse lignes={j.nutrition.lignes as [string, string][]} href={calculateur} externe />
           {lien(j.nutrition.fiche[0], j.nutrition.fiche[1])}
         </Partie>
         {j.parties.map((p) => (
