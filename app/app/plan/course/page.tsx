@@ -1,16 +1,20 @@
+import { Fragment } from 'react';
 import EnTeteApp from '@/components/app/EnTeteApp';
+import LienFiche from '@/components/app/LienFiche';
 import ProfilCourse from '@/components/app/ProfilCourse';
 import RepartitionPentes from '@/components/app/RepartitionPentes';
 import RetourPlan from '@/components/app/RetourPlan';
 import { Lignes, Partie, Puces, Tableau } from '@/components/app/Texte';
 import { contexte, type Recherche } from '@/lib/app/contexte';
+import { cheminFiche } from '@/lib/app/plan';
 
-// Ta course (cadrage, 3.4) : la fiche, le profil et ses pentes, ton terrain, les tronçons,
-// les déterminants de la performance (cts_contenu).
+// Ta fiche de course (cadrage, 3.4 ; maquette validée le 19/10/2026 : « profil, tronçons, ravitaillement ») : la fiche,
+// le profil et ses pentes, ton terrain, les tronçons, les déterminants de la performance, puis ton jour J et ta
+// stratégie nutritionnelle de course (cts_contenu), comme la fiche de course privée des coachés.
 export default async function TaCourse({ searchParams }: { searchParams: Recherche }) {
   const ctx = await contexte(searchParams);
   const { plan } = ctx;
-  const { profil, terrain, determinants: d } = plan;
+  const { profil, terrain, determinants: d, jour_j: j } = plan;
   const t = profil.troncons;
   return (
     <>
@@ -60,6 +64,25 @@ export default async function TaCourse({ searchParams }: { searchParams: Recherc
             <Puces puces={d.secteurs_cles.puces} />
           </Partie>
         )}
+
+        <h2 id="jour-j" className="text-2xl text-indigo leading-tight pt-4 scroll-mt-20">{j.titre}</h2>
+        <Partie titre={j.nutrition.titre}>
+          <Lignes lignes={j.nutrition.lignes} />
+          <LienFiche ctx={ctx} href={cheminFiche(plan, j.nutrition.fiche[0])} libelle={j.nutrition.fiche[1]} />
+        </Partie>
+        {j.parties.map((p) => (
+          <Fragment key={p.titre}>
+            {/* La fiche ultra se lit après la course, comme sur le PDF. */}
+            {p.titre === 'Après' && j.fiche_ultra && (
+              <div className="px-1">
+                <LienFiche ctx={ctx} href={cheminFiche(plan, j.fiche_ultra[0])} libelle={j.fiche_ultra[1]} />
+              </div>
+            )}
+            <Partie titre={p.titre}>
+              <Puces puces={p.puces} />
+            </Partie>
+          </Fragment>
+        ))}
       </main>
     </>
   );
