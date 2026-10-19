@@ -295,6 +295,9 @@ table.zones tr.z7 td.nomzone { background: #2f2d4e; }
   .titre { padding: 1.2rem 1rem 1.4rem; }
   main { padding: 1rem 0; }
   a { color: var(--navy); }
+  /* Un encadré, un schéma ou une ligne de tableau ne se coupe pas entre deux pages ; un titre reste avec sa suite. */
+  .retenir, .essentiel, .attention, .schema, tr { break-inside: avoid; }
+  h2, h3 { break-after: avoid; }
 }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
