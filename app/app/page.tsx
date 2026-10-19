@@ -67,7 +67,8 @@ export default async function TableauDeBord({ searchParams }: { searchParams: Re
         {etape !== 'avant' && <JaugePiliers jauge={jauge} />}
         {d.avecCharge && <GraphiqueCharge barres={barresDeCharge(d.trame, d.realises, jour)} />}
         {d.accord && <GraphiqueHooper points={pointsHooper(d.trame, d.realises, jour)} />}
-        {etape !== 'apres' && <EncartProfil ctx={ctx} />}
+        {/* Les repères d'un coaché sont posés par son coach (T8) : pas d'invitation aux tests. */}
+        {etape !== 'apres' && !ctx.coache && <EncartProfil ctx={ctx} />}
 
         {etape === 'apres' && (
           <div className="bg-white shadow-sm p-4 text-indigo space-y-2">

@@ -24,5 +24,13 @@ export async function retirerAccord(usr: string): Promise<void> {
   await clientService().from('nolio_accords').delete().eq('coach_id', coach.compteId).eq('nolio_athlete_id', usr);
   await clientService().from('athletes_coaches').update({ fc_seuil1: null, vc_ms: null, v_seuil1_ms: null, fc_seuil2: null })
     .eq('coach_id', coach.compteId).eq('nolio_athlete_id', usr);
+  // Les chiffres gardés de ses semaines écrites (charge faite, Hooper : moteur 8.327) s'effacent aussi (T5).
+  const { data: fiches } = await clientService().from('athletes_coaches').select('id').eq('coach_id', coach.compteId).eq('nolio_athlete_id', usr);
+  const { data: objectifs } = fiches?.length
+    ? await clientService().from('coaching').select('plan_id').in('athlete_id', fiches.map((f) => f.id))
+    : { data: [] };
+  if (objectifs?.length) {
+    await clientService().from('semaines_ecrites').update({ realise: null }).in('plan_id', objectifs.map((o) => o.plan_id));
+  }
   revalidatePath('/app/coach/suivi');
 }
