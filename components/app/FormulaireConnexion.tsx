@@ -11,7 +11,7 @@ const champCls =
 // Un code plutôt qu'un lien : sur iPhone, un lien ouvert depuis Mail se connecte dans Safari, pas
 // dans l'app installée. Aucun compte ne se crée ici : il naît au paiement. Le message est le même
 // qu'un compte existe ou non, pour ne pas dire à un inconnu qui a un plan CTS.
-export default function FormulaireConnexion() {
+export default function FormulaireConnexion({ suite = '/app' }: { suite?: string }) {
   const router = useRouter();
   const [etape, setEtape] = useState<'email' | 'code'>('email');
   const [email, setEmail] = useState('');
@@ -38,7 +38,7 @@ export default function FormulaireConnexion() {
       setMessage('Ce code ne fonctionne pas : vérifie-le, ou demande-en un nouveau.');
       return;
     }
-    router.replace('/app');
+    router.replace(suite);
     router.refresh();
   }
 

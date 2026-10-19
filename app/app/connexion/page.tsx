@@ -7,12 +7,14 @@ import { clientServeur, supabaseConfigure } from '@/lib/app/supabase';
 export const dynamic = 'force-dynamic';
 
 // La connexion (cadrage, 3.7 ; D6). Sans Supabase configuré, la démonstration n'en a pas besoin.
-// ?achat=1 : le retour d'un paiement dont le compte s'ouvre par code (lib/app/rangement.ts).
-export default async function Connexion({ searchParams }: { searchParams: Promise<{ achat?: string }> }) {
-  const { achat } = await searchParams;
+// ?achat=1 : le retour d'un paiement dont le compte s'ouvre par code (lib/app/rangement.ts). ?suite= : la page de l'app
+// où revenir une fois connecté (le lien d'une note Nolio, « Garder ma séance d'origine ») ; seulement une page de l'app.
+export default async function Connexion({ searchParams }: { searchParams: Promise<{ achat?: string; suite?: string }> }) {
+  const { achat, suite: demandee } = await searchParams;
+  const suite = demandee && /^\/app(\/[A-Za-z0-9/_?=&%.-]*)?$/.test(demandee) ? demandee : '/app';
   if (!supabaseConfigure()) redirect('/app');
   const { data } = await (await clientServeur()).auth.getClaims();
-  if (data?.claims?.sub) redirect('/app');
+  if (data?.claims?.sub) redirect(suite);
   return (
     <main className="mx-auto max-w-sm px-4 py-12 space-y-8">
       <div className="text-center space-y-3">
@@ -25,7 +27,7 @@ export default async function Connexion({ searchParams }: { searchParams: Promis
           </p>
         )}
       </div>
-      <FormulaireConnexion />
+      <FormulaireConnexion suite={suite} />
     </main>
   );
 }
