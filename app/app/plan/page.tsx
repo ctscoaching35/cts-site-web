@@ -62,18 +62,15 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
           </p>
         </div>
 
-        <div className={clsx('grid gap-2.5', ctx.demonstration ? 'grid-cols-1' : 'grid-cols-2')}>
-          <Link href={lien('/app/plan/course', ctx)} className="bg-indigo text-white rounded-[14px] p-3.5 flex flex-col gap-1">
+        {/* Plus de PDF dans l'app (décision coach du 20/10/2026) : la préparation vit et s'ajuste semaine après semaine ;
+            l'acheteur garde celui de l'e-mail de bienvenue. */}
+        <Link href={lien('/app/plan/course', ctx)} className="bg-indigo text-white rounded-[14px] p-3.5 flex items-center justify-between gap-3">
+          <span className="flex flex-col gap-1">
             <span className="text-sm font-bold">Ta fiche de course</span>
-            <span className="text-xs text-[#D6D5E6]">Profil, tronçons, ravitaillement</span>
-          </Link>
-          {!ctx.demonstration && (
-            <a href="/app/plan/pdf" className="bg-white text-indigo border border-indigo/[0.12] rounded-[14px] p-3.5 flex flex-col gap-1">
-              <span className="text-sm font-bold">La trame en PDF</span>
-              <span className="text-xs text-[#5E5C78]">Tes {d.trame.length} semaines, à garder</span>
-            </a>
-          )}
-        </div>
+            <span className="text-xs text-[#D6D5E6]">Profil, tronçons, ravitaillement, ton jour J</span>
+          </span>
+          <span aria-hidden>›</span>
+        </Link>
 
         {r.demande === 'envoyee' && (
           <Carte className="text-sm text-indigo"><p role="status">Ta demande est partie chez ton coach : il la relit et lance ta préparation.</p></Carte>
