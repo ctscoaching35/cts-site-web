@@ -2,7 +2,9 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import EnTeteCoach from '@/components/app/EnTeteCoach';
 import FormulaireValeurs from '@/components/app/FormulaireValeurs';
-import { associerNolio, retirerAthlete } from '@/lib/app/actionsCoaching';
+import InvitationApp from '@/components/app/InvitationApp';
+import { associerNolio, retirerAcces, retirerAthlete } from '@/lib/app/actionsCoaching';
+import { adresseDuCompte } from '@/lib/app/espaceAthlete';
 import { ficheAthlete } from '@/lib/app/coaching';
 import { athletesNolio, ErreurNolio, exigerCoach, nolioConfigure, type AthleteNolio } from '@/lib/app/nolio';
 import { dateLongue } from '@/lib/app/plan';
@@ -21,6 +23,7 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
   const a = await ficheAthlete(coach.compteId, id);
   if (!a) notFound();
   const relie = nolioConfigure();
+  const adresse = await adresseDuCompte(a.compte_id).catch(() => null);
   let liste: AthleteNolio[] = [];
   let erreur: string | null = null;
   try {
@@ -72,6 +75,21 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
               {a.nolio_athlete_id && (
                 <span className="text-sm text-indigo/70">Associé à {liste.find((x) => x.id === a.nolio_athlete_id)?.name ?? 'un athlète que Nolio ne retrouve pas : choisis à nouveau son nom'}.</span>
               )}
+            </form>
+          )}
+        </section>
+
+        <section className="bg-white shadow-sm p-4 space-y-2">
+          <h2 className="eyebrow text-indigo/60">Dans l’app</h2>
+          <p className="text-sm text-indigo/70">
+            {adresse
+              ? `Son espace est ouvert (${adresse}) : tableau de bord, trame de ses objectifs, graphiques, fiches. Ses séances restent dans Nolio.`
+              : 'Son tableau de bord dans l’app : ses objectifs et leur trame, ses graphiques (avec son accord du Suivi), sa fiche de course, la bibliothèque. Il s’y connecte par un code reçu à cette adresse.'}
+          </p>
+          <InvitationApp athleteId={a.id} adresse={adresse} />
+          {a.compte_id && (
+            <form action={retirerAcces.bind(null, a.id)}>
+              <button type="submit" className="text-xs text-indigo/50 underline underline-offset-2">Retirer son accès</button>
             </form>
           )}
         </section>

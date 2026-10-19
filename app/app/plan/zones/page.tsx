@@ -87,7 +87,9 @@ export default async function TesZones({ searchParams }: { searchParams: Recherc
                 {t.limites && <p><strong className="text-indigo">Ses limites.</strong> {t.limites}</p>}
                 <p className="text-xs text-indigo/55 italic">Sources : {t.sources}</p>
               </div>
-              {ouvert ? (
+              {ctx.coache ? (
+                <p className="text-sm text-indigo/60">Tes repères sont posés par ton coach, sur ta fiche : demande-lui de les changer après un test.</p>
+              ) : ouvert ? (
                 <FormulaireZones
                   cle={t.cle}
                   planId={ctx.cle}
@@ -106,7 +108,7 @@ export default async function TesZones({ searchParams }: { searchParams: Recherc
           );
         })}
 
-        {consentementDonne && !ctx.demonstration && (
+        {consentementDonne && !ctx.demonstration && !ctx.coache && (
           <form action={effacerZones.bind(null, ctx.cle)}>
             <button type="submit" className="text-sm font-semibold text-red-700 underline underline-offset-2">{zones.effacer}</button>
           </form>

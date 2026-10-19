@@ -25,8 +25,11 @@ export async function donneesTableau(ctx: Contexte): Promise<DonneesTableau> {
   if (ctx.demonstration) return demonstration(ctx);
   const service = clientService();
   const { data: p } = await service.from('plans').select('parametres, nolio_statut, accord_lecture_le').eq('id', ctx.cle).maybeSingle();
+  // Un coaché : ses séances sont dans Nolio, son accord est celui du Suivi de son coach (T5).
+  const accordCoache = ctx.coache ? await accordDuCoache(ctx.cle) : false;
   if (!p?.parametres) {
-    return { trame: trameDesDonnees(ctx.plan), realises: [], fiches: [], nolio: null, accord: false, ecrit: false, avecCharge: false, courses: [] };
+    return { trame: trameDesDonnees(ctx.plan), realises: [], fiches: [], nolio: ctx.coache ? 'coache' : null, accord: false, ecrit: false,
+      avecCharge: false, courses: [] };
   }
   const trame = await trameDuPlan(ctx.cle);
   const { data: lignes } = await service.from('semaines_ecrites').select('numero, realise').eq('plan_id', ctx.cle).not('realise', 'is', null);
@@ -34,10 +37,20 @@ export async function donneesTableau(ctx: Contexte): Promise<DonneesTableau> {
     .sort((a, b) => Number(a.numero.slice(1)) - Number(b.numero.slice(1)));
   return {
     trame: trame?.semaines ?? trameDesDonnees(ctx.plan), realises, fiches: trame?.fiches ?? [],
-    nolio: (p.nolio_statut ?? null) as EtatNolio, accord: Boolean(p.accord_lecture_le), ecrit: true, avecCharge: Boolean(trame),
+    nolio: ctx.coache ? 'coache' : (p.nolio_statut ?? null) as EtatNolio, accord: ctx.coache ? accordCoache : Boolean(p.accord_lecture_le),
+    ecrit: true, avecCharge: Boolean(trame),
     courses: (((p.parametres as Record<string, unknown>).courses_secondaires ?? []) as CourseSecondaire[])
       .slice().sort((a, b) => a.date.localeCompare(b.date)),
   };
+}
+
+async function accordDuCoache(planId: string): Promise<boolean> {
+  const service = clientService();
+  const { data: c } = await service.from('coaching').select('coach_id, athlete_id').eq('plan_id', planId).maybeSingle();
+  const { data: a } = c ? await service.from('athletes_coaches').select('nolio_athlete_id').eq('id', c.athlete_id).maybeSingle() : { data: null };
+  if (!c || !a?.nolio_athlete_id) return false;
+  const { data } = await service.from('nolio_accords').select('accord_le').eq('coach_id', c.coach_id).eq('nolio_athlete_id', a.nolio_athlete_id).maybeSingle();
+  return Boolean(data);
 }
 
 // La démonstration (développement seulement) : la trame tirée des données, une charge visée simulée (le volume à un

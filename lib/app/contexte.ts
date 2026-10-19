@@ -10,14 +10,40 @@ import { redirect } from 'next/navigation';
 import { EXEMPLES, jourParDefaut } from './demonstration';
 import { COOKIE_PLAN } from './planChoisi';
 import { SCHEMA_PLAN, aujourdhuiIso, type Plan } from './plan';
-import { clientServeur, supabaseConfigure } from './supabase';
+import { clientServeur, clientService, supabaseConfigure } from './supabase';
 import { PROFIL_VIDE, type Profil } from './zones';
 
 // profil : « Tes zones » pour ce plan (cadrage §7.1) ; vide tant qu'aucun test n'est saisi.
 // exemple : en démonstration, des semaines écoulées simulées (?retours=exemple) pour voir la jauge et les graphiques.
+// coache : un objectif de son coach (T6) ; ses repères sont ceux que le coach a posés sur sa fiche, en lecture seule (T8).
 // Le journal de séance, le déplacement et les ajustements de l'app ont quitté l'app avec la vue jour par jour
 // (CTS_NOLIO_CADRAGE.md, T1, 18/10/2026) : les séances vivent dans Nolio, les ajustements s'y écrivent le dimanche.
-export type Contexte = { cle: string; plan: Plan; jour: string; demonstration: boolean; profil: Profil; exemple: boolean };
+export type Contexte = {
+  cle: string; plan: Plan; jour: string; demonstration: boolean; profil: Profil; exemple: boolean; coache: boolean;
+};
+
+export type PlanDuCompte = { id: string; course_nom: string; course_date: string; coache: boolean };
+
+// Les plans d'un compte : les siens (les règles de la base ne lui montrent qu'eux), sans les objectifs coachés que
+// le compte d'un coach range pour ses athlètes ; et, pour un athlète que son coach a invité dans l'app (T6), les
+// objectifs de sa fiche.
+export async function plansDuCompte(compteId: string): Promise<PlanDuCompte[]> {
+  const supabase = await clientServeur();
+  const { data: tous } = await supabase.from('plans').select('id, course_nom, course_date');
+  const { data: coaches } = await supabase.from('coaching').select('plan_id');
+  const exclus = new Set((coaches ?? []).map((c) => c.plan_id));
+  const propres = (tous ?? []).filter((p) => !exclus.has(p.id)).map((p) => ({ ...p, coache: false }));
+  const service = clientService();
+  const { data: fiches } = await service.from('athletes_coaches').select('id').eq('compte_id', compteId);
+  const { data: lignes } = fiches?.length
+    ? await service.from('coaching').select('plan_id, plans(course_nom, course_date)').in('athlete_id', fiches.map((f) => f.id))
+    : { data: [] };
+  const suivis = (lignes ?? []).map((l) => {
+    const p = (Array.isArray(l.plans) ? l.plans[0] : l.plans) as { course_nom: string; course_date: string } | null;
+    return { id: l.plan_id as string, course_nom: p?.course_nom ?? '', course_date: p?.course_date ?? '', coache: true };
+  });
+  return [...propres, ...suivis].sort((a, b) => a.course_date.localeCompare(b.course_date));
+}
 export type Recherche = Promise<Record<string, string | string[] | undefined>>;
 
 const JOUR = /^\d{4}-\d{2}-\d{2}$/;
@@ -35,7 +61,7 @@ export async function contexte(recherche: Recherche): Promise<Contexte> {
     const cle = typeof r.plan === 'string' && r.plan in EXEMPLES ? r.plan : 'L4';
     const plan = verifierSchema(EXEMPLES[cle].plan);
     const jour = jourDemande ?? jourParDefaut(plan);
-    return { cle, plan, jour, demonstration: true, profil: profilDemonstration(r), exemple: r.retours === 'exemple' };
+    return { cle, plan, jour, demonstration: true, profil: profilDemonstration(r), exemple: r.retours === 'exemple', coache: false };
   }
 
   const supabase = await clientServeur();
@@ -44,22 +70,34 @@ export async function contexte(recherche: Recherche): Promise<Contexte> {
   // Un plan par course (cadrage, 3.6) : celui que l'athlète a choisi sur cet appareil (« Tes plans »,
   // ou le dernier acheté), sinon celui de la prochaine course, sinon le dernier couru.
   const aujourdhui = aujourdhuiIso();
-  // Les plans des athlètes coachés, rangés dans le compte du coach, ne sont pas les siens (CTS_NOLIO_CADRAGE.md).
-  const { data: tous } = await supabase.from('plans').select('id, course_date').order('course_date');
-  const { data: coaches } = await supabase.from('coaching').select('plan_id');
-  const exclus = new Set((coaches ?? []).map((c) => c.plan_id));
-  const plans = (tous ?? []).filter((p) => !exclus.has(p.id));
+  const plans = await plansDuCompte(session.claims.sub as string);
   const voulu = (await cookies()).get(COOKIE_PLAN)?.value;
-  const choisi = plans?.find((p) => p.id === voulu)
-    ?? plans?.find((p) => p.course_date >= aujourdhui) ?? plans?.[plans.length - 1];
+  const choisi = plans.find((p) => p.id === voulu) ?? plans.find((p) => p.course_date >= aujourdhui) ?? plans[plans.length - 1];
   if (!choisi) redirect('/app/sans-plan');
-  const { data: ligne, error } = await supabase.from('plans').select('donnees').eq('id', choisi.id).single();
+  // Un objectif coaché est rangé dans le compte du coach : lu avec la clé de service, une fois vérifié qu'il est à lui.
+  const lecteur = choisi.coache ? clientService() : supabase;
+  const { data: ligne, error } = await lecteur.from('plans').select('donnees').eq('id', choisi.id).single();
   if (error || !ligne) throw new Error(`Plan ${choisi.id} illisible : ${error?.message ?? 'introuvable'}`);
   const jour = process.env.NODE_ENV !== 'production' && jourDemande ? jourDemande : aujourdhui;
-  // Le profil « Tes zones » du plan ; sans la table (pas encore créée), le profil reste vide.
-  const { data: zones } = await supabase.from('zones').select('*').eq('plan_id', choisi.id).maybeSingle();
-  const profil: Profil = zones ? { ...PROFIL_VIDE, ...pick(zones) } : PROFIL_VIDE;
-  return { cle: choisi.id, plan: verifierSchema(ligne.donnees as Plan), jour, demonstration: false, profil, exemple: false };
+  const profil = choisi.coache ? await profilDuCoache(choisi.id) : await profilDuPlan(choisi.id);
+  return {
+    cle: choisi.id, plan: verifierSchema(ligne.donnees as Plan), jour, demonstration: false, profil, exemple: false, coache: choisi.coache,
+  };
+}
+
+// Le profil « Tes zones » du plan ; sans la table (pas encore créée), le profil reste vide.
+async function profilDuPlan(planId: string): Promise<Profil> {
+  const { data: zones } = await (await clientServeur()).from('zones').select('*').eq('plan_id', planId).maybeSingle();
+  return zones ? { ...PROFIL_VIDE, ...pick(zones) } : PROFIL_VIDE;
+}
+
+// Les repères d'un coaché : ceux de sa fiche, posés par son coach (T8).
+async function profilDuCoache(planId: string): Promise<Profil> {
+  const service = clientService();
+  const { data: c } = await service.from('coaching').select('athlete_id').eq('plan_id', planId).maybeSingle();
+  const { data: a } = c ? await service.from('athletes_coaches').select('fc_seuil1, vc_ms, fc_seuil2, v_seuil1_ms').eq('id', c.athlete_id).maybeSingle()
+    : { data: null };
+  return a ? { ...PROFIL_VIDE, fc_seuil1: a.fc_seuil1, vc_ms: a.vc_ms, fc_seuil2: a.fc_seuil2, v_seuil1_ms: a.v_seuil1_ms ?? null } : PROFIL_VIDE;
 }
 
 const CHAMPS_PROFIL = ['fc_seuil1', 'fc_seuil1_le', 'vc_ms', 'd_prime_m', 'vc_le', 'fc_seuil2', 'fc_seuil2_le', 'v_seuil1_ms'] as const;

@@ -24,8 +24,11 @@ import { clientService } from './supabase';
 import type { Fiche } from './tableau';
 
 export type Etat = Record<string, unknown>;
+// compteAthlete : le compte d'un coaché invité dans l'app (T6) ; ses gestes (une course, le veto) valent comme ceux du
+// propriétaire du plan.
 export type Objectif = Cible & {
   compteId: string; parametres: Record<string, unknown>; etat: Etat | null; accordLecture: boolean; coache: boolean;
+  compteAthlete: string | null;
 };
 export type RetourSeance = {
   id: string; date: string; faite: boolean; duree_min: number | null; rpe: number | null; ressenti: number | null; dplus_m: number | null;
@@ -105,18 +108,19 @@ export async function objectifEcrit(planId: string): Promise<Objectif | null> {
   const { data: c } = await service.from('coaching').select('athlete_id, coach_id').eq('plan_id', planId).maybeSingle();
   if (c?.athlete_id) {
     const { data: a } = await service.from('athletes_coaches')
-      .select('nolio_athlete_id, fc_seuil1, vc_ms, fc_seuil2, v_seuil1_ms').eq('id', c.athlete_id).single();
+      .select('nolio_athlete_id, fc_seuil1, vc_ms, fc_seuil2, v_seuil1_ms, compte_id').eq('id', c.athlete_id).single();
     const usr = (a?.nolio_athlete_id ?? null) as string | null;
     const { data: accord } = usr
       ? await service.from('nolio_accords').select('accord_le').eq('coach_id', c.coach_id).eq('nolio_athlete_id', usr).maybeSingle()
       : { data: null };
     return { ...base, coachId: c.coach_id as string, nolioAthlete: usr, coache: true, accordLecture: Boolean(accord),
+      compteAthlete: (a?.compte_id ?? null) as string | null,
       profil: a ? profilDe({ fc_seuil1: a.fc_seuil1, vc_ms: a.vc_ms, fc_seuil2: a.fc_seuil2, v_seuil1_ms: a.v_seuil1_ms ?? null }) : {} };
   }
   const coachId = (p.coach_id as string | null) ?? (await compteDuCoach());
   if (!coachId) return null;
   const { data: z } = await service.from('zones').select('fc_seuil1, vc_ms, fc_seuil2, v_seuil1_ms').eq('plan_id', planId).maybeSingle();
-  return { ...base, coachId, nolioAthlete: (p.nolio_athlete_id ?? null) as string | null, coache: false,
+  return { ...base, coachId, nolioAthlete: (p.nolio_athlete_id ?? null) as string | null, coache: false, compteAthlete: null,
     accordLecture: Boolean(p.accord_lecture_le),
     profil: z ? profilDe({ fc_seuil1: z.fc_seuil1, vc_ms: z.vc_ms, fc_seuil2: z.fc_seuil2, v_seuil1_ms: z.v_seuil1_ms ?? null }) : {} };
 }
@@ -419,7 +423,7 @@ export async function fatigueDuJour(planId: string): Promise<Compte | null> {
 // oublie l'allègement (A8 : la marche n'est pas reprise).
 export async function garderSeanceOrigine(planId: string, seance: string, compteId: string): Promise<boolean> {
   const o = await objectifEcrit(planId);
-  if (!o || (o.compteId !== compteId && o.coachId !== compteId) || !o.etat) return false;
+  if (!o || ![o.compteId, o.coachId, o.compteAthlete].includes(compteId) || !o.etat) return false;
   const numero = seance.split('-')[0];
   const actuelle = await semaineEcrite(planId, numero);
   const jourOrigine = (actuelle?.jours.find((j) => j.id === seance) as unknown as { origine?: Semaine['jours'][number] })?.origine;

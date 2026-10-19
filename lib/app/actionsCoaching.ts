@@ -7,6 +7,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { envoyerSemaine, ficheAthlete, mettreAJourSemaine, objectifCoache } from './coaching';
+import { fermerEspace, ouvrirEspace } from './espaceAthlete';
 import { coachConnecte } from './nolio';
 import { lireAllure } from './allureCoach';
 import { clientService } from './supabase';
@@ -68,6 +69,31 @@ export async function enregistrerValeurs(athleteId: string, _e: EtatCoach, form:
   if (error) return { ok: false, message: 'L’enregistrement n’a pas abouti. Réessaie.' };
   revalidatePath(`/app/coach/athlete/${athleteId}`);
   return { ok: true, message: 'C’est enregistré. Les prochaines semaines envoyées partiront avec ces valeurs.' };
+}
+
+// T6 : inviter un athlète coaché dans l'app ; « Retirer l'accès » délie son compte de sa fiche.
+export async function inviterDansLApp(athleteId: string, _e: EtatCoach, form: FormData): Promise<EtatCoach> {
+  const coach = await coachConnecte();
+  if (!coach) return { ok: false, message: 'Ta session a expiré : reconnecte-toi.' };
+  const email = String(form.get('email') ?? '').trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false, message: 'Cette adresse ne se lit pas.' };
+  const a = await ficheAthlete(coach.compteId, athleteId);
+  if (!a) return { ok: false, message: 'Athlète introuvable.' };
+  try {
+    await ouvrirEspace(coach.compteId, a, email);
+  } catch (e) {
+    console.error(`Espace de l'athlète ${athleteId} :`, e instanceof Error ? e.message : e);
+    return { ok: false, message: e instanceof Error && e.message.startsWith('C’est') ? e.message : 'L’invitation n’a pas abouti : réessaie dans un moment.' };
+  }
+  revalidatePath(`/app/coach/athlete/${athleteId}`);
+  return { ok: true, message: `C’est parti : ${email} reçoit le lien de l’app, et s’y connecte par un code.` };
+}
+
+export async function retirerAcces(athleteId: string): Promise<void> {
+  const coach = await coachConnecte();
+  if (!coach) return;
+  await fermerEspace(coach.compteId, athleteId);
+  revalidatePath(`/app/coach/athlete/${athleteId}`);
 }
 
 export async function envoyer(planId: string, numero: string, _e: EtatCoach): Promise<EtatCoach> {

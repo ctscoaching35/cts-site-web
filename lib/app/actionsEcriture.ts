@@ -54,7 +54,9 @@ export async function annulerSemaine(planId: string, numero: string, _e: EtatGes
 export async function ajouterCourse(planId: string, _e: EtatGeste, form: FormData): Promise<EtatGeste> {
   const { compteId, coachId } = await qui();
   const o = await objectifEcrit(planId);
-  if (!o || !compteId || (o.compteId !== compteId && o.coachId !== coachId)) return { ok: false, message: 'Plan introuvable.' };
+  if (!o || !compteId || (o.compteId !== compteId && o.compteAthlete !== compteId && o.coachId !== coachId)) {
+    return { ok: false, message: 'Plan introuvable.' };
+  }
   const date = String(form.get('date') ?? '');
   const lundiProchain = new Date();
   lundiProchain.setUTCDate(lundiProchain.getUTCDate() + ((8 - lundiProchain.getUTCDay()) % 7 || 7));

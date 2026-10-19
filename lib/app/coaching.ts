@@ -16,6 +16,8 @@ export type FicheAthlete = {
   id: string; nom: string; nolio_athlete_id: string | null;
   fc_seuil1: number | null; vc_ms: number | null; fc_seuil2: number | null; v_seuil1_ms: number | null;
   objectifs: Objectif[];
+  // Son compte dans l'app, quand le coach l'y a invité (T6).
+  compte_id: string | null;
 };
 // Une séance envoyée : son jour du plan, son identifiant Nolio (« ptrn_… » ; un nombre pour un envoi de la v1,
 // converti à la visite suivante), sa révision à l'envoi (V4 : une révision changée, le coach l'a retouchée), et
@@ -45,7 +47,7 @@ export async function athletesCoaches(coachId: string): Promise<FicheAthlete[]> 
   await convertirAthletesV1(athletes ?? []);
   return (athletes ?? []).map((a) => ({
     id: a.id, nom: a.nom, nolio_athlete_id: a.nolio_athlete_id, fc_seuil1: a.fc_seuil1, vc_ms: a.vc_ms, fc_seuil2: a.fc_seuil2,
-    v_seuil1_ms: a.v_seuil1_ms ?? null,
+    v_seuil1_ms: a.v_seuil1_ms ?? null, compte_id: a.compte_id ?? null,
     objectifs: ((lignes ?? []) as LigneCoaching[]).filter((l) => l.athlete_id === a.id).map(objectif)
       .sort((x, y) => x.course_date.localeCompare(y.course_date)),
   }));

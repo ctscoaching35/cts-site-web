@@ -4,7 +4,7 @@ import { Deconnexion, Suppression } from '@/components/app/BoutonsCompte';
 import Installation from '@/components/app/Installation';
 import { choisirPlan } from '@/lib/app/actionsPlan';
 import { RetirerAccord } from '@/components/app/GestesEcriture';
-import { contexte, type Recherche } from '@/lib/app/contexte';
+import { contexte, plansDuCompte, type Recherche } from '@/lib/app/contexte';
 import { dateLongue } from '@/lib/app/plan';
 import { clientServeur, clientService } from '@/lib/app/supabase';
 import { coachConnecte } from '@/lib/app/nolio';
@@ -32,10 +32,8 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
   }
   const supabase = await clientServeur();
   const { data } = await supabase.auth.getClaims();
-  const { data: tous } = await supabase.from('plans').select('id, course_nom, course_date').order('course_date', { ascending: false });
-  // Les plans des athlètes coachés restent dans l'espace coach (CTS_NOLIO_CADRAGE.md).
-  const { data: coaches } = await supabase.from('coaching').select('plan_id');
-  const plans = (tous ?? []).filter((p) => !(coaches ?? []).some((c) => c.plan_id === p.id));
+  // Ses plans et, s'il est coaché et invité dans l'app (T6), les objectifs que son coach lui prépare.
+  const plans = (await plansDuCompte(String(data?.claims?.sub ?? ''))).reverse();
   // L'accord de lecture du plan affiché (T5), pour un plan écrit semaine par semaine.
   const { data: affiche } = await clientService().from('plans').select('parametres, accord_lecture_le').eq('id', ctx.cle).maybeSingle();
   return (
