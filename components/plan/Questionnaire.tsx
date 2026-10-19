@@ -172,6 +172,13 @@ export default function Questionnaire({
   // aucune durée, et la note sous la distance dit pourquoi.
   const durees = config && formatOuvert(c, config) ? config.durees_par_format[c.format] ?? [] : [];
   const notePourFormat = config ? noteFormat(c, config, coach) : null;
+  const blocDistance = (
+    <div>
+      <label className={labelCls} htmlFor="distance">Distance de ta course (km)</label>
+      <input id="distance" type="number" step="0.1" min="0.1" inputMode="decimal" className={inputCls} required value={c.distance_km} onChange={(e) => maj('distance_km')(e.target.value)} />
+      <p className="text-sm text-teal mt-2 leading-relaxed">{notePourFormat ?? 'Le format de ta course se déduit de sa distance.'}</p>
+    </div>
+  );
   const joursCoches = (config?.jours ?? []).filter((j) => c.jours_disponibles.includes(j));
   const plancher = config ? plancherSeances(c, config) : null;
   const freqMin = plancher?.min ?? 3;
@@ -506,18 +513,11 @@ export default function Questionnaire({
         </div>
       </Section>
 
-      <Section numero={3} titre="Ta formule">
-        <div>
-          <label className={labelCls} htmlFor="distance">Distance de ta course (km)</label>
-          <input id="distance" type="number" step="0.1" min="0.1" inputMode="decimal" className={inputCls} required value={c.distance_km} onChange={(e) => maj('distance_km')(e.target.value)} />
-          <p className="text-sm text-teal mt-2 leading-relaxed">{notePourFormat ?? 'Le format de ta course se déduit de sa distance.'}</p>
-        </div>
-        {coach ? (
-          <p className="text-sm text-indigo/75 leading-relaxed">
-            La préparation part du lundi qui vient et va jusqu’à la course : 24 semaines au plus (16 pour un trail court),
-            prise en route si la course est plus proche.
-          </p>
-        ) : (
+      {/* Le coaching individualisé n'a pas de formule à choisir (décision coach du 19/10/2026) : la distance passe dans
+          « Ta course », et les sections suivantes remontent d'un rang. */}
+      {!coach && <Section numero={3} titre="Ta formule">
+        {blocDistance}
+        {(
           <div>
             <label className={labelCls} htmlFor="duree">Durée du plan</label>
             <select id="duree" className={inputCls} required value={c.duree_mois} onChange={(e) => maj('duree_mois')(e.target.value)} disabled={!durees.length}>
@@ -526,9 +526,18 @@ export default function Questionnaire({
             </select>
           </div>
         )}
-      </Section>
+      </Section>}
 
-      <Section numero={4} titre="Ta course">
+      <Section numero={coach ? 3 : 4} titre="Ta course">
+        {coach && (
+          <>
+            {blocDistance}
+            <p className="text-sm text-indigo/75 leading-relaxed">
+              La préparation part du lundi qui vient et va jusqu’à la course : 24 semaines au plus (16 pour un trail court),
+              prise en route si la course est plus proche.
+            </p>
+          </>
+        )}
         <div className="grid sm:grid-cols-2 gap-6">
           <div>
             <label className={labelCls} htmlFor="course_nom">Nom de la course</label>
@@ -572,7 +581,7 @@ export default function Questionnaire({
         </div>
       </Section>
 
-      <Section numero={5} titre="Ton terrain d’entraînement">
+      <Section numero={coach ? 4 : 5} titre="Ton terrain d’entraînement">
         <div className="grid sm:grid-cols-2 gap-3">
           {textes.terrain.options.map((o) => (
             <Choix key={o.valeur} nom="terrain" valeur={o.valeur} courant={c.terrain} onChange={maj('terrain')}
@@ -581,7 +590,7 @@ export default function Questionnaire({
         </div>
       </Section>
 
-      <Section numero={6} titre="Ta disponibilité">
+      <Section numero={coach ? 5 : 6} titre="Ta disponibilité">
         <p className={aideCls}>{textes.disponibilite.aide}</p>
         <div>
           <span className={labelCls}>Jours disponibles pour t’entraîner</span>
