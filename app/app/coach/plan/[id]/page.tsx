@@ -159,7 +159,7 @@ export default async function ObjectifCoache({ params }: { params: Promise<{ id:
                           {lus.map((t) => (
                             <p key={t.jour_id} className="flex items-start gap-2 p-2.5 rounded-[10px] bg-white text-[0.8rem] leading-relaxed text-[#3B3957]">
                               <span aria-hidden className={t.statut === 'lu' ? 'text-teal' : 'text-[#8A5E10]'}>{t.statut === 'lu' ? '✓' : '·'}</span>
-                              <span>{TESTS[t.cle] ?? 'Test'} : {t.statut === 'lu' ? `${resultatTest(t.resultat as Record<string, unknown>)}. Ses cibles et ses zones ont suivi.` : STATUTS[t.statut] ?? t.statut}</span>
+                              <span>{TESTS[t.cle] ?? 'Test'} : {t.statut === 'lu' ? `${resultatTest(t.resultat as Record<string, unknown>)}${(t.resultat as Record<string, unknown>)?.saisi === 'coach' ? ', saisi par toi' : ''}. Ses cibles et ses zones ont suivi.` : STATUTS[t.statut] ?? t.statut}</span>
                             </p>
                           ))}
                           {ajuste && <AnnulerSemaine planId={id} numero={w.numero} />}

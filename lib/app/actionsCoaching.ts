@@ -85,6 +85,9 @@ export async function enregistrerValeurs(athleteId: string, _e: EtatCoach, form:
       else sources[cle] = { le: jour, source: 'coach' };
     }
     if (change) await clientService().from('athletes_coaches').update({ reperes_sources: sources }).eq('id', athleteId).eq('coach_id', coach.compteId);
+    // Un test de la parole ou de FC au seuil 2 en attente de lecture : la valeur du coach le clôt.
+    if (nouveau.fc_seuil1 !== null && nouveau.fc_seuil1 !== avant.fc_seuil1) await marquerTestsLus(avant, 'parole', { fc_seuil1: nouveau.fc_seuil1 });
+    if (nouveau.fc_seuil2 !== null && nouveau.fc_seuil2 !== avant.fc_seuil2) await marquerTestsLus(avant, 'fc_seuil2', { fc_seuil2: nouveau.fc_seuil2 });
   }
   revalidatePath(`/app/coach/athlete/${athleteId}`);
   // ZN1 : les mêmes zones dans son Nolio, d'après son objectif écrit semaine par semaine le plus récent.
@@ -227,4 +230,68 @@ export async function enregistrerProfil(athleteId: string, _e: EtatCoach, form: 
   if (error) return { ok: false, message: 'L’enregistrement n’a pas abouti : la migration du 20/10/2026 est-elle passée ?' };
   revalidatePath(`/app/coach/athlete/${athleteId}`);
   return { ok: true, message: 'C’est enregistré. Son prochain objectif partira de ce profil ; sa préparation en cours garde le sien.' };
+}
+
+// Le test de vitesse critique d'un coaché, saisi par son coach (décision coach du 20/10/2026 : quand l'athlète ne le
+// fait pas, ou que la lecture automatique dans Nolio n'a pas abouti) : ses deux efforts (durée, distance), le même
+// calcul que dans l'app (lib/app/zones.ts, vitesseCritique), la date du test. La VC et la D′ (son profil de coureur,
+// AP4) vont sur sa fiche, sa source « test saisi par le coach » ; un test écrit dans ses semaines et pas encore lu
+// est marqué lu, pour que la lecture automatique ne revienne pas dessus ; ses zones Nolio suivent (ZN1).
+export async function enregistrerTestVc(athleteId: string, _e: EtatCoach, form: FormData): Promise<EtatCoach> {
+  const coach = await coachConnecte();
+  if (!coach) return { ok: false, message: 'Ta session a expiré : reconnecte-toi.' };
+  const { lireDistance, lireDuree, vitesseCritique } = await import('./zones');
+  const jour = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
+  const le = String(form.get('le') ?? '') || jour;
+  const ilYA60 = new Date(Date.now() - 60 * 86_400_000).toISOString().slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(le) || le > jour || le < ilYA60) return { ok: false, message: 'La date du test doit tomber dans les deux derniers mois.' };
+  const efforts = [1, 2].map((i) => ({
+    duree_s: lireDuree(String(form.get(`duree${i}`) ?? '')),
+    distance_m: lireDistance(String(form.get(`distance${i}`) ?? '')),
+  }));
+  if (efforts.some((e) => e.duree_s === null || e.distance_m === null))
+    return { ok: false, message: 'Entre la durée (12 ou 12:00) et la distance (3150 m ou 3,15 km) de chaque effort.' };
+  const vc = vitesseCritique(efforts[0] as { duree_s: number; distance_m: number }, efforts[1] as { duree_s: number; distance_m: number });
+  if ('erreur' in vc) return { ok: false, message: vc.erreur };
+  if (!(await accordDeLAthlete(coach.compteId, athleteId)))
+    return { ok: false, message: 'Pas encore son accord : associe-le à Nolio, envoie-lui le message d’accord, puis coche « Accord reçu » dans le Suivi quand il a répondu oui.' };
+  const fiche = await ficheAthlete(coach.compteId, athleteId);
+  if (!fiche) return { ok: false, message: 'Athlète introuvable.' };
+  const vc_ms = Math.round(vc.vc_ms * 1000) / 1000;
+  const d_prime_m = Math.round(vc.d_prime_m);
+  const service = clientService();
+  const { error } = await service.from('athletes_coaches').update({
+    vc_ms, d_prime_m, reperes_sources: { ...fiche.reperes_sources, vc_ms: { le, source: 'test_coach' } },
+  }).eq('id', athleteId).eq('coach_id', coach.compteId);
+  if (error) return { ok: false, message: 'L’enregistrement n’a pas abouti. Réessaie.' };
+  // Les tests de vitesse critique écrits dans ses semaines, pas encore lus : lus, par le coach.
+  await marquerTestsLus(fiche, 'vitesse_critique', { vc_ms, d_prime_m, le });
+  revalidatePath(`/app/coach/athlete/${athleteId}`);
+  const dernier = fiche.objectifs[fiche.objectifs.length - 1];
+  const o = dernier ? await objectifEcrit(dernier.plan_id).catch(() => null) : null;
+  const soucis = o ? await zonesVersNolio(o, { vc_ms, d_prime_m }) : [];
+  const { allure } = await import('./zones');
+  return { ok: true, message: `C’est enregistré : vitesse critique à ${allure(vc_ms)}/km. Ses prochaines semaines et ses zones la prennent en repère.${soucis.length ? ` Zones Nolio : ${soucis.join(' ; ')}.` : ''}` };
+}
+
+// Un test écrit dans les semaines d'un coaché (les deux derniers mois) et pas encore lu, dont le coach saisit la valeur :
+// marqué lu, « saisi par le coach », pour que la lecture automatique dans Nolio ne revienne pas dessus.
+async function marquerTestsLus(fiche: { objectifs: { plan_id: string }[] }, cle: 'parole' | 'vitesse_critique' | 'fc_seuil2',
+  resultat: Record<string, unknown>) {
+  const service = clientService();
+  const jour = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
+  const ilYA60 = new Date(Date.now() - 60 * 86_400_000).toISOString().slice(0, 10);
+  for (const o of fiche.objectifs) {
+    const { data: ecrites } = await service.from('semaines_ecrites').select('donnees').eq('plan_id', o.plan_id);
+    const { data: lus } = await service.from('tests_lus').select('jour_id, statut').eq('plan_id', o.plan_id);
+    const dejaLus = new Set((lus ?? []).filter((t) => t.statut === 'lu').map((t) => t.jour_id as string));
+    type JourTest = { id: string; date_iso: string | null; reperes?: { test?: { cle?: string; ecrit?: boolean } | null } | null };
+    const jours = (ecrites ?? []).flatMap((e) => ((e.donnees as { jours?: JourTest[] } | null)?.jours ?? []));
+    for (const j of jours) {
+      if (j.reperes?.test?.cle !== cle || !j.reperes.test.ecrit || !j.date_iso || dejaLus.has(j.id)) continue;
+      if (j.date_iso > jour || j.date_iso < ilYA60) continue;
+      await service.from('tests_lus').upsert({ plan_id: o.plan_id, jour_id: j.id, cle, statut: 'lu',
+        resultat: { ...resultat, saisi: 'coach' }, lu_le: new Date().toISOString() });
+    }
+  }
 }

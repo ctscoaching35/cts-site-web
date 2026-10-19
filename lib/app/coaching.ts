@@ -21,7 +21,8 @@ export type FicheAthlete = {
   // Son profil (PO1), sa D′ (AP4), la date et la source de chaque repère : null ou vides tant que la migration du
   // 20/10/2026 n'est pas passée.
   profil: Record<string, string | string[]> | null; d_prime_m: number | null;
-  reperes_sources: Record<string, { le: string; source: 'test' | 'coach' }>;
+  // source : « test » lu dans Nolio, « test_coach » un test saisi par le coach, « coach » une valeur saisie.
+  reperes_sources: Record<string, { le: string; source: 'test' | 'test_coach' | 'coach' }>;
 };
 // Une séance envoyée : son jour du plan, son identifiant Nolio (« ptrn_… » ; un nombre pour un envoi de la v1,
 // converti à la visite suivante), sa révision à l'envoi (V4 : une révision changée, le coach l'a retouchée), et
@@ -97,13 +98,15 @@ export async function objectifCoache(coachId: string, planId: string) {
 // Les réponses du dernier objectif d'un athlète, pour préremplir le suivant (N9) : tout sauf la course.
 export async function questionnairePrerempli(coachId: string, athleteId: string) {
   const athlete = await ficheAthlete(coachId, athleteId);
-  const dernier = athlete?.objectifs[athlete.objectifs.length - 1];
-  if (!athlete || !dernier) return null;
-  const { data } = await clientService().from('plans').select('intake').eq('id', dernier.plan_id).single();
+  if (!athlete) return null;
+  // Une fiche sans objectif (son dernier retiré) garde son athlète : le questionnaire part de son profil s'il est connu.
+  const dernier = athlete.objectifs[athlete.objectifs.length - 1];
+  const { data } = dernier ? await clientService().from('plans').select('intake').eq('id', dernier.plan_id).single() : { data: null };
   const charge = await chargeDepuisNolio(coachId, athlete.nolio_athlete_id).catch(() => null);
-  // PO1 : le profil de sa fiche, s'il a été modifié depuis, l'emporte sur les réponses du dernier objectif.
+  // PO1 : le profil de sa fiche, s'il a été modifié depuis, l'emporte sur les réponses du dernier objectif ; profilConnu :
+  // le questionnaire court suffit.
   return { athlete, initial: { ...reponsesSansLaCourse(data?.intake), ...(athlete.profil ?? {}), nom: athlete.nom, ...(charge ?? {}) },
-    nolio: Boolean(charge) };
+    nolio: Boolean(charge), profilConnu: Boolean(dernier || athlete.profil) };
 }
 
 // QD4 (décision coach du 19/10/2026) : la charge du moment d'un coaché, lue dans ses séances Nolio avec son accord du

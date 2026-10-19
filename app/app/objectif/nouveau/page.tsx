@@ -26,7 +26,7 @@ export default async function NouvelObjectif() {
     const suite = await questionnairePrerempli(fiche.coach_id, fiche.id);
     initial = suite?.initial ?? { nom: fiche.nom };
     depuisNolio = Boolean(suite?.nolio);
-    court = Boolean(suite);
+    court = Boolean(suite?.profilConnu);
   } else {
     const dernier = (await plansDuCompte(compteId)).filter((p) => !p.coache).pop();
     const { data: p } = dernier ? await supabase.from('plans').select('intake').eq('id', dernier.id).maybeSingle() : { data: null };

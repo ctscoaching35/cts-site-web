@@ -5,6 +5,7 @@ import CadreCoach from '@/components/app/CadreCoach';
 import FormulaireValeurs from '@/components/app/FormulaireValeurs';
 import InvitationApp from '@/components/app/InvitationApp';
 import ProfilAthlete from '@/components/app/ProfilAthlete';
+import TestVcCoach from '@/components/app/TestVcCoach';
 import { Carte, PastilleDate, Surtitre } from '@/components/app/Ui';
 import { associerNolio, retirerAcces, retirerAthlete } from '@/lib/app/actionsCoaching';
 import { adresseDuCompte } from '@/lib/app/espaceAthlete';
@@ -63,7 +64,8 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
   ];
   const source = (cle: 'fc_seuil1' | 'vc_ms' | 'fc_seuil2') => {
     const x = a.reperes_sources[cle];
-    return x ? `${x.source === 'test' ? 'test lu dans Nolio' : 'saisi par toi'} le ${dateLongue(x.le, true)}` : null;
+    return !x ? null : x.source === 'test' ? `test lu dans Nolio le ${dateLongue(x.le, true)}`
+      : x.source === 'test_coach' ? `test du ${dateLongue(x.le, true)}, saisi par toi` : `saisi par toi le ${dateLongue(x.le, true)}`;
   };
   const reperes: [string, string | null, string | null][] = [
     ['FC au seuil 1', a.fc_seuil1 ? `${a.fc_seuil1} bpm` : null, source('fc_seuil1')],
@@ -174,6 +176,14 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
               ))}
             </ul>
             <details className="pt-2">
+              <summary className="cursor-pointer min-h-10 flex items-center text-[0.8125rem] font-bold text-teal">Saisir son test de vitesse critique</summary>
+              <p className="mb-3 text-[0.8125rem] leading-relaxed text-[#4A4866]">
+                S’il ne l’a pas fait dans l’app, ou si sa lecture dans Nolio n’a pas abouti : ses deux efforts donnent sa vitesse
+                critique et son profil de coureur. Un test écrit dans ses semaines et pas encore lu est alors marqué lu.
+              </p>
+              <TestVcCoach athleteId={a.id} aujourdhui={jour} />
+            </details>
+            <details className="pt-1">
               <summary className="cursor-pointer min-h-10 flex items-center text-[0.8125rem] font-bold text-teal">Modifier ses repères</summary>
               <p className="mb-3 text-[0.8125rem] leading-relaxed text-[#4A4866]">
                 Avec eux, les séances partent avec une allure sur le plat ou une FC, puis le RPE ; sans eux, au RPE, et le test

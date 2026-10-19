@@ -19,7 +19,7 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
   const suite = typeof r.athlete === 'string' ? await questionnairePrerempli(coach.compteId, r.athlete) : null;
   // OM1 : l'objectif demandé par le coaché, ses réponses à relire ; sa trace part avec la demande.
   const demande = suite && typeof r.demande === 'string' ? await demandeDuCoach(coach.compteId, r.demande) : null;
-  const court = Boolean(suite && !demande);
+  const court = Boolean(suite?.profilConnu && !demande);
   const jour = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
   const enCours = suite?.athlete.objectifs.find((o) => o.course_date >= jour) ?? null;
   return (
@@ -34,10 +34,12 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
           <p className="text-indigo/70 mt-2">
             {demande
               ? `Sa demande du ${new Date(demande.cree_le).toLocaleDateString('fr-FR')} : relis ses réponses, corrige si besoin, et lance l’objectif.${demande.gpx_chemin ? ' Sa trace part avec la demande.' : ''}`
-              : suite?.nolio
+              : court && suite?.nolio
               ? 'Son profil est déjà rempli : seules sa charge du moment et la course sont demandées. Sa charge est préremplie depuis Nolio, sur ses 4 dernières semaines : relis et corrige si besoin.'
-              : suite
+              : court
               ? 'Son profil est déjà rempli : seules sa charge du moment et la course sont demandées.'
+              : suite
+              ? 'Son profil n’est pas encore connu : remplis le questionnaire avec ses réponses. L’objectif rejoint sa fiche.'
               : 'Remplis le questionnaire avec ses réponses. Le plan se génère sans paiement et rejoint ton espace coach.'}
           </p>
         </div>
