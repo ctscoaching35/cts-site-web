@@ -4,7 +4,8 @@ import clsx from 'clsx';
 
 // Le cadre de l'espace coach (maquettes validées par le coach le 19/10/2026) : un menu à gauche sur ordinateur, au-dessus
 // du contenu sur téléphone (Tes athlètes, Suivi des 7 jours, Objectifs demandés, Chiffres de la vente, Bibliothèque),
-// le coach et un lien vers l'app d'un athlète.
+// le coach. Plus de lien « Voir l'app d'un athlète » (décision coach du 20/10/2026) : il ouvrait l'app du compte coach ;
+// chaque version se voit par son propre compte (coach, coaché, acheteur).
 export type RubriqueCoach = 'athletes' | 'suivi' | 'demandes' | 'chiffres';
 
 export default function CadreCoach({ actif, demandes = 0, coach, children }: {
@@ -45,7 +46,6 @@ export default function CadreCoach({ actif, demandes = 0, coach, children }: {
         <div className="hidden lg:flex mt-auto p-3 rounded-xl bg-white/[0.06] flex-col gap-1">
           {coach && <span className="text-xs font-bold">{coach}</span>}
           <span className="text-[0.6875rem] text-[#B9B8CC]">Nolio relié par la clé de l’API</span>
-          <Link href="/app" className="inline-flex items-center min-h-9 text-xs font-bold text-[#8FD1C3]">Voir l’app d’un athlète ›</Link>
         </div>
       </aside>
       <main className="flex-[999_1_560px] min-w-0 px-4 py-5 sm:px-8 sm:py-8">
