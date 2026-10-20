@@ -10,9 +10,12 @@ import { COOKIE_PLAN, DUREE_COOKIE_PLAN } from './planChoisi';
 
 const UUID = /^[0-9a-f-]{36}$/;
 
+// Le choix garde son jour (« id@AAAA-MM-JJ ») : pour un coaché, un objectif passé choisi pour le regarder ne reste
+// affiché que ce jour-là (contexte.ts ; décision coach du 20/10/2026).
 export async function choisirPlan(id: string) {
   if (UUID.test(id)) {
-    (await cookies()).set(COOKIE_PLAN, id, { path: '/', maxAge: DUREE_COOKIE_PLAN, sameSite: 'lax' });
+    const jour = new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris' }).format(new Date());
+    (await cookies()).set(COOKIE_PLAN, `${id}@${jour}`, { path: '/', maxAge: DUREE_COOKIE_PLAN, sameSite: 'lax' });
   }
   redirect('/app');
 }

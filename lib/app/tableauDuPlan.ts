@@ -9,7 +9,7 @@ import { objectifEcrit, trameDuPlan, type LigneTrame, type Realise } from './ecr
 import { listeNolio } from './nolio';
 import { ajouterJours, type Semaine } from './plan';
 import { clientService } from './supabase';
-import { trameDesDonnees, type Fiche } from './tableau';
+import { trameDesDonnees, type CourseDuGraphique, type Fiche } from './tableau';
 
 // Où en est l'athlète dans Nolio (P1 à P4) ; « coache » : un objectif de son coach ; null : un plan d'avant le
 // 19/10/2026, sans Nolio.
@@ -43,6 +43,42 @@ export async function donneesTableau(ctx: Contexte): Promise<DonneesTableau> {
     courses: (((p.parametres as Record<string, unknown>).courses_secondaires ?? []) as CourseSecondaire[])
       .slice().sort((a, b) => a.date.localeCompare(b.date)),
   };
+}
+
+// La saison d'un coaché (décision coach du 20/10/2026, « toute sa saison ») : ses semaines faites sur TOUS ses
+// objectifs, d'une préparation à l'autre, par leur lundi (le plus récent objectif l'emporte sur une même semaine), et ses
+// courses (objectifs et courses de préparation) pour les repères des graphiques. Un acheteur : son plan seul.
+export type Saison = { realises: Realise[]; courses: CourseDuGraphique[] };
+export async function saisonDuCoureur(ctx: Contexte, d: DonneesTableau): Promise<Saison> {
+  const coursesDe = (nom: string, date: string, prepa: CourseSecondaire[]) => [{ date, nom }, ...prepa.map((c) => ({ date: c.date, nom: c.nom }))];
+  const seul = { realises: d.realises, courses: coursesDe(ctx.plan.course.nom, ctx.plan.course.date, d.courses) };
+  if (ctx.demonstration || !ctx.coache) return seul;
+  try {
+    const service = clientService();
+    const { data: lien } = await service.from('coaching').select('athlete_id').eq('plan_id', ctx.cle).maybeSingle();
+    if (!lien) return seul;
+    const { data: objectifs } = await service.from('coaching').select('plan_id, plans(course_nom, course_date, parametres, cree_le)')
+      .eq('athlete_id', lien.athlete_id);
+    type Objectif = { plan_id: string; plans: { course_nom: string; course_date: string; parametres: Record<string, unknown> | null; cree_le: string } | null };
+    const liste = ((objectifs ?? []) as unknown as Objectif[]).filter((o) => o.plans);
+    const { data: lignes } = liste.length
+      ? await service.from('semaines_ecrites').select('plan_id, realise').in('plan_id', liste.map((o) => o.plan_id)).not('realise', 'is', null)
+      : { data: [] };
+    const ordre = new Map(liste.map((o) => [o.plan_id, o.plans?.cree_le ?? '']));
+    const parLundi = new Map<string, { r: Realise; cree: string }>();
+    for (const l of lignes ?? []) {
+      const r = l.realise as Realise;
+      const cree = ordre.get(l.plan_id as string) ?? '';
+      const deja = parLundi.get(r.lundi);
+      if (r.lundi && (!deja || cree > deja.cree)) parLundi.set(r.lundi, { r, cree });
+    }
+    const realises = [...parLundi.values()].map((x) => x.r).sort((a, b) => a.lundi.localeCompare(b.lundi));
+    const courses = liste.flatMap((o) => coursesDe(o.plans?.course_nom ?? '', o.plans?.course_date ?? '',
+      ((o.plans?.parametres?.courses_secondaires ?? []) as CourseSecondaire[])));
+    return { realises, courses };
+  } catch {
+    return seul;
+  }
 }
 
 async function accordDuCoache(planId: string): Promise<boolean> {

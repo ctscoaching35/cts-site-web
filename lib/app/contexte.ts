@@ -44,6 +44,14 @@ export async function plansDuCompte(compteId: string): Promise<PlanDuCompte[]> {
   });
   return [...propres, ...suivis].sort((a, b) => a.course_date.localeCompare(b.course_date));
 }
+// Un objectif à venir sur le compte connecté (l'accueil d'entre-deux d'un coaché : aucun, son prochain se prépare).
+export async function objectifAVenir(): Promise<boolean> {
+  const { data } = await (await clientServeur()).auth.getClaims();
+  const id = data?.claims?.sub;
+  if (!id) return false;
+  const aujourdhui = aujourdhuiIso();
+  return (await plansDuCompte(String(id))).some((p) => p.course_date >= aujourdhui);
+}
 export type Recherche = Promise<Record<string, string | string[] | undefined>>;
 
 const JOUR = /^\d{4}-\d{2}-\d{2}$/;
@@ -72,8 +80,13 @@ export async function contexte(recherche: Recherche): Promise<Contexte> {
   // ou le dernier acheté), sinon celui de la prochaine course, sinon le dernier couru.
   const aujourdhui = aujourdhuiIso();
   const plans = await plansDuCompte(session.claims.sub as string);
-  const voulu = (await cookies()).get(COOKIE_PLAN)?.value;
-  const choisi = plans.find((p) => p.id === voulu) ?? plans.find((p) => p.course_date >= aujourdhui) ?? plans[plans.length - 1];
+  const [voulu, choisiLe] = ((await cookies()).get(COOKIE_PLAN)?.value ?? '').split('@');
+  const prochain = plans.find((p) => p.course_date >= aujourdhui);
+  // Un coaché (décision coach du 20/10/2026, « toujours le prochain ») : un objectif choisi reste affiché jusqu'à sa
+  // course ; passé, seulement le jour où il l'a choisi pour le regarder ; ensuite, l'app revient d'elle-même au prochain.
+  const epingle = plans.find((p) => p.id === voulu);
+  const tenu = epingle && (!epingle.coache || !prochain || epingle.course_date >= aujourdhui || choisiLe === aujourdhui) ? epingle : undefined;
+  const choisi = tenu ?? prochain ?? plans[plans.length - 1];
   if (!choisi) redirect('/app/sans-plan');
   // Un objectif coaché est rangé dans le compte du coach : lu avec la clé de service, une fois vérifié qu'il est à lui.
   const lecteur = choisi.coache ? clientService() : supabase;

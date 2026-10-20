@@ -9,14 +9,16 @@ import {
 import { nouveauxBadges } from '@/lib/app/badges';
 import { mesBadges } from '@/lib/app/badgesNolio';
 import { COOKIE_BIENVENUE } from '@/lib/app/bienvenue';
-import { contexte, lien, prenom, type Recherche } from '@/lib/app/contexte';
-import { dateLongue, joursEntre, moment } from '@/lib/app/plan';
+import { CarteSombre, Surtitre } from '@/components/app/Ui';
+import { contexte, lien, objectifAVenir, prenom, type Recherche } from '@/lib/app/contexte';
+import { ajouterJours, dateLongue, joursEntre, moment } from '@/lib/app/plan';
 import { ficheDuMoment, jaugeDuPlan, momentDe } from '@/lib/app/tableau';
 import { donneesTableau, semaineDansNolio, semaineEcrite } from '@/lib/app/tableauDuPlan';
 
 // L'accueil (CTS_NOLIO_CADRAGE.md dans le dépôt du moteur, T1, AP1, AP2 ; maquette validée par le coach le
 // 19/10/2026) : les séances vivent dans Nolio ; ici l'objectif et sa montagne, un badge tout neuf (BG3), les piliers,
-// les courses de préparation, la semaine en cours, la fiche du moment. Les données, le profil et la bibliothèque ont leur onglet.
+// les courses de préparation, la semaine en cours, la fiche du moment ; pour un coaché entre deux objectifs, l'accueil
+// d'entre-deux. Les données, le profil et la bibliothèque ont leur onglet.
 export default async function Accueil({ searchParams }: { searchParams: Recherche }) {
   const ctx = await contexte(searchParams);
   // La première fois sur cet appareil : l'écran de bienvenue (cadrage, 2.6), lu avant d'entrer.
@@ -39,6 +41,37 @@ export default async function Accueil({ searchParams }: { searchParams: Recherch
   // Une course de préparation s'ajoute dans l'objectif, tant que la course est à venir et le plan écrit semaine par
   // semaine.
   const ajout = d.ecrit && !ctx.demonstration && plan.course.date >= jour ? `${lien('/app/plan', ctx)}#ajouter-course` : null;
+  // L'entre-deux d'un coaché (décision coach du 20/10/2026) : sa dernière course passée, aucun objectif à venir. Son
+  // prochain se prépare avec son coach ; sa semaine se lit dans Nolio (les séances que son coach lui pose à la main).
+  const entreDeux = ctx.coache && etape === 'apres' && (ctx.demonstration || !(await objectifAVenir()));
+  const lundi = ajouterJours(jour, -((new Date(`${jour}T12:00:00Z`).getUTCDay() + 6) % 7));
+  const semaineEntreDeux = entreDeux ? await semaineDansNolio(ctx, lundi) : null;
+  if (entreDeux) {
+    return (
+      <>
+        <EnTeteApp ctx={ctx} />
+        <main className="mx-auto max-w-2xl px-4 pt-5 pb-6 space-y-4">
+          <div>
+            <div className="text-xs font-semibold text-[#5E5C78] first-letter:uppercase">{dateLongue(jour)}</div>
+            <h1 className="mt-1 text-[1.625rem] font-extrabold text-indigo tracking-tight">{nom ? `Bonjour ${nom}` : 'Bonjour'}</h1>
+          </div>
+          <CarteSombre className="space-y-3">
+            <Surtitre ton="clair" as="div">Ton prochain objectif</Surtitre>
+            <p className="text-[0.9375rem] font-bold">Il se prépare avec ton coach.</p>
+            <Link href="/app/objectif/nouveau" className="inline-flex items-center min-h-11 px-4 rounded-full bg-white text-indigo text-[0.8125rem] font-bold">
+              Proposer un objectif
+            </Link>
+          </CarteSombre>
+          <Link href={lien('/app/plan', ctx)} className="block bg-white rounded-2xl border border-indigo/[0.08] p-4 text-sm text-indigo">
+            Ta dernière course : <strong>{plan.course.nom}</strong>, {dateLongue(plan.course.date)}
+            <span className="block text-xs text-[#5E5C78] mt-0.5">Bravo pour le chemin ›</span>
+          </Link>
+          <CarteNouveauBadge badges={nouveaux} href={`${lien('/app/profil', ctx)}#badges`} />
+          <CetteSemaine semaine={null} ligne={null} questionnaire={false} nolio={semaineEntreDeux} />
+        </main>
+      </>
+    );
+  }
   return (
     <>
       <EnTeteApp ctx={ctx} />

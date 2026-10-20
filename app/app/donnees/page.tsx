@@ -3,20 +3,23 @@ import { GraphiqueCharge, GraphiqueHooper, GraphiqueVolume } from '@/components/
 import { Carte } from '@/components/app/Ui';
 import { contexte, type Recherche } from '@/lib/app/contexte';
 import { barresDeVolume, pointsHooper } from '@/lib/app/tableau';
-import { donneesTableau } from '@/lib/app/tableauDuPlan';
+import { donneesTableau, saisonDuCoureur } from '@/lib/app/tableauDuPlan';
 
 // Mes données (CTS_NOLIO_CADRAGE.md dans le dépôt du moteur, AP1, AP3, T10 ; maquette validée par le coach le
 // 19/10/2026) : la charge faite seule (RPE de séance × durée) et sa moyenne sur 4 semaines, le volume en heures fait
-// contre prévu, le Hooper du dimanche et sa zone habituelle. Tout vient de la base, rangé chaque dimanche soir.
+// contre prévu, le Hooper du dimanche et sa zone habituelle. Tout vient de la base, rangé chaque dimanche soir. Un
+// coaché les voit sur toute sa saison, d'un objectif à l'autre, ses courses en repère (décision coach du 20/10/2026).
 export default async function MesDonnees({ searchParams }: { searchParams: Recherche }) {
   const ctx = await contexte(searchParams);
   const d = await donneesTableau(ctx);
+  // Un coaché : toute sa saison, d'un objectif à l'autre, ses courses en repère (décision coach du 20/10/2026).
+  const saison = await saisonDuCoureur(ctx, d);
   // Les 8 dernières semaines faites, la semaine en cours et les 3 qui viennent.
-  const toutes = d.ecrit ? barresDeVolume(d.trame, d.realises, ctx.jour) : [];
+  const toutes = d.ecrit || saison.realises.length ? barresDeVolume(d.trame, saison.realises, ctx.jour, saison.courses) : [];
   const futur = toutes.findIndex((b) => b.moment === 'avenir');
   const barres = futur < 0 ? toutes : toutes.slice(0, futur + 3);
-  const points = d.accord ? pointsHooper(d.trame, d.realises, ctx.jour) : [];
-  const rien = !d.realises.length;
+  const points = d.accord ? pointsHooper(d.trame, saison.realises, ctx.jour, saison.courses) : [];
+  const rien = !saison.realises.length;
   return (
     <>
       <EnTeteApp ctx={ctx} />
@@ -34,7 +37,7 @@ export default async function MesDonnees({ searchParams }: { searchParams: Reche
           </Carte>
         )}
         {/* Une semaine se dit par son lundi, pas par son numéro (décision coach du 19/10/2026). */}
-        {d.accord && <GraphiqueCharge realises={d.realises} />}
+        {d.accord && <GraphiqueCharge realises={saison.realises} courses={saison.courses} />}
         <GraphiqueVolume barres={barres} />
         {d.accord && <GraphiqueHooper points={points} />}
         {!d.accord && !rien && (

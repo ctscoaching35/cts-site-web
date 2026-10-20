@@ -156,25 +156,45 @@ function jalons(trame: LigneTrame[], faits: Realise[], rang: number): Jalon[] {
 // côtés ; la charge prévue se compte par segments et le RPE de l'athlète vaut pour toute la séance, elles ne se
 // comparent pas) : les 8 dernières faites à côté de leur prévue (celle de la semaine écrite), la semaine en cours et
 // celles à venir en pointillés (la trame), le week-end choc et l'affûtage marqués.
-export type Barre = { numero: string; lundi: string; prevue: number; faite: number | null; moment: Moment; choc: boolean; affutage: boolean; type: string };
-export function barresDeVolume(trame: LigneTrame[], realises: Realise[], aujourdhui: string): Barre[] {
-  const parNumero = new Map(realises.map((r) => [r.numero, r]));
-  const barres = trame.filter((l) => l.lundi).map((l) => {
-    const r = parNumero.get(l.numero);
+// Une semaine se range par son lundi : les semaines d'un coaché se suivent d'un objectif à l'autre (décision coach du
+// 20/10/2026, « toute sa saison »), leurs numéros (S1, S2…) recommençant à chaque objectif. course : la course de la
+// semaine (un objectif ou une course de préparation), son repère sur les graphiques.
+export type CourseDuGraphique = { date: string; nom: string };
+export const courseDeLaSemaine = (lundi: string, courses: CourseDuGraphique[]) =>
+  courses.find((c) => c.date >= lundi && c.date <= ajouterJours(lundi, 6))?.nom ?? null;
+
+export type Barre = {
+  numero: string; lundi: string; prevue: number; faite: number | null; moment: Moment; choc: boolean; affutage: boolean; type: string;
+  course: string | null;
+};
+export function barresDeVolume(trame: LigneTrame[], realises: Realise[], aujourdhui: string, courses: CourseDuGraphique[] = []): Barre[] {
+  const parLundi = new Map(realises.map((r) => [r.lundi, r]));
+  const deLaTrame = trame.filter((l) => l.lundi).map((l) => {
+    const r = parLundi.get(l.lundi);
     return { numero: l.numero, lundi: l.lundi, prevue: r?.duree_prevue_min ?? Math.round(l.volume_h * 60), faite: r ? r.duree_faite_min : null,
-      moment: momentDe(l.lundi, aujourdhui), choc: l.week_end_choc, affutage: enAffutage(l), type: l.type };
+      moment: momentDe(l.lundi, aujourdhui), choc: l.week_end_choc, affutage: enAffutage(l), type: l.type, course: courseDeLaSemaine(l.lundi, courses) };
   });
+  // Les semaines faites des objectifs d'avant (la saison d'un coaché).
+  const vues = new Set(deLaTrame.map((b) => b.lundi));
+  const avant = realises.filter((r) => r.lundi && !vues.has(r.lundi)).map((r) => ({
+    numero: r.numero, lundi: r.lundi, prevue: r.duree_prevue_min, faite: r.duree_faite_min, moment: momentDe(r.lundi, aujourdhui),
+    choc: false, affutage: /affûtage|décharge/i.test(r.type ?? ''), type: r.type ?? '', course: courseDeLaSemaine(r.lundi, courses),
+  }));
+  const barres = [...avant, ...deLaTrame].sort((a, b) => a.lundi.localeCompare(b.lundi));
   const passees = barres.filter((b) => b.moment === 'passee');
   return [...passees.slice(-8), ...barres.filter((b) => b.moment !== 'passee')];
 }
 
 // Le Hooper du dimanche, semaine par semaine, et sa zone habituelle.
-export type PointHooper = { numero: string; lundi: string; valeur: number | null; zone: number | null };
-export function pointsHooper(trame: LigneTrame[], realises: Realise[], aujourdhui: string): PointHooper[] {
-  const parNumero = new Map(realises.map((r) => [r.numero, r.hooper]));
-  const passees = trame.filter((l) => l.lundi && momentDe(l.lundi, aujourdhui) === 'passee');
-  const valeurs = passees.map((l) => parNumero.get(l.numero) ?? null);
-  return passees.map((l, i) => ({ numero: l.numero, lundi: l.lundi, valeur: valeurs[i], zone: zoneHooper(valeurs, i) })).slice(-12);
+export type PointHooper = { numero: string; lundi: string; valeur: number | null; zone: number | null; course: string | null };
+export function pointsHooper(trame: LigneTrame[], realises: Realise[], aujourdhui: string, courses: CourseDuGraphique[] = []): PointHooper[] {
+  const parLundi = new Map(realises.map((r) => [r.lundi, r]));
+  const numeros = new Map([...trame.map((l) => [l.lundi, l.numero] as [string, string]), ...realises.map((r) => [r.lundi, r.numero] as [string, string])]);
+  const lundis = [...new Set([...trame.map((l) => l.lundi), ...realises.map((r) => r.lundi)])]
+    .filter((l) => l && momentDe(l, aujourdhui) === 'passee').sort();
+  const valeurs = lundis.map((l) => parLundi.get(l)?.hooper ?? null);
+  return lundis.map((l, i) => ({ numero: numeros.get(l) ?? '', lundi: l, valeur: valeurs[i], zone: zoneHooper(valeurs, i),
+    course: courseDeLaSemaine(l, courses) })).slice(-12);
 }
 export const ECART_ZONE_HOOPER = ECART_HOOPER;
 

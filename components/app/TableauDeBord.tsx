@@ -4,7 +4,9 @@ import type { LigneTrame, Realise } from '@/lib/app/ecriture';
 import { BANNIERE, FAMILLES } from '@/lib/app/charte';
 import { lien, type Contexte } from '@/lib/app/contexte';
 import { dateLongue, jourMois, slugFiche, type Jour, type Plan, type Semaine } from '@/lib/app/plan';
-import { ECART_ZONE_HOOPER, enHeures, type Barre, type Fiche, type Jauge, type PointHooper } from '@/lib/app/tableau';
+import {
+  courseDeLaSemaine, ECART_ZONE_HOOPER, enHeures, type Barre, type CourseDuGraphique, type Fiche, type Jauge, type PointHooper,
+} from '@/lib/app/tableau';
 import type { CourseSecondaire, EtatNolio, SeanceNolio } from '@/lib/app/tableauDuPlan';
 import { Carte, CarteSombre, PastilleDate, Surtitre } from './Ui';
 
@@ -259,7 +261,18 @@ const etiquette = (numero: string, lundi: string | undefined) => (lundi ? jourMo
 const laSemaine = (numero: string, lundi: string | undefined) =>
   lundi ? `la semaine du ${jourMois(lundi)}` : `la semaine ${numero.replace('S', '')}`;
 
-export function GraphiqueCharge({ realises }: { realises: Realise[] }) {
+// Le repère d'une course (un objectif ou une course de préparation) sur un graphique : un petit drapeau, son nom au survol.
+function Drapeau({ x, y, nom }: { x: number; y: number; nom: string }) {
+  return (
+    <g>
+      <title>{nom}</title>
+      <line x1={x} y1={y} x2={x} y2={y + 12} stroke="#2F2D4E" strokeWidth={1.2} />
+      <path d={`M${x} ${y}h7l-2 3 2 3h-7z`} fill="#2BB39B" />
+    </g>
+  );
+}
+
+export function GraphiqueCharge({ realises, courses = [] }: { realises: Realise[]; courses?: CourseDuGraphique[] }) {
   const semaines = realises.filter((r) => r.rpe_lu && r.charge_faite > 0).slice(-10);
   if (semaines.length < 2) return null;
   const moyenne = (i: number) => {
@@ -291,13 +304,17 @@ export function GraphiqueCharge({ realises }: { realises: Realise[] }) {
           </g>
         ))}
         <line x1="30" y1={bas} x2={L} y2={bas} stroke="rgba(47,45,78,0.25)" />
-        {semaines.map((r, i) => (
-          <g key={r.numero}>
-            <title>{`${r.numero} : ${Math.round(r.charge_faite)}`}</title>
-            <rect x={30 + i * pas + pas * 0.22} y={y(r.charge_faite)} width={pas * 0.56} height={bas - y(r.charge_faite)} rx="3" fill="#0C6E5F" />
-            <text x={30 + i * pas + pas / 2} y="154" fontSize="9" fill="#5E5C78" textAnchor="middle">{etiquette(r.numero, r.lundi)}</text>
-          </g>
-        ))}
+        {semaines.map((r, i) => {
+          const course = courseDeLaSemaine(r.lundi, courses);
+          return (
+            <g key={r.lundi}>
+              <title>{`${laSemaine(r.numero, r.lundi)} : ${Math.round(r.charge_faite)}`}</title>
+              <rect x={30 + i * pas + pas * 0.22} y={y(r.charge_faite)} width={pas * 0.56} height={bas - y(r.charge_faite)} rx="3" fill="#0C6E5F" />
+              <text x={30 + i * pas + pas / 2} y="154" fontSize="9" fill="#5E5C78" textAnchor="middle">{etiquette(r.numero, r.lundi)}</text>
+              {course && <Drapeau x={30 + i * pas + pas / 2} y={Math.max(0, y(r.charge_faite) - 14)} nom={course} />}
+            </g>
+          );
+        })}
         {ligne.length >= 2 && <polyline points={ligne.join(' ')} fill="none" stroke="#2F2D4E" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />}
       </svg>
       <div className="flex flex-wrap gap-x-3.5 gap-y-1 text-[0.72rem] text-[#4A4866]">
@@ -341,11 +358,12 @@ export function GraphiqueVolume({ barres }: { barres: Barre[] }) {
           const x = 30 + i * pas;
           const avenir = b.moment !== 'passee';
           return (
-            <g key={b.numero}>
-              <title>{`${b.numero} : ${enHeures(b.prevue)} prévues${b.faite !== null ? `, ${enHeures(b.faite)} faites` : ''}`}</title>
+            <g key={b.lundi}>
+              <title>{`${laSemaine(b.numero, b.lundi)} : ${enHeures(b.prevue)} prévues${b.faite !== null ? `, ${enHeures(b.faite)} faites` : ''}`}</title>
               <rect x={x + pas * 0.12} y={BAS - h(b.prevue)} width={pas * 0.76} height={h(b.prevue)} rx="4" fill="none"
                 stroke="#9C9AB3" strokeWidth={1.5} strokeDasharray={avenir ? '3 2' : undefined} />
               {b.faite !== null && <rect x={x + pas * 0.24} y={BAS - h(b.faite)} width={pas * 0.52} height={h(b.faite)} rx="3" fill="#0C6E5F" />}
+              {b.course && <Drapeau x={x + pas / 2} y={Math.max(0, BAS - h(Math.max(b.prevue, b.faite ?? 0)) - 14)} nom={b.course} />}
               {(barres.length <= 9 || i % 2 === 0 || b.moment === 'encours') && (
                 <text x={x + pas / 2} y={BAS + 14} fontSize="9" fontWeight={b.moment === 'encours' ? 700 : 600}
                   fill={b.moment === 'encours' ? '#2F2D4E' : '#5E5C78'} textAnchor="middle">{etiquette(b.numero, b.lundi)}</text>
@@ -357,6 +375,12 @@ export function GraphiqueVolume({ barres }: { barres: Barre[] }) {
       <div className="flex flex-wrap gap-x-3.5 gap-y-1 text-[0.72rem] text-[#4A4866]">
         <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-teal" />fait</span>
         <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm border-[1.5px] border-[#9C9AB3]" />prévu</span>
+        {barres.some((b) => b.course) && (
+          <span className="inline-flex items-center gap-1.5">
+            <svg viewBox="0 0 10 14" className="w-2.5 h-3.5" aria-hidden><line x1="1" y1="1" x2="1" y2="13" stroke="#2F2D4E" strokeWidth="1.2" /><path d="M1 1h7l-2 3 2 3H1z" fill="#2BB39B" /></svg>
+            une course
+          </span>
+        )}
       </div>
     </Carte>
   );
@@ -397,12 +421,13 @@ export function GraphiqueHooper({ points }: { points: PointHooper[] }) {
         <text x="0" y={BAS - 4} fontSize="9" fill="#5E5C78">frais</text>
         <polyline fill="none" stroke="#2F2D4E" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" points={ligne} />
         {points.map((p, i) => p.valeur !== null && (
-          <circle key={p.numero} cx={x(i)} cy={y(p.valeur)} r={auDessus(p) ? 5 : 3.5} fill={auDessus(p) ? '#C2410C' : '#2F2D4E'}>
-            <title>{`${p.numero} : ${p.valeur}`}</title>
+          <circle key={p.lundi} cx={x(i)} cy={y(p.valeur)} r={auDessus(p) ? 5 : 3.5} fill={auDessus(p) ? '#C2410C' : '#2F2D4E'}>
+            <title>{`${laSemaine(p.numero, p.lundi)} : ${p.valeur}`}</title>
           </circle>
         ))}
+        {points.map((p, i) => p.course && <Drapeau key={`c-${p.lundi}`} x={x(i)} y={2} nom={p.course} />)}
         {points.map((p, i) => (i % 2 === 0 || i === points.length - 1) && (
-          <text key={`t-${p.numero}`} x={x(i)} y={BAS + 14} fontSize="9" fill="#5E5C78" textAnchor="middle">{etiquette(p.numero, p.lundi)}</text>
+          <text key={`t-${p.lundi}`} x={x(i)} y={BAS + 14} fontSize="9" fill="#5E5C78" textAnchor="middle">{etiquette(p.numero, p.lundi)}</text>
         ))}
       </svg>
       <p className={clsx('text-xs leading-relaxed text-[#4A4866]')}>
