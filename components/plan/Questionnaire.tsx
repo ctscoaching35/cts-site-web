@@ -11,10 +11,14 @@ const NOMS_JOURS: Record<string, string> = {
 };
 const CLE_BROUILLON = 'cts-plan-brouillon';
 
+// Les formes de l'app (décision coach du 20/10/2026 : le questionnaire est la porte d'entrée de l'app, il en prend la
+// mise en page) : champs et cartes aux coins arrondis, libellés en surtitre, boutons pleins.
 const inputCls =
-  'w-full bg-white border border-indigo/20 focus:border-teal px-4 py-3 text-indigo outline-none transition-colors';
-const labelCls = 'block text-xs font-semibold tracking-cts uppercase text-indigo/70 mb-2';
-const aideCls = 'text-sm text-indigo/60 leading-relaxed mt-2';
+  'w-full bg-white border border-indigo/15 rounded-xl focus:border-teal focus:ring-2 focus:ring-teal/15 px-4 py-3 text-[0.9375rem] text-indigo outline-none transition-colors';
+const labelCls = 'block text-[0.6875rem] font-bold tracking-[0.12em] uppercase text-[#5E5C78] mb-2';
+const aideCls = 'text-[0.8125rem] text-[#5E5C78] leading-relaxed mt-2';
+const boutonCls = 'inline-flex items-center justify-center min-h-12 px-6 rounded-xl bg-teal text-white text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed';
+const boutonSecondaireCls = 'inline-flex items-center justify-center min-h-11 px-4 rounded-xl border border-indigo/20 text-indigo text-sm font-bold';
 // Nombres à la française dans le récapitulatif : « 13,3 km », « 2 706 m », pas la saisie
 // brute « 13.3 » (audit du 27/09/2026, K1).
 const nombreFr = (v: string) => {
@@ -24,13 +28,13 @@ const nombreFr = (v: string) => {
 
 function Section({ numero, titre, children }: { numero: number; titre: string; children: React.ReactNode }) {
   return (
-    <section id={`section-${numero}`} className="bg-white border border-indigo/10 p-6 sm:p-8 scroll-mt-6">
-      <div className="flex items-baseline gap-3 mb-6">
+    <section id={`section-${numero}`} className="bg-white rounded-2xl border border-indigo/[0.08] p-5 sm:p-6 scroll-mt-6">
+      <div className="flex items-baseline gap-2.5 mb-5">
         {/* Le numéro à la taille du titre (retour du coach du 07/10/2026 : trop petit à côté). */}
-        <span className="text-teal font-extrabold text-xl sm:text-2xl">{String(numero).padStart(2, '0')}</span>
-        <h2 className="text-xl sm:text-2xl text-indigo">{titre}</h2>
+        <span className="text-teal font-extrabold text-[1.25rem]">{String(numero).padStart(2, '0')}</span>
+        <h2 className="text-[1.25rem] font-extrabold text-indigo tracking-tight">{titre}</h2>
       </div>
-      <div className="space-y-6">{children}</div>
+      <div className="space-y-5">{children}</div>
     </section>
   );
 }
@@ -45,7 +49,7 @@ function Choix({
   return (
     <label
       className={clsx(
-        'flex gap-4 p-4 border cursor-pointer transition-colors',
+        'flex gap-4 p-4 rounded-xl border cursor-pointer transition-colors',
         actif ? 'border-teal bg-teal/5' : 'border-indigo/15 hover:border-indigo/40'
       )}
     >
@@ -55,7 +59,7 @@ function Choix({
       />
       <span>
         <span className="block font-bold text-indigo">{titre}</span>
-        {description && <span className="block text-sm text-indigo/70 leading-relaxed mt-1">{description}</span>}
+        {description && <span className="block text-[0.8125rem] text-[#5E5C78] leading-relaxed mt-1">{description}</span>}
         {detail && <span className="block text-xs text-teal font-semibold mt-2">{detail}</span>}
       </span>
     </label>
@@ -340,22 +344,22 @@ export default function Questionnaire({
     const bloque = (!sansAvertissement && !confirme) || (!coach && !debutImmediat);
     return (
       <div className="space-y-6">
-        <section className="bg-white border border-indigo/10 p-6 sm:p-8">
-          <h2 className="text-xl sm:text-2xl text-indigo mb-6">Relis tes réponses</h2>
+        <section className="bg-white rounded-2xl border border-indigo/[0.08] p-5 sm:p-6">
+          <h2 className="text-[1.25rem] font-extrabold text-indigo tracking-tight mb-4">Relis tes réponses</h2>
           <dl className="divide-y divide-indigo/10">
             {lignes.map(([k, v]) => (
               <div key={k} className="grid sm:grid-cols-[10rem,1fr] gap-1 sm:gap-4 py-3">
-                <dt className="text-xs font-semibold tracking-cts uppercase text-indigo/60">{k}</dt>
+                <dt className="text-[0.6875rem] font-bold tracking-[0.1em] uppercase text-[#5E5C78]">{k}</dt>
                 <dd className="text-indigo">{v}</dd>
               </div>
             ))}
           </dl>
-          <button type="button" onClick={() => setEtape('formulaire')} className="btn btn-outline-dark mt-6 !py-3 text-xs">
+          <button type="button" onClick={() => setEtape('formulaire')} className={`${boutonSecondaireCls} mt-5`}>
             ← Modifier mes réponses
           </button>
         </section>
 
-        <section className="bg-white border-l-4 border-teal p-6 sm:p-8">
+        <section className="bg-white rounded-2xl border border-indigo/[0.08] p-5 sm:p-6">
           {alertes.length > 0 && (
             <>
               <h2 className="text-lg text-indigo mb-4">Avant de générer ton plan, lis ces points</h2>
@@ -416,15 +420,15 @@ export default function Questionnaire({
         </section>
 
         {refus && (
-          <p role="alert" className="bg-white border-l-4 border-red-400 p-5 text-indigo leading-relaxed">{refus}</p>
+          <p role="alert" className="bg-white rounded-r-xl border-l-4 border-red-400 p-4 text-[0.875rem] text-indigo leading-relaxed">{refus}</p>
         )}
 
-        <section className="bg-indigo text-white p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+        <section className="bg-indigo text-white rounded-[18px] p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
           <div>
             <div className="eyebrow text-teal-light mb-2">{demande ? 'Ton objectif · jusqu’à la course' : coach ? `Plan de ${c.nom} · jusqu’à la course` : `Ton plan · ${c.duree_mois} mois`}</div>
             {!coach && <div className="text-4xl font-black">{prix} €</div>}
           </div>
-          <button type="button" onClick={generer} disabled={bloque || envoi} className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed">
+          <button type="button" onClick={generer} disabled={bloque || envoi} className={boutonCls}>
             {envoi
               ? (demande ? 'Envoi…' : coach ? 'Génération…' : 'Vérification…')
               : demande
@@ -508,14 +512,14 @@ export default function Questionnaire({
           </div>
           <p className={aideCls}>{textes.charge.note}</p>
           {alerteSl && (
-            <p role="status" className="bg-white border-l-4 border-teal px-4 py-3 mt-2 text-sm text-indigo leading-relaxed">{alerteSl}</p>
+            <p role="status" className="bg-sand rounded-r-xl border-l-4 border-teal px-4 py-3 mt-2 text-[0.8125rem] text-indigo leading-relaxed">{alerteSl}</p>
           )}
         </div>
         <div>
           <p className="font-bold text-indigo mb-3">{textes.charge.coupure}</p>
           <div className="flex gap-3">
             {['non', 'oui'].map((v) => (
-              <label key={v} className={clsx('flex items-center gap-2 px-5 py-2 border cursor-pointer',
+              <label key={v} className={clsx('flex items-center gap-2 px-5 py-2.5 rounded-xl border cursor-pointer',
                 c.coupure === v ? 'border-teal bg-teal/5' : 'border-indigo/15')}>
                 <input type="radio" name="coupure" value={v} checked={c.coupure === v} required onChange={() => maj('coupure')(v)} className="accent-teal" />
                 <span className="text-indigo capitalize">{v}</span>
@@ -560,7 +564,7 @@ export default function Questionnaire({
           <label className={labelCls} htmlFor="gpx">Trace GPX de la course — facultatif</label>
           <input id="gpx" type="file" accept=".gpx" className="block text-sm text-indigo" onChange={(e) => choisirTrace(e.target.files?.[0] ?? null)} />
           {avisTrace && (
-            <p role="status" className="bg-white border-l-4 border-teal px-4 py-3 mt-2 text-sm text-indigo leading-relaxed">{avisTrace}</p>
+            <p role="status" className="bg-sand rounded-r-xl border-l-4 border-teal px-4 py-3 mt-2 text-[0.8125rem] text-indigo leading-relaxed">{avisTrace}</p>
           )}
           <p className={aideCls}>{textes.gpx}</p>
         </div>
@@ -569,7 +573,7 @@ export default function Questionnaire({
           <input id="temps" className={inputCls} required placeholder="ex. 5h30" value={c.temps_cible} onChange={(e) => maj('temps_cible')(e.target.value)} />
           {reperes && <p className="text-sm text-teal mt-2 leading-relaxed">{reperes}</p>}
           {bande?.alerte && (
-            <p role="status" className="bg-white border-l-4 border-teal px-4 py-3 mt-2 text-sm text-indigo leading-relaxed">{bande.alerte}</p>
+            <p role="status" className="bg-sand rounded-r-xl border-l-4 border-teal px-4 py-3 mt-2 text-[0.8125rem] text-indigo leading-relaxed">{bande.alerte}</p>
           )}
           <p className={aideCls}>
             {textes.tempsCible}
@@ -584,7 +588,7 @@ export default function Questionnaire({
           {durees.length ? (
             <div className="space-y-2.5">
               {durees.map((d) => (
-                <label key={d} className={clsx('flex items-center justify-between gap-3 px-4 py-3 border cursor-pointer',
+                <label key={d} className={clsx('flex items-center justify-between gap-3 px-4 py-3 rounded-xl border cursor-pointer',
                   c.duree_mois === String(d) ? 'border-teal bg-teal/5' : 'border-indigo/15')}>
                   <span className="flex items-center gap-3">
                     <input type="radio" name="duree_mois" value={String(d)} checked={c.duree_mois === String(d)} required
@@ -622,7 +626,7 @@ export default function Questionnaire({
           <div className="flex flex-wrap gap-2">
             {config.jours.map((j) => (
               <button type="button" key={j} onClick={() => basculerJour(j)} aria-pressed={c.jours_disponibles.includes(j)}
-                className={clsx('px-4 py-2 border text-sm font-semibold transition-colors',
+                className={clsx('px-4 py-2.5 rounded-xl border text-sm font-semibold transition-colors',
                   c.jours_disponibles.includes(j) ? 'bg-teal border-teal text-white' : 'bg-white border-indigo/20 text-indigo hover:border-indigo/50')}>
                 {NOMS_JOURS[j]}
               </button>
@@ -655,7 +659,7 @@ export default function Questionnaire({
             <p className="font-bold text-indigo mb-3">{textes.sante[q]}</p>
             <div className="flex gap-3">
               {['non', 'oui'].map((v) => (
-                <label key={v} className={clsx('flex items-center gap-2 px-5 py-2 border cursor-pointer',
+                <label key={v} className={clsx('flex items-center gap-2 px-5 py-2.5 rounded-xl border cursor-pointer',
                   c[q] === v ? 'border-teal bg-teal/5' : 'border-indigo/15')}>
                   <input type="radio" name={q} value={v} checked={c[q] === v} required onChange={() => maj(q)(v)} className="accent-teal" />
                   <span className="text-indigo capitalize">{v}</span>
@@ -668,7 +672,7 @@ export default function Questionnaire({
             en cours (O1, CGV) ; l'athlète est orienté vers un professionnel de santé, et vers le coaching des kinés du sport. La
             réponse ne quitte toujours pas la page. */}
         {c.blessure === 'oui' && (
-          <div role="alert" className="border-l-4 border-teal bg-sand p-4 space-y-3 text-indigo leading-relaxed">
+          <div role="alert" className="rounded-r-xl border-l-4 border-teal bg-sand p-4 space-y-3 text-[0.875rem] text-indigo leading-relaxed">
             <p>
               Avec une douleur ou une blessure en cours, une préparation automatique n’est pas adaptée. Fais d’abord le point
               avec un professionnel de santé (médecin, kinésithérapeute).
@@ -680,10 +684,10 @@ export default function Questionnaire({
       </Section>}
 
       {refus && (
-        <p role="alert" className="bg-white border-l-4 border-red-400 p-5 text-indigo leading-relaxed">{refus}</p>
+        <p role="alert" className="bg-white rounded-r-xl border-l-4 border-red-400 p-4 text-[0.875rem] text-indigo leading-relaxed">{refus}</p>
       )}
       <div className="flex justify-end">
-        <button type="submit" className="btn btn-primary disabled:opacity-50" disabled={joursCoches.length === 0 || envoi || (!coach && c.blessure === 'oui')}>
+        <button type="submit" className={boutonCls} disabled={joursCoches.length === 0 || envoi || (!coach && c.blessure === 'oui')}>
           {envoi ? 'Vérification…' : 'Vérifier mes réponses →'}
         </button>
       </div>

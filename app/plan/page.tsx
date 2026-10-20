@@ -17,11 +17,11 @@ export default async function PagePlan() {
   return (
     <div className="min-h-screen bg-sand">
       <EnTetePlan />
-      <main className="mx-auto max-w-3xl px-4 sm:px-6 py-10 sm:py-14">
-        <div className="mb-10 px-2">
-          <div className="eyebrow text-teal mb-3">Plan d’entraînement trail</div>
-          <h1 className="text-3xl sm:text-5xl text-indigo leading-tight mb-4">Ton plan, construit sur ta course</h1>
-          <p className="text-indigo/70 text-lg leading-relaxed">
+      <main className="mx-auto max-w-2xl px-4 py-8 sm:py-10">
+        <div className="mb-6 px-1">
+          <div className="text-[0.6875rem] font-bold tracking-[0.14em] uppercase text-teal mb-2">Plan d’entraînement trail</div>
+          <h1 className="text-[1.75rem] sm:text-[2rem] font-extrabold text-indigo tracking-tight leading-tight mb-3">Ton plan, construit sur ta course</h1>
+          <p className="text-[0.9375rem] text-[#4A4866] leading-relaxed">
             Sept rubriques sur ta course, ton niveau, ton terrain et tes disponibilités. Ton plan s’appuie sur les
             dernières données en sciences de l’entraînement : chaque semaine et chaque séance en découlent, jusqu’au
             jour J. Tu le retrouves dans ton app, séance par séance, avec un PDF en complément.

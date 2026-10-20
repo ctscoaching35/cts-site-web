@@ -66,9 +66,9 @@ export default function Merci() {
 
   if (etat === 'generation') {
     return (
-      <div className="bg-white border border-indigo/10 p-10 text-center">
+      <div className="bg-white rounded-2xl border border-indigo/[0.08] p-8 text-center">
         <div className="mx-auto w-10 h-10 border-4 border-teal/20 border-t-teal rounded-full animate-spin mb-6" />
-        <h1 className="text-2xl text-indigo mb-2">Ton plan se construit</h1>
+        <h1 className="text-[1.375rem] font-extrabold text-indigo tracking-tight mb-2">Ton plan se construit</h1>
         <p className="text-indigo/60">Quelques secondes : chaque semaine est calculée sur ta course.</p>
       </div>
     );
@@ -76,8 +76,8 @@ export default function Merci() {
 
   if (etat === 'erreur') {
     return (
-      <div className="bg-white border-l-4 border-red-400 p-8">
-        <h1 className="text-2xl text-indigo mb-3">Un souci est survenu</h1>
+      <div className="bg-white rounded-r-xl border-l-4 border-red-400 p-6">
+        <h1 className="text-[1.375rem] font-extrabold text-indigo tracking-tight mb-3">Un souci est survenu</h1>
         <p className="text-indigo/80 leading-relaxed">{message}</p>
       </div>
     );
@@ -85,9 +85,9 @@ export default function Merci() {
 
   return (
     <div className="space-y-6">
-      <section className="bg-indigo text-white p-8 sm:p-10">
+      <section className="bg-indigo text-white rounded-[18px] p-6 sm:p-8">
         <div className="eyebrow text-teal-light mb-3">Plan prêt</div>
-        <h1 className="text-3xl sm:text-4xl mb-4">Ton plan est prêt{resume ? `, ${resume.athlete.split(' ')[0]}` : ''}.</h1>
+        <h1 className="text-[1.75rem] font-extrabold tracking-tight leading-tight mb-3">Ton plan est prêt{resume ? `, ${resume.athlete.split(' ')[0]}` : ''}.</h1>
         {resume && (
           <p className="text-white/80 leading-relaxed">
             {resume.course}, le {dateFr(resume.date_course)}. Ta préparation de {resume.duree_mois} mois{' '}
@@ -102,9 +102,9 @@ export default function Merci() {
             Ta trace GPX n’a pas pu être lue : ton plan est construit sur le dénivelé déclaré.
           </p>
         )}
-        <a href={pdfUrl} className="btn btn-primary mt-8">Télécharger mon plan (PDF) →</a>
+        <a href={pdfUrl} className="inline-flex items-center justify-center min-h-12 px-6 rounded-xl bg-teal text-white text-sm font-bold mt-6">Télécharger mon plan (PDF) →</a>
       </section>
-      <section className="bg-white border border-indigo/10 p-6 sm:p-8 text-indigo/80 leading-relaxed space-y-3">
+      <section className="bg-white rounded-2xl border border-indigo/[0.08] p-5 sm:p-6 text-[0.9375rem] text-[#4A4866] leading-relaxed space-y-3">
         <p>
           Commence par le mode d’emploi, au début du PDF : il explique le RPE, comment lire une semaine et
           comment adapter ton plan. Chaque semaine tient sur une page, chaque séance est détaillée pas à pas.
