@@ -188,9 +188,15 @@ export function reperesChrono(c: Champs, config: ConfigPlan, coach = false): str
   const plafond = config.temps_max_par_format[c.format];
   const heures = vitesses.map((v) => ke / v);
   const depasse = plafond !== undefined && heures.some((h) => h > plafond);
-  const [rapide, moyenne, prudente] = heures.map((h) =>
-    plafond !== undefined && h > plafond ? `plus de ${plafond}h` : fmt(h)
-  );
+  // Des fourchettes plutôt que des chronos figés (décision coach du 20/10/2026) : trois fourchettes qui se suivent,
+  // coupées à mi-chemin entre deux vitesses repères et prolongées d'une demi-marche aux deux bouts. Au-delà du plafond
+  // du format, la fourchette s'y arrête.
+  const [vr, vm, vp] = vitesses;
+  const bornes = [vr + (vr - vm) / 2, (vr + vm) / 2, (vm + vp) / 2, vp - (vm - vp) / 2].map((v) => ke / v);
+  const fourchette = (de: number, a: number) =>
+    plafond !== undefined && de > plafond ? `plus de ${plafond}h`
+      : `${fmt(de)} à ${plafond !== undefined && a > plafond ? `${plafond}h` : fmt(a)}`;
+  const [rapide, moyenne, prudente] = [0, 1, 2].map((i) => fourchette(bornes[i], bornes[i + 1]));
   const fin = depasse
     ? (coach ? ` Au-delà de ${plafond}h, c’est hors du plafond de ce plan. ${HORS_DU_MOTEUR}`
       : ` Au-delà de ${plafond}h, c’est hors du plafond de ce plan : un coaching individualisé est plus adapté.`)
