@@ -24,7 +24,7 @@ export default async function PagePlan() {
           <p className="text-[0.9375rem] text-[#4A4866] leading-relaxed">
             Sept rubriques sur ta course, ton niveau, ton terrain et tes disponibilités. Ton plan s’appuie sur les
             dernières données en sciences de l’entraînement : chaque semaine et chaque séance en découlent, jusqu’au
-            jour J. Tu le retrouves dans ton app, séance par séance, avec un PDF en complément.
+            jour J. Tes séances arrivent dans Nolio semaine après semaine, et ton app CTS te montre toute ta préparation.
           </p>
         </div>
         <Questionnaire />

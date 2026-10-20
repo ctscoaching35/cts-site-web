@@ -91,8 +91,9 @@ export async function rangerLePlan(sessionId: string, origine: string) {
   let planId = plans.find((p) => p.achat_id === achat.id)?.id;
   if (!planId) {
     const donnees: Plan = await (await lire(corps.donnees_url)).json();
-    const reponsePdf = await lire(corps.pdf_url);
-    const pdf = await reponsePdf.arrayBuffer();
+    // Une préparation vivante n'a plus de PDF (décision coach du 21/10/2026) : ni rangé, ni joint à l'e-mail.
+    const reponsePdf = corps.parametres ? null : await lire(corps.pdf_url);
+    const pdf = reponsePdf ? await reponsePdf.arrayBuffer() : null;
     const { data: plan, error } = await service
       .from('plans')
       .insert({
@@ -125,15 +126,17 @@ export async function rangerLePlan(sessionId: string, origine: string) {
       throw new Error(`plans : ${error?.message}`);
     } else {
       planId = plan.id;
-      const chemin = `${compteId}/${plan.id}.pdf`;
-      const { error: erreurPdf } = await service.storage
-        .from('plans-pdf')
-        .upload(chemin, pdf, { contentType: 'application/pdf', upsert: true });
-      if (erreurPdf) throw new Error(`PDF : ${erreurPdf.message}`);
-      await service.from('plans').update({ pdf_chemin: chemin }).eq('id', plan.id);
+      if (pdf) {
+        const chemin = `${compteId}/${plan.id}.pdf`;
+        const { error: erreurPdf } = await service.storage
+          .from('plans-pdf')
+          .upload(chemin, pdf, { contentType: 'application/pdf', upsert: true });
+        if (erreurPdf) throw new Error(`PDF : ${erreurPdf.message}`);
+        await service.from('plans').update({ pdf_chemin: chemin }).eq('id', plan.id);
+      }
       // Le plan est rangé : un e-mail qui échoue ne le défait pas, il se signale dans le journal.
       try {
-        await envoyerBienvenue(email, donnees, `${origine}/app`, { nom: nomDuPdf(reponsePdf), contenu: pdf },
+        await envoyerBienvenue(email, donnees, `${origine}/app`, reponsePdf && pdf ? { nom: nomDuPdf(reponsePdf), contenu: pdf } : null,
           corps.parametres ? { adresse: corps.acheteur?.nolio_email || email } : null);
       } catch (e) {
         console.error(`E-mail de bienvenue de l'achat ${sessionId} :`, e);

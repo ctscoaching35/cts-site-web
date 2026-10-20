@@ -296,10 +296,6 @@ export const plansOffre = {
         r: 'Le plan ne remplace pas un avis médical : adapte ou interromps la séance, et consulte un professionnel de santé.',
       },
       {
-        q: 'Et si je n’ai pas de connexion ?',
-        r: 'Ton plan t’est aussi envoyé en PDF avec l’e-mail de bienvenue : une copie à garder, à consulter sans connexion ou à imprimer.',
-      },
-      {
         q: 'Je prépare plusieurs courses.',
         r: 'Un plan par course : pour une autre course, un nouveau plan, rangé dans le même compte.',
       },

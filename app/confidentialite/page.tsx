@@ -94,7 +94,7 @@ export default async function Confidentialite() {
         <Section titre={no('Ton achat et ton compte')}>
           <Liste>
             <li>
-              <strong>Ton compte</strong> : ton e-mail, ton nom, ton plan (ses données et son PDF), les réponses qui ont
+              <strong>Ton compte</strong> : ton e-mail, ton nom, ton plan (ses données), les réponses qui ont
               servi à le construire, les dates de création et de connexion. Nous le gardons tant qu’il existe : tu peux le
               supprimer à tout moment dans l’app (Compte, puis « Supprimer mon compte ») ; s’il reste 3 ans sans activité,
               il est supprimé, après un e-mail d’avertissement 30 jours avant (le contrat).
@@ -110,7 +110,7 @@ export default async function Confidentialite() {
               Nous ne voyons jamais tes numéros de carte.
             </li>
             <li>
-              <strong>Les e-mails</strong> (bienvenue avec ton PDF, codes de connexion, rappel si tu l’as demandé, avertissement avant suppression)
+              <strong>Les e-mails</strong> (bienvenue, codes de connexion, rappel si tu l’as demandé, avertissement avant suppression)
               partent par Brevo.
             </li>
           </Liste>

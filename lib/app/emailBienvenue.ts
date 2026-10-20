@@ -8,7 +8,8 @@
  * (« Ta préparation commence le… », ou la semaine rejointe).
  *
  * Un plan écrit semaine par semaine (depuis le 19/10/2026, CTS_NOLIO_CADRAGE.md, P1 et T1) : ses séances vivent
- * dans Nolio, l'invitation part à part, l'app devient son tableau de bord. BROUILLON, à valider par le coach.
+ * dans Nolio, l'invitation part à part, l'app devient son tableau de bord. BROUILLON, à valider par le coach. Sans PDF
+ * (décision coach du 21/10/2026 : la préparation est vivante, l'app en montre tout à jour).
  */
 import type { Plan } from './plan';
 
@@ -47,7 +48,7 @@ export function contenuBienvenue(plan: Plan, lienApp: string, nolio: { adresse: 
         'Pour y revenir facilement, ajoute l’app à l’écran d’accueil de ton téléphone : elle te montre comment à ' +
         `la première ouverture. ${connexion}`,
     ]),
-    'Ta préparation est aussi jointe en PDF, à garder ou à imprimer.',
+    ...(nolio ? [] : ['Ta préparation est aussi jointe en PDF, à garder ou à imprimer.']),
     'Une question sur ta préparation ? Réponds simplement à cet e-mail.',
     // La confirmation de l'achat sur un support durable, avec la demande de début immédiat que l'acheteur a cochée
     // avant de payer et son droit de rétractation (Code de la consommation, art. L221-13 et L221-25 ; décision coach du
@@ -82,7 +83,7 @@ export async function envoyerBienvenue(
   email: string,
   plan: Plan,
   lienApp: string,
-  pdf: { nom: string; contenu: ArrayBuffer },
+  pdf: { nom: string; contenu: ArrayBuffer } | null,
   nolio: { adresse: string } | null = null,
 ) {
   const cle = process.env.BREVO_API_KEY?.trim();
@@ -101,7 +102,7 @@ export async function envoyerBienvenue(
       subject: sujet,
       textContent: texte,
       htmlContent: html,
-      attachment: [{ name: pdf.nom, content: Buffer.from(pdf.contenu).toString('base64') }],
+      ...(pdf ? { attachment: [{ name: pdf.nom, content: Buffer.from(pdf.contenu).toString('base64') }] } : {}),
     }),
     cache: 'no-store',
   });

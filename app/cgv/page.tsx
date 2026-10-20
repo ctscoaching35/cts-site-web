@@ -81,7 +81,6 @@ export default async function CGV() {
             l’accès à l’app CTS, ton tableau de bord : ta course, ta trame, ta jauge de préparation et tes graphiques, ta
             fiche de course et la bibliothèque de fiches ;
           </li>
-          <li>le PDF de ton plan, joint à l’e-mail de bienvenue.</li>
         </Liste>
         <p>
           Elle ne comprend ni suivi ni échange avec un coach, ne convient pas à une blessure en cours, et ne remplace pas
@@ -91,12 +90,12 @@ export default async function CGV() {
         <p>
           L’app s’ouvre dans un navigateur récent, sur téléphone ou sur ordinateur, et peut s’ajouter à l’écran d’accueil
           du téléphone. Il faut une connexion internet pour s’y connecter : la connexion se fait par un code à 6 chiffres
-          envoyé par e-mail, sans mot de passe. Le PDF se lit avec n’importe quel lecteur de PDF.
+          envoyé par e-mail, sans mot de passe.
         </p>
         <p>
           Ton plan reste accessible dans l’app au moins jusqu’au lendemain de ta course, et tant que ton compte existe. Un
           compte resté 3 ans sans activité est supprimé, après un e-mail d’avertissement 30 jours avant (voir la{' '}
-          <a href="/confidentialite">politique de confidentialité</a>). Le PDF reste à toi.
+          <a href="/confidentialite">politique de confidentialité</a>).
         </p>
         <p>
           Les durées proposées dépendent de ta course et de ton niveau. Avant tout paiement, le questionnaire te dit si la
@@ -149,8 +148,7 @@ export default async function CGV() {
           <li>Tu payes sur la page de paiement sécurisée de notre prestataire Stripe.</li>
         </Liste>
         <p>
-          Le contrat est conclu quand ton paiement est confirmé. Tu reçois alors par e-mail la confirmation de ta commande,
-          avec ton plan en PDF.
+          Le contrat est conclu quand ton paiement est confirmé. Tu reçois alors par e-mail la confirmation de ta commande.
         </p>
       </Section>
 
@@ -167,7 +165,7 @@ export default async function CGV() {
       <Section titre="8. Début de ta préparation et droit de rétractation">
         <p>
           Ta préparation commence dès ton paiement confirmé : ton plan s’affiche dans l’app, ton compte est créé, l’e-mail
-          de bienvenue t’est envoyé avec le PDF de ton plan et Nolio t’invite dans l’équipe CTS ; tes séances s’y écrivent
+          de bienvenue t’est envoyé et Nolio t’invite dans l’équipe CTS ; tes séances s’y écrivent
           ensuite chaque dimanche, jusqu’à ta course. Si ton plan n’a pas pu être construit, la page te le dit :
           écris-nous, nous te le livrons ou, si nous ne le pouvons pas, nous te remboursons intégralement.
         </p>

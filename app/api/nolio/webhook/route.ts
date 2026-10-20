@@ -36,8 +36,8 @@ export async function POST(request: Request) {
       for (const p of plans ?? []) {
         await service.from('plans').update({ nolio_statut: 'refuse' }).eq('id', p.id);
         await prevenirCoach('Plan CTS : invitation Nolio refusée',
-          `L’acheteur du plan « ${p.course_nom} » a refusé l’invitation dans ton équipe Nolio. Son plan reste en PDF ; `
-          + 'reprends contact avec lui depuis ton espace coach.');
+          `L’acheteur du plan « ${p.course_nom} » a refusé l’invitation dans ton équipe Nolio : ses séances ne peuvent `
+          + 'pas lui arriver. Reprends contact avec lui depuis ton espace coach.');
       }
     } else if (e.type === 'team.member.leave' || e.type === 'access.ended') {
       // Plus aucun chemin vers lui : on ne le lit plus, et l'état tiré de Nolio s'efface.
