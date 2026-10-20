@@ -283,6 +283,10 @@ export function semaineDu(plan: Plan, dateIso: string): Semaine | null {
   return plan.semaines.find((s) => s.lundi && s.lundi <= dateIso && dateIso <= ajouterJours(s.lundi, 6)) ?? null;
 }
 
+// Un coaché sans espace dans l'app (décision coach du 20/10/2026, « dis-le à ton coach ») : les notes Nolio ne
+// renvoient pas vers l'app, qu'il ne peut pas ouvrir ; il passe par son coach.
+const sansApp = (o: Objectif) => o.coache && !o.compteAthlete;
+
 async function garderNote(o: Objectif, cle: string, dateIso: string, titre: string, texte: string) {
   const d = await destinataire(o.nolioAthlete);
   const cree = await creer(d, cle, { name: titre, date_start: dateIso, color: COULEUR_NOTE, description: texte }, 'note');
@@ -664,7 +668,9 @@ export async function fatigueDuJour(planId: string): Promise<Compte | null> {
   await clientService().from('plans').update({ etat_ecriture: r.etat }).eq('id', planId);
   if (jour.date_iso) {
     const lien = `${site.url}/app/garder?plan=${planId}&seance=${encodeURIComponent(r.remplacer)}`;
-    await garderNote(o, `${r.remplacer}:fatigue`, jour.date_iso, 'Séance allégée', `${r.note} Garder ma séance d’origine : ${lien}`);
+    // Sans espace dans l'app, pas de lien : il le dit à son coach, qui la remet depuis son Suivi.
+    const suite = sansApp(o) ? 'Tu préfères garder ta séance d’origine ? Dis-le à ton coach dans Nolio.' : `Garder ma séance d’origine : ${lien}`;
+    await garderNote(o, `${r.remplacer}:fatigue`, jour.date_iso, 'Séance allégée', `${r.note} ${suite}`);
   }
   return { plan: planId, quoi: `${r.remplacer} allégée`, coache: o.coache, journal: r.journal ? [r.journal] : [] };
 }
@@ -791,7 +797,7 @@ export async function poserFichePreparation(o: Objectif, c: Course) {
   const jour = ajouterJours(c.date, -7) > aujourdhui ? ajouterJours(c.date, -7) : aujourdhui;
   const cree = await creer(d, cle, {
     name: `Ta fiche course : ${c.nom}`, date_start: jour, color: '#9A6A12',
-    description: `Ta course de préparation approche : son profil, ses tronçons et ta stratégie de ravitaillement. ${lienFicheCourse(o.planId)}?course=${c.date}`,
+    description: `Ta course de préparation approche : son profil, ses tronçons et ta stratégie nutritionnelle. ${lienFicheCourse(o.planId)}?course=${c.date}`,
   }, 'note');
   if (cree.erreur) throw new Error(cree.erreur);
   await garderEnvoi(o.coachId, o.planId, cle, [cree]);
@@ -993,8 +999,9 @@ export async function lireLesTests(planId: string): Promise<TestLu[]> {
         await garder('lu', v);
         sortie.push({ plan: planId, coache: o.coache, texte });
       } else if (r || abandon) {
-        if (r) await garderNote(o, `${j.id}:resultat`, aujourdhui, 'Ton test de la parole',
-          `Ta réponse ne se lit pas : donne ta FC au seuil 1 dans ton app, ${lienZones}`);
+        if (r) await garderNote(o, `${j.id}:resultat`, aujourdhui, 'Ton test de la parole', sansApp(o)
+          ? 'Ta réponse ne se lit pas : envoie ta FC au seuil 1 à ton coach dans Nolio.'
+          : `Ta réponse ne se lit pas : donne ta FC au seuil 1 dans ton app, ${lienZones}`);
         await garder(r ? 'illisible' : 'sans_reponse', {});
       }
       continue;
@@ -1008,7 +1015,8 @@ export async function lireLesTests(planId: string): Promise<TestLu[]> {
       const r = vcDuTest(faite.tours, faite.flux);
       if ('erreur' in r) {
         await garderNote(o, `${j.id}:resultat`, aujourdhui, 'Ton test de vitesse critique',
-          `Ton test n’a pas pu se lire tout seul (${r.erreur.toLowerCase().replace(/\.$/, '')}) : donne tes deux distances dans ton app, ${lienZones}`);
+          `Ton test n’a pas pu se lire tout seul (${r.erreur.toLowerCase().replace(/\.$/, '')}) : ${sansApp(o)
+            ? 'envoie tes deux distances à ton coach dans Nolio.' : `donne tes deux distances dans ton app, ${lienZones}`}`);
         await garder('illisible', { erreur: r.erreur });
         continue;
       }
@@ -1020,8 +1028,9 @@ export async function lireLesTests(planId: string): Promise<TestLu[]> {
     } else if (cle === 'fc_seuil2') {
       const fc = fcSeuil2DuTest(faite.tours, faite.flux);
       if (fc === null) {
-        await garderNote(o, `${j.id}:resultat`, aujourdhui, 'Ta FC au seuil 2',
-          `Ta FC au seuil 2 n’a pas pu se lire toute seule : donne-la dans ton app, ${lienZones}`);
+        await garderNote(o, `${j.id}:resultat`, aujourdhui, 'Ta FC au seuil 2', sansApp(o)
+          ? 'Ta FC au seuil 2 n’a pas pu se lire toute seule : envoie-la à ton coach dans Nolio.'
+          : `Ta FC au seuil 2 n’a pas pu se lire toute seule : donne-la dans ton app, ${lienZones}`);
         await garder('illisible', {});
         continue;
       }
