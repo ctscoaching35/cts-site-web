@@ -219,19 +219,26 @@ export type BlocDuPlan = { nom: string; du: string; au: string; moment: 'fait' |
 // depuis : pour un coaché qui a rejoint la préparation en cours de route (course.rejoint), son lundi d'arrivée : les blocs
 // d'avant, qu'il n'a pas faits, ne s'affichent pas, et le bloc en cours commence à son arrivée (décision coach du
 // 20/10/2026 : « parler du bloc actuel sans parler des blocs antérieurs » ; le coaching part de l'objectif, à reculons).
-export function blocsDuPlan(trame: LigneTrame[], plan: Plan, aujourdhui: string, depuis: string | null = null): BlocDuPlan[] {
+// Ce qu'un bloc travaille et entretient, d'après la vue d'ensemble du plan (« Ce que tu travailles », « En rappel ») :
+// pour « Ta préparation, bloc par bloc » et la description du bandeau Nolio de chaque semaine (décision coach du
+// 21/10/2026).
+export function qualitesDuBloc(plan: Plan, bloc: string): { travail: string[]; rappel: string[] } {
   const [entete = [], ...lignes] = plan.architecture.tableau;
   const col = (titre: string) => entete.findIndex((e) => e.toLowerCase().startsWith(titre));
   const [cBloc, cTravail, cRappel] = [col('bloc'), col('ce que tu travailles'), col('en rappel')];
-  const qualites = (bloc: string, c: number) => [...new Set(lignes.filter((l) => l[cBloc] === bloc)
+  const qualites = (c: number) => [...new Set(lignes.filter((l) => l[cBloc] === bloc)
     .flatMap((l) => (c >= 0 ? String(l[c] ?? '') : '').split(',').map((q) => q.trim()).filter((q) => q && q !== '—')))];
+  return { travail: qualites(cTravail), rappel: qualites(cRappel) };
+}
+
+export function blocsDuPlan(trame: LigneTrame[], plan: Plan, aujourdhui: string, depuis: string | null = null): BlocDuPlan[] {
   const veille = ajouterJours(plan.course.date, -1);
   const blocs: BlocDuPlan[] = [];
   for (const l of trame.filter((x) => x.lundi && (!depuis || x.lundi >= depuis))) {
     const fin = ajouterJours(l.lundi, 6) < veille ? ajouterJours(l.lundi, 6) : veille;
     const dernier = blocs[blocs.length - 1];
     if (dernier && dernier.nom === l.bloc) dernier.au = fin;
-    else blocs.push({ nom: l.bloc, du: l.lundi, au: fin, moment: 'avenir', travail: qualites(l.bloc, cTravail), rappel: qualites(l.bloc, cRappel) });
+    else blocs.push({ nom: l.bloc, du: l.lundi, au: fin, moment: 'avenir', ...qualitesDuBloc(plan, l.bloc) });
   }
   return blocs.map((b) => ({ ...b, moment: b.au < aujourdhui ? 'fait' : b.du <= aujourdhui ? 'encours' : 'avenir' }));
 }

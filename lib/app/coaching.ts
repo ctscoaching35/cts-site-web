@@ -9,6 +9,7 @@ import { API_URL } from '@/lib/plan';
 import { actionsTrame, dateDe, empreinte, type Voulu } from './trameNolio';
 import { lienFicheCourse } from './ficheCourse';
 import { ajouterJours, type Plan, type Semaine } from './plan';
+import { qualitesDuBloc } from './tableau';
 import { appelNolio, convertirIdsV1, listeNolio, moiNolio, nolioConfigure, refusNolio, SPORTS_COURSE } from './nolio';
 import { ficheDuCompte } from './demandes';
 import { clientServeur, clientService } from './supabase';
@@ -169,7 +170,9 @@ export async function seancesDuMoteur(plan: Plan, planId: string, semaine: Semai
   const r = await fetch(`${API_URL}/v1/nolio/seances`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
     body: JSON.stringify({ jours: semaine.jours, profil, niveau, calendrier,
-      semaine: { type: semaine.type, bloc: semaine.bloc, lundi: semaine.lundi, rang_bloc: rang || 1 } }),
+      // Sa place et les qualités de son bloc : la description du bandeau (décision coach du 21/10/2026).
+      semaine: { type: semaine.type, bloc: semaine.bloc, lundi: semaine.lundi, rang_bloc: rang || 1, numero: semaine.numero,
+        total: plan.semaines.length, ...qualitesDuBloc(plan, semaine.bloc) } }),
   });
   if (!r.ok) throw new Error(`Moteur /v1/nolio/seances : ${r.status}`);
   const corps = await r.json();
