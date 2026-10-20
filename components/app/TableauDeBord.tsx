@@ -69,14 +69,16 @@ export function Montagne({ score, ton }: { score: number | null; ton: keyof type
 
 // Un compte à rebours en « J- » jusqu'à l'objectif, sans « semaine x sur N », pour tous, plans achetés compris
 // (décisions coach du 19/10/2026 : « on part de l'objectif et on revient jusqu'au jour J »).
-export function CarteObjectif({ plan, restants, jauge, etape, href }: {
-  plan: Plan; restants: number; jauge: Jauge; etape: 'avant' | 'pendant' | 'apres'; href: string;
+// surtitre : « Ton prochain objectif majeur » pour un coaché (décision coach du 20/10/2026 : son app le suit d'un
+// objectif à l'autre), « Ton objectif » pour un acheteur.
+export function CarteObjectif({ plan, restants, jauge, etape, href, surtitre = 'Ton objectif' }: {
+  plan: Plan; restants: number; jauge: Jauge; etape: 'avant' | 'pendant' | 'apres'; href: string; surtitre?: string;
 }) {
   return (
     <CarteSombre className="space-y-3.5">
       <div className="flex justify-between items-start gap-3">
         <div className="min-w-0">
-          <Surtitre ton="clair" as="div">Ton objectif</Surtitre>
+          <Surtitre ton="clair" as="div">{surtitre}</Surtitre>
           <h2 className="mt-1.5 text-[1.625rem] font-extrabold leading-tight">{plan.course.nom}</h2>
           <p className="mt-1.5 text-[0.8125rem] text-[#D6D5E6]">{dateLongue(plan.course.date)} · {plan.course.format_clair}</p>
         </div>

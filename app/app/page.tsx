@@ -48,7 +48,8 @@ export default async function Accueil({ searchParams }: { searchParams: Recherch
           <h1 className="mt-1 text-[1.625rem] font-extrabold text-indigo tracking-tight">{nom ? `Bonjour ${nom}` : 'Bonjour'}</h1>
         </div>
 
-        <CarteObjectif plan={plan} restants={restants} jauge={jauge} etape={etape} href={lien('/app/plan', ctx)} />
+        <CarteObjectif plan={plan} restants={restants} jauge={jauge} etape={etape} href={lien('/app/plan', ctx)}
+          surtitre={!ctx.coache ? 'Ton objectif' : etape === 'apres' ? 'Ton dernier objectif majeur' : 'Ton prochain objectif majeur'} />
         {etape !== 'apres' && <CarteNolio etat={d.nolio} />}
         <CarteNouveauBadge badges={nouveaux} href={`${lien('/app/profil', ctx)}#badges`} />
 
