@@ -21,8 +21,9 @@ import { donneesTableau, semaineDansNolio, semaineEcrite } from '@/lib/app/table
 // d'entre-deux. Les données, le profil et la bibliothèque ont leur onglet.
 export default async function Accueil({ searchParams }: { searchParams: Recherche }) {
   const ctx = await contexte(searchParams, { sansObjectif: true });
-  // La première fois sur cet appareil : l'écran de bienvenue (cadrage, 2.6), lu avant d'entrer.
-  if (!(await cookies()).get(COOKIE_BIENVENUE)) redirect(lien('/app/bienvenue', ctx));
+  // La première fois sur cet appareil : l'écran de bienvenue d'un acheteur (cadrage, 2.6), son avertissement santé lu
+  // avant d'entrer ; un coaché entre directement (décision coach du 20/10/2026).
+  if (!ctx.coache && !(await cookies()).get(COOKIE_BIENVENUE)) redirect(lien('/app/bienvenue', ctx));
   const { plan, jour } = ctx;
   const lundiCourant = ajouterJours(jour, -((new Date(`${jour}T12:00:00Z`).getUTCDay() + 6) % 7));
   // Un coaché sans objectif (décision coach du 20/10/2026, « tableau de bord complet ») : sa semaine dans Nolio, un
