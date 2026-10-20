@@ -2,7 +2,8 @@ import Image from 'next/image';
 import Installation from '@/components/app/Installation';
 import { Avertissement } from '@/components/app/Texte';
 import { entrerDansLePlan } from '@/lib/app/actionsBienvenue';
-import { contexte, lien, type Recherche } from '@/lib/app/contexte';
+import { contexte, lien, prenom, type Recherche } from '@/lib/app/contexte';
+import { jMoins } from '@/lib/app/plan';
 
 // L'écran de bienvenue (cadrage, 2.6), à la première ouverture sur un appareil : la course et
 // la date de départ, sur quoi le plan se construit (la couverture du PDF), l'installation sur
@@ -12,6 +13,47 @@ export default async function Bienvenue({ searchParams }: { searchParams: Recher
   const ctx = await contexte(searchParams);
   const { plan } = ctx;
   const entrer = entrerDansLePlan.bind(null, lien('/app', ctx));
+  // Un coaché (décision coach du 20/10/2026, « version coaching ») : son objectif et son J-, ce que fait l'app, son
+  // installation ; ni plan, ni semaines, ni fondements, ni avertissement des plans.
+  if (ctx.coache) {
+    const { course } = plan;
+    const nom = prenom(plan.athlete.nom);
+    const reperes: [string, string][] = [
+      ['Date', new Date(`${course.date}T12:00:00Z`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', timeZone: 'UTC' })],
+      ['Distance', `${Math.round(course.distance_km)}\u00a0km`],
+      ['D+', `${course.dplus_m.toLocaleString('fr-FR')}\u00a0m`],
+      ['Jour J', jMoins(ctx.jour, course.date)],
+    ];
+    return (
+      <main className="mx-auto max-w-md px-4 py-8 space-y-6">
+        <div className="text-center space-y-2">
+          <Image src="/logo/cts-logo-rond-navy.png" alt="CTS Coaching" width={64} height={64} className="mx-auto w-16 h-16" />
+          <div className="eyebrow text-teal">Coaching individualisé</div>
+          <h1 className="text-3xl text-indigo">{nom ? `Bienvenue ${nom}` : 'Bienvenue'}</h1>
+          <p className="text-indigo/70">{course.nom} · {course.format_clair}</p>
+        </div>
+        <dl className="grid grid-cols-4 bg-white shadow-sm border-t-2 border-teal">
+          {reperes.map(([cle, valeur]) => (
+            <div key={cle} className="text-center px-1 py-3">
+              <dt className="text-[0.58rem] font-bold tracking-cts-tight uppercase text-teal">{cle}</dt>
+              <dd className="font-extrabold text-indigo text-sm leading-tight mt-0.5">{valeur}</dd>
+            </div>
+          ))}
+        </dl>
+        <p className="text-center text-indigo/80 leading-relaxed px-2">
+          Ton coach te suit jusqu’à ton jour J. Tes séances arrivent chaque dimanche dans Nolio ; ici, ton objectif, ta
+          progression, tes données, tes badges et la bibliothèque.
+        </p>
+        <section className="bg-white shadow-sm p-4 space-y-2">
+          <h2 className="font-bold text-indigo">L’app sur ton écran d’accueil</h2>
+          <Installation />
+        </section>
+        <form action={entrer}>
+          <button type="submit" className="btn btn-primary w-full">Entrer</button>
+        </form>
+      </main>
+    );
+  }
   return (
     <main className="mx-auto max-w-md px-4 py-8 space-y-6">
       <div className="text-center space-y-2">
