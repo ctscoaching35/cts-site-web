@@ -86,7 +86,7 @@ export default async function TesZones({ searchParams }: { searchParams: Recherc
                 </div>
                 {t.duree && <p>{t.duree}</p>}
                 <div>
-                  <strong className="text-indigo">Ce que ça change dans ton plan.</strong>
+                  <strong className="text-indigo">Ce que ça change dans ta préparation.</strong>
                   <ul className="list-disc pl-5 mt-1 space-y-0.5">
                     {t.change.map((m, i) => <li key={m}>{change[i] ?? t.change_general[i]}</li>)}
                   </ul>

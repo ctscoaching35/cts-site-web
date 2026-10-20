@@ -26,7 +26,7 @@ import { clientService } from './supabase';
 const SANS_CODE_PENDANT_MS = 60 * 60 * 1000;
 
 export const MESSAGE_RANGEMENT =
-  'Ton plan est prêt, mais il n’a pas pu être rangé dans ton compte, et ton paiement est bien enregistré. ' +
+  'Ta préparation est prête, mais elle n’a pas pu être rangée dans ton compte, et ton paiement est bien enregistré. ' +
   'Écris-nous par le formulaire de contact de cts-coaching.com en donnant ce lien : Juliette ou Romain te ' +
   'répondent sous 48 h.';
 

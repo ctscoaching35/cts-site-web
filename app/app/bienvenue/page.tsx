@@ -25,7 +25,8 @@ export default async function Bienvenue({ searchParams }: { searchParams: Recher
     <main className="mx-auto max-w-md px-4 py-8 space-y-4">
       <div className="text-center space-y-2">
         <Image src="/logo/cts-logo-rond-navy.png" alt="CTS Coaching" width={64} height={64} className="mx-auto w-16 h-16" />
-        <div className="text-[0.6875rem] font-bold tracking-[0.14em] uppercase text-teal">{c.surtitre}</div>
+        {/* Le nom de l'offre (O1 ; décision coach du 20/10/2026, point 5) ; le PDF garde sa couverture. */}
+        <div className="text-[0.6875rem] font-bold tracking-[0.14em] uppercase text-teal">Préparation CTS</div>
         <h1 className="text-[1.75rem] font-extrabold text-indigo tracking-tight leading-tight">{nom ? `Bienvenue ${nom}` : 'Bienvenue'}</h1>
         <p className="text-[0.8125rem] text-[#5E5C78]">{plan.course.nom} · {plan.course.format_clair}</p>
       </div>

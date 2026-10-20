@@ -56,7 +56,7 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
             <p className="text-base font-bold text-indigo">{nom}</p>
             {claims?.email && <p className="text-[0.8rem] text-[#5E5C78] truncate">{String(claims.email)}</p>}
             <span className="mt-1.5 inline-block text-[0.656rem] font-bold tracking-[0.08em] text-teal-dark bg-[#E1EFEA] rounded-md px-2 py-0.5">
-              {ctx.coache ? 'COACHING INDIVIDUALISÉ' : 'PLAN CTS'}
+              {ctx.coache ? 'COACHING INDIVIDUALISÉ' : 'PRÉPARATION CTS'}
             </span>
           </div>
         </Carte>
@@ -102,7 +102,7 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
                       : 'Sans ton accord dans Nolio, ta préparation suit sa trame, ton questionnaire et tes séances faites ou manquées.')
                     : affiche?.accord_lecture_le
                       ? `Depuis le ${dateLongue(String(affiche.accord_lecture_le).slice(0, 10), true)}, l’app lit dans Nolio tes séances faites, ton RPE, ton ressenti et ton Hooper, et la trace de tes séances test pour en tirer tes repères, seulement pour ajuster ton plan et afficher tes graphiques. Sans cet accord, ton plan suit sa trame, ton questionnaire du dimanche et tes séances faites ou manquées, et tu donnes toi-même tes repères.`
-                      : 'Sans accord de lecture, ton plan suit sa trame, ton questionnaire du dimanche et tes séances faites ou manquées, et tu donnes toi-même tes repères.'}
+                      : 'Sans accord de lecture, ta préparation suit sa trame, ton questionnaire du dimanche et tes séances faites ou manquées, et tu donnes toi-même tes repères.'}
                 </p>
                 {!ctx.coache && affiche?.parametres && affiche.accord_lecture_le && <RetirerAccord planId={ctx.cle} />}
               </div>

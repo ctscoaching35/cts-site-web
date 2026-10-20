@@ -61,7 +61,7 @@ export default function FormulaireConnexion({ suite = '/app' }: { suite?: string
   ) : (
     <form suppressHydrationWarning onSubmit={verifierCode} className="space-y-4">
       <p className="text-sm text-indigo/70 leading-relaxed">
-        Si un plan CTS est rattaché à <strong className="text-indigo">{email}</strong>, tu vas recevoir un code à
+        Si un compte CTS est rattaché à <strong className="text-indigo">{email}</strong>, tu vas recevoir un code à
         6 chiffres.
       </p>
       <label className="block">

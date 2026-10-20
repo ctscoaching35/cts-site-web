@@ -23,7 +23,7 @@ export default async function SansPlan() {
   return (
     <main className="mx-auto max-w-sm px-4 py-12 space-y-6 text-center">
       <h1 className="text-2xl text-indigo">Tu n’as pas encore de plan</h1>
-      <Link href="/plan" className="btn btn-primary">Construire mon plan</Link>
+      <Link href="/plan" className="btn btn-primary">Construire ma préparation</Link>
       <Compte email={email} />
     </main>
   );

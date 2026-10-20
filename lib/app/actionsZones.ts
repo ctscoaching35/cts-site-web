@@ -25,7 +25,7 @@ async function enregistrer(planId: string, consentement: boolean, valeurs: Recor
   const coache = await enregistrerSurLaFiche(compteId, planId, valeurs);
   if (coache) return coache;
   const { data: plan } = await supabase.from('plans').select('id').eq('id', planId).maybeSingle();
-  if (!plan) return { ok: false, message: 'Ce plan n’est pas dans ton compte.' };
+  if (!plan) return { ok: false, message: 'Cette préparation n’est pas dans ton compte.' };
   const { data: existant } = await supabase.from('zones').select('plan_id').eq('plan_id', planId).maybeSingle();
   if (!existant && !consentement)
     return { ok: false, message: 'Coche la case pour que CTS garde tes valeurs : sans ton accord, rien n’est enregistré.' };
