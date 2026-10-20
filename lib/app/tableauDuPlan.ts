@@ -3,8 +3,10 @@
  * moment, ce qui a été fait chaque semaine écoulée, où en est l'athlète dans Nolio. Côté serveur seulement. Le plan
  * est celui que le contexte a choisi parmi ceux du compte connecté.
  */
+import { destinataire } from './coaching';
 import type { Contexte } from './contexte';
-import { trameDuPlan, type LigneTrame, type Realise } from './ecriture';
+import { objectifEcrit, trameDuPlan, type LigneTrame, type Realise } from './ecriture';
+import { listeNolio } from './nolio';
 import { ajouterJours, type Semaine } from './plan';
 import { clientService } from './supabase';
 import { trameDesDonnees, type Fiche } from './tableau';
@@ -79,6 +81,29 @@ export async function semaineEcrite(ctx: Contexte, numero: string): Promise<Sema
   if (ctx.demonstration) return duPlan;
   const { data } = await clientService().from('semaines_ecrites').select('donnees').eq('plan_id', ctx.cle).eq('numero', numero).maybeSingle();
   return (data?.donnees as Semaine | undefined) ?? duPlan;
+}
+
+// « Cette semaine » telle qu'elle est dans Nolio (décision coach du 20/10/2026 : « on envoie et je modifie au besoin »,
+// et ce que le coach y change se voit dans l'app) : les séances prévues de la semaine, lues à l'affichage, sans copie,
+// avec l'accord de lecture (la politique de confidentialité) et une fois l'objectif parti dans Nolio. null sinon, ou si
+// Nolio ne répond pas : la carte montre la semaine écrite par le moteur.
+export type SeanceNolio = { id: string; date: string; nom: string; minutes: number | null; couleur: string | null };
+export async function semaineDansNolio(ctx: Contexte, lundi: string): Promise<SeanceNolio[] | null> {
+  if (ctx.demonstration) return null;
+  try {
+    const o = await objectifEcrit(ctx.cle);
+    if (!o?.nolioAthlete || !o.accordLecture || !o.envois.length) return null;
+    const d = await destinataire(o.nolioAthlete);
+    type Prevue = { id: string; name?: string; date_start: string; duration?: { value?: number } | null; color?: string | null };
+    const prevues = await listeNolio<Prevue>(
+      `planned/trainings/?date_from=${lundi}&date_to=${ajouterJours(lundi, 6)}${d.moi ? '' : `&athlete=${d.usr}`}`);
+    return prevues
+      .map((p) => ({ id: p.id, date: p.date_start.slice(0, 10), nom: p.name ?? 'Séance',
+        minutes: p.duration?.value ? Math.round(p.duration.value / 60) : null, couleur: p.color ?? null }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  } catch {
+    return null;
+  }
 }
 
 // Les courses de préparation qui ont leur fiche de course (PO3), par leur date ; vide avant la migration du 19/10/2026.

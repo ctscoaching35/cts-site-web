@@ -5,7 +5,7 @@ import { BANNIERE, FAMILLES } from '@/lib/app/charte';
 import { lien, type Contexte } from '@/lib/app/contexte';
 import { dateLongue, jourMois, slugFiche, type Jour, type Plan, type Semaine } from '@/lib/app/plan';
 import { ECART_ZONE_HOOPER, enHeures, type Barre, type Fiche, type Jauge, type PointHooper } from '@/lib/app/tableau';
-import type { CourseSecondaire, EtatNolio } from '@/lib/app/tableauDuPlan';
+import type { CourseSecondaire, EtatNolio, SeanceNolio } from '@/lib/app/tableauDuPlan';
 import { Carte, CarteSombre, PastilleDate, Surtitre } from './Ui';
 
 // Les pièces de l'accueil et de « Mes données » (CTS_NOLIO_CADRAGE.md, T1, T4, T10, AP1 à AP3 ; maquettes validées
@@ -166,19 +166,42 @@ const jourCourt = (iso: string | null, jour: string) => {
 };
 const couleurDuJour = (j: Jour) => j.couleur ?? FAMILLES[j.famille]?.filet ?? '#B9C7C3';
 
-export function CetteSemaine({ semaine, ligne, questionnaire }: {
-  semaine: Semaine | null; ligne: LigneTrame | null; questionnaire: boolean;
+// nolio : la semaine telle qu'elle est dans Nolio, retouches du coach comprises (tableauDuPlan.semaineDansNolio) ; sans
+// elle, la semaine écrite par le moteur.
+export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null }: {
+  semaine: Semaine | null; ligne: LigneTrame | null; questionnaire: boolean; nolio?: SeanceNolio[] | null;
 }) {
   const jours = (semaine?.jours ?? []).filter((j) => j.famille !== 'repos' && j.seance);
   const dimanche = semaine?.jours.find((j) => j.jour.toLowerCase().startsWith('dim'));
-  if (!jours.length && !ligne) return null;
+  if (!nolio && !jours.length && !ligne) return null;
+  const quiz = questionnaire && dimanche && (
+    <li className="grid grid-cols-[52px_6px_1fr] gap-x-2.5 items-center min-h-11">
+      <span className="text-xs font-semibold text-[#5E5C78] whitespace-nowrap">{jourCourt(dimanche.date_iso, dimanche.jour)}</span>
+      <span className="w-1.5 h-7 rounded-full bg-[#B7B6C8]" aria-hidden />
+      <span className="text-[0.8125rem] text-[#5E5C78]">Questionnaire « Ta semaine prochaine » à 8 h</span>
+    </li>
+  );
   return (
     <Carte className="space-y-1">
       <div className="flex justify-between items-baseline gap-3 mb-2">
         <Surtitre>Cette semaine</Surtitre>
         {ligne && <span className="text-xs font-semibold" style={{ color: BANNIERE[ligne.type] ?? '#4F6F69' }}>{ligne.type}</span>}
       </div>
-      {jours.length > 0 ? (
+      {nolio ? (
+        <ul>
+          {nolio.length === 0 && <li className="min-h-11 flex items-center text-sm text-[#5E5C78] border-b border-indigo/[0.06]">Rien de prévu dans Nolio cette semaine.</li>}
+          {nolio.map((x) => (
+            <li key={x.id} className="grid grid-cols-[52px_6px_1fr] gap-x-2.5 items-center min-h-11 border-b border-indigo/[0.06]">
+              <span className="text-xs font-semibold text-[#5E5C78] whitespace-nowrap">{jourCourt(x.date, '')}</span>
+              <span className="w-1.5 h-7 rounded-full" style={{ backgroundColor: x.couleur ?? '#B9C7C3' }} aria-hidden />
+              <span className="text-sm font-semibold text-indigo">
+                {x.nom}{x.minutes !== null && <span className="font-normal text-[#5E5C78]"> · {enHeures(x.minutes)}</span>}
+              </span>
+            </li>
+          ))}
+          {quiz}
+        </ul>
+      ) : jours.length > 0 ? (
         <ul>
           {jours.map((j) => (
             <li key={j.id} className="grid grid-cols-[52px_6px_1fr] gap-x-2.5 items-center min-h-11 border-b border-indigo/[0.06]">
@@ -189,13 +212,7 @@ export function CetteSemaine({ semaine, ligne, questionnaire }: {
               </span>
             </li>
           ))}
-          {questionnaire && dimanche && (
-            <li className="grid grid-cols-[52px_6px_1fr] gap-x-2.5 items-center min-h-11">
-              <span className="text-xs font-semibold text-[#5E5C78] whitespace-nowrap">{jourCourt(dimanche.date_iso, dimanche.jour)}</span>
-              <span className="w-1.5 h-7 rounded-full bg-[#B7B6C8]" aria-hidden />
-              <span className="text-[0.8125rem] text-[#5E5C78]">Questionnaire « Ta semaine prochaine » à 8 h</span>
-            </li>
-          )}
+          {quiz}
         </ul>
       ) : ligne && (
         <div className="space-y-1">

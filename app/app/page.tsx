@@ -9,7 +9,7 @@ import { COOKIE_BIENVENUE } from '@/lib/app/bienvenue';
 import { contexte, lien, prenom, type Recherche } from '@/lib/app/contexte';
 import { dateLongue, joursEntre, moment } from '@/lib/app/plan';
 import { ficheDuMoment, jaugeDuPlan, momentDe } from '@/lib/app/tableau';
-import { donneesTableau, semaineEcrite } from '@/lib/app/tableauDuPlan';
+import { donneesTableau, semaineDansNolio, semaineEcrite } from '@/lib/app/tableauDuPlan';
 
 // L'accueil (CTS_NOLIO_CADRAGE.md dans le dépôt du moteur, T1, AP1, AP2 ; maquette validée par le coach le
 // 19/10/2026) : les séances vivent dans Nolio ; ici l'objectif et sa montagne, les piliers, les courses de
@@ -25,6 +25,8 @@ export default async function Accueil({ searchParams }: { searchParams: Recherch
   const rang = d.trame.findIndex((l) => l.lundi && momentDe(l.lundi, jour) === 'encours');
   const ligne = rang >= 0 ? d.trame[rang] : null;
   const semaine = ligne ? await semaineEcrite(ctx, ligne.numero) : null;
+  // Ce qui est dans Nolio cette semaine, retouches du coach comprises (décision coach du 20/10/2026).
+  const nolio = ligne?.lundi ? await semaineDansNolio(ctx, ligne.lundi) : null;
   const jauge = jaugeDuPlan(d.trame, d.realises, jour);
   const fiche = ficheDuMoment(d.fiches, jour);
   const nom = prenom(plan.athlete.nom);
@@ -52,7 +54,7 @@ export default async function Accueil({ searchParams }: { searchParams: Recherch
 
         {etape !== 'avant' && <Piliers jauge={jauge} />}
         {etape !== 'apres' && <CoursesPreparation courses={d.courses.filter((c) => c.date >= jour)} ajout={ajout} />}
-        {etape === 'pendant' && <CetteSemaine semaine={semaine} ligne={ligne} questionnaire={d.ecrit && restants > 7} />}
+        {etape === 'pendant' && <CetteSemaine semaine={semaine} ligne={ligne} questionnaire={d.ecrit && restants > 7} nolio={nolio} />}
         {fiche && etape !== 'apres' && <FicheDuMoment fiche={fiche.fiche} avenir={fiche.avenir} ctx={ctx} />}
       </main>
     </>
