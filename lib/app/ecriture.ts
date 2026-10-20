@@ -11,6 +11,7 @@
  *   d'origine (veto) ; le coach peut annuler les ajustements d'une semaine.
  * Les règles et leurs seuils vivent dans le moteur (D3) ; le site lit, envoie et garde. Côté serveur seulement.
  */
+import { cache } from 'react';
 import { site } from '@/lib/content';
 import { API_URL } from '@/lib/plan';
 import {
@@ -130,6 +131,10 @@ export async function objectifEcrit(planId: string): Promise<Objectif | null> {
     accordLecture: Boolean(p.accord_lecture_le),
     profil: z ? profilDe({ fc_seuil1: z.fc_seuil1, vc_ms: z.vc_ms, fc_seuil2: z.fc_seuil2, v_seuil1_ms: z.v_seuil1_ms ?? null }) : {} };
 }
+
+// Pour l'affichage seulement (la semaine dans Nolio, les badges : l'accueil le lisait deux fois) : lu une fois par page.
+// Jamais dans une action ni une tâche, qui relisent l'objectif après l'avoir modifié et le veulent à jour.
+export const objectifAffiche = cache(objectifEcrit);
 
 // ─── Le moteur ────────────────────────────────────────────────────────────
 

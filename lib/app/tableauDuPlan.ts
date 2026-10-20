@@ -5,7 +5,7 @@
  */
 import { destinataire } from './coaching';
 import type { Contexte } from './contexte';
-import { objectifEcrit, trameDuPlan, type LigneTrame, type Realise } from './ecriture';
+import { objectifAffiche, trameDuPlan, type LigneTrame, type Realise } from './ecriture';
 import { listeNolio } from './nolio';
 import { ajouterJours, type Semaine } from './plan';
 import { clientService } from './supabase';
@@ -127,7 +127,7 @@ export type SeanceNolio = { id: string; date: string; nom: string; minutes: numb
 export async function semaineDansNolio(ctx: Contexte, lundi: string): Promise<SeanceNolio[] | null> {
   if (ctx.demonstration) return null;
   try {
-    const o = await objectifEcrit(ctx.cle);
+    const o = await objectifAffiche(ctx.cle);
     if (!o?.nolioAthlete || !o.accordLecture || !o.envois.length) return null;
     const d = await destinataire(o.nolioAthlete);
     type Prevue = { id: string; name?: string; date_start: string; duration?: { value?: number } | null; color?: string | null };

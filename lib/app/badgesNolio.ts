@@ -7,7 +7,7 @@
  */
 import { ajouterSeances, ETAT_VIDE, type Activite, type EtatBadges } from './badges';
 import type { Contexte } from './contexte';
-import { objectifEcrit } from './ecriture';
+import { objectifAffiche } from './ecriture';
 import { listeNolio, moiNolio, nolioConfigure } from './nolio';
 import { ajouterJours } from './plan';
 import { clientService } from './supabase';
@@ -99,7 +99,7 @@ export type MesBadges = { accord: boolean; etat: EtatBadges | null };
 export async function mesBadges(ctx: Contexte): Promise<MesBadges> {
   if (ctx.demonstration) return { accord: true, etat: badgesDeDemonstration(ctx.jour) };
   try {
-    const o = await objectifEcrit(ctx.cle);
+    const o = await objectifAffiche(ctx.cle);
     if (!o?.nolioAthlete || !o.accordLecture) return { accord: false, etat: null };
     const { data } = await clientService().from('badges').select('debloques, mois').eq('nolio_athlete_id', o.nolioAthlete).maybeSingle();
     return { accord: true, etat: (data as EtatBadges | null) ?? null };
