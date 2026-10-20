@@ -492,21 +492,45 @@ async function plansActifs(): Promise<string[]> {
 
 export type Compte = { plan: string; quoi: string; erreur?: string; coache?: boolean; journal?: Record<string, unknown>[] };
 
-// Chaque dimanche soir : la semaine suivante de chaque plan actif, écrite d'après la semaine écoulée.
-export async function passageDuDimanche(): Promise<Compte[]> {
+// Chaque dimanche soir : la semaine suivante de chaque plan actif, écrite d'après la semaine écoulée. Un budget de temps
+// (la fonction est coupée à 300 s) : au-delà, les plans restants sont remis aux reprises du soir (vercel.json), qui ne
+// font que ce qui manque. Un verrou par semaine : le passage la réserve (une ligne vide de nolio_envois, unique par plan
+// et par semaine) avant de l'écrire, si bien que deux passages lancés ensemble ne la doublent jamais dans Nolio ; un
+// échec avant toute création la libère pour la reprise (décision coach du 20/10/2026 : sécuriser le dimanche).
+export const REMIS = 'remis à la reprise';
+export async function passageDuDimanche(budgetMs = 240_000): Promise<Compte[]> {
+  const debut = Date.now();
   const aujourdhui = aujourdhuiParis();
   const lundi = ajouterJours(aujourdhui, 1);
   const comptes: Compte[] = [];
+  const service = clientService();
   for (const planId of await plansActifs()) {
+    if (Date.now() - debut > budgetMs) {
+      comptes.push({ plan: planId, quoi: REMIS });
+      continue;
+    }
+    let reservee: string | null = null;
     try {
       const o = await objectifEcrit(planId);
       if (!o?.nolioAthlete) continue;
       const s = semaineDu(o.plan, lundi);
       if (!s || o.envois.some((e) => e.semaine === s.numero)) continue;
+      const { data: prise } = await service.from('nolio_envois')
+        .upsert({ plan_id: planId, semaine: s.numero, coach_id: o.coachId, seances: [] }, { onConflict: 'plan_id,semaine', ignoreDuplicates: true })
+        .select('plan_id');
+      if (!prise?.length) continue;
+      reservee = s.numero;
       const retours = await lireRetours(o, ajouterJours(lundi, -35), aujourdhui);
       const sortie = await ecrireEtEnvoyer(o, s.numero, retours);
       comptes.push({ plan: planId, quoi: `${s.numero} écrite`, coache: o.coache, journal: sortie.journal });
     } catch (e) {
+      if (reservee) {
+        // Rien de créé dans Nolio : la semaine se libère pour la reprise. Sinon, ce qui est créé reste noté (pas de doublon).
+        const { data: ligne } = await service.from('nolio_envois').select('seances').eq('plan_id', planId).eq('semaine', reservee).maybeSingle();
+        if (!((ligne?.seances as unknown[] | undefined) ?? []).length) {
+          await service.from('nolio_envois').delete().eq('plan_id', planId).eq('semaine', reservee);
+        }
+      }
       comptes.push({ plan: planId, quoi: 'semaine non écrite', erreur: e instanceof Error ? e.message : String(e) });
     }
   }
