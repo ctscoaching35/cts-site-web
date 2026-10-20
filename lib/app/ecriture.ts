@@ -852,8 +852,11 @@ export async function poserCourse(o: Objectif, c: Course, principale: boolean) {
 
 // Les valeurs connues de l'athlète, que le moteur lit pour écrire ses tests tant qu'une manque (TN1) ; « lecture » :
 // avec l'accord, le site lit le résultat dans Nolio, sinon les textes du test renvoient à l'app.
+// coache : sans accord de lecture, un coaché donne la valeur d'un test dans l'app ou à son coach dans Nolio ; un
+// acheteur, qui n'a pas de coach attitré, dans son app (décision coach du 20/10/2026).
 function valeursConnues(o: Objectif) {
-  return { fc_seuil1: 'fc_seuil1' in o.profil, vc: 'vc_ms' in o.profil, fc_seuil2: 'fc_seuil2' in o.profil, lecture: o.accordLecture };
+  return { fc_seuil1: 'fc_seuil1' in o.profil, vc: 'vc_ms' in o.profil, fc_seuil2: 'fc_seuil2' in o.profil, lecture: o.accordLecture,
+    coache: o.coache };
 }
 
 const testEcrit = (j: Semaine['jours'][number]) =>
