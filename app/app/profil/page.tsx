@@ -5,7 +5,8 @@ import ProfilAthlete from '@/components/app/ProfilAthlete';
 import EnTeteApp from '@/components/app/EnTeteApp';
 import { Carte, CarteSombre, Surtitre } from '@/components/app/Ui';
 import { contexte, lien, type Recherche } from '@/lib/app/contexte';
-import { allure, decalageSeuil1, profilCoureur, texteAllureLigne, texteFc } from '@/lib/app/zones';
+import { type CleTest } from '@/lib/app/plan';
+import { allure, decalageSeuil1, profilCoureur, testsProposes, texteAllureLigne, texteFc } from '@/lib/app/zones';
 import { mesBadges } from '@/lib/app/badgesNolio';
 import { lignesDuProfil, monProfilDEntrainement, PROFIL_DE_DEMONSTRATION } from '@/lib/app/profilEntrainement';
 import { donneesTableau } from '@/lib/app/tableauDuPlan';
@@ -153,15 +154,16 @@ export default async function MonProfil({ searchParams }: { searchParams: Recher
               ? 'Quand un repère manque, ta préparation écrit le test à la place d’une séance ; son résultat se lit dans Nolio.'
               : 'Trois tests de terrain donnent tes repères : leur protocole, ce qu’ils changent et leurs limites.'}
           </p>
+          {/* Les tests que « Tes zones » propose, pas d'autres (sans « Tes zones », les fiches de la bibliothèque). */}
           <ul>
-            {FICHES_TESTS.map(([cle, titre, fiche]) => (
+            {FICHES_TESTS.map(([cle, titre, fiche]) => (zones && !testsProposes(zones).includes(cle as CleTest) ? null : (
               <li key={cle}>
                 <Link href={saisie ? `${saisie}#${cle}` : lien(`/app/bibliotheque/${fiche}`, ctx)}
                   className="flex items-center justify-between min-h-11 border-t border-indigo/[0.06] text-[0.8125rem] font-bold text-teal">
                   <span>{titre}</span><span aria-hidden>›</span>
                 </Link>
               </li>
-            ))}
+            )))}
           </ul>
           {ctx.coache && saisie && <p className="text-xs text-[#5E5C78]">Un test refait de ton côté s’entre ici : tes zones changent dès maintenant, tes séances à partir de la semaine écrite dimanche, et ton coach le voit sur ta fiche.</p>}
         </Carte>

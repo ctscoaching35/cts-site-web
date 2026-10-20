@@ -6,7 +6,10 @@ import { effacerZones } from '@/lib/app/actionsZones';
 import { maFiche } from '@/lib/app/coaching';
 import { contexte, lien, type Recherche } from '@/lib/app/contexte';
 import { dateLongue, type CleTest } from '@/lib/app/plan';
-import { allure, kmh, remplir, testFait, testOuvert, texteRecoupement, valeursChange, type Profil } from '@/lib/app/zones';
+import {
+  allure, fcSeuil2HorsPlan, kmh, QUAND_FC_SEUIL2_HORS_PLAN, remplir, testFait, testOuvert, testsProposes, texteRecoupement,
+  valeursChange, type Profil,
+} from '@/lib/app/zones';
 
 // « Tes zones » (cadrage de l'app §7.1, textes validés par le coach le 08/10/2026) : trois tests de
 // terrain, leur protocole, ce qu'ils changent au plan, leurs limites et leurs sources, et la saisie.
@@ -33,7 +36,7 @@ export default async function TesZones({ searchParams }: { searchParams: Recherc
   if (!zones) notFound();
   const valeurs = valeursChange(profil, zones) ?? {};
   const consentementDonne = (['parole', 'vitesse_critique', 'fc_seuil2'] as const).some((c) => testFait(c, profil));
-  const tests = zones.tests.filter((t) => zones.tests_disponibles.includes(t.cle));
+  const tests = zones.tests.filter((t) => testsProposes(zones).includes(t.cle));
   // Son accord tient lieu de la case à cocher ; en démonstration, la saisie se montre.
   const accord = !ctx.coache || ctx.demonstration || Boolean((await maFiche())?.accord);
   return (
@@ -70,7 +73,7 @@ export default async function TesZones({ searchParams }: { searchParams: Recherc
               <div className="text-sm text-indigo/80 leading-relaxed space-y-2">
                 <p><strong className="text-indigo">Ce qu’il mesure.</strong> {t.mesure}</p>
                 <p><strong className="text-indigo">Pour qui.</strong> {t.pour_qui}</p>
-                <p><strong className="text-indigo">Quand.</strong> {t.quand}</p>
+                <p><strong className="text-indigo">Quand.</strong> {t.cle === 'fc_seuil2' && fcSeuil2HorsPlan(zones) ? QUAND_FC_SEUIL2_HORS_PLAN : t.quand}</p>
                 {t.materiel.length > 0 && (
                   <div>
                     <strong className="text-indigo">Ce qu’il te faut.</strong>

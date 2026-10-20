@@ -119,9 +119,20 @@ export function texteReperes(r: Reperes | null | undefined, p: Profil, decalage 
 export const testFait = (cle: CleTest, p: Profil) =>
   cle === 'parole' ? p.fc_seuil1 !== null : cle === 'vitesse_critique' ? p.vc_ms !== null : p.fc_seuil2 !== null;
 
+// Les tests que « Tes zones » propose : ceux du plan, et la FC au seuil 2 dès que la vitesse critique l'est, même quand
+// le plan n'a pas de séance de fractions sur le plat où écrire sa mesure (décision coach du 20/10/2026, « ouverte pour
+// tous ») : une valeur mesurée hors du plan règle aussi les zones et les séances.
+export const testsProposes = (zones: Zones): CleTest[] =>
+  zones.tests_disponibles.includes('vitesse_critique') && !zones.tests_disponibles.includes('fc_seuil2')
+    ? [...zones.tests_disponibles, 'fc_seuil2'] : zones.tests_disponibles;
+// La FC au seuil 2 proposée hors du plan : il n'écrit pas sa séance de mesure.
+export const fcSeuil2HorsPlan = (zones: Zones) => !zones.tests_disponibles.includes('fc_seuil2') && testsProposes(zones).includes('fc_seuil2');
+export const QUAND_FC_SEUIL2_HORS_PLAN = 'Ta préparation n’a pas de séance sur le plat où l’écrire : fais-le de toi-même, sur du plat, '
+  + 'à la place d’une séance de seuil 2, hors des deux dernières semaines avant ta course.';
+
 // Les tests que l'athlète peut faire maintenant : la FC au seuil 2 attend la vitesse critique (Z5).
 export const testOuvert = (cle: CleTest, zones: Zones, p: Profil) =>
-  zones.tests_disponibles.includes(cle) && (cle !== 'fc_seuil2' || p.vc_ms !== null);
+  testsProposes(zones).includes(cle) && (cle !== 'fc_seuil2' || p.vc_ms !== null);
 
 // Les valeurs qui remplissent les phrases « Ce que ça change » du moteur. La plage du seuil 1 est lue dans le
 // tableau des zones du plan (D3) : de S1 − 5 à S1 + 5 depuis le 13/10/2026 (décision coach), de S1 à S1 + 5 dans
