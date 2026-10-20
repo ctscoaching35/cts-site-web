@@ -4,7 +4,8 @@ import clsx from 'clsx';
 import { Deconnexion } from './BoutonsCompte';
 
 // Le cadre de l'espace coach (maquettes validées par le coach le 19/10/2026) : un menu à gauche sur ordinateur, au-dessus
-// du contenu sur téléphone (Tes athlètes, Suivi des 7 jours, Objectifs demandés, Chiffres de la vente, Bibliothèque),
+// du contenu sur téléphone (Tes athlètes, Suivi des 7 jours, Objectifs demandés, Chiffres de la vente ; plus de
+// Bibliothèque, décision coach du 20/10/2026 : « ça ne m'apporte rien »),
 // le coach. Plus de lien « Voir l'app d'un athlète » (décision coach du 20/10/2026) : il ouvrait l'app du compte coach ;
 // chaque version se voit par son propre compte (coach, coaché, acheteur).
 export type RubriqueCoach = 'athletes' | 'suivi' | 'demandes' | 'chiffres';
@@ -12,12 +13,11 @@ export type RubriqueCoach = 'athletes' | 'suivi' | 'demandes' | 'chiffres';
 export default function CadreCoach({ actif, demandes = 0, coach, children }: {
   actif: RubriqueCoach; demandes?: number; coach?: string; children: React.ReactNode;
 }) {
-  const liens: [RubriqueCoach | 'bibliotheque', string, string][] = [
+  const liens: [RubriqueCoach, string, string][] = [
     ['athletes', 'Tes athlètes', '/app/coach'],
     ['suivi', 'Suivi des 7 jours', '/app/coach/suivi'],
     ['demandes', 'Objectifs demandés', '/app/coach#demandes'],
     ['chiffres', 'Chiffres de la vente', '/app/coach/chiffres'],
-    ['bibliotheque', 'Bibliothèque', '/bibliotheque'],
   ];
   return (
     <div className="min-h-screen flex flex-wrap bg-sand text-indigo">
@@ -34,7 +34,6 @@ export default function CadreCoach({ actif, demandes = 0, coach, children }: {
         <nav aria-label="Espace coach" className="flex flex-row flex-wrap lg:flex-col gap-1">
           {liens.map(([cle, titre, href]) => (
             <Link key={cle} href={href} aria-current={cle === actif ? 'page' : undefined}
-              {...(cle === 'bibliotheque' ? { target: '_blank', rel: 'noopener' } : {})}
               className={clsx('flex items-center justify-between gap-2 min-h-11 px-3 rounded-[10px] text-sm',
                 cle === actif ? 'bg-white/10 text-white font-bold' : 'text-[#D6D5E6] font-semibold hover:bg-white/5')}>
               <span>{titre}</span>
