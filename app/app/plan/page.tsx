@@ -101,7 +101,7 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
             Ce que chaque bloc développe, jusqu’à ton jour J ; tes séances s’écrivent chaque dimanche dans Nolio.
           </p>
           <ol>
-            {blocsDuPlan(d.trame, plan, jour).map((b) => (
+            {blocsDuPlan(d.trame, plan, jour, ctx.coache ? plan.course.rejoint?.lundi ?? null : null).map((b) => (
               <li key={b.du} className={clsx('grid grid-cols-[22px_1fr] gap-x-2.5 py-3 border-t border-indigo/[0.06] first:border-t-0',
                 b.moment === 'encours' && 'bg-[#E1EFEA] -mx-2.5 px-2.5 rounded-xl border-t-0')}>
                 <span aria-hidden className={clsx('mt-0.5 w-[18px] h-[18px] rounded-full flex items-center justify-center',
