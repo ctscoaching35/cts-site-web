@@ -25,6 +25,10 @@ export const nav = [
   { label: 'Contact', href: '#contact' },
 ];
 
+// L'app des athlètes (décision coach du 20/10/2026 : « Mon espace » sur le site, un chemin permanent pour qui ne l'a pas
+// installée ou a perdu l'e-mail d'invitation) ; derrière, la connexion par e-mail et code.
+export const espace = { label: 'Mon espace', href: '/app' };
+
 export const hero = {
   badge: 'Atteins tes sommets',
   title: 'City to',

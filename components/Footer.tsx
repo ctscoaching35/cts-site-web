@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import { footer, nav, site } from '@/lib/content';
+import { espace, footer, nav, site } from '@/lib/content';
 
 export default function Footer() {
   return (
@@ -40,6 +40,11 @@ export default function Footer() {
                   </a>
                 </li>
               ))}
+              <li>
+                <a href={espace.href} className="text-white/80 hover:text-teal-light transition-colors text-sm">
+                  {espace.label}
+                </a>
+              </li>
             </ul>
           </div>
 

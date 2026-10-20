@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import clsx from 'clsx';
-import { nav, site } from '@/lib/content';
+import { espace, nav, site } from '@/lib/content';
 
 export default function Nav() {
   const [scrolled, setScrolled] = useState(false);
@@ -53,18 +53,24 @@ export default function Nav() {
           </span>
         </a>
 
-        {/* Desktop nav */}
-        <nav className="hidden md:flex items-center gap-10">
+        {/* Desktop nav : dès 1280 px ; en dessous, le menu du téléphone (sept liens et « Commencer » ne tiennent pas) */}
+        <nav className="hidden xl:flex items-center gap-6">
           {nav.map((item) => (
             <a
               key={item.href}
               href={item.href}
-              className="text-white/90 hover:text-white text-sm font-medium tracking-cts-tight uppercase transition-colors"
+              className="whitespace-nowrap text-white/90 hover:text-white text-[0.8125rem] font-medium tracking-cts-tight uppercase transition-colors"
             >
               {item.label}
             </a>
           ))}
-          <a href="#contact" className="btn btn-primary !py-3 !px-5 text-xs">
+          <a
+            href={espace.href}
+            className="whitespace-nowrap text-white/90 hover:text-white text-[0.8125rem] font-medium tracking-cts-tight uppercase transition-colors"
+          >
+            {espace.label}
+          </a>
+          <a href="#contact" className="btn btn-primary !py-3 !px-5 text-xs whitespace-nowrap">
             Commencer
           </a>
         </nav>
@@ -72,7 +78,7 @@ export default function Nav() {
         {/* Mobile burger */}
         <button
           onClick={() => setOpen(!open)}
-          className="md:hidden text-white p-2 -mr-2"
+          className="xl:hidden text-white p-2 -mr-2"
           aria-label={open ? 'Fermer le menu' : 'Ouvrir le menu'}
           aria-expanded={open}
         >
@@ -103,7 +109,7 @@ export default function Nav() {
     {/* Mobile menu — sorti du <header> pour éviter le containing-block créé par backdrop-blur */}
     <div
       className={clsx(
-        'md:hidden fixed inset-x-0 top-[72px] bottom-0 z-40 bg-indigo-dark transition-opacity duration-300',
+        'xl:hidden fixed inset-x-0 top-[72px] bottom-0 z-40 bg-indigo-dark transition-opacity duration-300',
         open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
       )}
     >
@@ -121,6 +127,17 @@ export default function Nav() {
             </span>
           </a>
         ))}
+
+        <a
+          href={espace.href}
+          onClick={() => setOpen(false)}
+          className="flex items-center justify-between bg-indigo-soft hover:bg-indigo active:scale-[0.98] border-l-4 border-teal text-white text-base font-extrabold tracking-cts uppercase py-5 px-5 transition-all"
+        >
+          <span>{espace.label}</span>
+          <span aria-hidden="true" className="text-teal-light text-xl leading-none">
+            →
+          </span>
+        </a>
 
         {/* CTA Commencer — fond teal plein, pleine largeur */}
         <a
