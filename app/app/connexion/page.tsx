@@ -19,7 +19,7 @@ export default async function Connexion({ searchParams }: { searchParams: Promis
     <main className="mx-auto max-w-sm px-4 py-12 space-y-8">
       <div className="text-center space-y-3">
         <Image src="/logo/cts-logo-rond-navy.png" alt="CTS Coaching" width={64} height={64} className="mx-auto w-16 h-16" />
-        <h1 className="text-2xl text-indigo">Ton plan CTS</h1>
+        <h1 className="text-2xl text-indigo">Ton espace CTS</h1>
         {achat && (
           <p className="text-indigo/70 leading-relaxed">
             Ton nouveau plan est rangé dans ton compte. Entre l’e-mail donné au questionnaire : tu reçois un code

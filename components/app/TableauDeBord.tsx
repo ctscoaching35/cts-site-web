@@ -148,7 +148,7 @@ export function CoursesPreparation({ courses, ajout }: { courses: CourseSecondai
       ))}
       {!courses.length && (
         <p className="text-[0.8125rem] text-[#4A4866] leading-relaxed">
-          Une course avant ton objectif ? Ajoute-la : les jours autour d’elle s’ajustent, sans toucher à la suite de ton plan.
+          Une course avant ton objectif ? Ajoute-la : les jours autour d’elle s’ajustent, sans toucher à la suite de ta préparation.
         </p>
       )}
       {ajout && (

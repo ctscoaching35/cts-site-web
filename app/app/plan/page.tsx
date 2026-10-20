@@ -155,7 +155,7 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
               <>
                 <p className="text-xs text-[#5E5C78] leading-relaxed">
                   Une course avant ton objectif ? Ajoute-la : les jours autour d’elle s’ajustent (quelques jours plus légers avant,
-                  de la récupération après), sans toucher à la suite de ton plan.
+                  de la récupération après), sans toucher à la suite de ta préparation.
                 </p>
                 <AjouterCourse planId={ctx.cle} />
               </>

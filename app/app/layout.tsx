@@ -7,7 +7,7 @@ import { demonstrationOuverte } from '@/lib/app/demonstration';
 import { supabaseConfigure } from '@/lib/app/supabase';
 
 export const metadata: Metadata = {
-  title: 'Ton plan — CTS Coaching',
+  title: 'CTS Coaching',
   robots: { index: false, follow: false },
   // L'app s'installe sur l'écran d'accueil (cadrage, D1) : manifeste, icône, plein écran.
   manifest: '/pwa/manifest.webmanifest',
