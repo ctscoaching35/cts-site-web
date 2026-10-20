@@ -33,8 +33,11 @@ export function contenuBienvenue(plan: Plan, lienApp: string, nolio: { adresse: 
     `Ta préparation pour ${course.nom}, le ${course.date_lettres}, est prête. ${sansBalises(plan.couverture.debut)}`,
     ...(nolio ? [
       'Tes séances vivent dans Nolio, l’application d’entraînement que nous utilisons avec tous nos athlètes. ' +
-        `Nolio t’envoie une invitation à rejoindre l’équipe CTS, à ${nolio.adresse} (pense à regarder dans tes ` +
-        'indésirables) : accepte-la, et ta préparation s’installe dans ton calendrier Nolio. Chaque dimanche, Nolio te pose ' +
+        // Les deux réponses de Nolio à l'invitation (décision coach du 20/10/2026) : un compte existant l'accepte, une
+        // adresse inconnue reçoit un compte créé, déjà dans l'équipe.
+        `Nolio t’écrit à ${nolio.adresse} (pense à regarder dans tes indésirables) : si tu as déjà un compte Nolio, une ` +
+        'invitation à rejoindre l’équipe CTS, à accepter ; sinon, les identifiants du compte qu’il vient de te créer, déjà ' +
+        'dans l’équipe. Ta préparation s’installe alors dans ton calendrier Nolio. Chaque dimanche, Nolio te pose ' +
         'quelques questions sur ta semaine à venir, et la semaine suivante s’écrit d’après tes réponses et ta semaine écoulée.',
       'L’app CTS est ton tableau de bord : ta course et le compte à rebours, la vue d’ensemble de ta préparation, ta fiche ' +
         'de course et les fiches de la bibliothèque. Pour y revenir facilement, ajoute-la à l’écran d’accueil de ton ' +

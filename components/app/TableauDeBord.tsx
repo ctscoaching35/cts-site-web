@@ -18,13 +18,15 @@ const NOLIO = 'https://www.nolio.io/';
 
 // ─── Nolio, tant que l'athlète n'y est pas ──────────────────────────────────
 
+// Les deux réponses de Nolio à l'invitation (décision coach du 20/10/2026) : un compte existant l'accepte (« invite »),
+// une adresse inconnue reçoit un compte créé, déjà dans l'équipe (« actif » d'emblée).
+const ARRIVE = 'Nolio t’écrit dans quelques minutes : une invitation à rejoindre l’équipe CTS si tu as déjà un compte '
+  + 'Nolio, sinon les identifiants de ton nouveau compte. Tes séances s’y installent aussitôt.';
 export function CarteNolio({ etat }: { etat: EtatNolio }) {
   if (!etat || etat === 'actif' || etat === 'coache') return null;
   const textes: Record<'a_inviter' | 'en_cours' | 'invite' | 'refuse' | 'sorti', { titre: string; texte: string; bouton: boolean }> = {
-    a_inviter: { titre: 'Ton invitation Nolio arrive', bouton: false,
-      texte: 'Nolio t’envoie dans quelques minutes une invitation à rejoindre l’équipe CTS. Accepte-la : tes séances s’y installent aussitôt.' },
-    en_cours: { titre: 'Ton invitation Nolio arrive', bouton: false,
-      texte: 'Nolio t’envoie dans quelques minutes une invitation à rejoindre l’équipe CTS. Accepte-la : tes séances s’y installent aussitôt.' },
+    a_inviter: { titre: 'Ton accès Nolio arrive', bouton: false, texte: ARRIVE },
+    en_cours: { titre: 'Ton accès Nolio arrive', bouton: false, texte: ARRIVE },
     invite: { titre: 'Accepte ton invitation Nolio', bouton: false,
       texte: 'Nolio t’a envoyé par e-mail une invitation à rejoindre l’équipe CTS (pense à regarder dans tes indésirables). Dès que tu l’acceptes, tes séances s’installent dans ton calendrier Nolio.' },
     refuse: { titre: 'Ton invitation Nolio n’a pas abouti', bouton: false,
@@ -178,7 +180,7 @@ const couleurDuJour = (j: Jour) => j.couleur ?? FAMILLES[j.famille]?.filet ?? '#
 // quand elle y arrive, et les jours d'avant depuis ne s'y poseront pas (un départ en milieu de semaine). premiere : la
 // semaine où la préparation commence, avant son début.
 const ARRIVEE = {
-  invitation: 'Tes séances arrivent dans Nolio dès que tu as accepté ton invitation dans l’équipe CTS.',
+  invitation: 'Tes séances arrivent dans Nolio dès que tu as rejoint l’équipe CTS.',
   bientot: 'Tes séances de la semaine arrivent bientôt dans Nolio.',
 } as const;
 export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null, arrivee = null, depuis = null, premiere = false }: {
