@@ -150,6 +150,7 @@ export default async function Confidentialite() {
             tes sensations, tes commentaires et ton questionnaire Hooper, au moment où il l’ouvre, sans en garder de
             copie ;
           </li>
+          <li>ton espace CTS t’affiche ta semaine telle qu’elle est dans Nolio, lue au moment où tu l’ouvres, sans en garder de copie ;</li>
           <li>
             chaque dimanche, tes séances de la semaine suivante s’écrivent d’après ta semaine écoulée, avec les mêmes
             lectures ; nous gardons un résumé chiffré de chaque semaine (charge, séances faites, plus longue sortie,
