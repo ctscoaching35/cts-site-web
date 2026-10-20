@@ -368,9 +368,14 @@ async function programmerQuestionnaires(o: Objectif, premierDimanche: string) {
     hour_start: '08:00', recurrence }));
   if (semaine.statut !== 201 && semaine.statut !== 200) throw new Error(refusNolio(semaine, 'le questionnaire du dimanche'));
   crees.push({ jour_id: 'questionnaire:semaine', nolio_id: String(semaine.corps?.id ?? ''), genre: 'note' });
-  // Le Hooper pour les acheteurs, avec leur accord ; les coachés remplissent déjà celui que leur coach programme.
+  // Noté aussitôt : un départ repris ne le pose pas deux fois.
+  await garderEnvoi(o.coachId, o.planId, QUESTIONNAIRES, crees);
+  // Le Hooper pour les acheteurs, avec leur accord ; les coachés remplissent déjà celui que leur coach programme. Il ne
+  // bloque jamais le départ (défaut vu le 20/10/2026 sur l'achat test : un paramètre que Nolio refusait arrêtait tout,
+  // avant la première semaine).
   if (o.accordLecture && !o.coache) {
-    const cadres = await listeNolio<{ id: string; scope?: string; quiz_type?: string }>('library/quiz_frames/?type=hooper');
+    const cadres = await listeNolio<{ id: string; scope?: string; quiz_type?: string }>('library/quiz_frames/?quiz_type=hooper')
+      .catch(() => []);
     const hooper = cadres.find((c) => c.scope === 'nolio') ?? cadres[0];
     if (hooper) {
       const h = await appelNolio('POST', 'planned/quizzes/', pour({ quiz_frame: hooper.id, date_start: premierDimanche,
