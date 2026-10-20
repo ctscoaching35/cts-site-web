@@ -4,8 +4,8 @@ import Link from 'next/link';
 import { useState } from 'react';
 import type { Famille } from '@/lib/app/bibliotheque';
 
-// Toutes les fiches de la bibliothèque, par famille (la première ouverte), et la recherche qui les filtre par titre
-// et par résumé (maquette validée par le coach le 19/10/2026).
+// Toutes les fiches de la bibliothèque, par famille (toutes fermées à l'arrivée, décision coach du 20/10/2026), et la
+// recherche qui les filtre par titre et par résumé (maquette validée par le coach le 19/10/2026).
 export default function ToutesLesFiches({ familles, suite }: { familles: Famille[]; suite: string }) {
   const [q, setQ] = useState('');
   const norme = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -44,8 +44,8 @@ export default function ToutesLesFiches({ familles, suite }: { familles: Famille
       ) : (
         <section className="space-y-2.5">
           <h2 className="text-[0.6875rem] font-bold tracking-[0.14em] uppercase text-teal">Toutes les fiches</h2>
-          {familles.map((f, i) => (
-            <details key={f.titre} open={i === 0} className="group bg-white rounded-2xl border border-indigo/[0.08] px-4">
+          {familles.map((f) => (
+            <details key={f.titre} className="group bg-white rounded-2xl border border-indigo/[0.08] px-4">
               <summary className="flex items-center justify-between min-h-[52px] cursor-pointer list-none">
                 <span className="text-[0.9375rem] font-bold text-indigo">{f.titre}</span>
                 <span className="text-xs text-[#5E5C78]">{f.fiches.length} fiche{f.fiches.length > 1 ? 's' : ''}
