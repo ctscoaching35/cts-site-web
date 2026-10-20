@@ -135,9 +135,10 @@ export async function semaineEcrite(ctx: Contexte, numero: string): Promise<Sema
 // « Cette semaine » telle qu'elle est dans Nolio (décision coach du 20/10/2026 : « on envoie et je modifie au besoin »,
 // et ce que le coach y change se voit dans l'app) : les séances prévues de la semaine, lues à l'affichage, sans copie,
 // avec l'accord de lecture (la politique de confidentialité) et une fois l'objectif parti dans Nolio. null sinon, ou si
-// Nolio ne répond pas : la carte montre la semaine écrite par le moteur.
+// Nolio ne répond pas : la carte montre la semaine écrite par le moteur. numero : une semaine de la préparation, lue
+// dans Nolio une fois qu'elle y est partie (décision coach du 20/10/2026 : avant, la carte montre celle du moteur).
 export type SeanceNolio = { id: string; date: string; nom: string; minutes: number | null; couleur: string | null };
-export async function semaineDansNolio(ctx: Contexte, lundi: string): Promise<SeanceNolio[] | null> {
+export async function semaineDansNolio(ctx: Contexte, lundi: string, numero?: string): Promise<SeanceNolio[] | null> {
   if (ctx.demonstration) return null;
   try {
     // Un coaché sans objectif : celui de sa fiche, avec son accord.
@@ -147,6 +148,7 @@ export async function semaineDansNolio(ctx: Contexte, lundi: string): Promise<Se
     // Un coaché : sa semaine dans Nolio, quel qu'en soit l'auteur (son coach à la main, décision coach du 20/10/2026) ;
     // un acheteur : une fois son plan parti dans Nolio.
     if (!o?.nolioAthlete || !o.accordLecture || (!o.coache && !o.envois.length)) return null;
+    if (numero && !o.envois.some((e) => e.semaine === numero)) return null;
     const d = await destinataire(o.nolioAthlete);
     type Prevue = { id: string; name?: string; date_start: string; duration?: { value?: number } | null; color?: string | null };
     const prevues = await listeNolio<Prevue>(

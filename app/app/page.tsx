@@ -63,11 +63,15 @@ export default async function Accueil({ searchParams }: { searchParams: Recherch
   const etape = moment(plan, jour);
   const restants = joursEntre(jour, plan.course.date);
   const rang = d.trame.findIndex((l) => l.lundi && momentDe(l.lundi, jour) === 'encours');
-  const ligne = rang >= 0 ? d.trame[rang] : null;
+  // Avant le début, la première semaine de la préparation (décision coach du 20/10/2026).
+  const ligne = rang >= 0 ? d.trame[rang] : etape === 'avant' ? (d.trame[0] ?? null) : null;
   const semaine = ligne ? await semaineEcrite(ctx, ligne.numero) : null;
-  // Ce qui est dans Nolio cette semaine, retouches du coach comprises (décision coach du 20/10/2026) ; programmé à la main,
-  // la semaine en cours, sans la trame du moteur.
-  const nolio = ctx.aLaMain ? await semaineDansNolio(ctx, lundiCourant) : ligne?.lundi ? await semaineDansNolio(ctx, ligne.lundi) : null;
+  // Ce qui est dans Nolio cette semaine, retouches du coach comprises (décision coach du 20/10/2026), une fois la semaine
+  // partie dans Nolio ; programmé à la main, la semaine en cours, sans la trame du moteur.
+  const nolio = ctx.aLaMain ? await semaineDansNolio(ctx, lundiCourant)
+    : ligne?.lundi ? await semaineDansNolio(ctx, ligne.lundi, ligne.numero) : null;
+  // Pas encore dans Nolio : la semaine de la préparation, et quand elle y arrive (décision coach du 20/10/2026).
+  const arrivee = nolio || ctx.demonstration ? null : !ctx.coache && d.nolio !== 'actif' ? 'invitation' as const : 'bientot' as const;
   const jauge = jaugeDuPlan(d.trame, d.realises, jour);
   const fiche = ficheDuMoment(d.fiches, jour);
   const nom = prenom(plan.athlete.nom);
@@ -131,7 +135,10 @@ export default async function Accueil({ searchParams }: { searchParams: Recherch
         {etape === 'apres' && !ctx.coache && <EtMaintenant ctx={ctx} />}
         {etape !== 'avant' && !ctx.aLaMain && <Piliers jauge={jauge} />}
         {etape !== 'apres' && <CoursesPreparation courses={d.courses.filter((c) => c.date >= jour)} ajout={ajout} />}
-        {etape === 'pendant' && !ctx.aLaMain && <CetteSemaine semaine={semaine} ligne={ligne} questionnaire={d.ecrit && restants > 7} nolio={nolio} />}
+        {etape !== 'apres' && !ctx.aLaMain && (
+          <CetteSemaine semaine={semaine} ligne={ligne} questionnaire={d.ecrit && restants > 7} nolio={nolio}
+            arrivee={arrivee} depuis={arrivee ? jour : null} premiere={etape === 'avant'} />
+        )}
         {etape !== 'apres' && ctx.aLaMain && <CetteSemaine semaine={null} ligne={null} questionnaire={false} nolio={nolio} />}
         {fiche && etape !== 'apres' && <FicheDuMoment fiche={fiche.fiche} avenir={fiche.avenir} ctx={ctx} />}
       </main>

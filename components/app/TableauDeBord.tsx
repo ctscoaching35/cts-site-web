@@ -174,11 +174,18 @@ const jourCourt = (iso: string | null, jour: string) => {
 const couleurDuJour = (j: Jour) => j.couleur ?? FAMILLES[j.famille]?.filet ?? '#B9C7C3';
 
 // nolio : la semaine telle qu'elle est dans Nolio, retouches du coach comprises (tableauDuPlan.semaineDansNolio) ; sans
-// elle, la semaine écrite par le moteur.
-export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null }: {
+// elle, la semaine écrite par le moteur. Tant qu'elle n'est pas dans Nolio (décision coach du 20/10/2026) : arrivee dit
+// quand elle y arrive, et les jours d'avant depuis ne s'y poseront pas (un départ en milieu de semaine). premiere : la
+// semaine où la préparation commence, avant son début.
+const ARRIVEE = {
+  invitation: 'Tes séances arrivent dans Nolio dès que tu as accepté ton invitation dans l’équipe CTS.',
+  bientot: 'Tes séances de la semaine arrivent bientôt dans Nolio.',
+} as const;
+export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null, arrivee = null, depuis = null, premiere = false }: {
   semaine: Semaine | null; ligne: LigneTrame | null; questionnaire: boolean; nolio?: SeanceNolio[] | null;
+  arrivee?: keyof typeof ARRIVEE | null; depuis?: string | null; premiere?: boolean;
 }) {
-  const jours = (semaine?.jours ?? []).filter((j) => j.famille !== 'repos' && j.seance);
+  const jours = (semaine?.jours ?? []).filter((j) => j.famille !== 'repos' && j.seance && !(depuis && j.date_iso && j.date_iso < depuis));
   const dimanche = semaine?.jours.find((j) => j.jour.toLowerCase().startsWith('dim'));
   if (!nolio && !jours.length && !ligne) return null;
   const quiz = questionnaire && dimanche && (
@@ -191,9 +198,10 @@ export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null }: {
   return (
     <Carte className="space-y-1">
       <div className="flex justify-between items-baseline gap-3 mb-2">
-        <Surtitre>Cette semaine</Surtitre>
+        <Surtitre>{premiere ? 'Ta première semaine' : 'Cette semaine'}</Surtitre>
         {ligne && <span className="text-xs font-semibold" style={{ color: BANNIERE[ligne.type] ?? '#4F6F69' }}>{ligne.type}</span>}
       </div>
+      {premiere && ligne?.lundi && <p className="text-sm font-semibold text-indigo pb-1">Elle commence le {dateLongue(ligne.lundi)}.</p>}
       {nolio ? (
         <ul>
           {nolio.length === 0 && <li className="min-h-11 flex items-center text-sm text-[#5E5C78] border-b border-indigo/[0.06]">Rien de prévu dans Nolio cette semaine.</li>}
@@ -231,10 +239,14 @@ export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null }: {
           )}
         </div>
       )}
-      <div className="mt-2.5 p-3 rounded-xl bg-sand flex items-center justify-between gap-3">
-        <span className="text-xs text-[#4A4866]">Le détail de chaque séance est dans Nolio.</span>
-        <a href={NOLIO} target="_blank" rel="noopener" className="shrink-0 inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">Ouvrir Nolio ›</a>
-      </div>
+      {nolio || !arrivee ? (
+        <div className="mt-2.5 p-3 rounded-xl bg-sand flex items-center justify-between gap-3">
+          <span className="text-xs text-[#4A4866]">Le détail de chaque séance est dans Nolio.</span>
+          <a href={NOLIO} target="_blank" rel="noopener" className="shrink-0 inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">Ouvrir Nolio ›</a>
+        </div>
+      ) : (
+        <p className="mt-2.5 p-3 rounded-xl bg-sand text-xs text-[#4A4866] leading-relaxed">{ARRIVEE[arrivee]}</p>
+      )}
     </Carte>
   );
 }
