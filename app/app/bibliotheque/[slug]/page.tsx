@@ -11,7 +11,7 @@ export default async function Fiche({
   params: Promise<{ slug: string }>;
   searchParams: Recherche;
 }) {
-  const ctx = await contexte(searchParams);
+  const ctx = await contexte(searchParams, { sansObjectif: true });
   const { slug } = await params;
   const fiche = ficheParSlug(lireBibliotheque(), slug);
   if (!fiche) notFound();

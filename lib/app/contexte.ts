@@ -7,7 +7,9 @@
  */
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { ficheDuCompte } from './demandes';
 import { EXEMPLES, jourParDefaut } from './demonstration';
+import { planSansObjectif, reperesDeBase } from './reperes';
 import { COOKIE_PLAN } from './planChoisi';
 import { SCHEMA_PLAN, aujourdhuiIso, type Plan } from './plan';
 import { clientServeur, clientService, supabaseConfigure } from './supabase';
@@ -22,7 +24,11 @@ import { PROFIL_VIDE, type Profil } from './zones';
 // (CTS_NOLIO_CADRAGE.md, T1, 18/10/2026) : les séances vivent dans Nolio, les ajustements s'y écrivent le dimanche.
 export type Contexte = {
   cle: string; plan: Plan; jour: string; demonstration: boolean; profil: Profil; exemple: boolean; coache: boolean; aLaMain: boolean;
+  // sansObjectif : un coaché sans aucun objectif (décision coach du 20/10/2026, « tableau de bord complet ») ; plan n'a
+  // alors que son nom et ses repères (reperes.ts), cle est vide, fiche dit qui il est.
+  sansObjectif: boolean; fiche: FicheDuContexte | null;
 };
+export type FicheDuContexte = { id: string; coach_id: string; nolio: string | null; accord: boolean };
 
 export type PlanDuCompte = { id: string; course_nom: string; course_date: string; coache: boolean };
 
@@ -63,7 +69,9 @@ function verifierSchema(plan: Plan) {
   return plan;
 }
 
-export async function contexte(recherche: Recherche): Promise<Contexte> {
+// options.sansObjectif : la page accepte un coaché sans objectif (son accueil, ses données, son profil, ses tests, la
+// bibliothèque, son compte) ; les autres le renvoient à l'accueil.
+export async function contexte(recherche: Recherche, options: { sansObjectif?: boolean } = {}): Promise<Contexte> {
   const r = await recherche;
   const jourDemande = typeof r.jour === 'string' && JOUR.test(r.jour) ? r.jour : null;
 
@@ -72,9 +80,16 @@ export async function contexte(recherche: Recherche): Promise<Contexte> {
     const plan = verifierSchema(EXEMPLES[cle].plan);
     const jour = jourDemande ?? jourParDefaut(plan);
     // ?coache=1 : la version d'un coaché (ses repères posés par son coach), en démonstration seulement.
-    // ?main=1 : un coaché programmé à la main.
-    return { cle, plan, jour, demonstration: true, profil: profilDemonstration(r), exemple: r.retours === 'exemple', coache: r.coache === '1' || r.main === '1',
-      aLaMain: r.main === '1' };
+    // ?main=1 : un coaché programmé à la main ; ?sansobjectif=1 : un coaché sans objectif.
+    const sansObjectif = r.sansobjectif === '1';
+    if (sansObjectif && !options.sansObjectif) redirect('/app?sansobjectif=1');
+    return {
+      cle: sansObjectif ? '' : cle, demonstration: true, profil: profilDemonstration(r), exemple: r.retours === 'exemple',
+      plan: sansObjectif && plan.zones ? planSansObjectif(plan.athlete.nom, { zones: plan.zones, effort: plan.mode_emploi.effort }) : plan,
+      jour: sansObjectif ? new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris' }).format(new Date()) : jour,
+      coache: r.coache === '1' || r.main === '1' || sansObjectif, aLaMain: r.main === '1' || sansObjectif,
+      sansObjectif, fiche: null,
+    };
   }
 
   const supabase = await clientServeur();
@@ -91,7 +106,7 @@ export async function contexte(recherche: Recherche): Promise<Contexte> {
   const epingle = plans.find((p) => p.id === voulu);
   const tenu = epingle && (!epingle.coache || !prochain || epingle.course_date >= aujourdhui || choisiLe === aujourdhui) ? epingle : undefined;
   const choisi = tenu ?? prochain ?? plans[plans.length - 1];
-  if (!choisi) redirect('/app/sans-plan');
+  if (!choisi) return sansObjectif(String(session.claims.sub), options, process.env.NODE_ENV !== 'production' && jourDemande ? jourDemande : aujourdhui);
   // Un objectif coaché est rangé dans le compte du coach : lu avec la clé de service, une fois vérifié qu'il est à lui.
   const lecteur = choisi.coache ? clientService() : supabase;
   const { data: ligne, error } = await lecteur.from('plans').select('donnees').eq('id', choisi.id).single();
@@ -100,7 +115,26 @@ export async function contexte(recherche: Recherche): Promise<Contexte> {
   const profil = choisi.coache ? await profilDuCoache(choisi.id) : await profilDuPlan(choisi.id);
   return {
     cle: choisi.id, plan: verifierSchema(ligne.donnees as Plan), jour, demonstration: false, profil, exemple: false, coache: choisi.coache,
-    aLaMain: choisi.coache && await programmeALaMain(choisi.id),
+    aLaMain: choisi.coache && await programmeALaMain(choisi.id), sansObjectif: false, fiche: null,
+  };
+}
+
+// Un compte sans objectif : un coaché (sa fiche), dans les pages qui l'acceptent ; ailleurs, son accueil. Sans fiche,
+// un compte sans plan.
+async function sansObjectif(compteId: string, options: { sansObjectif?: boolean }, jour: string): Promise<Contexte> {
+  const fiche = await ficheDuCompte(compteId);
+  if (!fiche) redirect('/app/sans-plan');
+  if (!options.sansObjectif) redirect('/app');
+  const service = clientService();
+  const { data: a } = await service.from('athletes_coaches').select('*').eq('id', fiche.id).maybeSingle();
+  const nolio = (a?.nolio_athlete_id ?? null) as string | null;
+  const { data: accord } = nolio
+    ? await service.from('nolio_accords').select('accord_le').eq('coach_id', fiche.coach_id).eq('nolio_athlete_id', nolio).maybeSingle()
+    : { data: null };
+  return {
+    cle: '', plan: planSansObjectif(fiche.nom, await reperesDeBase()), jour, demonstration: false, profil: profilDeLaFiche(a),
+    exemple: false, coache: true, aLaMain: true, sansObjectif: true,
+    fiche: { id: fiche.id, coach_id: fiche.coach_id, nolio, accord: Boolean(accord) },
   };
 }
 
@@ -125,10 +159,16 @@ async function profilDuCoache(planId: string): Promise<Profil> {
   // « * » : la D′ (AP4, pour son profil de coureur) n'existe qu'après la migration du 19/10/2026.
   const { data: a } = c ? await service.from('athletes_coaches').select('*').eq('id', c.athlete_id).maybeSingle()
     : { data: null };
+  return profilDeLaFiche(a);
+}
+
+function profilDeLaFiche(a: Record<string, unknown> | null): Profil {
+  if (!a) return PROFIL_VIDE;
   // La date de chaque repère, celle de sa source (lu dans un test, saisi par le coach ou par lui).
-  const le = (cle: string) => ((a?.reperes_sources ?? {}) as Record<string, { le?: string } | undefined>)[cle]?.le ?? null;
-  return a ? { ...PROFIL_VIDE, fc_seuil1: a.fc_seuil1, vc_ms: a.vc_ms, fc_seuil2: a.fc_seuil2, v_seuil1_ms: a.v_seuil1_ms ?? null,
-    d_prime_m: a.d_prime_m ?? null, fc_seuil1_le: le('fc_seuil1'), vc_le: le('vc_ms'), fc_seuil2_le: le('fc_seuil2') } : PROFIL_VIDE;
+  const le = (cle: string) => ((a.reperes_sources ?? {}) as Record<string, { le?: string } | undefined>)[cle]?.le ?? null;
+  const n = (cle: string) => (a[cle] ?? null) as number | null;
+  return { ...PROFIL_VIDE, fc_seuil1: n('fc_seuil1'), vc_ms: n('vc_ms'), fc_seuil2: n('fc_seuil2'), v_seuil1_ms: n('v_seuil1_ms'),
+    d_prime_m: n('d_prime_m'), fc_seuil1_le: le('fc_seuil1'), vc_le: le('vc_ms'), fc_seuil2_le: le('fc_seuil2') };
 }
 
 const CHAMPS_PROFIL = ['fc_seuil1', 'fc_seuil1_le', 'vc_ms', 'd_prime_m', 'vc_le', 'fc_seuil2', 'fc_seuil2_le', 'v_seuil1_ms'] as const;
@@ -160,7 +200,8 @@ export const lien = (chemin: string, ctx: Contexte, extra: Record<string, string
         ...(ctx.profil.v_seuil1_ms !== null ? { v1: (ctx.profil.v_seuil1_ms * 3.6).toFixed(1) } : {}),
         ...(ctx.exemple ? { retours: 'exemple' } : {}),
         ...(ctx.coache ? { coache: '1' } : {}),
-        ...(ctx.aLaMain ? { main: '1' } : {}),
+        ...(ctx.aLaMain && !ctx.sansObjectif ? { main: '1' } : {}),
+        ...(ctx.sansObjectif ? { sansobjectif: '1' } : {}),
       }
     : {};
   const params = new URLSearchParams({ ...simule, ...extra });

@@ -25,7 +25,7 @@ const FICHES_TESTS: [string, string, string][] = [
 ];
 
 export default async function MonProfil({ searchParams }: { searchParams: Recherche }) {
-  const ctx = await contexte(searchParams);
+  const ctx = await contexte(searchParams, { sansObjectif: true });
   const { plan, profil } = ctx;
   const d = await donneesTableau(ctx);
   const badges = await mesBadges(ctx);

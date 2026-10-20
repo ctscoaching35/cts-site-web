@@ -22,7 +22,7 @@ const COACHS: Record<string, string> = {
 // Nolio et ses données (l'accord de lecture, T5), l'app sur l'écran d'accueil, les documents, la déconnexion, la
 // suppression ; l'avertissement santé, pour un acheteur seulement (décision coach du 19/10/2026).
 export default async function Compte({ searchParams }: { searchParams: Recherche }) {
-  const ctx = await contexte(searchParams);
+  const ctx = await contexte(searchParams, { sansObjectif: true });
   const d = await donneesTableau(ctx);
   const supabase = ctx.demonstration ? null : await clientServeur();
   const claims = supabase ? (await supabase.auth.getClaims()).data?.claims : null;
@@ -32,7 +32,8 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
   let coach: { prenom: string; texte: string } | null = null;
   if (ctx.coache) {
     const service = clientService();
-    const { data: c } = await service.from('coaching').select('coach_id').eq('plan_id', ctx.cle).maybeSingle();
+    const { data: c } = ctx.fiche ? { data: { coach_id: ctx.fiche.coach_id } }
+      : await service.from('coaching').select('coach_id').eq('plan_id', ctx.cle).maybeSingle();
     const { data: compte } = c ? await service.from('comptes').select('nom').eq('id', c.coach_id).maybeSingle() : { data: null };
     const prenom = String(compte?.nom ?? '').trim().split(/\s+/)[0] || 'Ton coach';
     coach = { prenom, texte: COACHS[prenom] ?? 'Kiné du sport.' };
@@ -65,7 +66,7 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
             <Surtitre ton="clair">Ton coach</Surtitre>
             <p className="text-[1.0625rem] font-bold">{coach.prenom}</p>
             <p className="text-[0.8125rem] leading-relaxed text-[#D6D5E6]">
-              {coach.texte} Il relit ta préparation et peut reprendre la main sur une semaine à tout moment.
+              {coach.texte} {ctx.aLaMain ? 'Il écrit tes séances dans Nolio.' : 'Il relit ta préparation et peut reprendre la main sur une semaine à tout moment.'}
             </p>
             <a href="https://www.nolio.io/" target="_blank" rel="noopener" className="inline-flex items-center min-h-11 px-4 rounded-full bg-white text-indigo text-[0.8125rem] font-bold">
               Lui écrire dans Nolio
@@ -86,7 +87,7 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
               <div>
                 <p className="text-sm font-bold text-indigo">Nolio</p>
                 <p className="mt-0.5 text-[0.8rem] text-[#4A4866] leading-relaxed">
-                  Tes séances s’y écrivent chaque dimanche soir, d’après ta semaine et ton questionnaire.
+                  {ctx.aLaMain ? 'Ton coach y écrit tes séances.' : 'Tes séances s’y écrivent chaque dimanche soir, d’après ta semaine et ton questionnaire.'}
                 </p>
               </div>
             </div>

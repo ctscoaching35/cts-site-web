@@ -10,7 +10,7 @@ import { donneesTableau, saisonDuCoureur } from '@/lib/app/tableauDuPlan';
 // contre prévu, le Hooper du dimanche et sa zone habituelle. Tout vient de la base, rangé chaque dimanche soir. Un
 // coaché les voit sur toute sa saison, d'un objectif à l'autre, ses courses en repère (décision coach du 20/10/2026).
 export default async function MesDonnees({ searchParams }: { searchParams: Recherche }) {
-  const ctx = await contexte(searchParams);
+  const ctx = await contexte(searchParams, { sansObjectif: true });
   const d = await donneesTableau(ctx);
   // Un coaché : toute sa saison, d'un objectif à l'autre, ses courses en repère (décision coach du 20/10/2026).
   const saison = await saisonDuCoureur(ctx, d);

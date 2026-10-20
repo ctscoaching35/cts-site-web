@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import clsx from 'clsx';
 import EnTeteApp from '@/components/app/EnTeteApp';
 import { AjouterCourse, RetirerCourse } from '@/components/app/GestesEcriture';
@@ -39,10 +40,12 @@ async function mesObjectifs() {
 // en J- ; décision coach du 19/10/2026, à la place des semaines, de leurs volumes et de leurs sorties longues), ses
 // courses de préparation (O2) ; puis les autres objectifs du compte (OM2).
 export default async function Objectif({ searchParams }: { searchParams: Recherche }) {
-  const ctx = await contexte(searchParams);
+  const ctx = await contexte(searchParams, { sansObjectif: true });
+  const r = await searchParams;
+  // Un coaché sans objectif : son accueil, qui dit aussi qu'une demande est partie.
+  if (ctx.sansObjectif) redirect(r.demande === 'envoyee' ? '/app?demande=envoyee' : '/app');
   const { plan, jour } = ctx;
   const d = await donneesTableau(ctx);
-  const r = await searchParams;
   const objectifs = ctx.demonstration ? null : await mesObjectifs();
   const jauge = jaugeDuPlan(d.trame, d.realises, jour);
   const courseAVenir = plan.course.date >= jour;

@@ -26,6 +26,7 @@ import { clientService } from './supabase';
 import type { Fiche } from './tableau';
 import { fcSeuil2DuTest, lireParole, vcDuTest, type Flux, type Tour } from './tests';
 import { allure, kmh, PROFIL_VIDE } from './zones';
+import { reperesDeBase } from './reperes';
 import { ecrireZonesNolio } from './zonesNolio';
 
 export type Etat = Record<string, unknown>;
@@ -832,6 +833,20 @@ async function enregistrerValeurs(o: Objectif, v: Valeurs) {
     ...(v.v_seuil1_ms ? { v_seuil1_ms: r3(v.v_seuil1_ms) } : {}),
     ...(v.fc_seuil2 ? { fc_seuil2: v.fc_seuil2, fc_seuil2_le: jour } : {}),
   });
+}
+
+// ZN1 pour un coaché sans objectif (décision coach du 20/10/2026, « tableau de bord complet ») : les zones de sa fiche,
+// sur les repères du moteur sans course (reperes.ts).
+export async function zonesDeLaFicheVersNolio(athleteId: string): Promise<string[]> {
+  const { data: a } = await clientService().from('athletes_coaches').select('nolio_athlete_id, fc_seuil1, vc_ms, fc_seuil2, v_seuil1_ms')
+    .eq('id', athleteId).maybeSingle();
+  if (!a?.nolio_athlete_id) return [];
+  const d = await destinataire(String(a.nolio_athlete_id));
+  const p = { ...PROFIL_VIDE, ...profilDe({ fc_seuil1: a.fc_seuil1, vc_ms: a.vc_ms, fc_seuil2: a.fc_seuil2, v_seuil1_ms: a.v_seuil1_ms ?? null }) };
+  const soucis = await reperesDeBase().then((r) => ecrireZonesNolio(d.usr, d.moi, p, r.zones))
+    .catch((e) => [e instanceof Error ? e.message : String(e)]);
+  if (soucis.length) console.error(`Zones Nolio de la fiche ${athleteId} :`, soucis.join(' ; '));
+  return soucis;
 }
 
 // ZN1 : les zones CTS dans le Nolio de l'athlète, d'après son profil (et une valeur qui vient d'arriver).

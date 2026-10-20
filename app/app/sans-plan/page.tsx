@@ -8,7 +8,7 @@ import { clientServeur, clientService, supabaseConfigure } from '@/lib/app/supab
 export const dynamic = 'force-dynamic';
 
 // Un compte sans plan : il en construit un par le questionnaire (D2 : depuis le site ou l'app) ; un coaché invité par
-// son coach (T6) attend son premier objectif ; le compte coach va dans son espace (décision coach du 20/10/2026 : chaque
+// son coach (T6) va à son tableau de bord, même sans objectif ; le compte coach va dans son espace (décision coach du 20/10/2026 : chaque
 // version par son compte, la sienne est l'espace coach).
 export default async function SansPlan() {
   if (!supabaseConfigure()) redirect('/app');
@@ -18,15 +18,8 @@ export default async function SansPlan() {
   if (await coachConnecte()) redirect('/app/coach');
   const email = String(data.claims.email ?? '');
   const { data: fiche } = await clientService().from('athletes_coaches').select('id').eq('compte_id', data.claims.sub).limit(1);
-  if (fiche?.length) {
-    return (
-      <main className="mx-auto max-w-sm px-4 py-12 space-y-4 text-center">
-        <h1 className="text-2xl text-indigo">Ton espace est prêt</h1>
-        <p className="text-indigo/75">Ton coach prépare ton objectif : il apparaîtra ici dès qu’il sera prêt.</p>
-        <Compte email={email} />
-      </main>
-    );
-  }
+  // Un coaché sans objectif : son tableau de bord (décision coach du 20/10/2026, « tableau de bord complet »).
+  if (fiche?.length) redirect('/app');
   return (
     <main className="mx-auto max-w-sm px-4 py-12 space-y-6 text-center">
       <h1 className="text-2xl text-indigo">Tu n’as pas encore de plan</h1>

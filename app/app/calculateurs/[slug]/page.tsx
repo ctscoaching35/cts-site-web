@@ -14,7 +14,7 @@ export default async function CalculateurApp({
   params: Promise<{ slug: string }>;
   searchParams: Recherche;
 }) {
-  const ctx = await contexte(searchParams);
+  const ctx = await contexte(searchParams, { sansObjectif: true });
   const { slug } = await params;
   const calculateur = calculateurParSlug(lireCalculateurs(), slug);
   if (!calculateur) notFound();

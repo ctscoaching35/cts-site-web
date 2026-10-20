@@ -9,7 +9,7 @@
 import { revalidatePath } from 'next/cache';
 import { accordDeLAthlete, ficheAthlete, marquerTestsLus } from './coaching';
 import { ficheDuCompte } from './demandes';
-import { objectifEcrit, zonesVersNolio } from './ecriture';
+import { objectifEcrit, zonesDeLaFicheVersNolio, zonesVersNolio } from './ecriture';
 import { clientServeur, clientService } from './supabase';
 import { lireDistance, lireDuree, vitesseCritique } from './zones';
 
@@ -50,8 +50,10 @@ async function enregistrer(planId: string, consentement: boolean, valeurs: Recor
 async function enregistrerSurLaFiche(compteId: string, planId: string, valeurs: Record<string, unknown>): Promise<EtatZones> {
   const service = clientService();
   const moi = await ficheDuCompte(compteId);
-  const { data: lien } = moi
-    ? await service.from('coaching').select('plan_id').eq('plan_id', planId).eq('athlete_id', moi.id).maybeSingle() : { data: null };
+  // Sans objectif (planId vide, décision coach du 20/10/2026) : sa fiche seule.
+  const { data: lien } = moi && planId
+    ? await service.from('coaching').select('plan_id').eq('plan_id', planId).eq('athlete_id', moi.id).maybeSingle()
+    : { data: moi ? { plan_id: '' } : null };
   const fiche = lien && moi ? await ficheAthlete(moi.coach_id, moi.id) : null;
   if (!fiche || !moi) return null;
   if (!(await accordDeLAthlete(moi.coach_id, moi.id)))
@@ -84,8 +86,9 @@ async function enregistrerSurLaFiche(compteId: string, planId: string, valeurs: 
     return { ok: false, message: 'L’enregistrement n’a pas abouti. Réessaie dans un moment.' };
   }
   for (const [cle, resultat] of lus) await marquerTestsLus(fiche, cle, resultat, 'athlete');
-  const o = await objectifEcrit(planId).catch(() => null);
+  const o = planId ? await objectifEcrit(planId).catch(() => null) : null;
   if (o) await zonesVersNolio(o).catch(() => null);
+  else if (!planId) await zonesDeLaFicheVersNolio(moi.id).catch(() => null);
   revalidatePath('/app', 'layout');
   return { ok: true, message: 'C’est enregistré, ton coach le voit : tes zones changent dès maintenant, tes séances à partir de la semaine écrite dimanche.' };
 }

@@ -99,7 +99,10 @@ export type MesBadges = { accord: boolean; etat: EtatBadges | null };
 export async function mesBadges(ctx: Contexte): Promise<MesBadges> {
   if (ctx.demonstration) return { accord: true, etat: badgesDeDemonstration(ctx.jour) };
   try {
-    const o = await objectifAffiche(ctx.cle);
+    // Un coaché sans objectif : celui de sa fiche, avec son accord.
+    const o = ctx.sansObjectif
+      ? (ctx.fiche?.nolio ? { nolioAthlete: ctx.fiche.nolio, accordLecture: ctx.fiche.accord } : null)
+      : await objectifAffiche(ctx.cle);
     if (!o?.nolioAthlete || !o.accordLecture) return { accord: false, etat: null };
     const { data } = await clientService().from('badges').select('debloques, mois').eq('nolio_athlete_id', o.nolioAthlete).maybeSingle();
     return { accord: true, etat: (data as EtatBadges | null) ?? null };

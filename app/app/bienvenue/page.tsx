@@ -10,9 +10,34 @@ import { jMoins } from '@/lib/app/plan';
 // l'écran d'accueil, l'avertissement santé à lire avant d'entrer (un acheteur : faux pour un coaché, que son coach
 // suit, décision coach du 19/10/2026 ; les CGV, article 4, y renvoient l'acheteur).
 export default async function Bienvenue({ searchParams }: { searchParams: Recherche }) {
-  const ctx = await contexte(searchParams);
+  const ctx = await contexte(searchParams, { sansObjectif: true });
   const { plan } = ctx;
   const entrer = entrerDansLePlan.bind(null, lien('/app', ctx));
+  // Un coaché sans objectif (décision coach du 20/10/2026, « tableau de bord complet ») : ce que fait l'app, son
+  // installation.
+  if (ctx.sansObjectif) {
+    const nom = prenom(plan.athlete.nom);
+    return (
+      <main className="mx-auto max-w-md px-4 py-8 space-y-6">
+        <div className="text-center space-y-2">
+          <Image src="/logo/cts-logo-rond-navy.png" alt="CTS Coaching" width={64} height={64} className="mx-auto w-16 h-16" />
+          <div className="eyebrow text-teal">Coaching individualisé</div>
+          <h1 className="text-3xl text-indigo">{nom ? `Bienvenue ${nom}` : 'Bienvenue'}</h1>
+        </div>
+        <p className="text-center text-indigo/80 leading-relaxed px-2">
+          Ton coach te suit. Tes séances sont dans Nolio ; ici, ta semaine, tes données, ton profil, tes badges et la
+          bibliothèque.
+        </p>
+        <section className="bg-white shadow-sm p-4 space-y-2">
+          <h2 className="font-bold text-indigo">Installer l’app</h2>
+          <Installation />
+        </section>
+        <form action={entrer}>
+          <button type="submit" className="btn btn-primary w-full">Entrer</button>
+        </form>
+      </main>
+    );
+  }
   // Un coaché (décision coach du 20/10/2026, « version coaching ») : son objectif et son J-, ce que fait l'app, son
   // installation ; ni plan, ni semaines, ni fondements, ni avertissement des plans.
   if (ctx.coache) {

@@ -30,7 +30,7 @@ function valeurAffichee(cle: CleTest, p: Profil) {
 }
 
 export default async function TesZones({ searchParams }: { searchParams: Recherche }) {
-  const ctx = await contexte(searchParams);
+  const ctx = await contexte(searchParams, { sansObjectif: true });
   const { plan, profil } = ctx;
   const zones = plan.zones;
   if (!zones) notFound();

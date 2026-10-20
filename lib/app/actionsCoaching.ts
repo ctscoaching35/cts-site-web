@@ -8,7 +8,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { accordDeLAthlete, envoyerSemaine, ficheAthlete, marquerTestsLus, mettreAJourSemaine, objectifCoache } from './coaching';
 import { fermerEspace, ouvrirEspace } from './espaceAthlete';
-import { objectifEcrit, retirerDeNolio, zonesVersNolio } from './ecriture';
+import { objectifEcrit, retirerDeNolio, zonesDeLaFicheVersNolio, zonesVersNolio } from './ecriture';
 import { coachConnecte } from './nolio';
 import { lireAllure } from './allureCoach';
 import { clientService } from './supabase';
@@ -96,7 +96,8 @@ export async function enregistrerValeurs(athleteId: string, _e: EtatCoach, form:
   const fiche = await ficheAthlete(coach.compteId, athleteId);
   const dernier = fiche?.objectifs[fiche.objectifs.length - 1];
   const o = dernier ? await objectifEcrit(dernier.plan_id).catch(() => null) : null;
-  const soucis = o ? await zonesVersNolio(o) : [];
+  // Sans objectif (décision coach du 20/10/2026, « tableau de bord complet ») : les zones de sa fiche.
+  const soucis = o ? await zonesVersNolio(o) : dernier ? [] : await zonesDeLaFicheVersNolio(athleteId);
   return { ok: true, message: `C’est enregistré. Les prochaines semaines envoyées partiront avec ces valeurs.${soucis.length ? ` Zones Nolio : ${soucis.join(' ; ')}.` : ''}` };
 }
 
@@ -272,7 +273,7 @@ export async function enregistrerTestVc(athleteId: string, _e: EtatCoach, form: 
   revalidatePath(`/app/coach/athlete/${athleteId}`);
   const dernier = fiche.objectifs[fiche.objectifs.length - 1];
   const o = dernier ? await objectifEcrit(dernier.plan_id).catch(() => null) : null;
-  const soucis = o ? await zonesVersNolio(o, { vc_ms, d_prime_m }) : [];
+  const soucis = o ? await zonesVersNolio(o, { vc_ms, d_prime_m }) : dernier ? [] : await zonesDeLaFicheVersNolio(athleteId);
   const { allure } = await import('./zones');
   return { ok: true, message: `C’est enregistré : vitesse critique à ${allure(vc_ms)}/km. Ses prochaines semaines et ses zones la prennent en repère.${soucis.length ? ` Zones Nolio : ${soucis.join(' ; ')}.` : ''}` };
 }

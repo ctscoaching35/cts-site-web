@@ -24,6 +24,10 @@ export type DonneesTableau = {
 export type CourseSecondaire = { nom: string; date: string; distance_km: number; dplus_m: number; chrono?: string | null };
 
 export async function donneesTableau(ctx: Contexte): Promise<DonneesTableau> {
+  // Un coaché sans objectif : ni trame ni semaines écrites ; ses données sont sa saison (saisonDuCoureur).
+  if (ctx.sansObjectif) {
+    return { trame: [], realises: [], fiches: [], nolio: 'coache', accord: ctx.demonstration || Boolean(ctx.fiche?.accord), ecrit: false, courses: [] };
+  }
   if (ctx.demonstration) return demonstration(ctx);
   const service = clientService();
   const { data: p } = await service.from('plans').select('parametres, nolio_statut, accord_lecture_le').eq('id', ctx.cle).maybeSingle();
@@ -52,6 +56,11 @@ export async function donneesTableau(ctx: Contexte): Promise<DonneesTableau> {
 // courses (objectifs et courses de préparation) pour les repères des graphiques. Un acheteur : son plan seul.
 export type Saison = { realises: Realise[]; courses: CourseDuGraphique[] };
 export async function saisonDuCoureur(ctx: Contexte, d: DonneesTableau): Promise<Saison> {
+  // Un coaché sans objectif : ses semaines résumées depuis Nolio, sans course en repère.
+  if (ctx.sansObjectif) {
+    const realises = ctx.fiche ? await semainesDeLaFiche(ctx.fiche.id) : [];
+    return { realises: realises.sort((a, b) => a.lundi.localeCompare(b.lundi)), courses: [] };
+  }
   const coursesDe = (nom: string, date: string, prepa: CourseSecondaire[]) => [{ date, nom }, ...prepa.map((c) => ({ date: c.date, nom: c.nom }))];
   const seul = { realises: d.realises, courses: coursesDe(ctx.plan.course.nom, ctx.plan.course.date, d.courses) };
   if (ctx.demonstration || !ctx.coache) return seul;
@@ -131,7 +140,10 @@ export type SeanceNolio = { id: string; date: string; nom: string; minutes: numb
 export async function semaineDansNolio(ctx: Contexte, lundi: string): Promise<SeanceNolio[] | null> {
   if (ctx.demonstration) return null;
   try {
-    const o = await objectifAffiche(ctx.cle);
+    // Un coaché sans objectif : celui de sa fiche, avec son accord.
+    const o = ctx.sansObjectif
+      ? (ctx.fiche?.nolio ? { nolioAthlete: ctx.fiche.nolio, accordLecture: ctx.fiche.accord, coache: true, envois: [] } : null)
+      : await objectifAffiche(ctx.cle);
     // Un coaché : sa semaine dans Nolio, quel qu'en soit l'auteur (son coach à la main, décision coach du 20/10/2026) ;
     // un acheteur : une fois son plan parti dans Nolio.
     if (!o?.nolioAthlete || !o.accordLecture || (!o.coache && !o.envois.length)) return null;

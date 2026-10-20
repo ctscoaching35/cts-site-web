@@ -9,7 +9,7 @@ import {
 import { nouveauxBadges } from '@/lib/app/badges';
 import { mesBadges } from '@/lib/app/badgesNolio';
 import { COOKIE_BIENVENUE } from '@/lib/app/bienvenue';
-import { CarteSombre, Surtitre } from '@/components/app/Ui';
+import { Carte, CarteSombre, Surtitre } from '@/components/app/Ui';
 import { contexte, lien, objectifAVenir, prenom, type Recherche } from '@/lib/app/contexte';
 import { ajouterJours, dateLongue, joursEntre, moment } from '@/lib/app/plan';
 import { ficheDuMoment, jaugeDuPlan, momentDe } from '@/lib/app/tableau';
@@ -20,10 +20,43 @@ import { donneesTableau, semaineDansNolio, semaineEcrite } from '@/lib/app/table
 // les courses de préparation, la semaine en cours, la fiche du moment ; pour un coaché entre deux objectifs, l'accueil
 // d'entre-deux. Les données, le profil et la bibliothèque ont leur onglet.
 export default async function Accueil({ searchParams }: { searchParams: Recherche }) {
-  const ctx = await contexte(searchParams);
+  const ctx = await contexte(searchParams, { sansObjectif: true });
   // La première fois sur cet appareil : l'écran de bienvenue (cadrage, 2.6), lu avant d'entrer.
   if (!(await cookies()).get(COOKIE_BIENVENUE)) redirect(lien('/app/bienvenue', ctx));
   const { plan, jour } = ctx;
+  const lundiCourant = ajouterJours(jour, -((new Date(`${jour}T12:00:00Z`).getUTCDay() + 6) % 7));
+  // Un coaché sans objectif (décision coach du 20/10/2026, « tableau de bord complet ») : sa semaine dans Nolio, un
+  // badge tout neuf, de quoi proposer un objectif ; ses données, son profil et la bibliothèque ont leur onglet.
+  if (ctx.sansObjectif) {
+    const badges = await mesBadges(ctx);
+    const nouveaux = badges.etat ? nouveauxBadges(badges.etat, jour) : [];
+    const semaine = await semaineDansNolio(ctx, lundiCourant);
+    const nom = prenom(plan.athlete.nom);
+    const demande = (await searchParams).demande === 'envoyee';
+    return (
+      <>
+        <EnTeteApp ctx={ctx} />
+        <main className="mx-auto max-w-2xl px-4 pt-5 pb-6 space-y-4">
+          <div>
+            <div className="text-xs font-semibold text-[#5E5C78] first-letter:uppercase">{dateLongue(jour)}</div>
+            <h1 className="mt-1 text-[1.625rem] font-extrabold text-indigo tracking-tight">{nom ? `Bonjour ${nom}` : 'Bonjour'}</h1>
+          </div>
+          {demande && (
+            <Carte className="text-sm text-indigo"><p role="status">Ta demande est partie chez ton coach : il la relit et lance ta préparation.</p></Carte>
+          )}
+          <CetteSemaine semaine={null} ligne={null} questionnaire={false} nolio={semaine} />
+          <CarteNouveauBadge badges={nouveaux} href={`${lien('/app/profil', ctx)}#badges`} />
+          <CarteSombre className="space-y-3">
+            <Surtitre ton="clair" as="div">Ton prochain objectif</Surtitre>
+            <p className="text-[0.9375rem] font-bold">Une course en vue ? Propose-la à ton coach.</p>
+            <Link href="/app/objectif/nouveau" className="inline-flex items-center min-h-11 px-4 rounded-full bg-white text-indigo text-[0.8125rem] font-bold">
+              Proposer un objectif
+            </Link>
+          </CarteSombre>
+        </main>
+      </>
+    );
+  }
   const d = await donneesTableau(ctx);
   const etape = moment(plan, jour);
   const restants = joursEntre(jour, plan.course.date);
@@ -32,7 +65,6 @@ export default async function Accueil({ searchParams }: { searchParams: Recherch
   const semaine = ligne ? await semaineEcrite(ctx, ligne.numero) : null;
   // Ce qui est dans Nolio cette semaine, retouches du coach comprises (décision coach du 20/10/2026) ; programmé à la main,
   // la semaine en cours, sans la trame du moteur.
-  const lundiCourant = ajouterJours(jour, -((new Date(`${jour}T12:00:00Z`).getUTCDay() + 6) % 7));
   const nolio = ctx.aLaMain ? await semaineDansNolio(ctx, lundiCourant) : ligne?.lundi ? await semaineDansNolio(ctx, ligne.lundi) : null;
   const jauge = jaugeDuPlan(d.trame, d.realises, jour);
   const fiche = ficheDuMoment(d.fiches, jour);

@@ -9,7 +9,7 @@ import { contexte, lien, type Recherche } from '@/lib/app/contexte';
 // les deux calculateurs du site ; toutes les fiches par famille, avec une recherche. Plus de « Pour ta préparation »
 // en tête (décision coach du 20/10/2026 : des doublons) ; la fiche du moment reste sur l'accueil.
 export default async function Bibliotheque({ searchParams }: { searchParams: Recherche }) {
-  const ctx = await contexte(searchParams);
+  const ctx = await contexte(searchParams, { sansObjectif: true });
   const familles = lireBibliotheque();
   const calculateurs = lireCalculateurs();
   const params = new URLSearchParams(lien('', ctx).split('?')[1] ?? '').toString();
