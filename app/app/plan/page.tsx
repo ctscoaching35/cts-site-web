@@ -69,7 +69,8 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
         <Link href={lien('/app/plan/course', ctx)} className="bg-indigo text-white rounded-[14px] p-3.5 flex items-center justify-between gap-3">
           <span className="flex flex-col gap-1">
             <span className="text-sm font-bold">Ta fiche de course</span>
-            <span className="text-xs text-[#D6D5E6]">Profil, tronçons, ravitaillement, ton jour J</span>
+            {/* Ce qu'elle contient vraiment, dans l'ordre de ses parties (retour du coach du 20/10/2026). */}
+            <span className="text-xs text-[#D6D5E6]">Profil, tronçons, déterminants de la performance, stratégie nutritionnelle</span>
           </span>
           <span aria-hidden>›</span>
         </Link>
