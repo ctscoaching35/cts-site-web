@@ -8,7 +8,7 @@ import EnvoiSemaine from '@/components/app/EnvoiSemaine';
 import { AjouterCourse, AnnulerSemaine, DemarrerNolio } from '@/components/app/GestesEcriture';
 import { Montagne } from '@/components/app/TableauDeBord';
 import { Carte, CarteSombre, PastilleDate, Surtitre } from '@/components/app/Ui';
-import { retirerObjectif } from '@/lib/app/actionsCoaching';
+import { garderObjectif, retirerObjectif } from '@/lib/app/actionsCoaching';
 import { objectifCoache, verifierEnvois } from '@/lib/app/coaching';
 import { demandesDuCoach } from '@/lib/app/demandes';
 import { annonceDepart, trameDuPlan, type Realise } from '@/lib/app/ecriture';
@@ -54,6 +54,8 @@ export default async function ObjectifCoache({ params }: { params: Promise<{ id:
     ? await service.from('tests_lus').select('jour_id, cle, statut, resultat, lu_le').eq('plan_id', id).order('lu_le', { ascending: false })
     : { data: null };
   const demandes = await demandesDuCoach(coach.compteId).catch(() => []);
+  // La demande de retrait de l'athlète, en attente (décision coach du 20/10/2026).
+  const retrait = demandes.find((d) => d.plan_id === id) ?? null;
   const nolio = o.athlete.nolio_athlete_id;
   const envois = nolio ? await verifierEnvois(id, nolio, o.plan, o.envois) : o.envois.map((e) => ({ ...e, retouchees: 0, supprimees: 0 }));
   const jour = aujourdhuiParis();
@@ -78,6 +80,22 @@ export default async function ObjectifCoache({ params }: { params: Promise<{ id:
   return (
     <CadreCoach actif="athletes" demandes={demandes.length}>
       <Link href={`/app/coach/athlete/${o.athlete.id}`} className="inline-flex items-center min-h-9 text-[0.8125rem] font-bold text-teal">‹ {o.athlete.nom}</Link>
+      {retrait && (
+        <Carte id="retrait" className="!p-5 space-y-3 border-[1.5px] border-[#C9A25A] scroll-mt-6">
+          <p className="text-sm text-indigo">
+            <strong>{o.athlete.nom}</strong> demande le retrait de cet objectif. Le retirer fait partir son plan de ton espace
+            et, dans Nolio, ce qui est encore à venir ; le passé reste.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <form action={retirerObjectif.bind(null, id)}>
+              <button type="submit" className="min-h-11 px-4 rounded-[10px] bg-indigo text-white text-sm font-bold">Retirer l’objectif</button>
+            </form>
+            <form action={garderObjectif.bind(null, retrait.id)}>
+              <button type="submit" className="min-h-11 px-4 rounded-[10px] border border-indigo/25 bg-white text-indigo text-sm font-bold">Le garder</button>
+            </form>
+          </div>
+        </Carte>
+      )}
       <div className="flex flex-wrap items-end justify-between gap-4 !mt-2">
         <div>
           <Surtitre as="div">Objectif · {statut}</Surtitre>

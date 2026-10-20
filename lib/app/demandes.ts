@@ -6,10 +6,13 @@
  */
 import { clientService } from './supabase';
 
+// plan_id : rempli à la validation d'une demande d'objectif ; sur une demande encore à valider, c'est une demande de
+// RETRAIT de cet objectif (décision coach du 20/10/2026 : l'athlète demande, le coach confirme).
 export type Demande = {
   id: string; athlete_id: string; coach_id: string; champs: Record<string, string | string[]>; gpx_chemin: string | null;
-  statut: string; cree_le: string;
+  statut: string; cree_le: string; plan_id: string | null;
 };
+export const estRetrait = (d: Pick<Demande, 'plan_id'>) => Boolean(d.plan_id);
 
 // La fiche coaché d'un compte invité dans l'app (T6), ou null.
 export async function ficheDuCompte(compteId: string): Promise<{ id: string; coach_id: string; nom: string } | null> {
@@ -28,7 +31,7 @@ export async function demandesDuCoach(coachId: string): Promise<(Demande & { nom
 
 export async function demandeDuCoach(coachId: string, demandeId: string): Promise<Demande | null> {
   const { data } = await clientService().from('objectifs_demandes').select('*').eq('id', demandeId).eq('coach_id', coachId)
-    .eq('statut', 'a_valider').maybeSingle();
+    .eq('statut', 'a_valider').is('plan_id', null).maybeSingle();
   return (data ?? null) as Demande | null;
 }
 

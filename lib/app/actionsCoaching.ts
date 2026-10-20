@@ -190,9 +190,20 @@ export async function retirerObjectif(planId: string): Promise<void> {
   if (!o) return;
   const soucis = await retirerDeNolio(planId).catch((e) => [e instanceof Error ? e.message : String(e)]);
   if (soucis.length) console.error(`Retrait de ${planId} : resté dans Nolio — ${soucis.join(' ; ')}`);
+  // Une demande de retrait de l'athlète en attente (décision coach du 20/10/2026) : faite.
+  await clientService().from('objectifs_demandes').update({ statut: 'validee' }).eq('plan_id', planId).eq('statut', 'a_valider');
   await supprimerPlans(coach.compteId, [planId]);
   revalidatePath('/app/coach');
   redirect(`/app/coach/athlete/${o.athlete.id}`);
+}
+
+// Garder un objectif dont l'athlète a demandé le retrait (décision coach du 20/10/2026) : sa demande est refusée.
+export async function garderObjectif(demandeId: string): Promise<void> {
+  const coach = await coachConnecte();
+  if (!coach) return;
+  await clientService().from('objectifs_demandes').update({ statut: 'retiree' }).eq('id', demandeId)
+    .eq('coach_id', coach.compteId).eq('statut', 'a_valider').not('plan_id', 'is', null);
+  revalidatePath('/app/coach');
 }
 
 // Retirer un athlète : sa fiche, ses objectifs et leurs PDF partent ; ce qui est dans Nolio y reste.

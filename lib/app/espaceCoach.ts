@@ -6,7 +6,7 @@
  * des séances restent dans « Suivi des 7 jours ». Côté serveur seulement.
  */
 import { athletesCoaches, type FicheAthlete } from './coaching';
-import { demandesDuCoach, type Demande } from './demandes';
+import { demandesDuCoach, estRetrait, type Demande } from './demandes';
 import type { LigneTrame, Realise } from './ecriture';
 import { ajouterJours } from './plan';
 import { clientService } from './supabase';
@@ -45,10 +45,15 @@ export async function vueDuCoach(coachId: string): Promise<VueCoach> {
   const avecAccord = new Set((accords ?? []).map((x) => String(x.nolio_athlete_id)));
   const parPlan = new Map((plans ?? []).map((p) => [p.id as string, p]));
 
-  const aRegarder: ARegarder[] = demandes.map((d) => ({
-    genre: 'demande', athlete: d.nom, action: 'Relire et lancer ›', href: `/app/coach/nouveau?athlete=${d.athlete_id}&demande=${d.id}`,
-    texte: `demande ${String(d.champs.course_nom ?? 'un objectif')}${d.champs.date_course ? `, le ${String(d.champs.date_course).split('-').reverse().join('/')}` : ''}.`,
-  }));
+  const aRegarder: ARegarder[] = demandes.map((d) => {
+    const le = d.champs.date_course ? `, le ${String(d.champs.date_course).split('-').reverse().join('/')}` : '';
+    // Une demande de retrait (décision coach du 20/10/2026) : le coach confirme ou refuse sur la page de l'objectif.
+    return estRetrait(d)
+      ? { genre: 'demande', athlete: d.nom, action: 'Relire ›', href: `/app/coach/plan/${d.plan_id}#retrait`,
+        texte: `demande le retrait de ${String(d.champs.course_nom ?? 'son objectif')}${le}.` }
+      : { genre: 'demande', athlete: d.nom, action: 'Relire et lancer ›', href: `/app/coach/nouveau?athlete=${d.athlete_id}&demande=${d.id}`,
+        texte: `demande ${String(d.champs.course_nom ?? 'un objectif')}${le}.` };
+  });
   const athletes: LigneAthlete[] = fiches.map((a) => {
     const o = prochain(a);
     const p = o ? parPlan.get(o.plan_id) : undefined;

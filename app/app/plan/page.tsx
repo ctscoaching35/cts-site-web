@@ -5,7 +5,8 @@ import { AjouterCourse } from '@/components/app/GestesEcriture';
 import { Carte, PastilleDate, Surtitre } from '@/components/app/Ui';
 import { choisirPlan } from '@/lib/app/actionsPlan';
 import { contexte, lien, plansDuCompte, type PlanDuCompte, type Recherche } from '@/lib/app/contexte';
-import { demandesDeLAthlete, ficheDuCompte } from '@/lib/app/demandes';
+import { annulerDemande, demanderRetrait } from '@/lib/app/actionsObjectifs';
+import { demandesDeLAthlete, estRetrait, ficheDuCompte } from '@/lib/app/demandes';
 import { clientServeur, clientService } from '@/lib/app/supabase';
 import { dateLongue, jMoins } from '@/lib/app/plan';
 import { blocsDuPlan, jaugeDuPlan } from '@/lib/app/tableau';
@@ -13,7 +14,8 @@ import { donneesTableau, fichesDePreparation, type CourseSecondaire } from '@/li
 
 // « Mes objectifs » (OM2, décision coach du 19/10/2026) : chaque objectif majeur du compte (les siens, ceux que son
 // coach lui prépare), en cours, à venir ou passé, et ses courses de préparation ; un toucher l'affiche ; les demandes
-// d'un coaché en attente ; « Nouvel objectif ».
+// d'un coaché en attente, qu'il peut annuler, et la demande de retrait d'un objectif lancé (décision coach du
+// 20/10/2026) ; « Nouvel objectif ».
 async function mesObjectifs() {
   const { data } = await (await clientServeur()).auth.getClaims();
   const compteId = String(data?.claims?.sub ?? '');
@@ -162,23 +164,45 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
           <Carte className="space-y-2">
             <Surtitre>Tes objectifs</Surtitre>
             <ul className="divide-y divide-indigo/[0.06]">
-              {objectifs.liste.map((o) => (
-                <li key={o.id} className="py-1">
-                  <form action={choisirPlan.bind(null, o.id)}>
-                    <button type="submit" disabled={o.id === ctx.cle}
-                      className="w-full min-h-11 flex justify-between items-center gap-3 text-sm text-left disabled:cursor-default">
-                      <span className="font-bold text-indigo">{o.course_nom}</span>
-                      <span className={o.id === ctx.cle ? 'text-teal font-semibold' : 'text-[#5E5C78]'}>
-                        {o.id === ctx.cle ? 'Affiché' : `${o.course_date < jour ? 'Passé' : o.id === objectifs.enCours ? 'En cours' : 'À venir'} · ${dateLongue(o.course_date, true)}`}
-                      </span>
-                    </button>
+              {objectifs.liste.map((o) => {
+                // Un objectif lancé par son coach, encore à venir : l'athlète en demande le retrait, son coach confirme
+                // (décision coach du 20/10/2026) ; sa demande en attente, il peut l'annuler.
+                const retrait = objectifs.demandes.find((dm) => dm.plan_id === o.id);
+                return (
+                  <li key={o.id} className="py-1">
+                    <form action={choisirPlan.bind(null, o.id)}>
+                      <button type="submit" disabled={o.id === ctx.cle}
+                        className="w-full min-h-11 flex justify-between items-center gap-3 text-sm text-left disabled:cursor-default">
+                        <span className="font-bold text-indigo">{o.course_nom}</span>
+                        <span className={o.id === ctx.cle ? 'text-teal font-semibold' : 'text-[#5E5C78]'}>
+                          {o.id === ctx.cle ? 'Affiché' : `${o.course_date < jour ? 'Passé' : o.id === objectifs.enCours ? 'En cours' : 'À venir'} · ${dateLongue(o.course_date, true)}`}
+                        </span>
+                      </button>
+                    </form>
+                    {o.coache && o.course_date >= jour && (retrait ? (
+                      <div className="flex items-center justify-between gap-3 text-xs">
+                        <span className="text-[#8A5E10] font-semibold">Retrait demandé à ton coach</span>
+                        <form action={annulerDemande.bind(null, retrait.id)}>
+                          <button type="submit" className="min-h-11 font-bold text-teal">Annuler la demande</button>
+                        </form>
+                      </div>
+                    ) : (
+                      <form action={demanderRetrait.bind(null, o.id)}>
+                        <button type="submit" className="min-h-11 text-xs font-semibold text-[#5E5C78] underline underline-offset-2">Demander le retrait de cet objectif</button>
+                      </form>
+                    ))}
+                  </li>
+                );
+              })}
+              {objectifs.demandes.filter((dm) => !estRetrait(dm)).map((dm) => (
+                <li key={dm.id} className="py-1">
+                  <div className="min-h-11 flex justify-between items-center gap-3 text-sm">
+                    <span className="font-bold text-indigo">{String(dm.champs.course_nom ?? '')}</span>
+                    <span className="text-[#5E5C78]">En attente de ton coach</span>
+                  </div>
+                  <form action={annulerDemande.bind(null, dm.id)}>
+                    <button type="submit" className="min-h-11 text-xs font-semibold text-[#5E5C78] underline underline-offset-2">Annuler cette demande</button>
                   </form>
-                </li>
-              ))}
-              {objectifs.demandes.map((dm) => (
-                <li key={dm.id} className="min-h-11 flex justify-between items-center gap-3 text-sm">
-                  <span className="font-bold text-indigo">{String(dm.champs.course_nom ?? '')}</span>
-                  <span className="text-[#5E5C78]">En attente de ton coach</span>
                 </li>
               ))}
             </ul>
