@@ -327,16 +327,22 @@ export function GraphiqueCharge({ realises, courses = [] }: { realises: Realise[
 
 // ─── Mes données : le volume (T10, en durées) ─────────────────────────────
 
+// Le volume (retour du coach du 20/10/2026 : « pas très pro », le haut tronqué) : des graduations rondes qui tiennent
+// dans le cadre, le prévu en fond clair et le fait en vert par-dessus, le futur en pointillé fin, la semaine en cours
+// soulignée.
 export function GraphiqueVolume({ barres }: { barres: Barre[] }) {
   if (!barres.length) return null;
-  const H = 140;
-  const BAS = 120;
-  const pas = (L - 30) / barres.length;
-  const pic = Math.max(60, ...barres.map((b) => Math.max(b.prevue, b.faite ?? 0))) * 1.1;
-  const h = (v: number) => (v / pic) * (BAS - 10);
+  const H = 150;
+  const HAUT = 12;
+  const BAS = 126;
+  const G = 34;
+  const pas = (L - G) / barres.length;
+  const max = Math.max(60, ...barres.map((b) => Math.max(b.prevue, b.faite ?? 0)));
+  const pasH = max <= 180 ? 1 : max <= 360 ? 2 : max <= 720 ? 3 : 5;
+  const sommet = Math.ceil(max / 60 / pasH) * pasH;
+  const h = (min: number) => (min / (sommet * 60)) * (BAS - HAUT);
+  const graduations = Array.from({ length: sommet / pasH }, (_, k) => (k + 1) * pasH);
   const passee = [...barres].reverse().find((b) => b.moment === 'passee' && b.faite !== null);
-  const heures = Math.ceil(pic / 60);
-  const graduations = [Math.ceil(heures / 3), Math.ceil((2 * heures) / 3), heures].filter((g, i, t) => g > 0 && t.indexOf(g) === i);
   return (
     <Carte className="space-y-2.5">
       <Surtitre>Ton volume de course</Surtitre>
@@ -349,24 +355,30 @@ export function GraphiqueVolume({ barres }: { barres: Barre[] }) {
       <svg viewBox={`0 0 ${L} ${H}`} className="block w-full h-auto" role="img" aria-label="Tes heures de course par semaine, faites à côté des prévues">
         {graduations.map((g) => (
           <g key={g}>
-            <line x1="30" y1={BAS - h(g * 60)} x2={L} y2={BAS - h(g * 60)} stroke="rgba(47,45,78,0.08)" />
-            <text x="4" y={BAS - h(g * 60) + 3} fontSize="9" fill="#5E5C78">{g} h</text>
+            <line x1={G} y1={BAS - h(g * 60)} x2={L} y2={BAS - h(g * 60)} stroke="rgba(47,45,78,0.07)" />
+            <text x="2" y={BAS - h(g * 60) + 3} fontSize="9" fill="#8A88A3">{g} h</text>
           </g>
         ))}
-        <line x1="30" y1={BAS} x2={L} y2={BAS} stroke="rgba(47,45,78,0.25)" />
+        <line x1={G} y1={BAS} x2={L} y2={BAS} stroke="rgba(47,45,78,0.18)" />
         {barres.map((b, i) => {
-          const x = 30 + i * pas;
+          const x = G + i * pas;
+          const w = Math.min(28, pas * 0.6);
+          const x0 = x + (pas - w) / 2;
           const avenir = b.moment !== 'passee';
           return (
             <g key={b.lundi}>
               <title>{`${laSemaine(b.numero, b.lundi)} : ${enHeures(b.prevue)} prévues${b.faite !== null ? `, ${enHeures(b.faite)} faites` : ''}`}</title>
-              <rect x={x + pas * 0.12} y={BAS - h(b.prevue)} width={pas * 0.76} height={h(b.prevue)} rx="4" fill="none"
-                stroke="#9C9AB3" strokeWidth={1.5} strokeDasharray={avenir ? '3 2' : undefined} />
-              {b.faite !== null && <rect x={x + pas * 0.24} y={BAS - h(b.faite)} width={pas * 0.52} height={h(b.faite)} rx="3" fill="#0C6E5F" />}
+              {b.moment === 'encours' && <rect x={x + 1} y={HAUT - 6} width={pas - 2} height={BAS - HAUT + 6} rx="6" fill="rgba(12,110,95,0.06)" />}
+              {avenir ? (
+                <rect x={x0} y={BAS - h(b.prevue)} width={w} height={h(b.prevue)} rx="3" fill="none" stroke="#B9B8CC" strokeWidth={1} strokeDasharray="3 3" />
+              ) : (
+                <rect x={x0} y={BAS - h(b.prevue)} width={w} height={h(b.prevue)} rx="3" fill="#ECEBF3" />
+              )}
+              {b.faite !== null && <rect x={x0 + w * 0.2} y={BAS - h(b.faite)} width={w * 0.6} height={h(b.faite)} rx="2" fill="#0C6E5F" />}
               {b.course && <Drapeau x={x + pas / 2} y={Math.max(0, BAS - h(Math.max(b.prevue, b.faite ?? 0)) - 14)} nom={b.course} />}
               {(barres.length <= 9 || i % 2 === 0 || b.moment === 'encours') && (
-                <text x={x + pas / 2} y={BAS + 14} fontSize="9" fontWeight={b.moment === 'encours' ? 700 : 600}
-                  fill={b.moment === 'encours' ? '#2F2D4E' : '#5E5C78'} textAnchor="middle">{etiquette(b.numero, b.lundi)}</text>
+                <text x={x + pas / 2} y={BAS + 15} fontSize="9" fontWeight={b.moment === 'encours' ? 700 : 500}
+                  fill={b.moment === 'encours' ? '#2F2D4E' : '#8A88A3'} textAnchor="middle">{etiquette(b.numero, b.lundi)}</text>
               )}
             </g>
           );
@@ -374,7 +386,8 @@ export function GraphiqueVolume({ barres }: { barres: Barre[] }) {
       </svg>
       <div className="flex flex-wrap gap-x-3.5 gap-y-1 text-[0.72rem] text-[#4A4866]">
         <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-teal" />fait</span>
-        <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm border-[1.5px] border-[#9C9AB3]" />prévu</span>
+        <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[#ECEBF3]" />prévu</span>
+        <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm border border-dashed border-[#9C9AB3]" />à venir</span>
         {barres.some((b) => b.course) && (
           <span className="inline-flex items-center gap-1.5">
             <svg viewBox="0 0 10 14" className="w-2.5 h-3.5" aria-hidden><line x1="1" y1="1" x2="1" y2="13" stroke="#2F2D4E" strokeWidth="1.2" /><path d="M1 1h7l-2 3 2 3H1z" fill="#2BB39B" /></svg>

@@ -1,6 +1,6 @@
 import EnTeteApp from '@/components/app/EnTeteApp';
 import { GraphiqueCharge, GraphiqueHooper, GraphiqueVolume } from '@/components/app/TableauDeBord';
-import { Carte } from '@/components/app/Ui';
+import { Carte, Surtitre } from '@/components/app/Ui';
 import { contexte, type Recherche } from '@/lib/app/contexte';
 import { barresDeVolume, pointsHooper } from '@/lib/app/tableau';
 import { donneesTableau, saisonDuCoureur } from '@/lib/app/tableauDuPlan';
@@ -20,6 +20,10 @@ export default async function MesDonnees({ searchParams }: { searchParams: Reche
   const barres = futur < 0 ? toutes : toutes.slice(0, futur + 3);
   const points = d.accord ? pointsHooper(d.trame, saison.realises, ctx.jour, saison.courses) : [];
   const rien = !saison.realises.length;
+  // La charge et le Hooper demandent deux semaines lues : avant, leur cadre dit quand ils arrivent (retour du coach du
+  // 20/10/2026 : « pas de graphique Hooper ? charge ? »).
+  const chargePrete = saison.realises.filter((r) => r.rpe_lu && r.charge_faite > 0).length >= 2;
+  const hooperPret = points.filter((p) => p.valeur !== null).length >= 2;
   return (
     <>
       <EnTeteApp ctx={ctx} />
@@ -31,15 +35,17 @@ export default async function MesDonnees({ searchParams }: { searchParams: Reche
               : 'Tes séances faites ou manquées et leur durée, mises à jour chaque dimanche soir.'}
           </p>
         </div>
-        {rien && (
+        {rien && !d.accord && (
           <Carte className="text-sm text-[#4A4866] leading-relaxed">
-            <p>Tes premières données arrivent le dimanche soir qui suit ta première semaine : ta charge, ton volume et ton Hooper, semaine après semaine.</p>
+            <p>Tes premières données arrivent le dimanche soir qui suit ta première semaine : ton volume, semaine après semaine.</p>
           </Carte>
         )}
         {/* Une semaine se dit par son lundi, pas par son numéro (décision coach du 19/10/2026). */}
-        {d.accord && <GraphiqueCharge realises={saison.realises} courses={saison.courses} />}
+        {d.accord && (chargePrete ? <GraphiqueCharge realises={saison.realises} courses={saison.courses} />
+          : <EnAttente titre="Ta charge d’entraînement" texte="Elle s’affiche après deux semaines faites : ton effort ressenti (RPE) multiplié par la durée de chaque séance, lus dans Nolio le dimanche soir." />)}
         <GraphiqueVolume barres={barres} />
-        {d.accord && <GraphiqueHooper points={points} />}
+        {d.accord && (hooperPret ? <GraphiqueHooper points={points} />
+          : <EnAttente titre="Ton Hooper du dimanche" texte="Il s’affiche après deux questionnaires du dimanche : ta fatigue, ton sommeil, ton stress et tes courbatures, semaine après semaine." />)}
         {!d.accord && !rien && (
           <Carte className="text-[0.8125rem] text-[#4A4866] leading-relaxed">
             <p>Ta charge et ton Hooper s’affichent avec ton accord de lecture : l’app lit alors dans Nolio ton effort ressenti et ton Hooper.</p>
@@ -47,5 +53,18 @@ export default async function MesDonnees({ searchParams }: { searchParams: Reche
         )}
       </main>
     </>
+  );
+}
+
+// Le cadre d'un graphique qui attend ses données : son titre, et quand il arrive.
+function EnAttente({ titre, texte }: { titre: string; texte: string }) {
+  return (
+    <Carte className="space-y-2">
+      <Surtitre>{titre}</Surtitre>
+      <div className="h-16 rounded-xl border border-dashed border-indigo/15 bg-sand/60 flex items-end gap-1.5 px-3 pb-2" aria-hidden>
+        {[30, 45, 38, 55, 48, 62].map((v, i) => <span key={i} className="flex-1 rounded-sm bg-indigo/[0.06]" style={{ height: `${v}%` }} />)}
+      </div>
+      <p className="text-xs text-[#5E5C78] leading-relaxed">{texte}</p>
+    </Carte>
   );
 }

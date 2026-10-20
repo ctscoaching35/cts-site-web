@@ -181,8 +181,11 @@ export function barresDeVolume(trame: LigneTrame[], realises: Realise[], aujourd
     choc: false, affutage: /affûtage|décharge/i.test(r.type ?? ''), type: r.type ?? '', course: courseDeLaSemaine(r.lundi, courses),
   }));
   const barres = [...avant, ...deLaTrame].sort((a, b) => a.lundi.localeCompare(b.lundi));
+  // Les semaines passées sans rien de lu avant la première qui l'est (les séances que le coach posait avant le départ
+  // de l'objectif dans l'app) ne s'affichent pas : elles ressemblaient à des semaines prévues (retour du coach du 20/10).
   const passees = barres.filter((b) => b.moment === 'passee');
-  return [...passees.slice(-8), ...barres.filter((b) => b.moment !== 'passee')];
+  const premiere = passees.findIndex((b) => b.faite !== null);
+  return [...(premiere < 0 ? [] : passees.slice(premiere)).slice(-8), ...barres.filter((b) => b.moment !== 'passee')];
 }
 
 // Le Hooper du dimanche, semaine par semaine, et sa zone habituelle.
