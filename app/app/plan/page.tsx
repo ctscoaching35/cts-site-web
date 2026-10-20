@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import clsx from 'clsx';
 import EnTeteApp from '@/components/app/EnTeteApp';
-import { AjouterCourse } from '@/components/app/GestesEcriture';
+import { AjouterCourse, RetirerCourse } from '@/components/app/GestesEcriture';
 import { Carte, PastilleDate, Surtitre } from '@/components/app/Ui';
 import { choisirPlan } from '@/lib/app/actionsPlan';
 import { contexte, lien, plansDuCompte, type PlanDuCompte, type Recherche } from '@/lib/app/contexte';
@@ -137,15 +137,18 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
           <Carte id="ajouter-course" className="space-y-3 scroll-mt-20">
             <Surtitre>Tes courses de préparation</Surtitre>
             {d.courses.map((c) => (
-              <div key={`${c.date}-${c.nom}`} className="flex items-center gap-3">
-                <PastilleDate iso={c.date} />
-                <span className="flex-1 min-w-0">
-                  <span className="block text-sm font-bold text-indigo">{c.nom}</span>
-                  <span className="block text-xs text-[#5E5C78]">{c.distance_km} km{c.dplus_m ? ` · ${c.dplus_m} m D+` : ''}{c.chrono ? ` · objectif ${c.chrono}` : ''}</span>
-                </span>
-                {fichesPrepa.has(c.date) && (
-                  <Link href={lien('/app/plan/course', ctx, { course: c.date })} className="shrink-0 inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">Sa fiche ›</Link>
-                )}
+              <div key={`${c.date}-${c.nom}`}>
+                <div className="flex items-center gap-3">
+                  <PastilleDate iso={c.date} />
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-sm font-bold text-indigo">{c.nom}</span>
+                    <span className="block text-xs text-[#5E5C78]">{c.distance_km} km{c.dplus_m ? ` · ${c.dplus_m} m D+` : ''}{c.chrono ? ` · objectif ${c.chrono}` : ''}</span>
+                  </span>
+                  {fichesPrepa.has(c.date) && (
+                    <Link href={lien('/app/plan/course', ctx, { course: c.date })} className="shrink-0 inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">Sa fiche ›</Link>
+                  )}
+                </div>
+                {c.date > jour && <div className="pl-14 -mt-1"><RetirerCourse planId={ctx.cle} date={c.date} nom={c.nom} /></div>}
               </div>
             ))}
             {courseAVenir && (

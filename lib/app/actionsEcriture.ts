@@ -6,7 +6,9 @@
  */
 import { revalidatePath } from 'next/cache';
 import { API_URL } from '@/lib/plan';
-import { annulerAjustements, demarrerObjectif, objectifEcrit, poserCourse, poserFichePreparation, retirerAccordLecture } from './ecriture';
+import {
+  annulerAjustements, demarrerObjectif, objectifEcrit, poserCourse, poserFichePreparation, retirerAccordLecture, retirerCourseDeNolio,
+} from './ecriture';
 import { coachConnecte } from './nolio';
 import { clientServeur, clientService } from './supabase';
 
@@ -122,6 +124,35 @@ export async function ajouterCourse(planId: string, _e: EtatGeste, form: FormDat
     ? ' Sa fiche de course est prête, mais sa trace ne s’est pas lue : le profil reste schématique.'
     : ' Sa fiche de course est prête, ici et une semaine avant dans Nolio.';
   return { ok: true, message: `Course ajoutée : les jours autour d’elle s’ajustent dans tes semaines.${verdict.message ? ` ${verdict.message}` : ''}${surLaFiche}` };
+}
+
+// Retirer une course de préparation à venir (décision coach du 20/10/2026 : l'athlète la retire seul, comme il l'ajoute ;
+// son coach le peut aussi) : elle quitte les paramètres et sa fiche part ; dans Nolio, sa course et le rappel de sa fiche
+// s'ils sont encore à venir. Les semaines déjà écrites gardent leurs jours ajustés ; les suivantes s'écrivent sans elle.
+export async function retirerCourse(planId: string, date: string, _e: EtatGeste): Promise<EtatGeste> {
+  const { compteId, coachId } = await qui();
+  const o = await objectifEcrit(planId);
+  if (!o || !compteId || (o.compteId !== compteId && o.compteAthlete !== compteId && o.coachId !== coachId)) {
+    return { ok: false, message: 'Plan introuvable.' };
+  }
+  const courses = ((o.parametres.courses_secondaires as { date: string }[] | undefined) ?? []);
+  const aujourdhui = new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris' }).format(new Date());
+  if (!courses.some((c) => c.date === date) || date <= aujourdhui) return { ok: false, message: 'Cette course n’est plus à venir.' };
+  const soucis = await retirerCourseDeNolio(o, date).catch((e) => [e instanceof Error ? e.message : String(e)]);
+  if (soucis.length) console.error(`Course du ${date} (${planId}) : restée dans Nolio — ${soucis.join(' ; ')}`);
+  const service = clientService();
+  await service.from('plans').update({ parametres: { ...o.parametres, courses_secondaires: courses.filter((c) => c.date !== date) } }).eq('id', planId);
+  const { data: fp, error } = await service.from('plans').select('fiches_preparation').eq('id', planId).maybeSingle();
+  if (!error) {
+    const fiches = { ...((fp as { fiches_preparation?: Record<string, unknown> } | null)?.fiches_preparation ?? {}) };
+    delete fiches[date];
+    await service.from('plans').update({ fiches_preparation: fiches }).eq('id', planId);
+  }
+  revalidatePath('/app/plan');
+  revalidatePath(`/app/coach/plan/${planId}`);
+  return { ok: true, message: soucis.length
+    ? 'Course retirée de ta préparation. Dans Nolio, elle n’a pas pu partir : retire-la à la main.'
+    : 'Course retirée : tes prochaines semaines s’écrivent sans elle.' };
 }
 
 // « 2h15 », « 2h », « 2:15 », « 135 min », « 2,5 » : des heures ; null illisible.

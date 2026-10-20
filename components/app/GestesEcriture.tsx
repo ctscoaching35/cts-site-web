@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
-import { ajouterCourse, annulerSemaine, demarrerDansNolio, retirerMonAccord, type EtatGeste } from '@/lib/app/actionsEcriture';
+import { ajouterCourse, annulerSemaine, demarrerDansNolio, retirerCourse, retirerMonAccord, type EtatGeste } from '@/lib/app/actionsEcriture';
 
 // Les gestes de l'écriture semaine par semaine (lib/app/actionsEcriture.ts) : démarrer un objectif dans Nolio, annuler
 // les ajustements d'une semaine, ajouter une course secondaire.
@@ -32,6 +32,24 @@ export function AnnulerSemaine({ planId, numero }: { planId: string; numero: str
       </button>
       <Message etat={etat} />
     </form>
+  );
+}
+
+// Retirer une course de préparation à venir (décision coach du 20/10/2026) : une confirmation, puis le retrait.
+export function RetirerCourse({ planId, date, nom }: { planId: string; date: string; nom: string }) {
+  const [etat, action, enCours] = useActionState<EtatGeste, FormData>(retirerCourse.bind(null, planId, date), null);
+  if (etat?.ok) return <Message etat={etat} />;
+  return (
+    <details className="text-xs">
+      <summary className="cursor-pointer inline-flex items-center min-h-11 font-semibold text-[#5E5C78] underline underline-offset-2">Retirer</summary>
+      <form action={action} className="mt-1 space-y-2">
+        <p className="text-[#4A4866] leading-relaxed">{nom} quitte ta préparation ; dans Nolio, sa course et le rappel de sa fiche partent.</p>
+        <button type="submit" disabled={enCours} className="min-h-11 px-4 rounded-[10px] border border-indigo/25 bg-white text-indigo text-sm font-bold disabled:opacity-50">
+          {enCours ? 'Retrait…' : `Retirer ${nom}`}
+        </button>
+        <Message etat={etat} />
+      </form>
+    </details>
   );
 }
 

@@ -5,7 +5,7 @@ import BanniereSemaine from '@/components/app/BanniereSemaine';
 import CadreCoach from '@/components/app/CadreCoach';
 import EnvoiPlan from '@/components/app/EnvoiPlan';
 import EnvoiSemaine from '@/components/app/EnvoiSemaine';
-import { AjouterCourse, AnnulerSemaine, DemarrerNolio } from '@/components/app/GestesEcriture';
+import { AjouterCourse, AnnulerSemaine, DemarrerNolio, RetirerCourse } from '@/components/app/GestesEcriture';
 import { Montagne } from '@/components/app/TableauDeBord';
 import { Carte, CarteSombre, PastilleDate, Surtitre } from '@/components/app/Ui';
 import { garderObjectif, retirerObjectif } from '@/lib/app/actionsCoaching';
@@ -252,16 +252,19 @@ export default async function ObjectifCoache({ params }: { params: Promise<{ id:
               <Surtitre>Ses courses de préparation</Surtitre>
               {preps.length === 0 && <p className="text-[0.8125rem] text-[#4A4866]">Aucune pour l’instant.</p>}
               {preps.map((c) => (
-                <div key={`${c.date}-${c.nom}`} className="flex items-center gap-3">
-                  <PastilleDate iso={c.date} />
-                  <span className="flex-1 min-w-0"><span className="block text-sm font-bold">{c.nom}</span>
-                    <span className="block text-xs text-[#5E5C78]">
-                      {c.distance_km} km{c.dplus_m ? ` · ${c.dplus_m} m D+` : ''}{c.chrono ? ` · ${c.chrono}` : ''}
-                      {fichesPrepa.has(c.date) ? ` · fiche de course le ${dateLongue(ajouterJours(c.date, -7) > jour ? ajouterJours(c.date, -7) : jour, true)}` : ''}
-                    </span></span>
-                  {fichesPrepa.has(c.date) && (
-                    <a href={`${lienFicheCourse(id)}?course=${c.date}`} target="_blank" rel="noopener" className="shrink-0 inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">Fiche ›</a>
-                  )}
+                <div key={`${c.date}-${c.nom}`}>
+                  <div className="flex items-center gap-3">
+                    <PastilleDate iso={c.date} />
+                    <span className="flex-1 min-w-0"><span className="block text-sm font-bold">{c.nom}</span>
+                      <span className="block text-xs text-[#5E5C78]">
+                        {c.distance_km} km{c.dplus_m ? ` · ${c.dplus_m} m D+` : ''}{c.chrono ? ` · ${c.chrono}` : ''}
+                        {fichesPrepa.has(c.date) ? ` · fiche de course le ${dateLongue(ajouterJours(c.date, -7) > jour ? ajouterJours(c.date, -7) : jour, true)}` : ''}
+                      </span></span>
+                    {fichesPrepa.has(c.date) && (
+                      <a href={`${lienFicheCourse(id)}?course=${c.date}`} target="_blank" rel="noopener" className="shrink-0 inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">Fiche ›</a>
+                    )}
+                  </div>
+                  {c.date > jour && <div className="pl-14 -mt-1"><RetirerCourse planId={id} date={c.date} nom={c.nom} /></div>}
                 </div>
               ))}
               {course.date >= jour && (

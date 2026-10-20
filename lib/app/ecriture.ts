@@ -673,6 +673,30 @@ export async function poserFichePreparation(o: Objectif, c: Course) {
   o.envois.push({ semaine: cle, envoye_le: new Date().toISOString(), seances: [cree] });
 }
 
+// Une course de préparation retirée par l'athlète (décision coach du 20/10/2026) : ce que le site en a posé dans Nolio
+// (la course, le rappel de sa fiche) part s'il est encore à venir, et ces envois sont oubliés ; ce qui est passé reste.
+export async function retirerCourseDeNolio(o: Objectif, date: string): Promise<string[]> {
+  const cles = [`course:${date}`, `fiche:${date}`];
+  const envois = o.envois.filter((e) => cles.includes(e.semaine));
+  const soucis: string[] = [];
+  if (o.nolioAthlete && envois.length) {
+    const d = await destinataire(o.nolioAthlete);
+    const qui = d.moi ? '' : `athlete=${d.usr}`;
+    const demain = ajouterJours(aujourdhuiParis(), 1);
+    const poses = new Set(envois.flatMap((e) => e.seances as SeanceEnvoyee[]).map((s) => String(s.nolio_id ?? '')).filter(Boolean));
+    for (const [genre, quoi] of [['competitions', 'la course'], ['notes', 'le rappel de sa fiche']]) {
+      const avenir = await listeNolio<{ id: string; date_start: string }>(
+        `planned/${genre}/?date_from=${demain}&date_to=${ajouterJours(date, 1)}${qui ? `&${qui}` : ''}`).catch(() => []);
+      for (const x of avenir.filter((y) => poses.has(y.id) && y.date_start.slice(0, 10) >= demain)) {
+        const r = await appelNolio('DELETE', `planned/${genre}/${x.id}/${qui ? `?${qui}` : ''}`).catch(() => null);
+        if (!r || (r.statut !== 204 && r.statut !== 200 && r.statut !== 404)) soucis.push(r ? refusNolio(r, quoi) : `${quoi} : Nolio injoignable`);
+      }
+    }
+  }
+  await clientService().from('nolio_envois').delete().eq('plan_id', o.planId).in('semaine', cles);
+  return soucis;
+}
+
 // Une course posée en compétition dans le calendrier Nolio de l'athlète : l'objectif principal (trophée d'or) ou une
 // course de préparation (d'argent) ; une compétition déjà posée ce jour-là (par le coach ou l'athlète) n'est pas
 // doublée, ni une course déjà posée par le site.
