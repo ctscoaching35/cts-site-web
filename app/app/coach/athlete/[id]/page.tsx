@@ -8,7 +8,7 @@ import ProfilAthlete from '@/components/app/ProfilAthlete';
 import { lignesDuProfil } from '@/lib/app/profilEntrainement';
 import TestVcCoach from '@/components/app/TestVcCoach';
 import { Carte, PastilleDate, Surtitre } from '@/components/app/Ui';
-import { associerNolio, retirerAcces, retirerAthlete } from '@/lib/app/actionsCoaching';
+import { associerNolio, changerProgrammation, retirerAcces, retirerAthlete } from '@/lib/app/actionsCoaching';
 import { adresseDuCompte } from '@/lib/app/espaceAthlete';
 import { ficheAthlete } from '@/lib/app/coaching';
 import { initiales } from '@/lib/app/contexte';
@@ -111,6 +111,7 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
                 .slice().sort((x, y) => x.date.localeCompare(y.date));
               const statut = o.course_date < jour ? 'couru'
                 : !p?.parametres ? 'envoyé en entier'
+                  : a.programmation === 'main' ? 'programmé à la main'
                   : p.demarre_le ? `en route dans Nolio depuis le ${dateLongue(String(p.demarre_le).slice(0, 10), true)}`
                     : p.depart_prevu ? `démarre le ${dateLongue(String(p.depart_prevu), true)}` : 'pas encore démarré';
               const distance = p?.distance_km ? `${Math.round(Number(p.distance_km))} km` : null;
@@ -134,7 +135,7 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
                       <span className="text-[0.84rem]"><strong>{c.nom}</strong> · préparation · {c.distance_km} km{c.dplus_m ? ` · ${c.dplus_m} m D+` : ''}</span>
                     </div>
                   ))}
-                  {principal && Boolean(p?.parametres) && !p?.demarre_le && !p?.depart_prevu && (
+                  {principal && a.programmation === 'auto' && Boolean(p?.parametres) && !p?.demarre_le && !p?.depart_prevu && (
                     <div className="flex flex-wrap items-center gap-3 p-3.5 rounded-xl bg-[#E1EFEA]">
                       <span className="flex-[1_1_240px] text-[0.8125rem] leading-relaxed text-[#0B4A40]">Pas encore démarré dans Nolio : la trame, ses questionnaires et sa semaine partent au départ.</span>
                       <Link href={`/app/coach/plan/${o.plan_id}`} className="inline-flex items-center min-h-11 px-4 rounded-[10px] bg-teal text-white text-[0.8125rem] font-bold">Démarrer dans Nolio</Link>
@@ -143,6 +144,25 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
                 </div>
               );
             })}
+          </Carte>
+
+          <Carte className="!p-5 space-y-3">
+            <Surtitre>Sa programmation</Surtitre>
+            <p className="text-sm leading-relaxed text-[#4A4866]">
+              {a.programmation === 'main'
+                ? 'À la main : tu écris ses séances dans Nolio, le moteur n’écrit rien pour lui. L’app reste son tableau de bord : sa semaine lue dans Nolio, ses données résumées chaque nuit, son profil, ses tests et ses badges ; avec un objectif, son J-, sa fiche de course et son jour J.'
+                : 'Automatique : le moteur écrit ses semaines chaque dimanche, d’après sa semaine écoulée ; tu retouches dans Nolio au besoin.'}
+            </p>
+            <form action={changerProgrammation.bind(null, a.id, a.programmation === 'main' ? 'auto' : 'main')}>
+              <button type="submit" className="min-h-11 px-4 rounded-[10px] border border-teal text-teal text-sm font-bold">
+                {a.programmation === 'main' ? 'Repasser en automatique' : 'Le programmer à la main'}
+              </button>
+            </form>
+            <p className="text-[0.72rem] leading-relaxed text-[#5E5C78]">
+              {a.programmation === 'main'
+                ? 'En automatique, l’écriture reprend au dimanche suivant ; un objectif pas encore démarré se démarre dans Nolio.'
+                : 'À la main, ce qui est déjà dans Nolio y reste ; plus rien ne s’y écrit à partir de maintenant.'}
+            </p>
           </Carte>
 
           <Carte className="!p-5 space-y-3">

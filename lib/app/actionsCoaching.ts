@@ -15,6 +15,17 @@ import { clientService } from './supabase';
 
 export type EtatCoach = { message: string; ok: boolean } | null;
 
+// Sa programmation (décision coach du 20/10/2026, « tableau de bord complet ») : automatique, le moteur écrit ses
+// semaines chaque dimanche ; à la main, le coach les écrit dans Nolio, le moteur n'écrit rien et l'app reste son tableau
+// de bord. Ce qui est déjà dans Nolio y reste.
+export async function changerProgrammation(athleteId: string, programmation: 'auto' | 'main'): Promise<void> {
+  const coach = await coachConnecte();
+  if (!coach || (programmation !== 'auto' && programmation !== 'main')) return;
+  const { error } = await clientService().from('athletes_coaches').update({ programmation }).eq('id', athleteId).eq('coach_id', coach.compteId);
+  if (error) console.error(`Programmation de ${athleteId} :`, error.message);
+  revalidatePath('/app', 'layout');
+}
+
 export async function associerNolio(athleteId: string, form: FormData): Promise<void> {
   const coach = await coachConnecte();
   // L'identifiant d'un athlète dans l'API v2 de Nolio : « usr_… ».

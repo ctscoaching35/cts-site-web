@@ -34,5 +34,7 @@ export async function retirerAccord(usr: string): Promise<void> {
   if (objectifs?.length) {
     await clientService().from('semaines_ecrites').update({ realise: null }).in('plan_id', objectifs.map((o) => o.plan_id));
   }
+  // Et les résumés des semaines que le moteur n'a pas écrites (décision coach du 20/10/2026).
+  if (fiches?.length) await clientService().from('semaines_athlete').delete().in('athlete_id', fiches.map((f) => f.id));
   revalidatePath('/app/coach/suivi');
 }

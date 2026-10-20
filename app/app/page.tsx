@@ -30,8 +30,10 @@ export default async function Accueil({ searchParams }: { searchParams: Recherch
   const rang = d.trame.findIndex((l) => l.lundi && momentDe(l.lundi, jour) === 'encours');
   const ligne = rang >= 0 ? d.trame[rang] : null;
   const semaine = ligne ? await semaineEcrite(ctx, ligne.numero) : null;
-  // Ce qui est dans Nolio cette semaine, retouches du coach comprises (décision coach du 20/10/2026).
-  const nolio = ligne?.lundi ? await semaineDansNolio(ctx, ligne.lundi) : null;
+  // Ce qui est dans Nolio cette semaine, retouches du coach comprises (décision coach du 20/10/2026) ; programmé à la main,
+  // la semaine en cours, sans la trame du moteur.
+  const lundiCourant = ajouterJours(jour, -((new Date(`${jour}T12:00:00Z`).getUTCDay() + 6) % 7));
+  const nolio = ctx.aLaMain ? await semaineDansNolio(ctx, lundiCourant) : ligne?.lundi ? await semaineDansNolio(ctx, ligne.lundi) : null;
   const jauge = jaugeDuPlan(d.trame, d.realises, jour);
   const fiche = ficheDuMoment(d.fiches, jour);
   const nom = prenom(plan.athlete.nom);
@@ -44,8 +46,7 @@ export default async function Accueil({ searchParams }: { searchParams: Recherch
   // L'entre-deux d'un coaché (décision coach du 20/10/2026) : sa dernière course passée, aucun objectif à venir. Son
   // prochain se prépare avec son coach ; sa semaine se lit dans Nolio (les séances que son coach lui pose à la main).
   const entreDeux = ctx.coache && etape === 'apres' && (ctx.demonstration || !(await objectifAVenir()));
-  const lundi = ajouterJours(jour, -((new Date(`${jour}T12:00:00Z`).getUTCDay() + 6) % 7));
-  const semaineEntreDeux = entreDeux ? await semaineDansNolio(ctx, lundi) : null;
+  const semaineEntreDeux = entreDeux ? await semaineDansNolio(ctx, lundiCourant) : null;
   if (entreDeux) {
     return (
       <>
@@ -81,7 +82,7 @@ export default async function Accueil({ searchParams }: { searchParams: Recherch
           <h1 className="mt-1 text-[1.625rem] font-extrabold text-indigo tracking-tight">{nom ? `Bonjour ${nom}` : 'Bonjour'}</h1>
         </div>
 
-        <CarteObjectif plan={plan} restants={restants} jauge={jauge} etape={etape} href={lien('/app/plan', ctx)}
+        <CarteObjectif plan={plan} restants={restants} jauge={ctx.aLaMain ? null : jauge} etape={etape} href={lien('/app/plan', ctx)}
           surtitre={!ctx.coache ? 'Ton objectif' : etape === 'apres' ? 'Ton dernier objectif majeur' : 'Ton prochain objectif majeur'} />
         {etape !== 'apres' && <CarteNolio etat={d.nolio} />}
         <CarteNouveauBadge badges={nouveaux} href={`${lien('/app/profil', ctx)}#badges`} />
@@ -93,9 +94,10 @@ export default async function Accueil({ searchParams }: { searchParams: Recherch
           </Link>
         )}
 
-        {etape !== 'avant' && <Piliers jauge={jauge} />}
+        {etape !== 'avant' && !ctx.aLaMain && <Piliers jauge={jauge} />}
         {etape !== 'apres' && <CoursesPreparation courses={d.courses.filter((c) => c.date >= jour)} ajout={ajout} />}
-        {etape === 'pendant' && <CetteSemaine semaine={semaine} ligne={ligne} questionnaire={d.ecrit && restants > 7} nolio={nolio} />}
+        {etape === 'pendant' && !ctx.aLaMain && <CetteSemaine semaine={semaine} ligne={ligne} questionnaire={d.ecrit && restants > 7} nolio={nolio} />}
+        {etape !== 'apres' && ctx.aLaMain && <CetteSemaine semaine={null} ligne={null} questionnaire={false} nolio={nolio} />}
         {fiche && etape !== 'apres' && <FicheDuMoment fiche={fiche.fiche} avenir={fiche.avenir} ctx={ctx} />}
       </main>
     </>

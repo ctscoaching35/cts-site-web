@@ -160,9 +160,10 @@ export default async function Confidentialite() {
             mois ;
           </li>
           <li>
-            chaque dimanche, tes séances de la semaine suivante s’écrivent d’après ta semaine écoulée, avec les mêmes
-            lectures ; nous gardons un résumé chiffré de chaque semaine (charge, séances faites, plus longue sortie,
-            Hooper), pour ajuster tes séances et afficher tes graphiques dans ton espace CTS ;
+            chaque dimanche, sauf si ton coach les écrit lui-même, tes séances de la semaine suivante s’écrivent d’après ta
+            semaine écoulée, avec les mêmes lectures ; nous gardons un résumé chiffré de chaque semaine (charge, séances
+            faites, plus longue sortie, dénivelé, Hooper), celles que ton coach écrit à la main comprises, lues chaque nuit
+            dans Nolio, pour ajuster tes séances et afficher tes graphiques dans ton espace CTS ;
           </li>
           <li>
             si ton coach t’ouvre un espace dans l’app, nous gardons ton adresse e-mail, pour ta connexion par un code

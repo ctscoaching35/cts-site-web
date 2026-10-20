@@ -15,10 +15,12 @@ export default async function MesDonnees({ searchParams }: { searchParams: Reche
   // Un coaché : toute sa saison, d'un objectif à l'autre, ses courses en repère (décision coach du 20/10/2026).
   const saison = await saisonDuCoureur(ctx, d);
   // Les 8 dernières semaines faites, la semaine en cours et les 3 qui viennent.
-  const toutes = d.ecrit || saison.realises.length ? barresDeVolume(d.trame, saison.realises, ctx.jour, saison.courses) : [];
+  // Programmé à la main (décision coach du 20/10/2026) : ses semaines lues dans Nolio, sans la trame du moteur.
+  const trame = ctx.aLaMain ? [] : d.trame;
+  const toutes = d.ecrit || saison.realises.length ? barresDeVolume(trame, saison.realises, ctx.jour, saison.courses) : [];
   const futur = toutes.findIndex((b) => b.moment === 'avenir');
   const barres = futur < 0 ? toutes : toutes.slice(0, futur + 3);
-  const points = d.accord ? pointsHooper(d.trame, saison.realises, ctx.jour, saison.courses) : [];
+  const points = d.accord ? pointsHooper(trame, saison.realises, ctx.jour, saison.courses) : [];
   const rien = !saison.realises.length;
   // La charge et le Hooper demandent deux semaines lues : avant, leur cadre dit quand ils arrivent (retour du coach du
   // 20/10/2026 : « pas de graphique Hooper ? charge ? »).
@@ -31,7 +33,8 @@ export default async function MesDonnees({ searchParams }: { searchParams: Reche
         <div>
           <h1 className="text-[1.625rem] font-extrabold text-indigo tracking-tight">Mes données</h1>
           <p className="mt-1.5 text-[0.8125rem] text-[#5E5C78] leading-relaxed">
-            {d.accord ? 'Lues dans Nolio avec ton accord, mises à jour chaque dimanche soir.'
+            {d.accord && ctx.aLaMain ? 'Lues dans Nolio avec ton accord, mises à jour chaque nuit.'
+              : d.accord ? 'Lues dans Nolio avec ton accord, mises à jour chaque dimanche soir.'
               : 'Tes séances faites ou manquées et leur durée, mises à jour chaque dimanche soir.'}
           </p>
         </div>

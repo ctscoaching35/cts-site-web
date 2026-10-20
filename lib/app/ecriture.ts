@@ -181,7 +181,7 @@ const requeteAthlete = async (o: Objectif) => {
 };
 
 let hooperItem: Promise<string | null> | null = null;
-const indiceHooper = () => {
+export const indiceHooper = () => {
   hooperItem ??= listeNolio<{ id: string; key?: string }>('metrics/items/')
     .then((items) => items.find((i) => i.key === 'INDICEHOOPER')?.id ?? null)
     .catch(() => {
@@ -368,6 +368,8 @@ export async function annonceDepart(planId: string): Promise<{ lundi: string; de
 export async function demarrerObjectif(planId: string): Promise<Depart> {
   const o = await objectifEcrit(planId);
   if (!o) throw new Error('Ce plan ne s’écrit pas semaine par semaine.');
+  if ((await plansALaMain()).has(planId))
+    throw new Error('Tu programmes cet athlète à la main : rien ne s’écrit dans son Nolio. Passe sa fiche en automatique pour lancer l’objectif.');
   if (!o.nolioAthlete) throw new Error('L’athlète n’a pas encore de compte Nolio relié.');
   const aujourdhui = aujourdhuiParis();
   const debut = o.plan.semaines.find((s) => s.lundi && ajouterJours(s.lundi, 6) >= aujourdhui);
@@ -470,7 +472,8 @@ function debutApres(q: Pick<Voisin, 'course_date' | 'temps_h'>): string {
 async function departsDuJour(): Promise<Compte[]> {
   const { data } = await clientService().from('plans').select('id').lte('depart_prevu', aujourdhuiParis()).is('demarre_le', null);
   const comptes: Compte[] = [];
-  for (const p of data ?? []) {
+  const aLaMain = await plansALaMain();
+  for (const p of (data ?? []).filter((x) => !aLaMain.has(x.id as string))) {
     try {
       const d = await demarrerObjectif(p.id as string);
       comptes.push({ plan: p.id as string, quoi: 'numero' in d ? `démarré (${d.numero})` : `reprogrammé au ${d.prevu}` });
@@ -484,6 +487,17 @@ async function departsDuJour(): Promise<Compte[]> {
 // ─── Le dimanche, chaque jour ─────────────────────────────────────────────
 
 // Les plans écrits semaine par semaine dont l'athlète est dans Nolio et la course à venir.
+// Les objectifs des athlètes que le coach programme à la main (décision coach du 20/10/2026, « tableau de bord
+// complet ») : le moteur n'y écrit rien, ni semaine, ni trame, ni questionnaire ; l'app reste leur tableau de bord. Vide
+// avant la migration du 20/10/2026 (la colonne n'existe pas encore).
+export async function plansALaMain(): Promise<Set<string>> {
+  const service = clientService();
+  const { data: fiches, error } = await service.from('athletes_coaches').select('id').eq('programmation', 'main');
+  if (error || !fiches?.length) return new Set();
+  const { data } = await service.from('coaching').select('plan_id').in('athlete_id', fiches.map((f) => f.id));
+  return new Set((data ?? []).map((c) => c.plan_id as string));
+}
+
 async function plansActifs(): Promise<string[]> {
   const service = clientService();
   // Seulement les objectifs démarrés dans Nolio : un objectif que le coach n'a pas encore lancé, ou programmé après un
@@ -492,7 +506,9 @@ async function plansActifs(): Promise<string[]> {
     .not('demarre_le', 'is', null).gte('course_date', aujourdhuiParis());
   const { data: coaches } = await service.from('coaching').select('plan_id');
   const coachesIds = new Set((coaches ?? []).map((c) => c.plan_id as string));
-  return (data ?? []).filter((p) => p.nolio_statut === 'actif' || coachesIds.has(p.id as string)).map((p) => p.id as string);
+  const aLaMain = await plansALaMain();
+  return (data ?? []).filter((p) => (p.nolio_statut === 'actif' || coachesIds.has(p.id as string)) && !aLaMain.has(p.id as string))
+    .map((p) => p.id as string);
 }
 
 export type Compte = { plan: string; quoi: string; erreur?: string; coache?: boolean; journal?: Record<string, unknown>[] };

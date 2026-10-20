@@ -75,7 +75,8 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
           <Carte className="text-sm text-indigo"><p role="status">Ta demande est partie chez ton coach : il la relit et lance ta préparation.</p></Carte>
         )}
 
-        {jauge.jalons.length > 0 && (
+        {/* Programmé à la main (décision coach du 20/10/2026) : ni jalons ni blocs, qui suivent la trame du moteur. */}
+        {jauge.jalons.length > 0 && !ctx.aLaMain && (
           <Carte className="space-y-3">
             <Surtitre>Tes jalons</Surtitre>
             <ul className="grid grid-cols-3 gap-2">
@@ -95,7 +96,7 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
           </Carte>
         )}
 
-        <Carte className="!pb-1.5">
+        {!ctx.aLaMain && <Carte className="!pb-1.5">
           <Surtitre>Ta préparation, bloc par bloc</Surtitre>
           <p className="mt-1 mb-1 text-xs text-[#5E5C78] leading-relaxed">
             Ce que chaque bloc développe, jusqu’à ton jour J ; tes séances s’écrivent chaque dimanche dans Nolio.
@@ -131,7 +132,7 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
               </li>
             ))}
           </ol>
-        </Carte>
+        </Carte>}
 
         {d.ecrit && !ctx.demonstration && (
           <Carte id="ajouter-course" className="space-y-3 scroll-mt-20">

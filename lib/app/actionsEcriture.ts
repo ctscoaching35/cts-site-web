@@ -7,7 +7,7 @@
 import { revalidatePath } from 'next/cache';
 import { API_URL } from '@/lib/plan';
 import {
-  annulerAjustements, demarrerObjectif, objectifEcrit, poserCourse, poserFichePreparation, retirerAccordLecture, retirerCourseDeNolio,
+  annulerAjustements, demarrerObjectif, objectifEcrit, plansALaMain, poserCourse, poserFichePreparation, retirerAccordLecture, retirerCourseDeNolio,
 } from './ecriture';
 import { coachConnecte } from './nolio';
 import { clientServeur, clientService } from './supabase';
@@ -113,7 +113,8 @@ export async function ajouterCourse(planId: string, _e: EtatGeste, form: FormDat
   }
   // OM3 : la course dans le calendrier Nolio, si l'objectif y est déjà ; sinon elle part au démarrage.
   const { data: depart } = await clientService().from('plans').select('demarre_le').eq('id', planId).maybeSingle();
-  if (depart?.demarre_le) {
+  // Un athlète programmé à la main (décision coach du 20/10/2026) : rien ne s'écrit dans son Nolio.
+  if (depart?.demarre_le && !(await plansALaMain()).has(planId)) {
     await poserCourse(o, course, false).catch((e) => console.error(`Course de ${planId} non posée dans Nolio :`, e instanceof Error ? e.message : e));
     // PO4 : sa fiche en note Nolio une semaine avant, avec son lien privé.
     if (ficheGardee) await poserFichePreparation(o, course).catch((e) => console.error(`Fiche de ${planId} non posée dans Nolio :`, e instanceof Error ? e.message : e));

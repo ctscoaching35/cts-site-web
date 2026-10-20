@@ -7,6 +7,7 @@ import { destinataire } from './coaching';
 import type { Contexte } from './contexte';
 import { objectifAffiche, trameDuPlan, type LigneTrame, type Realise } from './ecriture';
 import { listeNolio } from './nolio';
+import { semainesDeLaFiche } from './semainesNolio';
 import { ajouterJours, type Semaine } from './plan';
 import { clientService } from './supabase';
 import { trameDesDonnees, type CourseDuGraphique, type Fiche } from './tableau';
@@ -46,7 +47,8 @@ export async function donneesTableau(ctx: Contexte): Promise<DonneesTableau> {
 }
 
 // La saison d'un coaché (décision coach du 20/10/2026, « toute sa saison ») : ses semaines faites sur TOUS ses
-// objectifs, d'une préparation à l'autre, par leur lundi (le plus récent objectif l'emporte sur une même semaine), et ses
+// objectifs, d'une préparation à l'autre, par leur lundi (le plus récent objectif l'emporte sur une même semaine), celles
+// que le moteur n'a pas écrites (semainesNolio.ts), et ses
 // courses (objectifs et courses de préparation) pour les repères des graphiques. Un acheteur : son plan seul.
 export type Saison = { realises: Realise[]; courses: CourseDuGraphique[] };
 export async function saisonDuCoureur(ctx: Contexte, d: DonneesTableau): Promise<Saison> {
@@ -72,6 +74,8 @@ export async function saisonDuCoureur(ctx: Contexte, d: DonneesTableau): Promise
       const deja = parLundi.get(r.lundi);
       if (r.lundi && (!deja || cree > deja.cree)) parLundi.set(r.lundi, { r, cree });
     }
+    // Les semaines que le moteur n'a pas écrites (à la main, entre deux objectifs), résumées depuis Nolio chaque nuit.
+    for (const r of await semainesDeLaFiche(lien.athlete_id as string)) if (r.lundi && !parLundi.has(r.lundi)) parLundi.set(r.lundi, { r, cree: '' });
     const realises = [...parLundi.values()].map((x) => x.r).sort((a, b) => a.lundi.localeCompare(b.lundi));
     const courses = liste.flatMap((o) => coursesDe(o.plans?.course_nom ?? '', o.plans?.course_date ?? '',
       ((o.plans?.parametres?.courses_secondaires ?? []) as CourseSecondaire[])));
@@ -128,7 +132,9 @@ export async function semaineDansNolio(ctx: Contexte, lundi: string): Promise<Se
   if (ctx.demonstration) return null;
   try {
     const o = await objectifAffiche(ctx.cle);
-    if (!o?.nolioAthlete || !o.accordLecture || !o.envois.length) return null;
+    // Un coaché : sa semaine dans Nolio, quel qu'en soit l'auteur (son coach à la main, décision coach du 20/10/2026) ;
+    // un acheteur : une fois son plan parti dans Nolio.
+    if (!o?.nolioAthlete || !o.accordLecture || (!o.coache && !o.envois.length)) return null;
     const d = await destinataire(o.nolioAthlete);
     type Prevue = { id: string; name?: string; date_start: string; duration?: { value?: number } | null; color?: string | null };
     const prevues = await listeNolio<Prevue>(

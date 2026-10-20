@@ -1,6 +1,6 @@
 import { API_URL } from '@/lib/plan';
 import { realignerTrame } from './coaching';
-import { objectifEcrit, TRAME } from './ecriture';
+import { objectifEcrit, plansALaMain, TRAME } from './ecriture';
 import { aujourdhuiIso, SCHEMA_PLAN, type Plan } from './plan';
 import { clientService } from './supabase';
 
@@ -29,6 +29,8 @@ export async function actualiserPlans(): Promise<Actualisation[]> {
   if (error) throw new Error(`plans : ${error.message}`);
   const debut = Date.now();
   const comptes: Actualisation[] = [];
+  // Un athlète programmé à la main (décision coach du 20/10/2026) : son contenu se refait, son Nolio ne bouge pas.
+  const aLaMain = await plansALaMain();
   for (const p of plans ?? []) {
     if (Date.now() - debut > BUDGET_MS) {
       comptes.push({ plan: p.id as string, quoi: 'remis à la nuit suivante' });
@@ -44,7 +46,8 @@ export async function actualiserPlans(): Promise<Actualisation[]> {
       // Un schéma que l'app ne lit pas encore (le moteur parti avant le site) : le plan garde son contenu.
       if (donnees.schema !== SCHEMA_PLAN) throw new Error(`schéma ${donnees.schema}, l'app lit le ${SCHEMA_PLAN}`);
       const o = await objectifEcrit(p.id as string);
-      const nolio = o ? await realignerTrame({ ...o, plan: donnees }, TRAME, aujourdhuiIso()) : { changes: 0, gardees: 0 };
+      const nolio = o && !aLaMain.has(p.id as string)
+        ? await realignerTrame({ ...o, plan: donnees }, TRAME, aujourdhuiIso()) : { changes: 0, gardees: 0 };
       const { error: e } = await service.from('plans')
         .update({ donnees, version_moteur: donnees.version_moteur, schema: donnees.schema, trame: null }).eq('id', p.id);
       if (e) throw new Error(e.message);

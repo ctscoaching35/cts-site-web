@@ -150,7 +150,7 @@ export default async function MonProfil({ searchParams }: { searchParams: Recher
         <Carte className="space-y-2.5">
           <Surtitre>Tes tests</Surtitre>
           <p className="text-[0.8125rem] text-[#4A4866] leading-relaxed">
-            {d.ecrit
+            {d.ecrit && !ctx.aLaMain
               ? 'Quand un repère manque, ta préparation écrit le test à la place d’une séance ; son résultat se lit dans Nolio.'
               : 'Trois tests de terrain donnent tes repères : leur protocole, ce qu’ils changent et leurs limites.'}
           </p>

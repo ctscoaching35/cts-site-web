@@ -41,8 +41,8 @@ export default async function Bienvenue({ searchParams }: { searchParams: Recher
           ))}
         </dl>
         <p className="text-center text-indigo/80 leading-relaxed px-2">
-          Ton coach te suit jusqu’à ton jour J. Tes séances arrivent chaque dimanche dans Nolio ; ici, ton objectif, ta
-          progression, tes données, tes badges et la bibliothèque.
+          Ton coach te suit jusqu’à ton jour J. Tes séances {ctx.aLaMain ? 'sont' : 'arrivent chaque dimanche'} dans Nolio ; ici,
+          ton objectif, ta progression, tes données, tes badges et la bibliothèque.
         </p>
         <section className="bg-white shadow-sm p-4 space-y-2">
           <h2 className="font-bold text-indigo">Installer l’app</h2>

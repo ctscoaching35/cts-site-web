@@ -26,6 +26,10 @@
     {
       "path": "/api/badges/calculer",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/semaines/resumer",
+      "schedule": "0 4 * * *"
     }
   ]
 }

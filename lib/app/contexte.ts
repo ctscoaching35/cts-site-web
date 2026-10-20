@@ -15,11 +15,13 @@ import { PROFIL_VIDE, type Profil } from './zones';
 
 // profil : « Tes zones » pour ce plan (cadrage §7.1) ; vide tant qu'aucun test n'est saisi.
 // exemple : en démonstration, des semaines écoulées simulées (?retours=exemple) pour voir la jauge et les graphiques.
-// coache : un objectif de son coach (T6) ; ses repères sont ceux que le coach a posés sur sa fiche, en lecture seule (T8).
+// coache : un objectif de son coach (T6) ; ses repères sont ceux de sa fiche (T8). aLaMain : un coaché que son coach
+// programme à la main dans Nolio (décision coach du 20/10/2026, « tableau de bord complet ») : rien de la trame du moteur
+// (blocs, jalons, piliers, jauge) ; sa semaine et ses données viennent de Nolio.
 // Le journal de séance, le déplacement et les ajustements de l'app ont quitté l'app avec la vue jour par jour
 // (CTS_NOLIO_CADRAGE.md, T1, 18/10/2026) : les séances vivent dans Nolio, les ajustements s'y écrivent le dimanche.
 export type Contexte = {
-  cle: string; plan: Plan; jour: string; demonstration: boolean; profil: Profil; exemple: boolean; coache: boolean;
+  cle: string; plan: Plan; jour: string; demonstration: boolean; profil: Profil; exemple: boolean; coache: boolean; aLaMain: boolean;
 };
 
 export type PlanDuCompte = { id: string; course_nom: string; course_date: string; coache: boolean };
@@ -70,7 +72,9 @@ export async function contexte(recherche: Recherche): Promise<Contexte> {
     const plan = verifierSchema(EXEMPLES[cle].plan);
     const jour = jourDemande ?? jourParDefaut(plan);
     // ?coache=1 : la version d'un coaché (ses repères posés par son coach), en démonstration seulement.
-    return { cle, plan, jour, demonstration: true, profil: profilDemonstration(r), exemple: r.retours === 'exemple', coache: r.coache === '1' };
+    // ?main=1 : un coaché programmé à la main.
+    return { cle, plan, jour, demonstration: true, profil: profilDemonstration(r), exemple: r.retours === 'exemple', coache: r.coache === '1' || r.main === '1',
+      aLaMain: r.main === '1' };
   }
 
   const supabase = await clientServeur();
@@ -96,7 +100,16 @@ export async function contexte(recherche: Recherche): Promise<Contexte> {
   const profil = choisi.coache ? await profilDuCoache(choisi.id) : await profilDuPlan(choisi.id);
   return {
     cle: choisi.id, plan: verifierSchema(ligne.donnees as Plan), jour, demonstration: false, profil, exemple: false, coache: choisi.coache,
+    aLaMain: choisi.coache && await programmeALaMain(choisi.id),
   };
+}
+
+// Un objectif coaché dont la fiche est programmée à la main ; non avant la migration du 20/10/2026.
+async function programmeALaMain(planId: string): Promise<boolean> {
+  const service = clientService();
+  const { data: c } = await service.from('coaching').select('athlete_id').eq('plan_id', planId).maybeSingle();
+  const { data: a } = c ? await service.from('athletes_coaches').select('*').eq('id', c.athlete_id).maybeSingle() : { data: null };
+  return (a as { programmation?: string } | null)?.programmation === 'main';
 }
 
 // Le profil « Tes zones » du plan ; sans la table (pas encore créée), le profil reste vide.
@@ -147,6 +160,7 @@ export const lien = (chemin: string, ctx: Contexte, extra: Record<string, string
         ...(ctx.profil.v_seuil1_ms !== null ? { v1: (ctx.profil.v_seuil1_ms * 3.6).toFixed(1) } : {}),
         ...(ctx.exemple ? { retours: 'exemple' } : {}),
         ...(ctx.coache ? { coache: '1' } : {}),
+        ...(ctx.aLaMain ? { main: '1' } : {}),
       }
     : {};
   const params = new URLSearchParams({ ...simule, ...extra });
