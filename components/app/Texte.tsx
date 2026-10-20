@@ -1,14 +1,15 @@
 import type { ReactNode } from 'react';
 import TexteRiche from './TexteRiche';
 
-// Les briques de texte de « Mon plan » : une partie titrée, des puces, des lignes clé-valeur.
-// Le texte vient du moteur (cts_contenu), tel quel.
+// Les briques de texte des fiches : une partie titrée, des puces, des lignes clé-valeur, un tableau. Le texte vient du
+// moteur (cts_contenu), tel quel ; la forme est celle du reste de l'app (retour du coach du 20/10/2026 : « la fiche est
+// restée dans un ancien format ») : une carte aux coins arrondis, son titre en surtitre.
 
 export function Partie({ titre, children, id }: { titre: string; children: ReactNode; id?: string }) {
   return (
-    <section id={id} className="bg-white shadow-sm p-4 sm:p-5 scroll-mt-4">
-      <h2 className="text-lg text-indigo leading-snug mb-3">{titre}</h2>
-      <div className="space-y-3 text-[0.95rem] text-indigo/85 leading-relaxed">{children}</div>
+    <section id={id} className="bg-white rounded-2xl border border-indigo/[0.08] p-[18px] space-y-3 scroll-mt-20">
+      <h2 className="text-[0.6875rem] font-bold tracking-[0.14em] uppercase text-teal">{titre}</h2>
+      <div className="space-y-3 text-[0.875rem] text-[#4A4866] leading-relaxed">{children}</div>
     </section>
   );
 }
@@ -17,8 +18,8 @@ export function Puces({ puces }: { puces: string[] }) {
   return (
     <ul className="space-y-2">
       {puces.map((p, i) => (
-        <li key={i} className="flex gap-2">
-          <span aria-hidden className="text-teal font-bold">•</span>
+        <li key={i} className="flex gap-2.5">
+          <span aria-hidden className="mt-[0.55em] w-1.5 h-1.5 rounded-full bg-teal shrink-0" />
           <span>
             <TexteRiche texte={p} />
           </span>
@@ -30,11 +31,11 @@ export function Puces({ puces }: { puces: string[] }) {
 
 export function Lignes({ lignes }: { lignes: [string, string][] }) {
   return (
-    <dl className="divide-y divide-indigo/10">
+    <dl>
       {lignes.map(([cle, valeur]) => (
-        <div key={cle} className="grid grid-cols-[minmax(7rem,40%)_1fr] gap-3 py-2">
-          <dt className="font-bold text-indigo text-sm">{cle}</dt>
-          <dd className="text-sm">{valeur}</dd>
+        <div key={cle} className="grid grid-cols-[minmax(7rem,40%)_1fr] gap-x-3 py-2.5 border-b last:border-b-0 border-indigo/[0.06] text-[0.84rem]">
+          <dt className="font-semibold text-[#5E5C78]">{cle}</dt>
+          <dd className="text-indigo">{valeur}</dd>
         </div>
       ))}
     </dl>
@@ -45,20 +46,20 @@ export function Lignes({ lignes }: { lignes: [string, string][] }) {
 export function Tableau({ lignes }: { lignes: string[][] }) {
   const [entetes, ...corps] = lignes;
   return (
-    <div className="overflow-x-auto -mx-4 sm:mx-0">
-      <table className="min-w-full text-xs sm:text-sm">
+    <div className="overflow-x-auto -mx-[18px] px-[18px]">
+      <table className="min-w-full text-[0.78rem]">
         <thead>
-          <tr className="bg-indigo text-white">
+          <tr className="border-b border-indigo/10">
             {entetes.map((e) => (
-              <th key={e} className="text-left font-bold px-2 py-2 whitespace-nowrap">{e}</th>
+              <th key={e} className="text-left font-bold text-[0.65rem] tracking-[0.08em] uppercase text-[#5E5C78] px-2 first:pl-0 py-2 whitespace-nowrap">{e}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {corps.map((ligne, i) => (
-            <tr key={i} className={i % 2 ? 'bg-sand' : 'bg-white'}>
+            <tr key={i} className="border-b last:border-b-0 border-indigo/[0.06]">
               {ligne.map((c, k) => (
-                <td key={k} className="px-2 py-2 align-top">{c}</td>
+                <td key={k} className={k === 0 ? 'pl-0 pr-2 py-2.5 align-top font-semibold text-indigo whitespace-nowrap' : 'px-2 py-2.5 align-top text-[#4A4866]'}>{c}</td>
               ))}
             </tr>
           ))}

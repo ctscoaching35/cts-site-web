@@ -4,7 +4,8 @@ import { notFound } from 'next/navigation';
 import ProfilCourse from '@/components/app/ProfilCourse';
 import RepartitionPentes from '@/components/app/RepartitionPentes';
 import StrategieCourse from '@/components/app/StrategieCourse';
-import { Lignes, Partie, Puces, Tableau } from '@/components/app/Texte';
+import EnTeteCourse from '@/components/app/EnTeteCourse';
+import { Partie, Puces, Tableau } from '@/components/app/Texte';
 import { planDuJeton } from '@/lib/app/ficheCourse';
 import CorpsFichePreparation, { type FichePrep } from '@/components/app/FichePreparation';
 import { type Plan } from '@/lib/app/plan';
@@ -57,10 +58,7 @@ export default async function FicheCourse({ params, searchParams }: {
         </div>
       </header>
       <main className="mx-auto max-w-2xl px-4 py-5 space-y-5">
-        <h1 className="text-2xl text-indigo leading-tight">{plan.ta_course.titre}</h1>
-        <div className="bg-white shadow-sm px-4 py-1">
-          <Lignes lignes={plan.ta_course.lignes} />
-        </div>
+        <EnTeteCourse surtitre="Ta fiche de course" nom={plan.course.nom} lignes={plan.ta_course.lignes} />
         <Partie titre={profil.titre}>
           {profil.sans_trace ? (
             <p>{profil.sans_trace}</p>
@@ -81,11 +79,11 @@ export default async function FicheCourse({ params, searchParams }: {
             {t.homogene ? <p>{t.homogene}</p> : t.tableau && <Tableau lignes={t.tableau} />}
           </Partie>
         )}
-        <h2 className="text-xl text-indigo leading-tight pt-2">{d.titre}</h2>
+        <h2 className="pt-3 text-[1.25rem] font-extrabold text-indigo tracking-tight">{d.titre}</h2>
         <Partie titre={d.physio.titre}>
           <Puces puces={d.physio.puces} />
         </Partie>
-        {d.sans_trace && <p className="text-sm text-indigo/75 px-1">{d.sans_trace}</p>}
+        {d.sans_trace && <p className="text-[0.8125rem] text-[#5E5C78] px-1 leading-relaxed">{d.sans_trace}</p>}
         {d.mecanique && (
           <Partie titre={d.mecanique.titre}>
             <Puces puces={d.mecanique.puces} />
@@ -97,7 +95,7 @@ export default async function FicheCourse({ params, searchParams }: {
           </Partie>
         )}
 
-        <h2 className="text-2xl text-indigo leading-tight pt-4">{j.titre}</h2>
+        <h2 className="pt-3 text-[1.25rem] font-extrabold text-indigo tracking-tight">{j.titre}</h2>
         <Partie titre={j.nutrition.titre}>
           <StrategieCourse lignes={j.nutrition.lignes as [string, string][]} href={calculateur}
             fiche={(slug) => `/bibliotheque/${slug}`} ultra={Boolean(j.fiche_ultra)} externe strategie={strategie} />

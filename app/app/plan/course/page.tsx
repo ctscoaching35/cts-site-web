@@ -4,7 +4,8 @@ import CorpsFichePreparation, { type FichePrep } from '@/components/app/FichePre
 import ProfilCourse from '@/components/app/ProfilCourse';
 import RepartitionPentes from '@/components/app/RepartitionPentes';
 import RetourPlan from '@/components/app/RetourPlan';
-import { Lignes, Partie, Puces, Tableau } from '@/components/app/Texte';
+import EnTeteCourse from '@/components/app/EnTeteCourse';
+import { Partie, Puces, Tableau } from '@/components/app/Texte';
 import { effacerStrategie } from '@/lib/app/actionsStrategie';
 import { contexte, lien, type Recherche } from '@/lib/app/contexte';
 import { COURSE_OBJECTIF, parametresCalculateur, STRATEGIE_EXEMPLE, strategiesDuPlan } from '@/lib/app/strategie';
@@ -54,10 +55,7 @@ export default async function TaCourse({ searchParams }: { searchParams: Recherc
       <EnTeteApp ctx={ctx} />
       <main className="mx-auto max-w-2xl px-4 py-5 space-y-5">
         <RetourPlan ctx={ctx} />
-        <h1 className="text-2xl text-indigo leading-tight">{plan.ta_course.titre}</h1>
-        <div className="bg-white shadow-sm px-4 py-1">
-          <Lignes lignes={plan.ta_course.lignes} />
-        </div>
+        <EnTeteCourse surtitre="Ta fiche de course" nom={plan.course.nom} lignes={plan.ta_course.lignes} />
 
         <Partie titre={profil.titre}>
           {profil.sans_trace ? (
@@ -82,11 +80,11 @@ export default async function TaCourse({ searchParams }: { searchParams: Recherc
           </Partie>
         )}
 
-        <h2 className="text-xl text-indigo leading-tight pt-2">{d.titre}</h2>
+        <h2 className="pt-3 text-[1.25rem] font-extrabold text-indigo tracking-tight">{d.titre}</h2>
         <Partie titre={d.physio.titre}>
           <Puces puces={d.physio.puces} />
         </Partie>
-        {d.sans_trace && <p className="text-sm text-indigo/75 px-1">{d.sans_trace}</p>}
+        {d.sans_trace && <p className="text-[0.8125rem] text-[#5E5C78] px-1 leading-relaxed">{d.sans_trace}</p>}
         {d.mecanique && (
           <Partie titre={d.mecanique.titre}>
             <Puces puces={d.mecanique.puces} />
@@ -98,7 +96,7 @@ export default async function TaCourse({ searchParams }: { searchParams: Recherc
           </Partie>
         )}
 
-        <h2 id="jour-j" className="text-2xl text-indigo leading-tight pt-4 scroll-mt-20">{j.titre}</h2>
+        <h2 id="jour-j" className="pt-3 text-[1.25rem] font-extrabold text-indigo tracking-tight scroll-mt-20">{j.titre}</h2>
         <Partie titre={j.nutrition.titre}>
           <StrategieCourse lignes={j.nutrition.lignes as [string, string][]} href={calculateur}
             fiche={(slug) => lien(`/app/bibliotheque/${slug}`, ctx)} ultra={Boolean(j.fiche_ultra)}

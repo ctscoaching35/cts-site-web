@@ -2,7 +2,8 @@ import ProfilCourse from './ProfilCourse';
 import RepartitionPentes from './RepartitionPentes';
 import StrategieCourse from './StrategieCourse';
 import type { Strategie } from '@/lib/app/strategie';
-import { Lignes, Partie, Puces, Tableau } from './Texte';
+import EnTeteCourse from './EnTeteCourse';
+import { Partie, Puces, Tableau } from './Texte';
 import type { Plan } from '@/lib/app/plan';
 
 // La fiche d'une course de préparation (PO3), rendue par le moteur (/v1/fiche-course) : les mêmes formes que les
@@ -23,10 +24,7 @@ export default function CorpsFichePreparation({ fiche, calculateur, cheminFiche,
   const t = profil.troncons;
   return (
     <>
-      <h1 className="text-2xl text-indigo leading-tight">{fiche.course.nom}</h1>
-      <div className="bg-white shadow-sm px-4 py-1">
-        <Lignes lignes={fiche.ta_course.lignes} />
-      </div>
+      <EnTeteCourse surtitre="Course de préparation" nom={fiche.course.nom} lignes={fiche.ta_course.lignes} />
       <Partie titre={profil.titre}>
         {profil.sans_trace ? (
           <p>{profil.sans_trace}</p>
@@ -47,8 +45,8 @@ export default function CorpsFichePreparation({ fiche, calculateur, cheminFiche,
           <Puces puces={d.mecanique.puces} />
         </Partie>
       )}
-      {d.sans_trace && <p className="text-sm text-indigo/75 px-1">{d.sans_trace}</p>}
-      <h2 className="text-2xl text-indigo leading-tight pt-4">{j.titre}</h2>
+      {d.sans_trace && <p className="text-[0.8125rem] text-[#5E5C78] px-1 leading-relaxed">{d.sans_trace}</p>}
+      <h2 className="pt-3 text-[1.25rem] font-extrabold text-indigo tracking-tight">{j.titre}</h2>
       <Partie titre={j.nutrition.titre}>
         <StrategieCourse lignes={j.nutrition.lignes as [string, string][]} href={calculateur} fiche={cheminFiche}
           ultra={Boolean(j.fiche_ultra)} externe={externe} strategie={strategie} effacer={effacer} />

@@ -25,7 +25,7 @@ export default async function JourJ({ searchParams }: { searchParams: Recherche 
       <EnTeteApp ctx={ctx} />
       <main className="mx-auto max-w-2xl px-4 py-5 space-y-5">
         <RetourPlan ctx={ctx} />
-        <h1 className="text-2xl text-indigo leading-tight">{j.titre}</h1>
+        <h1 className="text-[1.75rem] font-extrabold text-indigo tracking-tight leading-tight">{j.titre}</h1>
         <Partie titre={j.nutrition.titre}>
           <StrategieCourse lignes={j.nutrition.lignes as [string, string][]} href={calculateur}
             fiche={(slug) => lien(`/app/bibliotheque/${slug}`, ctx)} ultra={Boolean(j.fiche_ultra)}
