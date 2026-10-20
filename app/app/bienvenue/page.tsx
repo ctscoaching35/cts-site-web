@@ -45,7 +45,7 @@ export default async function Bienvenue({ searchParams }: { searchParams: Recher
           progression, tes données, tes badges et la bibliothèque.
         </p>
         <section className="bg-white shadow-sm p-4 space-y-2">
-          <h2 className="font-bold text-indigo">L’app sur ton écran d’accueil</h2>
+          <h2 className="font-bold text-indigo">Installer l’app</h2>
           <Installation />
         </section>
         <form action={entrer}>
@@ -91,7 +91,7 @@ export default async function Bienvenue({ searchParams }: { searchParams: Recher
       </section>
 
       <section className="bg-white shadow-sm p-4 space-y-2">
-        <h2 className="font-bold text-indigo">Ton plan sur ton écran d’accueil</h2>
+        <h2 className="font-bold text-indigo">Installer l’app</h2>
         <Installation />
       </section>
 

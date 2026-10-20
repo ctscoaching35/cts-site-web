@@ -15,6 +15,9 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: 'CTS', statusBarStyle: 'default' },
 };
 
+const CAPTURE_INSTALLATION = "window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();"
+  + "window.__ctsInstallation=e;window.dispatchEvent(new Event('cts-installation'));});";
+
 // L'app CTS coaching (cadrage de l'app, CTS_APP_CADRAGE.md dans le dépôt du moteur). Avec
 // Supabase configuré, l'athlète se connecte et lit son plan (étape 1b) ; sans, la démonstration
 // sur des plans d'exemple, en développement seulement — en production, /app répond alors 404.
@@ -22,6 +25,9 @@ export default function MiseEnPageApp({ children }: { children: React.ReactNode 
   if (!supabaseConfigure() && !demonstrationOuverte()) notFound();
   return (
     <div className="min-h-screen bg-sand pb-24">
+      {/* L'annonce d'installation de Chrome et Edge arrive tôt, parfois avant que l'app l'écoute : gardée dès le chargement,
+          pour le bouton « Installer l'app » (components/app/Installation.tsx ; retour du coach du 20/10/2026). */}
+      <script dangerouslySetInnerHTML={{ __html: CAPTURE_INSTALLATION }} />
       {children}
       <HorsReseau />
       <Suspense>

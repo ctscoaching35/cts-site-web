@@ -2,11 +2,15 @@
 
 import { useEffect, useState } from 'react';
 
-type Appareil = 'iphone' | 'android' | 'ordinateur' | 'installee';
+type Appareil = 'iphone' | 'android' | 'chrome' | 'safari' | 'firefox' | 'installee';
 
-// L'invitation à installer l'app sur l'écran d'accueil : le geste propre à l'appareil, ou la
-// confirmation qu'elle l'est déjà. Sur Android en HTTPS, Chrome propose aussi son propre bouton.
+// L'invitation à installer l'app : le bouton « Installer l'app » quand le navigateur le permet (Chrome et Edge, sur
+// ordinateur et Android : leur annonce est gardée dès le chargement, app/app/layout.tsx), sinon le geste propre au
+// navigateur (Safari n'autorise aucun bouton : Partager › « Sur l'écran d'accueil » sur iPhone, Fichier › « Ajouter au
+// Dock » sur Mac ; Firefox n'installe pas les apps web), ou la confirmation qu'elle l'est déjà (retour du coach du
+// 20/10/2026 : « un endroit où cliquer pour que l'app se retrouve sur son bureau »).
 type InvitationInstallation = Event & { prompt: () => Promise<void> };
+type FenetreCts = Window & { __ctsInstallation?: InvitationInstallation };
 
 export default function Installation() {
   const [appareil, setAppareil] = useState<Appareil | null>(null);
@@ -18,13 +22,23 @@ export default function Installation() {
       (navigator as Navigator & { standalone?: boolean }).standalone === true;
     const ua = navigator.userAgent;
     const ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
-    setAppareil(autonome ? 'installee' : ios ? 'iphone' : /Android/.test(ua) ? 'android' : 'ordinateur');
-    const retenir = (e: Event) => {
-      e.preventDefault();
-      setInvitation(e as InvitationInstallation);
+    const firefox = /Firefox\//.test(ua);
+    const safari = /Safari\//.test(ua) && !/Chrome|Chromium|CriOS|Edg/.test(ua);
+    setAppareil(autonome ? 'installee' : ios ? 'iphone' : /Android/.test(ua) ? 'android' : firefox ? 'firefox' : safari ? 'safari' : 'chrome');
+    const fenetre = window as FenetreCts;
+    const lire = () => setInvitation(fenetre.__ctsInstallation ?? null);
+    const installee = () => {
+      fenetre.__ctsInstallation = undefined;
+      setInvitation(null);
+      setAppareil('installee');
     };
-    window.addEventListener('beforeinstallprompt', retenir);
-    return () => window.removeEventListener('beforeinstallprompt', retenir);
+    lire();
+    window.addEventListener('cts-installation', lire);
+    window.addEventListener('appinstalled', installee);
+    return () => {
+      window.removeEventListener('cts-installation', lire);
+      window.removeEventListener('appinstalled', installee);
+    };
   }, []);
 
   if (!appareil) return null;
@@ -46,8 +60,21 @@ export default function Installation() {
           (ou « Ajouter à l’écran d’accueil »). L’app s’ouvrira en plein écran depuis son icône.
         </p>
       )}
-      {appareil === 'ordinateur' && (
-        <p>Sur ordinateur, Chrome et Edge proposent de l’installer depuis la barre d’adresse.</p>
+      {appareil === 'chrome' && !invitation && (
+        <p>
+          Dans <strong>Chrome</strong> ou <strong>Edge</strong>, clique l’icône d’installation à droite de la barre d’adresse
+          (un écran avec une flèche), puis <strong>« Installer »</strong> : l’app s’ouvre dans sa propre fenêtre, depuis ton
+          Dock ou ta barre des tâches.
+        </p>
+      )}
+      {appareil === 'safari' && (
+        <p>
+          Dans <strong>Safari</strong>, ouvre le menu <strong>Fichier</strong> puis <strong>« Ajouter au Dock »</strong> :
+          l’app s’ouvre dans sa propre fenêtre, depuis son icône.
+        </p>
+      )}
+      {appareil === 'firefox' && (
+        <p>Firefox n’installe pas les apps web : ouvre cette page dans Chrome, Edge ou Safari pour l’installer.</p>
       )}
       {invitation && (
         <button type="button" onClick={() => invitation.prompt()} className="btn btn-primary w-full">

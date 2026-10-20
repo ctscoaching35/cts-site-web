@@ -1,7 +1,7 @@
 {
-  "name": "CTS Coaching — ton plan",
+  "name": "CTS Coaching",
   "short_name": "CTS",
-  "description": "Ton plan d'entraînement trail CTS, jour après jour.",
+  "description": "Ton coaching trail CTS : ton objectif, ta progression, tes données.",
   "lang": "fr",
   "id": "/app",
   "start_url": "/app",
