@@ -10,7 +10,8 @@ import { nouveauxBadges } from '@/lib/app/badges';
 import { mesBadges } from '@/lib/app/badgesNolio';
 import { COOKIE_BIENVENUE } from '@/lib/app/bienvenue';
 import { Carte, CarteSombre, Surtitre } from '@/components/app/Ui';
-import { contexte, lien, objectifAVenir, prenom, type Recherche } from '@/lib/app/contexte';
+import { contexte, lien, objectifAVenir, prenom, type Contexte, type Recherche } from '@/lib/app/contexte';
+import { lireTemps } from '@/lib/plan';
 import { ajouterJours, dateLongue, joursEntre, moment } from '@/lib/app/plan';
 import { ficheDuMoment, jaugeDuPlan, momentDe } from '@/lib/app/tableau';
 import { donneesTableau, semaineDansNolio, semaineEcrite } from '@/lib/app/tableauDuPlan';
@@ -127,6 +128,7 @@ export default async function Accueil({ searchParams }: { searchParams: Recherch
           </Link>
         )}
 
+        {etape === 'apres' && !ctx.coache && <EtMaintenant ctx={ctx} />}
         {etape !== 'avant' && !ctx.aLaMain && <Piliers jauge={jauge} />}
         {etape !== 'apres' && <CoursesPreparation courses={d.courses.filter((c) => c.date >= jour)} ajout={ajout} />}
         {etape === 'pendant' && !ctx.aLaMain && <CetteSemaine semaine={semaine} ligne={ligne} questionnaire={d.ecrit && restants > 7} nolio={nolio} />}
@@ -134,5 +136,32 @@ export default async function Accueil({ searchParams }: { searchParams: Recherch
         {fiche && etape !== 'apres' && <FicheDuMoment fiche={fiche.fiche} avenir={fiche.avenir} ctx={ctx} />}
       </main>
     </>
+  );
+}
+
+// Après sa course, un acheteur (décision coach du 20/10/2026, les nuances des plans, point 4) : d'abord récupérer, un
+// jour sans séance dure par heure de course, deux au moins (la règle O3 du moteur), avec la fiche Récupération ;
+// ensuite son prochain objectif majeur, par l'aiguillage.
+function EtMaintenant({ ctx }: { ctx: Contexte }) {
+  const heures = lireTemps(ctx.plan.course.temps_cible ?? '');
+  const jours = Math.max(2, Math.ceil(heures ?? 2));
+  return (
+    <Carte className="space-y-3">
+      <Surtitre>Et maintenant ?</Surtitre>
+      <div className="space-y-1">
+        <p className="text-[0.875rem] text-[#4A4866] leading-relaxed">
+          D’abord, récupère : {jours} jours sans séance dure, un par heure de course, puis reprends en douceur.
+        </p>
+        <Link href={lien('/app/bibliotheque/recuperation', ctx)} className="inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">
+          Lire la fiche Récupération ›
+        </Link>
+      </div>
+      <p className="text-[0.875rem] text-[#4A4866] leading-relaxed">
+        Ton prochain objectif majeur ? Une nouvelle préparation, construite pour lui.
+      </p>
+      <Link href="/app/objectif/nouveau" className="flex items-center justify-center min-h-12 px-5 rounded-xl bg-teal text-white text-sm font-bold">
+        Choisir mon prochain objectif
+      </Link>
+    </Carte>
   );
 }
