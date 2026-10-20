@@ -19,12 +19,13 @@ export default async function NouvelObjectif({ searchParams }: { searchParams: P
   const compteId = data?.claims?.sub as string | undefined;
   if (!compteId) redirect('/app/connexion?suite=/app/objectif/nouveau');
   const fiche = await ficheDuCompte(compteId);
-  // Un coaché (décision coach du 20/10/2026 : « parle bien d'objectifs majeurs ») : d'abord l'aiguillage, objectif
-  // majeur ou course de préparation ; le questionnaire ensuite (?majeur=1).
-  if (fiche && (await searchParams).majeur !== '1') {
+  // D'abord l'aiguillage, objectif majeur ou course de préparation ; le questionnaire ensuite (?majeur=1). Un coaché
+  // (décision coach du 20/10/2026 : « parle bien d'objectifs majeurs »), et un acheteur, pour qu'il n'achète pas une
+  // préparation pour une course qui s'ajoute gratuitement à la sienne (décision coach du 20/10/2026, les nuances des plans).
+  if ((await searchParams).majeur !== '1') {
     const aujourdhui = new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris' }).format(new Date());
     const enCours = (await plansDuCompte(compteId)).some((p) => p.course_date >= aujourdhui);
-    return <Aiguillage enCours={enCours} />;
+    return <Aiguillage enCours={enCours} coache={Boolean(fiche)} />;
   }
   let initial: Record<string, string | string[]>;
   let depuisNolio = false;
@@ -46,7 +47,7 @@ export default async function NouvelObjectif({ searchParams }: { searchParams: P
       <main className="mx-auto max-w-3xl px-4 sm:px-6 py-8 sm:py-12">
         <Link href="/app/plan" className="inline-flex items-center min-h-11 text-teal font-bold text-sm">‹ Ton objectif</Link>
         <div className="my-6 px-2">
-          <div className="eyebrow text-teal mb-3">{fiche ? 'Nouvel objectif majeur' : 'Nouvel objectif'}</div>
+          <div className="eyebrow text-teal mb-3">Nouvel objectif majeur</div>
           <h1 className="text-3xl sm:text-4xl text-indigo leading-tight">Ta prochaine course</h1>
           <p className="text-indigo/70 mt-2">
             {fiche
@@ -85,8 +86,9 @@ export default async function NouvelObjectif({ searchParams }: { searchParams: P
 }
 
 // Objectif majeur ou course de préparation : une définition, puis deux chemins. Sans objectif majeur à venir, une course
-// de préparation n'a pas encore où s'ajouter.
-function Aiguillage({ enCours }: { enCours: boolean }) {
+// de préparation n'a pas encore où s'ajouter. Un acheteur : ce que chaque chemin lui apporte (une nouvelle préparation,
+// ou une course ajoutée gratuitement) ; un coaché : son coach relit.
+function Aiguillage({ enCours, coache }: { enCours: boolean; coache: boolean }) {
   const bouton = 'flex items-center justify-center min-h-12 px-5 rounded-xl text-sm font-bold';
   return (
     <div className="min-h-screen bg-sand">
@@ -102,15 +104,20 @@ function Aiguillage({ enCours }: { enCours: boolean }) {
         </div>
         <div className="space-y-2.5 px-2">
           <Link href="/app/objectif/nouveau?majeur=1" className={`${bouton} bg-teal text-white`}>C’est mon objectif majeur</Link>
+          {!coache && <p className="text-[0.8125rem] text-indigo/60 text-center">Une nouvelle préparation, construite pour cette course.</p>}
           {enCours ? (
-            <Link href="/app/plan#ajouter-course" className={`${bouton} border border-teal text-teal`}>C’est une course de préparation ›</Link>
+            <>
+              <Link href="/app/plan#ajouter-course" className={`${bouton} border border-teal text-teal`}>C’est une course de préparation ›</Link>
+              {!coache && <p className="text-[0.8125rem] text-indigo/60 text-center">Elle s’ajoute gratuitement à ta préparation en cours.</p>}
+            </>
           ) : (
             <p className="text-sm text-indigo/70 leading-relaxed">
-              Une course de préparation s’ajoute à ton objectif majeur : propose-le d’abord.
+              {coache ? 'Une course de préparation s’ajoute à ton objectif majeur : propose-le d’abord.'
+                : 'Une course de préparation s’ajoute à une préparation : choisis d’abord ton objectif majeur.'}
             </p>
           )}
         </div>
-        <p className="px-2 text-sm text-indigo/60">Ton coach relit chaque objectif majeur avant de le lancer.</p>
+        {coache && <p className="px-2 text-sm text-indigo/60">Ton coach relit chaque objectif majeur avant de le lancer.</p>}
       </main>
     </div>
   );

@@ -170,9 +170,9 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
 
         {objectifs && (
           <Carte className="space-y-2">
-            {/* « Objectif majeur » pour un coaché (décision coach du 20/10/2026) : à ne pas confondre avec ses courses de
-                préparation. */}
-            <Surtitre>{ctx.coache ? 'Tes objectifs majeurs' : 'Tes objectifs'}</Surtitre>
+            {/* « Objectif majeur » (décisions coach du 20/10/2026, coachés puis acheteurs) : à ne pas confondre avec les
+                courses de préparation. */}
+            <Surtitre>Tes objectifs majeurs</Surtitre>
             <ul className="divide-y divide-indigo/[0.06]">
               {objectifs.liste.map((o) => {
                 // Un objectif lancé par son coach, encore à venir : l'athlète en demande le retrait, son coach confirme
@@ -216,7 +216,7 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
                 </li>
               ))}
             </ul>
-            <Link href="/app/objectif/nouveau" className="inline-flex items-center min-h-11 text-sm font-bold text-teal">{ctx.coache ? 'Nouvel objectif majeur ›' : 'Nouvel objectif ›'}</Link>
+            <Link href="/app/objectif/nouveau" className="inline-flex items-center min-h-11 text-sm font-bold text-teal">Nouvel objectif majeur ›</Link>
           </Carte>
         )}
       </main>
