@@ -7,7 +7,8 @@ import { donneesTableau, saisonDuCoureur } from '@/lib/app/tableauDuPlan';
 
 // Mes données (CTS_NOLIO_CADRAGE.md dans le dépôt du moteur, AP1, AP3, T10 ; maquette validée par le coach le
 // 19/10/2026) : la charge faite seule (RPE de séance × durée) et sa moyenne sur 4 semaines, le volume en heures fait
-// contre prévu, le Hooper du dimanche et sa zone habituelle. Tout vient de la base, rangé chaque dimanche soir. Un
+// contre prévu, le Hooper du dimanche et sa zone habituelle. Tout vient de la base, rangé chaque dimanche soir et refait
+// chaque nuit avec les retours tardifs (décision coach du 20/10/2026). Un
 // coaché les voit sur toute sa saison, d'un objectif à l'autre, ses courses en repère (décision coach du 20/10/2026).
 export default async function MesDonnees({ searchParams }: { searchParams: Recherche }) {
   const ctx = await contexte(searchParams, { sansObjectif: true });
@@ -33,8 +34,7 @@ export default async function MesDonnees({ searchParams }: { searchParams: Reche
         <div>
           <h1 className="text-[1.625rem] font-extrabold text-indigo tracking-tight">Mes données</h1>
           <p className="mt-1.5 text-[0.8125rem] text-[#5E5C78] leading-relaxed">
-            {d.accord && ctx.aLaMain ? 'Lues dans Nolio avec ton accord, mises à jour chaque nuit.'
-              : d.accord ? 'Lues dans Nolio avec ton accord, mises à jour chaque dimanche soir.'
+            {d.accord ? 'Lues dans Nolio avec ton accord, mises à jour chaque nuit.'
               : 'Tes séances faites ou manquées et leur durée, mises à jour chaque dimanche soir.'}
           </p>
         </div>

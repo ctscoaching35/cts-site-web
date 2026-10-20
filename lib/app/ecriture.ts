@@ -559,6 +559,41 @@ export async function passageDuDimanche(budgetMs = 240_000): Promise<Compte[]> {
   return comptes;
 }
 
+// Les retours tardifs (décision coach du 20/10/2026, « oui, chaque nuit ») : chaque nuit, le résumé des deux dernières
+// semaines écrites par le moteur se refait avec ce que l'athlète a rempli depuis dans Nolio (RPE, sensations, Hooper),
+// pour ses graphiques ; les décisions du dimanche restent les siennes, rien n'est réécrit (POST /v1/realise). Avec
+// l'accord de lecture seulement.
+export async function refaireLesResumes(budgetMs = 120_000): Promise<Compte[]> {
+  const debut = Date.now();
+  const aujourdhui = aujourdhuiParis();
+  const lundi = ajouterJours(aujourdhui, -((new Date(`${aujourdhui}T12:00:00Z`).getUTCDay() + 6) % 7));
+  const voulus = new Set([ajouterJours(lundi, -7), ajouterJours(lundi, -14)]);
+  const service = clientService();
+  const { data: lignes, error } = await service.from('semaines_ecrites').select('plan_id, numero, lundi:donnees->>lundi')
+    .not('realise', 'is', null).gte('ecrite_le', new Date(Date.now() - 28 * 86400_000).toISOString());
+  if (error) throw new Error(`semaines écrites : ${error.message}`);
+  const comptes: Compte[] = [];
+  for (const l of (lignes ?? []) as { plan_id: string; numero: string; lundi: string | null }[]) {
+    if (!l.lundi || !voulus.has(l.lundi)) continue;
+    if (Date.now() - debut > budgetMs) {
+      comptes.push({ plan: l.plan_id, quoi: 'remis à la nuit suivante' });
+      continue;
+    }
+    try {
+      const o = await objectifEcrit(l.plan_id);
+      if (!o?.nolioAthlete || !o.accordLecture || !o.etat) continue;
+      const retours = await lireRetours(o, l.lundi, aujourdhui);
+      const { realise } = await moteur<{ realise: Realise | null }>('/v1/realise', { etat: o.etat, numero: l.numero, retours });
+      if (!realise) continue;
+      await service.from('semaines_ecrites').update({ realise }).eq('plan_id', l.plan_id).eq('numero', l.numero);
+      comptes.push({ plan: l.plan_id, quoi: `${l.numero} résumée à nouveau`, coache: o.coache });
+    } catch (e) {
+      comptes.push({ plan: l.plan_id, quoi: 'résumé non refait', erreur: e instanceof Error ? e.message : String(e) });
+    }
+  }
+  return comptes;
+}
+
 // Une séance d'une semaine écrite, sous la forme de l'app, et sa version EF (adaptation.ef).
 async function semaineEcrite(planId: string, numero: string): Promise<Semaine | null> {
   const { data } = await clientService().from('semaines_ecrites').select('donnees').eq('plan_id', planId).eq('numero', numero).maybeSingle();
