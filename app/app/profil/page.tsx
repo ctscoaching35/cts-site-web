@@ -1,11 +1,13 @@
 import Link from 'next/link';
 import clsx from 'clsx';
 import { TesBadges } from '@/components/app/Badges';
+import ProfilAthlete from '@/components/app/ProfilAthlete';
 import EnTeteApp from '@/components/app/EnTeteApp';
 import { Carte, CarteSombre, Surtitre } from '@/components/app/Ui';
 import { contexte, lien, type Recherche } from '@/lib/app/contexte';
 import { allure, decalageSeuil1, profilCoureur, texteAllureLigne, texteFc } from '@/lib/app/zones';
 import { mesBadges } from '@/lib/app/badgesNolio';
+import { lignesDuProfil, monProfilDEntrainement, PROFIL_DE_DEMONSTRATION } from '@/lib/app/profilEntrainement';
 import { donneesTableau } from '@/lib/app/tableauDuPlan';
 
 // Mon profil de coureur (CTS_NOLIO_CADRAGE.md dans le dépôt du moteur, AP1, AP4 ; maquette validée par le coach le
@@ -26,6 +28,8 @@ export default async function MonProfil({ searchParams }: { searchParams: Recher
   const { plan, profil } = ctx;
   const d = await donneesTableau(ctx);
   const badges = await mesBadges(ctx);
+  // Un coaché voit et modifie son profil d'entraînement (décision coach du 20/10/2026).
+  const entrainement = !ctx.coache ? null : ctx.demonstration ? PROFIL_DE_DEMONSTRATION : await monProfilDEntrainement().catch(() => null);
   const coureur = profilCoureur(profil);
   const zones = plan.zones;
   const decalage = decalageSeuil1(profil, zones);
@@ -85,6 +89,26 @@ export default async function MonProfil({ searchParams }: { searchParams: Recher
               Il se tire de ton test de vitesse critique : plutôt rapide ou plutôt endurant, ton point faible à travailler loin
               de ton objectif, ton point fort près de lui.
             </p>
+          </Carte>
+        )}
+
+        {entrainement && (
+          <Carte id="profil-entrainement" className="space-y-1 scroll-mt-20">
+            <Surtitre>Ton profil d’entraînement</Surtitre>
+            <dl className="pt-1">
+              {lignesDuProfil(entrainement).map(([cle, valeur]) => (
+                <div key={cle} className="grid grid-cols-[112px_1fr] gap-x-3 py-2.5 border-b last:border-b-0 border-indigo/[0.06] text-[0.84rem] text-indigo">
+                  <dt className="font-semibold text-[#5E5C78]">{cle}</dt><dd>{valeur}</dd>
+                </div>
+              ))}
+            </dl>
+            <p className="pt-1 text-[0.72rem] leading-relaxed text-[#5E5C78]">
+              Il sert à tes prochains objectifs. Ta semaine, elle, s’ajuste chaque dimanche avec ton questionnaire.
+            </p>
+            <details className="pt-2">
+              <summary className="cursor-pointer min-h-10 flex items-center text-[0.8125rem] font-bold text-teal">Modifier mon profil</summary>
+              <div className="pt-2"><ProfilAthlete profil={entrainement} pourMoi /></div>
+            </details>
           </Carte>
         )}
 

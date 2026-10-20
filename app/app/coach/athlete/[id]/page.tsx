@@ -5,6 +5,7 @@ import CadreCoach from '@/components/app/CadreCoach';
 import FormulaireValeurs from '@/components/app/FormulaireValeurs';
 import InvitationApp from '@/components/app/InvitationApp';
 import ProfilAthlete from '@/components/app/ProfilAthlete';
+import { lignesDuProfil } from '@/lib/app/profilEntrainement';
 import TestVcCoach from '@/components/app/TestVcCoach';
 import { Carte, PastilleDate, Surtitre } from '@/components/app/Ui';
 import { associerNolio, retirerAcces, retirerAthlete } from '@/lib/app/actionsCoaching';
@@ -57,11 +58,7 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
   const deLIntake = (intake?.intake ?? {}) as Record<string, string | string[]>;
   const profil: Record<string, string | string[]> = a.profil ?? Object.fromEntries(
     ['niveau', 'terrain', 'jours_disponibles', 'jour_sl', 'freq_hebdo'].filter((k) => deLIntake[k] !== undefined).map((k) => [k, deLIntake[k]]));
-  const lignesProfil: [string, string][] = [
-    ['Niveau', textes.niveau.options.find((o) => o.valeur === profil.niveau)?.titre ?? '—'],
-    ['Terrain', textes.terrain.options.find((o) => o.valeur === profil.terrain)?.titre ?? '—'],
-    ['Disponibilités', profil.freq_hebdo ? `${profil.freq_hebdo} séances · ${(Array.isArray(profil.jours_disponibles) ? profil.jours_disponibles : []).map((j) => j.slice(0, 3)).join(', ')} · sortie longue le ${profil.jour_sl}` : '—'],
-  ];
+  const lignesProfil = lignesDuProfil(profil);
   const source = (cle: 'fc_seuil1' | 'vc_ms' | 'fc_seuil2') => {
     const x = a.reperes_sources[cle];
     return !x ? null : x.source === 'test' ? `test lu dans Nolio le ${dateLongue(x.le, true)}`

@@ -4,6 +4,7 @@ import Questionnaire from '@/components/plan/Questionnaire';
 import { questionnairePrerempli, reponsesSansLaCourse } from '@/lib/app/coaching';
 import { plansDuCompte } from '@/lib/app/contexte';
 import { ficheDuCompte } from '@/lib/app/demandes';
+import { lignesDuProfil, profilDeLaFiche } from '@/lib/app/profilEntrainement';
 import { clientServeur, supabaseConfigure } from '@/lib/app/supabase';
 
 export const dynamic = 'force-dynamic';
@@ -43,7 +44,7 @@ export default async function NouvelObjectif() {
           <p className="text-indigo/70 mt-2">
             {fiche
               ? court
-                ? `Ton profil est déjà rempli : seules ta charge du moment${depuisNolio ? ' (lue dans tes séances Nolio : relis-la)' : ''} et ta course sont demandées. Ton coach relit ta demande et lance ta préparation.`
+                ? `Ton profil d’entraînement part avec ta demande (ci-dessous) : seules ta charge du moment${depuisNolio ? ' (lue dans tes séances Nolio : relis-la)' : ''} et ta course sont demandées. Ton coach relit ta demande et lance ta préparation.`
                 : 'Remplis tes réponses et saisis ta course. Ton coach relit ta demande et lance ta préparation.'
               : 'Tes réponses du dernier plan sont reprises : mets à jour ce que tu cours en ce moment et saisis ta course.'}
           </p>
@@ -53,6 +54,21 @@ export default async function NouvelObjectif() {
             objectif après lui démarre le lundi qui suit ta récupération.
           </p>
         </div>
+        {/* Son profil d'entraînement, montré (décision coach du 20/10/2026 : « le coureur n'a jamais de visu sur son
+            profil ») et modifiable dans son onglet Profil. */}
+        {fiche && court && (
+          <div className="mb-6 mx-2 bg-white rounded-2xl border border-indigo/[0.08] px-4 py-3">
+            <div className="text-[0.6875rem] font-bold tracking-[0.12em] uppercase text-teal">Ton profil d’entraînement</div>
+            <dl className="pt-1">
+              {lignesDuProfil(await profilDeLaFiche(fiche.id)).map(([cle, valeur]) => (
+                <div key={cle} className="grid grid-cols-[112px_1fr] gap-x-3 py-2 border-b last:border-b-0 border-indigo/[0.06] text-[0.84rem] text-indigo">
+                  <dt className="font-semibold text-[#5E5C78]">{cle}</dt><dd>{valeur}</dd>
+                </div>
+              ))}
+            </dl>
+            <Link href="/app/profil#profil-entrainement" className="inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">Le modifier dans ton onglet Profil ›</Link>
+          </div>
+        )}
         {fiche
           ? <Questionnaire coach demande court={court} athleteId={fiche.id} initial={initial} />
           : <Questionnaire initial={initial} />}

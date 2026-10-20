@@ -2,13 +2,18 @@
 
 import { useActionState } from 'react';
 import { enregistrerProfil, type EtatCoach } from '@/lib/app/actionsCoaching';
+import { modifierMonProfil } from '@/lib/app/actionsObjectifs';
 import { textes } from '@/lib/plan';
 
 const JOURS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
 
-// PO1 : le profil d'un athlète coaché, modifié à part de ses objectifs, sur sa fiche.
-export default function ProfilAthlete({ athleteId, profil }: { athleteId: string; profil: Record<string, string | string[]> }) {
-  const [etat, action, enCours] = useActionState<EtatCoach, FormData>(enregistrerProfil.bind(null, athleteId), null);
+// PO1 : le profil d'un athlète coaché, modifié à part de ses objectifs, sur sa fiche : par son coach (athleteId), ou par
+// lui-même dans son onglet Profil (pourMoi ; décision coach du 20/10/2026).
+export default function ProfilAthlete({ athleteId, profil, pourMoi = false }: {
+  athleteId?: string; profil: Record<string, string | string[]>; pourMoi?: boolean;
+}) {
+  const [etat, action, enCours] = useActionState<EtatCoach, FormData>(
+    pourMoi || !athleteId ? modifierMonProfil : enregistrerProfil.bind(null, athleteId), null);
   const jours = Array.isArray(profil.jours_disponibles) ? profil.jours_disponibles : [];
   const champ = 'mt-1.5 w-full min-h-11 rounded-[10px] border border-indigo/20 px-3 text-sm font-normal text-indigo bg-white';
   return (
@@ -45,7 +50,7 @@ export default function ProfilAthlete({ athleteId, profil }: { athleteId: string
         </label>
       </div>
       <button type="submit" disabled={enCours} className="min-h-11 px-4 rounded-[10px] bg-teal text-white text-sm font-bold disabled:opacity-50">
-        {enCours ? 'Enregistrement…' : 'Enregistrer son profil'}
+        {enCours ? 'Enregistrement…' : pourMoi ? 'Enregistrer mon profil' : 'Enregistrer son profil'}
       </button>
       {etat?.message && <p className={etat.ok ? 'text-sm text-teal font-semibold' : 'text-sm text-indigo'} role="status">{etat.message}</p>}
     </form>

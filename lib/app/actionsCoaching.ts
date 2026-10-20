@@ -220,23 +220,13 @@ export async function retirerAthlete(athleteId: string): Promise<void> {
 
 // PO1 (décision coach du 19/10/2026) : le profil d'un athlète coaché, modifié à part de ses objectifs, sur sa fiche ;
 // le questionnaire court du prochain objectif le reprend. Le moteur revérifie tout à la génération.
-const JOURS_SEMAINE = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
 export async function enregistrerProfil(athleteId: string, _e: EtatCoach, form: FormData): Promise<EtatCoach> {
   const coach = await coachConnecte();
   if (!coach) return { ok: false, message: 'Ta session a expiré : reconnecte-toi.' };
-  const { textes } = await import('@/lib/plan');
-  const niveau = String(form.get('niveau') ?? '');
-  const terrain = String(form.get('terrain') ?? '');
-  const jours = form.getAll('jours_disponibles').map(String).filter((j) => JOURS_SEMAINE.includes(j));
-  const jourSl = String(form.get('jour_sl') ?? '');
-  const freq = Number(form.get('freq_hebdo'));
-  if (!textes.niveau.options.some((o) => o.valeur === niveau) || !textes.terrain.options.some((o) => o.valeur === terrain))
-    return { ok: false, message: 'Choisis son niveau et son terrain.' };
-  if (!jours.length || !jours.includes(jourSl)) return { ok: false, message: 'Coche ses jours disponibles, dont celui de sa sortie longue.' };
-  if (!Number.isInteger(freq) || freq < 1 || freq > Math.min(7, jours.length))
-    return { ok: false, message: 'Le nombre de séances doit tenir dans ses jours disponibles.' };
-  const { error } = await clientService().from('athletes_coaches')
-    .update({ profil: { niveau, terrain, jours_disponibles: jours, jour_sl: jourSl, freq_hebdo: String(freq) } })
+  const { lireProfil } = await import('./profilEntrainement');
+  const lu = lireProfil(form, 'son');
+  if ('erreur' in lu) return { ok: false, message: lu.erreur };
+  const { error } = await clientService().from('athletes_coaches').update({ profil: lu.profil })
     .eq('id', athleteId).eq('coach_id', coach.compteId);
   if (error) return { ok: false, message: 'L’enregistrement n’a pas abouti : la migration du 19/10/2026 est-elle passée ?' };
   revalidatePath(`/app/coach/athlete/${athleteId}`);
