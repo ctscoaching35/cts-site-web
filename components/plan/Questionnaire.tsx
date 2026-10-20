@@ -3,11 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { compterEtape } from '@/lib/mesure';
 import clsx from 'clsx';
-import {
-  API_URL, alerteSortieLongue, avertissements, bandeTempsCible, champsVides, formatDepuisDistance, formatOuvert,
-  intakePourApi, noteFormat, plancherSeances, reperesChrono, textes,
-  type Champs, type ConfigPlan,
-} from '@/lib/plan';
+import { alerteSortieLongue, API_URL, avertissements, bandeTempsCible, type Champs, champsVides, type ConfigPlan, dureeConseillee, dureesPossibles, formatDepuisDistance, formatOuvert, intakePourApi, noteFormat, plancherSeances, reperesChrono, textes } from '@/lib/plan';
 
 const NOMS_JOURS: Record<string, string> = {
   lundi: 'Lundi', mardi: 'Mardi', mercredi: 'Mercredi', jeudi: 'Jeudi',
@@ -172,7 +168,9 @@ export default function Questionnaire({
 
   // Le format se déduit de la distance (F4) : un format que le niveau n'ouvre pas ne propose
   // aucune durée, et la note sous la distance dit pourquoi.
-  const durees = config && formatOuvert(c, config) ? config.durees_par_format[c.format] ?? [] : [];
+  // Seulement les durées que sa course admet, celle qui colle à sa date cochée d'office (décision coach du 20/10/2026).
+  const durees = config && formatOuvert(c, config) ? dureesPossibles(c, config) : [];
+  const conseillee = config ? dureeConseillee(c, config, durees) : null;
   const notePourFormat = config ? noteFormat(c, config, coach) : null;
   const blocDistance = (
     <div>
@@ -197,14 +195,21 @@ export default function Questionnaire({
       const n = { ...p };
       // Le format suit la distance (audit du questionnaire du 01/10/2026, F4).
       n.format = formatDepuisDistance(n.distance_km, config);
-      if (!coach && n.duree_mois && !(formatOuvert(n, config) ? config.durees_par_format[n.format] ?? [] : []).map(String).includes(n.duree_mois)) n.duree_mois = '';
+      // Une durée que la course n'admet plus laisse la place à celle qui colle à sa date ; sans choix, celle-ci d'office.
+      if (!coach) {
+        const possibles = formatOuvert(n, config) ? dureesPossibles(n, config) : [];
+        if (!n.duree_mois || !possibles.map(String).includes(n.duree_mois)) {
+          const d = dureeConseillee(n, config, possibles);
+          n.duree_mois = d === null ? '' : String(d);
+        }
+      }
       if (n.jour_sl && !n.jours_disponibles.includes(n.jour_sl)) n.jour_sl = '';
       // Plafond du niveau (second audit, D4) : passer en débutant avec 5 séances ou plus
       // vide le champ, comme les autres réponses devenues invalides.
       if (n.freq_hebdo && Number(n.freq_hebdo) > (config.freq_max_par_niveau?.[n.niveau] ?? 7)) n.freq_hebdo = '';
       return JSON.stringify(n) === JSON.stringify(p) ? p : n;
     });
-  }, [config, c.niveau, c.format, c.distance_km, c.jours_disponibles, c.jour_sl, c.duree_mois]);
+  }, [config, c.niveau, c.format, c.distance_km, c.jours_disponibles, c.jour_sl, c.duree_mois, c.temps_cible, c.date_course]);
 
   function basculerJour(j: string) {
     setC((p) => ({
@@ -520,30 +525,15 @@ export default function Questionnaire({
         </div>
       </Section>
 
-      {/* Le coaching individualisé n'a pas de formule à choisir (décision coach du 19/10/2026) : la distance passe dans
-          « Ta course », et les sections suivantes remontent d'un rang. */}
-      {!coach && <Section numero={3} titre="Ta formule">
+      {/* La course d'abord, sa distance comprise (décision coach du 20/10/2026), puis la formule, qui n'offre que les
+          durées que cette course admet. Le coaching individualisé n'a pas de formule à choisir (19/10/2026). */}
+      <Section numero={court ? 2 : 3} titre={court && !demande ? 'Sa course' : 'Ta course'}>
         {blocDistance}
-        {(
-          <div>
-            <label className={labelCls} htmlFor="duree">Durée du plan</label>
-            <select id="duree" className={inputCls} required value={c.duree_mois} onChange={(e) => maj('duree_mois')(e.target.value)} disabled={!durees.length}>
-              <option value="">{durees.length ? '— choisir —' : c.format ? 'Aucune durée : ce format n’est pas ouvert à ton niveau' : 'Indique d’abord la distance de ta course'}</option>
-              {durees.map((d) => <option key={d} value={String(d)}>{d} mois — {config.prix_eur_par_mois[String(d)]} €</option>)}
-            </select>
-          </div>
-        )}
-      </Section>}
-
-      <Section numero={court ? 2 : coach ? 3 : 4} titre={court && !demande ? 'Sa course' : 'Ta course'}>
         {coach && (
-          <>
-            {blocDistance}
-            <p className="text-sm text-indigo/75 leading-relaxed">
-              La préparation part du lundi qui vient et va jusqu’à la course : 24 semaines au plus (16 pour un trail court),
-              prise en route si la course est plus proche.
-            </p>
-          </>
+          <p className="text-sm text-indigo/75 leading-relaxed">
+            La préparation part du lundi qui vient et va jusqu’à la course : 24 semaines au plus (16 pour un trail court),
+            prise en route si la course est plus proche.
+          </p>
         )}
         <div className="grid sm:grid-cols-2 gap-6">
           <div>
@@ -587,6 +577,34 @@ export default function Questionnaire({
           </p>
         </div>
       </Section>
+
+      {!coach && <Section numero={4} titre="Ta formule">
+        <fieldset>
+          <legend className={labelCls}>Durée du plan</legend>
+          {durees.length ? (
+            <div className="space-y-2.5">
+              {durees.map((d) => (
+                <label key={d} className={clsx('flex items-center justify-between gap-3 px-4 py-3 border cursor-pointer',
+                  c.duree_mois === String(d) ? 'border-teal bg-teal/5' : 'border-indigo/15')}>
+                  <span className="flex items-center gap-3">
+                    <input type="radio" name="duree_mois" value={String(d)} checked={c.duree_mois === String(d)} required
+                      onChange={() => maj('duree_mois')(String(d))} className="accent-teal" />
+                    <span className="text-indigo font-semibold">{d} mois — {config.prix_eur_par_mois[String(d)]} €</span>
+                  </span>
+                  {d === conseillee && <span className="text-xs font-semibold text-teal">colle à la date de ta course</span>}
+                </label>
+              ))}
+              <p className={aideCls}>Seules les durées qui conviennent à ta course sont proposées.</p>
+            </div>
+          ) : (
+            <p className="text-sm text-indigo/70 leading-relaxed">
+              {!c.format ? 'Indique d’abord la distance de ta course, plus haut.'
+                : !formatOuvert(c, config) ? 'Aucune durée : ce format n’est pas ouvert à ton niveau.'
+                  : 'Aucune durée ne prépare une course visée en ce temps : vérifie ton temps visé.'}
+            </p>
+          )}
+        </fieldset>
+      </Section>}
 
       {!court && <Section numero={coach ? 4 : 5} titre="Ton terrain d’entraînement">
         <div className="grid sm:grid-cols-2 gap-3">

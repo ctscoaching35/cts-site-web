@@ -23,6 +23,9 @@ export type ConfigPlan = {
   bandes_temps_cible?: { bornes_h: number[]; libelles: string[]; phrases_bornes: string[]; marge_min: number };
   sortie_longue_min?: { h: number; message: string };
   semaines_par_formule: Record<string, number>;
+  // Les durées que le temps visé admet, bande par bande (moteur : mois_par_temps_cible) ; absentes d'une API d'avant.
+  mois_par_bande?: number[][];
+  quatre_mois_jusqua_h?: number;
   jours: string[];
   prix_eur_par_mois: Record<string, number>;
   mode_paiement: 'test' | 'stripe';
@@ -211,6 +214,39 @@ export function formatDepuisDistance(distance: string, config: ConfigPlan): stri
 }
 
 /** Le format déduit est-il ouvert au niveau déclaré ? Sans niveau, oui (l'API reste juge). */
+// Les durées que sa course admet (décision coach du 20/10/2026, « montrer les seules possibles ») : celles du format,
+// et, son temps visé lisible, celles que ce temps admet (la même règle que le moteur, mois_par_temps_cible : une course
+// de 4 à 8 h ne se prépare pas en 3 mois). Plus de durée proposée que le moteur refuserait ensuite.
+export function dureesPossibles(c: Champs, config: ConfigPlan): number[] {
+  const duFormat = config.durees_par_format[c.format] ?? [];
+  const h = lireTemps(c.temps_cible ?? '');
+  const bornes = config.bandes_temps_cible?.bornes_h;
+  if (h === null || h <= 0 || !config.mois_par_bande || !bornes) return duFormat;
+  const i = bornes.findIndex((b) => h < b);
+  const bande = i === -1 ? config.mois_par_bande.length - 1 : i;
+  const derniere = bande === config.mois_par_bande.length - 1;
+  const parTemps = [...(config.mois_par_bande[bande] ?? []), ...(derniere && h <= (config.quatre_mois_jusqua_h ?? 0) ? [4] : [])];
+  return duFormat.filter((m) => parTemps.includes(m));
+}
+
+// La durée qui colle à la date de sa course (QD1 du coaching, la même lecture) : la plus courte dont la première semaine
+// tombe le lundi qui vient ou avant ; une course plus loin que la plus longue, la plus longue. null sans date.
+export function dureeConseillee(c: Champs, config: ConfigPlan, durees: number[], aujourdhui = new Date()): number | null {
+  if (!durees.length || !/^\d{4}-\d{2}-\d{2}$/.test(c.date_course ?? '')) return null;
+  const jour = (d: Date) => d.toISOString().slice(0, 10);
+  const course = new Date(`${c.date_course}T12:00:00Z`);
+  const auj = new Date(`${jour(aujourdhui)}T12:00:00Z`);
+  const lundi = new Date(auj.getTime() + ((7 - ((auj.getUTCDay() + 6) % 7)) % 7) * 86_400_000);
+  const triees = [...durees].sort((x, y) => x - y);
+  for (const m of triees) {
+    const semaines = config.semaines_par_formule[`${c.format}-${m}`];
+    if (!semaines) continue;
+    const debut = new Date(course.getTime() - ((semaines - 1) * 7 + ((course.getUTCDay() + 6) % 7)) * 86_400_000);
+    if (jour(debut) <= jour(lundi)) return m;
+  }
+  return triees[triees.length - 1];
+}
+
 export function formatOuvert(c: Champs, config: ConfigPlan): boolean {
   return !!c.format && (!c.niveau || (config.formats_par_niveau[c.niveau] ?? []).includes(c.format));
 }
