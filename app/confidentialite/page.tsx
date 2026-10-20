@@ -52,7 +52,10 @@ export default async function Confidentialite() {
           )}
           <li>
             <strong>Fiches et calculateurs.</strong> Ce que tu saisis dans les calculateurs (fréquence cardiaque, allures,
-            poids) reste dans ton navigateur : rien n’est envoyé ni enregistré.
+            poids) reste dans ton navigateur : rien n’est envoyé ni enregistré. Une exception, à ta demande : dans l’app,
+            « Garder ma stratégie » range ta stratégie de course avec ta course (tes réponses au calculateur de nutrition,
+            ton poids compris, et ses quatre repères), pour l’afficher dans ta fiche de course. Tu l’effaces quand tu veux
+            (« Effacer ma stratégie ») ; elle part avec ta course ou ton compte.
           </li>
           <li>
             <strong>Formulaire de contact.</strong> Ton prénom, ton e-mail, ta ville, ton objectif et ton message nous

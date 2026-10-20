@@ -44,13 +44,14 @@
 .point li { margin-bottom: 0.35rem; }
 .imprimer { display: inline-block; margin: 1.2rem 0 0; font: inherit; font-weight: 700; font-size: 0.95rem; color: #ffffff; background: var(--teal); border: none; border-radius: 6px; padding: 0.7rem 1.1rem; cursor: pointer; }
 .imprimer:hover { background: #0a5c4f; }
+.garder p { margin: 0.5rem 0 0; font-size: 0.85rem; color: #5E5C78; line-height: 1.5; }
 @media (max-width: 480px) {
   .champs { gap: 0.6rem 0.7rem; }
   .cartes { grid-template-columns: 1fr 1fr; }
   .carte-chiffre .valeur { font-size: 1.1rem; }
 }
 @media print {
-  .entete, .titre, .test, .imprimer, .pied { display: none !important; }
+  .entete, .titre, .test, .imprimer, .garder, .pied { display: none !important; }
   main { padding-top: 0; }
   .profil-tete { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
@@ -65,7 +66,7 @@
 <section class="titre"><div class="titre-inner">
   <span class="surtitre">Calculateur gratuit</span>
   <h1>Ta nutrition en course</h1>
-  <p class="chapeau">La durée de ta course, la chaleur, ta sueur, ton intestin : le calculateur te donne tes doses par heure en glucides, en sodium, en boisson et en caféine. À toi ensuite de choisir les produits qui t'apportent ces doses. Tout se calcule dans ton navigateur : rien n'est envoyé ni enregistré.</p>
+  <p class="chapeau">La durée de ta course, la chaleur, ta sueur, ton intestin : le calculateur te donne tes doses par heure en glucides, en sodium, en boisson et en caféine. À toi ensuite de choisir les produits qui t'apportent ces doses. <span id="rien_envoye">Tout se calcule dans ton navigateur : rien n'est envoyé ni enregistré.</span></p>
 </div></section>
 
 <main>
@@ -115,6 +116,10 @@
     <h3>Comment t'en servir</h3>
     <div id="consignes"></div>
     <button type="button" class="imprimer" id="imprimer">Imprimer ou enregistrer mes doses</button>
+    <div class="garder" id="garder" hidden>
+      <button type="button" class="imprimer" id="garder_bouton">Garder ma stratégie</button>
+      <p>Elle s'inscrit dans ta fiche de course, avec tes réponses (ton poids compris, pour la caféine), et le calculateur se rouvre rempli. Tu l'effaces quand tu veux.</p>
+    </div>
   </section>
 
   <div class="retenir">
@@ -296,14 +301,37 @@
   ['cond_frais', 'cond_tempere', 'cond_chaud', 'cond_humide', 'nuit', 'niveau_deb', 'niveau_int', 'niveau_exp', 'intestin_non', 'intestin_cours', 'intestin_oui', 'sueur_faible', 'sueur_moderee', 'sueur_elevee'].forEach(function (id) { $(id).addEventListener('change', calculer); });
   $('imprimer').addEventListener('click', function () { window.print(); });
   // Ouvert depuis une fiche de course (décision coach du 19/10/2026) : la durée de la course et le niveau, dans
-  // l'adresse (?heures=2&minutes=15&niveau=int), préremplis ; le reste (poids, conditions, sueur…) se remplit ici.
+  // l'adresse (?heures=2&minutes=15&niveau=int), préremplis ; le reste (poids, conditions, sueur…) se remplit ici, ou
+  // vient de la stratégie gardée dans l'app (décision coach du 20/10/2026 : ?poids=68&conditions=chaud&nuit=1…).
+  var q = new URLSearchParams(window.location.search);
   (function () {
-    var q = new URLSearchParams(window.location.search);
-    var h = q.get('heures'), m = q.get('minutes'), n = q.get('niveau');
+    var h = q.get('heures'), m = q.get('minutes'), p = q.get('poids');
     if (h && /^\d{1,2}$/.test(h)) $('heures').value = h;
     if (m && /^\d{1,2}$/.test(m)) $('minutes').value = m;
-    if (n && ['deb', 'int', 'exp'].indexOf(n) >= 0) $('niveau_' + n).checked = true;
+    if (p && /^\d{2,3}([.,]\d)?$/.test(p)) $('poids').value = p;
+    if (q.get('nuit') === '1') $('nuit').checked = true;
+    var radios = { conditions: ['frais', 'tempere', 'chaud', 'humide'], niveau: ['deb', 'int', 'exp'], intestin: ['non', 'cours', 'oui'], sueur: ['faible', 'moderee', 'elevee'] };
+    Object.keys(radios).forEach(function (nom) {
+      var v = q.get(nom), e = v && radios[nom].indexOf(v) >= 0 && document.querySelector('input[name="' + nom + '"][value="' + v + '"]');
+      if (e) e.checked = true;
+    });
   })();
+  // Ouvert dans l'app depuis une fiche de course (?garder=…) : « Garder ma stratégie » envoie tes réponses et tes
+  // quatre repères à l'app, qui les range avec ta course. Seul ce geste envoie quelque chose ; ailleurs, rien ne part.
+  if (q.get('garder') && window.parent !== window) {
+    $('garder').hidden = false;
+    $('rien_envoye').textContent = 'Tout se calcule dans ton navigateur' + N + ': rien n’est envoyé, sauf si tu gardes ta stratégie.';
+    $('garder_bouton').addEventListener('click', function () {
+      var entrees = {
+        heures: $('heures').value, minutes: $('minutes').value, poids: $('poids').value, conditions: choix('conditions'),
+        nuit: $('nuit').checked ? '1' : '', niveau: choix('niveau'), intestin: choix('intestin'), sueur: choix('sueur'),
+      };
+      var cartes = ['c_cho', 'c_eau', 'c_na', 'c_caf'].map(function (id) {
+        return { valeur: $(id).querySelector('.valeur').textContent, sous: $(id).querySelector('.sous').textContent };
+      });
+      window.parent.postMessage({ type: 'cts-strategie', entrees: entrees, cartes: cartes }, window.location.origin);
+    });
+  }
   calculer();
 })();
 </script>

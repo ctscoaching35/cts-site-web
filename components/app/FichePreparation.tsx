@@ -1,6 +1,7 @@
 import ProfilCourse from './ProfilCourse';
 import RepartitionPentes from './RepartitionPentes';
 import StrategieCourse from './StrategieCourse';
+import type { Strategie } from '@/lib/app/strategie';
 import { Lignes, Partie, Puces, Tableau } from './Texte';
 import type { Plan } from '@/lib/app/plan';
 
@@ -14,8 +15,9 @@ export type FichePrep = {
   jour_j: Plan['jour_j'];
 };
 
-export default function CorpsFichePreparation({ fiche, calculateur, cheminFiche, externe = false }: {
+export default function CorpsFichePreparation({ fiche, calculateur, cheminFiche, externe = false, strategie = null, effacer }: {
   fiche: FichePrep; calculateur: string; cheminFiche: (slug: string) => string; externe?: boolean;
+  strategie?: Strategie | null; effacer?: () => Promise<void>;
 }) {
   const { profil, determinants: d, jour_j: j } = fiche;
   const t = profil.troncons;
@@ -49,7 +51,7 @@ export default function CorpsFichePreparation({ fiche, calculateur, cheminFiche,
       <h2 className="text-2xl text-indigo leading-tight pt-4">{j.titre}</h2>
       <Partie titre={j.nutrition.titre}>
         <StrategieCourse lignes={j.nutrition.lignes as [string, string][]} href={calculateur} fiche={cheminFiche}
-          ultra={Boolean(j.fiche_ultra)} externe={externe} />
+          ultra={Boolean(j.fiche_ultra)} externe={externe} strategie={strategie} effacer={effacer} />
       </Partie>
     </>
   );

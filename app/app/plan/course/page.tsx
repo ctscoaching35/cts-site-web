@@ -5,8 +5,9 @@ import ProfilCourse from '@/components/app/ProfilCourse';
 import RepartitionPentes from '@/components/app/RepartitionPentes';
 import RetourPlan from '@/components/app/RetourPlan';
 import { Lignes, Partie, Puces, Tableau } from '@/components/app/Texte';
+import { effacerStrategie } from '@/lib/app/actionsStrategie';
 import { contexte, lien, type Recherche } from '@/lib/app/contexte';
-import { requeteCalculateurNutrition } from '@/lib/app/plan';
+import { COURSE_OBJECTIF, parametresCalculateur, STRATEGIE_EXEMPLE, strategiesDuPlan } from '@/lib/app/strategie';
 import { clientService } from '@/lib/app/supabase';
 
 // Ta fiche de course (cadrage, 3.4 ; maquette validée le 19/10/2026 : « profil, tronçons, ravitaillement ») : la fiche,
@@ -20,8 +21,11 @@ export default async function TaCourse({ searchParams }: { searchParams: Recherc
   const { data: q } = ctx.demonstration ? { data: null }
     : await clientService().from('plans').select('intake').eq('id', ctx.cle).maybeSingle();
   const niveau = String(((q?.intake ?? {}) as Record<string, unknown>).niveau ?? '');
+  // Ses stratégies gardées, une par fiche de course (décision coach du 20/10/2026).
+  const strategies = ctx.demonstration ? (ctx.exemple ? { [COURSE_OBJECTIF]: STRATEGIE_EXEMPLE } : {}) : await strategiesDuPlan(ctx.cle);
+  const strategie = strategies[COURSE_OBJECTIF] ?? null;
   const calculateur = lien('/app/calculateurs/calculateur-nutrition', ctx,
-    Object.fromEntries(new URLSearchParams(requeteCalculateurNutrition(plan.course.temps_cible, niveau))));
+    parametresCalculateur(plan.course.temps_cible, niveau, strategie, COURSE_OBJECTIF));
   const t = profil.troncons;
   // ?course=AAAA-MM-JJ : la fiche d'une course de préparation (PO3), dans l'app (décision coach du 19/10/2026).
   const course = (await searchParams).course;
@@ -29,15 +33,17 @@ export default async function TaCourse({ searchParams }: { searchParams: Recherc
     const { data: fp, error } = await clientService().from('plans').select('fiches_preparation').eq('id', ctx.cle).maybeSingle();
     const fiche = !error ? ((fp as { fiches_preparation?: Record<string, FichePrep> } | null)?.fiches_preparation ?? {})[course] : undefined;
     if (fiche) {
+      const strategiePrep = strategies[course] ?? null;
       const calculateurPrep = lien('/app/calculateurs/calculateur-nutrition', ctx,
-        Object.fromEntries(new URLSearchParams(requeteCalculateurNutrition(fiche.course.temps_cible, niveau))));
+        parametresCalculateur(fiche.course.temps_cible, niveau, strategiePrep, course));
       return (
         <>
           <EnTeteApp ctx={ctx} />
           <main className="mx-auto max-w-2xl px-4 py-5 space-y-5">
             <RetourPlan ctx={ctx} />
             <CorpsFichePreparation fiche={fiche} calculateur={calculateurPrep}
-              cheminFiche={(slug) => lien(`/app/bibliotheque/${slug}`, ctx)} />
+              cheminFiche={(slug) => lien(`/app/bibliotheque/${slug}`, ctx)}
+              strategie={strategiePrep} effacer={effacerStrategie.bind(null, ctx.cle, course)} />
           </main>
         </>
       );
@@ -95,7 +101,8 @@ export default async function TaCourse({ searchParams }: { searchParams: Recherc
         <h2 id="jour-j" className="text-2xl text-indigo leading-tight pt-4 scroll-mt-20">{j.titre}</h2>
         <Partie titre={j.nutrition.titre}>
           <StrategieCourse lignes={j.nutrition.lignes as [string, string][]} href={calculateur}
-            fiche={(slug) => lien(`/app/bibliotheque/${slug}`, ctx)} ultra={Boolean(j.fiche_ultra)} />
+            fiche={(slug) => lien(`/app/bibliotheque/${slug}`, ctx)} ultra={Boolean(j.fiche_ultra)}
+            strategie={strategie} effacer={effacerStrategie.bind(null, ctx.cle, COURSE_OBJECTIF)} />
         </Partie>
       </main>
     </>

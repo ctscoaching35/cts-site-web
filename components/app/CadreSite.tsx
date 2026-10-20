@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Retour from './Retour';
 
@@ -20,9 +20,28 @@ export function versApp(chemin: string, requete = ''): string {
   return '/app';
 }
 
-export default function CadreSite({ src, titre, retour }: { src: string; titre: string; retour: { href: string; libelle: string } }) {
+// garder : le calculateur de nutrition ouvert depuis une fiche de course (décision coach du 20/10/2026) ; son bouton
+// « Garder ma stratégie » envoie ses réponses et ses repères au cadre, qui les range puis revient à la fiche.
+export default function CadreSite({ src, titre, retour, garder }: {
+  src: string; titre: string; retour: { href: string; libelle: string };
+  garder?: (donnees: unknown) => Promise<{ ok: boolean; message: string }>;
+}) {
   const router = useRouter();
   const cadre = useRef<HTMLIFrameElement>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  useEffect(() => {
+    if (!garder) return;
+    const recevoir = async (e: MessageEvent) => {
+      if (e.origin !== window.location.origin || e.source !== cadre.current?.contentWindow) return;
+      if ((e.data as { type?: unknown } | null)?.type !== 'cts-strategie') return;
+      setMessage('Enregistrement…');
+      const r = await garder(e.data).catch(() => ({ ok: false, message: 'L’enregistrement n’a pas abouti. Réessaie dans un moment.' }));
+      if (r.ok) router.push(retour.href);
+      else setMessage(r.message);
+    };
+    window.addEventListener('message', recevoir);
+    return () => window.removeEventListener('message', recevoir);
+  }, [garder, retour.href, router]);
   const brancher = () => {
     const doc = cadre.current?.contentDocument;
     if (!doc || doc.getElementById('cts-dans-l-app')) return;
@@ -61,6 +80,7 @@ export default function CadreSite({ src, titre, retour }: { src: string; titre: 
           <Retour href={retour.href} libelle={retour.libelle} />
           <span className="text-sm font-bold text-indigo truncate">{titre}</span>
         </div>
+        {message && <p role="status" className="mx-auto max-w-2xl px-4 pb-2 text-sm font-semibold text-indigo">{message}</p>}
       </div>
       <iframe ref={cadre} src={src} title={titre} onLoad={brancher} className="flex-1 w-full border-0 bg-white" />
     </div>

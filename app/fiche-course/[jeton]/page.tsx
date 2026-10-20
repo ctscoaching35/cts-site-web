@@ -7,7 +7,8 @@ import StrategieCourse from '@/components/app/StrategieCourse';
 import { Lignes, Partie, Puces, Tableau } from '@/components/app/Texte';
 import { planDuJeton } from '@/lib/app/ficheCourse';
 import CorpsFichePreparation, { type FichePrep } from '@/components/app/FichePreparation';
-import { requeteCalculateurNutrition, type Plan } from '@/lib/app/plan';
+import { type Plan } from '@/lib/app/plan';
+import { COURSE_OBJECTIF, parametresCalculateur, strategiesDuPlan, type Strategie } from '@/lib/app/strategie';
 import { clientService, supabaseConfigure } from '@/lib/app/supabase';
 
 // Lue à chaque visite : le plan peut avoir été refait.
@@ -25,19 +26,24 @@ export default async function FicheCourse({ params, searchParams }: {
   const planId = planDuJeton((await params).jeton);
   if (!planId) notFound();
   const course = (await searchParams).course;
+  // Ses stratégies gardées dans l'app (décision coach du 20/10/2026) : affichées ici aussi ; elles se modifient dans l'app.
+  const strategies = await strategiesDuPlan(planId);
   if (typeof course === 'string') {
     const { data: fp, error } = await clientService().from('plans').select('fiches_preparation, intake').eq('id', planId).maybeSingle();
     const fiche = !error ? ((fp as { fiches_preparation?: Record<string, FichePrep> } | null)?.fiches_preparation ?? {})[course] : undefined;
     if (!fiche) notFound();
     const niveau = String(((fp?.intake ?? {}) as Record<string, unknown>).niveau ?? '');
-    return <FichePreparation fiche={fiche} calculateur={`/calculateur-nutrition?${requeteCalculateurNutrition(fiche.course.temps_cible, niveau)}`} />;
+    const s = strategies[course] ?? null;
+    return <FichePreparation fiche={fiche} strategie={s}
+      calculateur={`/calculateur-nutrition?${new URLSearchParams(parametresCalculateur(fiche.course.temps_cible, niveau, s))}`} />;
   }
   const { data } = await clientService().from('plans').select('donnees, intake').eq('id', planId).maybeSingle();
   const plan = data?.donnees as Plan | undefined;
   if (!plan) notFound();
   const { profil, terrain, determinants: d, jour_j: j } = plan;
-  const calculateur = `/calculateur-nutrition?${requeteCalculateurNutrition(plan.course.temps_cible,
-    String(((data?.intake ?? {}) as Record<string, unknown>).niveau ?? ''))}`;
+  const strategie = strategies[COURSE_OBJECTIF] ?? null;
+  const calculateur = `/calculateur-nutrition?${new URLSearchParams(parametresCalculateur(plan.course.temps_cible,
+    String(((data?.intake ?? {}) as Record<string, unknown>).niveau ?? ''), strategie))}`;
   const t = profil.troncons;
   return (
     <div className="min-h-screen bg-sand">
@@ -94,7 +100,7 @@ export default async function FicheCourse({ params, searchParams }: {
         <h2 className="text-2xl text-indigo leading-tight pt-4">{j.titre}</h2>
         <Partie titre={j.nutrition.titre}>
           <StrategieCourse lignes={j.nutrition.lignes as [string, string][]} href={calculateur}
-            fiche={(slug) => `/bibliotheque/${slug}`} ultra={Boolean(j.fiche_ultra)} externe />
+            fiche={(slug) => `/bibliotheque/${slug}`} ultra={Boolean(j.fiche_ultra)} externe strategie={strategie} />
         </Partie>
         <p className="text-xs text-indigo/50 text-center pb-6">Ce lien est personnel : ne le partage pas.</p>
       </main>
@@ -102,7 +108,7 @@ export default async function FicheCourse({ params, searchParams }: {
   );
 }
 
-function FichePreparation({ fiche, calculateur }: { fiche: FichePrep; calculateur: string }) {
+function FichePreparation({ fiche, calculateur, strategie }: { fiche: FichePrep; calculateur: string; strategie: Strategie | null }) {
   return (
     <div className="min-h-screen bg-sand">
       <header className="bg-indigo text-white">
@@ -115,7 +121,8 @@ function FichePreparation({ fiche, calculateur }: { fiche: FichePrep; calculateu
         </div>
       </header>
       <main className="mx-auto max-w-2xl px-4 py-5 space-y-5">
-        <CorpsFichePreparation fiche={fiche} calculateur={calculateur} cheminFiche={(slug) => `/bibliotheque/${slug}`} externe />
+        <CorpsFichePreparation fiche={fiche} calculateur={calculateur} cheminFiche={(slug) => `/bibliotheque/${slug}`} externe
+          strategie={strategie} />
         <p className="text-xs text-indigo/50 text-center pb-6">Ce lien est personnel : ne le partage pas.</p>
       </main>
     </div>
