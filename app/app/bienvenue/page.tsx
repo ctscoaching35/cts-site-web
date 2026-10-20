@@ -1,9 +1,9 @@
 import Image from 'next/image';
 import { redirect } from 'next/navigation';
 import Installation from '@/components/app/Installation';
-import { Avertissement } from '@/components/app/Texte';
+import { Carte, Surtitre } from '@/components/app/Ui';
 import { entrerDansLePlan } from '@/lib/app/actionsBienvenue';
-import { contexte, lien, type Recherche } from '@/lib/app/contexte';
+import { contexte, lien, prenom, type Recherche } from '@/lib/app/contexte';
 
 // L'écran de bienvenue (cadrage, 2.6), à la première ouverture sur un appareil : la course et
 // la date de départ, sur quoi le plan se construit (la couverture du PDF), l'installation sur
@@ -16,51 +16,48 @@ export default async function Bienvenue({ searchParams }: { searchParams: Recher
   // Un coaché entre directement dans l'app (décision coach du 20/10/2026 : « cette partie n'apporte rien ») ; son
   // installation est dans son Compte.
   if (ctx.coache) redirect(lien('/app', ctx));
+  // Un acheteur (décision coach du 20/10/2026, les nuances des plans, point 3 : « l'essentiel », au format de l'app) : sa
+  // course et ses chiffres, le début de sa préparation, l'installation, l'avertissement santé à lire, « Entrer ». Plus
+  // de « fondements » à la première ouverture : ils sont dans son PDF.
+  const nom = prenom(plan.athlete.nom);
+  const c = plan.couverture;
   return (
-    <main className="mx-auto max-w-md px-4 py-8 space-y-6">
+    <main className="mx-auto max-w-md px-4 py-8 space-y-4">
       <div className="text-center space-y-2">
         <Image src="/logo/cts-logo-rond-navy.png" alt="CTS Coaching" width={64} height={64} className="mx-auto w-16 h-16" />
-        <div className="eyebrow text-teal">{plan.couverture.surtitre}</div>
-        <h1 className="text-3xl text-indigo">Bienvenue</h1>
-        <p className="text-indigo/70">
-          {plan.course.nom} · {plan.course.format_clair}
-        </p>
+        <div className="text-[0.6875rem] font-bold tracking-[0.14em] uppercase text-teal">{c.surtitre}</div>
+        <h1 className="text-[1.75rem] font-extrabold text-indigo tracking-tight leading-tight">{nom ? `Bienvenue ${nom}` : 'Bienvenue'}</h1>
+        <p className="text-[0.8125rem] text-[#5E5C78]">{plan.course.nom} · {plan.course.format_clair}</p>
       </div>
 
-      <dl className="grid grid-cols-4 bg-white shadow-sm border-t-2 border-teal">
-        {plan.couverture.reperes.map(([cle, valeur]) => (
-          <div key={cle} className="text-center px-1 py-3">
-            <dt className="text-[0.58rem] font-bold tracking-cts-tight uppercase text-teal">{cle}</dt>
-            <dd className="font-extrabold text-indigo text-sm leading-tight mt-0.5">{valeur}</dd>
+      <dl className="grid grid-cols-2 gap-2.5">
+        {c.reperes.map(([cle, valeur]) => (
+          <div key={cle} className="bg-white rounded-2xl border border-indigo/[0.08] px-3.5 py-3">
+            <dt className="text-[0.625rem] font-bold tracking-[0.1em] uppercase text-[#5E5C78]">{cle}</dt>
+            <dd className="mt-1 text-[1rem] font-extrabold text-indigo leading-snug">{valeur}</dd>
           </div>
         ))}
       </dl>
-      <div className="text-center px-2">
-        <p className="font-semibold text-indigo">{plan.couverture.debut}</p>
-        <p className="text-sm text-indigo/60">{plan.couverture.rendez_vous}</p>
-      </div>
 
-      <section>
-        <h2 className="eyebrow text-indigo text-center mb-3">{plan.demarche.titre}</h2>
-        <div className="grid grid-cols-2 gap-2">
-          {plan.demarche.piliers.map(([titre, texte]) => (
-            <div key={titre} className="bg-white shadow-sm p-3 text-center">
-              <div className="text-[0.62rem] font-bold tracking-cts-tight uppercase text-teal mb-1">{titre}</div>
-              <p className="text-xs text-indigo/75 leading-relaxed">{texte}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      <Carte className="text-center">
+        <p className="text-[0.9375rem] font-bold text-indigo">{c.debut}</p>
+        <p className="mt-1 text-[0.8125rem] text-[#5E5C78]">{c.rendez_vous}</p>
+      </Carte>
 
-      <section className="bg-white shadow-sm p-4 space-y-2">
-        <h2 className="font-bold text-indigo">Installer l’app</h2>
+      <Carte className="space-y-2.5">
+        <Surtitre>Installer l’app</Surtitre>
         <Installation />
-      </section>
+      </Carte>
 
-      {!ctx.coache && <Avertissement avertissement={plan.avertissement} />}
+      <Carte className="space-y-2.5">
+        <Surtitre>{plan.avertissement.surtitre}</Surtitre>
+        {plan.avertissement.paragraphes.map((p, i) => (
+          <p key={i} className="text-[0.8125rem] text-[#4A4866] leading-relaxed">{p}</p>
+        ))}
+      </Carte>
 
       <form action={entrer}>
-        <button type="submit" className="btn btn-primary w-full">Entrer dans mon plan</button>
+        <button type="submit" className="btn btn-primary w-full">Entrer</button>
       </form>
     </main>
   );
