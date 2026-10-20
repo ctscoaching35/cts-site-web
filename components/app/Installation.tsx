@@ -43,44 +43,100 @@ export default function Installation() {
 
   if (!appareil) return null;
   if (appareil === 'installee') return <p className="text-sm text-indigo/70">L’app est installée sur cet appareil.</p>;
+  const edge = typeof navigator !== 'undefined' && /Edg\//.test(navigator.userAgent);
+  const navigateur = edge ? 'Edge' : 'Chrome';
   return (
-    <div className="space-y-3 text-sm text-indigo/80 leading-relaxed">
-      {appareil === 'iphone' && (
+    <div className="space-y-3 text-sm text-[#4A4866] leading-relaxed">
+      {invitation && (
         <>
-          <p>
-            Dans <strong>Safari</strong>, touche le bouton <strong>Partager</strong> (le carré avec une flèche vers le
-            haut), puis <strong>« Sur l’écran d’accueil »</strong>. L’app s’ouvrira en plein écran depuis son icône.
-          </p>
-          <p className="text-indigo/60">À sa première ouverture, l’app installée te demandera ton e-mail et un code, une fois.</p>
+          <button type="button" onClick={() => invitation.prompt()} className="btn btn-primary w-full">
+            Installer l’app
+          </button>
+          <p className="text-[0.8125rem] text-[#5E5C78]">L’app CTS s’ouvre ensuite dans sa propre fenêtre, depuis son icône.</p>
         </>
       )}
-      {appareil === 'android' && (
-        <p>
-          Dans <strong>Chrome</strong>, ouvre le menu <strong>⋮</strong> puis <strong>« Installer l’application »</strong>{' '}
-          (ou « Ajouter à l’écran d’accueil »). L’app s’ouvrira en plein écran depuis son icône.
-        </p>
-      )}
       {appareil === 'chrome' && !invitation && (
-        <p>
-          Dans <strong>Chrome</strong> ou <strong>Edge</strong>, clique l’icône d’installation à droite de la barre d’adresse
-          (un écran avec une flèche), puis <strong>« Installer »</strong> : l’app s’ouvre dans sa propre fenêtre, depuis ton
-          Dock ou ta barre des tâches.
-        </p>
+        <>
+          <Etapes etapes={[
+            <>Repère l’icône <Pastille><IconeInstaller /></Pastille> tout à droite de la barre d’adresse, en haut de ta fenêtre.</>,
+            <>Clique dessus, puis sur <strong>« Installer »</strong>.</>,
+            <>L’app CTS s’ouvre dans sa propre fenêtre. Tu la retrouves ensuite dans ton Dock (Mac) ou ta barre des tâches (Windows).</>,
+          ]} />
+          <p className="text-[0.8125rem] text-[#5E5C78]">
+            Pas d’icône ? Ouvre le menu <Pastille>⋮</Pastille> de {navigateur} et cherche « Installer »
+            {edge ? ' (dans « Applications »)' : ' (dans « Caster, enregistrer et partager »)'}. Si l’app est déjà installée,
+            l’icône n’apparaît pas : ouvre-la depuis ton Dock ou ta barre des tâches.
+          </p>
+        </>
+      )}
+      {appareil === 'iphone' && (
+        <>
+          <Etapes etapes={[
+            <>Ouvre cette page dans <strong>Safari</strong>.</>,
+            <>Touche <strong>Partager</strong> <Pastille><IconePartager /></Pastille>, en bas de l’écran.</>,
+            <>Fais défiler, touche <strong>« Sur l’écran d’accueil »</strong>, puis <strong>« Ajouter »</strong>.</>,
+          ]} />
+          <p className="text-[0.8125rem] text-[#5E5C78]">À sa première ouverture, l’app installée te demande ton e-mail et un code, une fois.</p>
+        </>
+      )}
+      {appareil === 'android' && !invitation && (
+        <Etapes etapes={[
+          <>Dans <strong>Chrome</strong>, touche le menu <Pastille>⋮</Pastille> en haut à droite.</>,
+          <>Touche <strong>« Installer l’application »</strong> (ou « Ajouter à l’écran d’accueil »).</>,
+          <>L’app CTS s’ouvre en plein écran depuis son icône.</>,
+        ]} />
       )}
       {appareil === 'safari' && (
-        <p>
-          Dans <strong>Safari</strong>, ouvre le menu <strong>Fichier</strong> puis <strong>« Ajouter au Dock »</strong> :
-          l’app s’ouvre dans sa propre fenêtre, depuis son icône.
-        </p>
+        <Etapes etapes={[
+          <>Dans <strong>Safari</strong>, ouvre le menu <strong>Fichier</strong>, en haut de l’écran.</>,
+          <>Clique <strong>« Ajouter au Dock »</strong>, puis <strong>« Ajouter »</strong>.</>,
+          <>L’app CTS s’ouvre dans sa propre fenêtre, depuis son icône dans ton Dock.</>,
+        ]} />
       )}
       {appareil === 'firefox' && (
         <p>Firefox n’installe pas les apps web : ouvre cette page dans Chrome, Edge ou Safari pour l’installer.</p>
       )}
-      {invitation && (
-        <button type="button" onClick={() => invitation.prompt()} className="btn btn-primary w-full">
-          Installer l’app
-        </button>
-      )}
     </div>
+  );
+}
+
+// Des étapes numérotées (retour du coach du 20/10/2026 : « pas très clair, on peut pas faire mieux ? »).
+function Etapes({ etapes }: { etapes: React.ReactNode[] }) {
+  return (
+    <ol className="space-y-2.5">
+      {etapes.map((e, i) => (
+        <li key={i} className="flex gap-3">
+          <span aria-hidden className="w-6 h-6 rounded-full bg-[#E1EFEA] text-teal-dark text-xs font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+          <span className="pt-0.5">{e}</span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+// Une icône du navigateur, dessinée dans une pastille pour qu'on la reconnaisse.
+function Pastille({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center justify-center align-middle min-w-7 h-7 px-1.5 mx-0.5 rounded-lg border border-indigo/15 bg-white text-indigo font-bold">
+      {children}
+    </span>
+  );
+}
+
+// L'icône d'installation de Chrome et Edge : un écran, une flèche vers le bas.
+function IconeInstaller() {
+  return (
+    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-label="icône d’installation">
+      <rect x="3" y="4" width="18" height="12" rx="2" /><path d="M12 7v5.5M9.5 10l2.5 2.5 2.5-2.5M8 20h8" />
+    </svg>
+  );
+}
+
+// Le bouton Partager de Safari : un carré ouvert, une flèche vers le haut.
+function IconePartager() {
+  return (
+    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-label="bouton Partager">
+      <path d="M12 3v12M8 7l4-4 4 4" /><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1" />
+    </svg>
   );
 }
