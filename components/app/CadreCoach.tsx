@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import clsx from 'clsx';
+import { Deconnexion } from './BoutonsCompte';
 
 // Le cadre de l'espace coach (maquettes validées par le coach le 19/10/2026) : un menu à gauche sur ordinateur, au-dessus
 // du contenu sur téléphone (Tes athlètes, Suivi des 7 jours, Objectifs demandés, Chiffres de la vente, Bibliothèque),
@@ -43,6 +44,8 @@ export default function CadreCoach({ actif, demandes = 0, coach, children }: {
             </Link>
           ))}
         </nav>
+        {/* Changer de compte : coach, coaché ou acheteur, chacun voit sa version par son compte. */}
+        <div className="-mt-3"><Deconnexion menu /></div>
         <div className="hidden lg:flex mt-auto p-3 rounded-xl bg-white/[0.06] flex-col gap-1">
           {coach && <span className="text-xs font-bold">{coach}</span>}
           <span className="text-[0.6875rem] text-[#B9B8CC]">Nolio relié par la clé de l’API</span>
