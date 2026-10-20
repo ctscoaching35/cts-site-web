@@ -22,6 +22,8 @@ export async function retirerAccord(usr: string): Promise<void> {
   const coach = await coachConnecte();
   if (!coach || !USR.test(usr)) return;
   await clientService().from('nolio_accords').delete().eq('coach_id', coach.compteId).eq('nolio_athlete_id', usr);
+  // Ses badges partent avec l'accord (BG1 à BG3, décisions coach du 20/10/2026).
+  await clientService().from('badges').delete().eq('nolio_athlete_id', usr);
   await clientService().from('athletes_coaches').update({ fc_seuil1: null, vc_ms: null, v_seuil1_ms: null, fc_seuil2: null })
     .eq('coach_id', coach.compteId).eq('nolio_athlete_id', usr);
   // Les chiffres gardés de ses semaines écrites (charge faite, Hooper : moteur 8.327) s'effacent aussi (T5).

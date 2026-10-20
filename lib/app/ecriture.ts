@@ -609,6 +609,8 @@ export async function retirerAccordLecture(planId: string): Promise<void> {
   await service.from('plans').update({ accord_lecture_le: null }).eq('id', planId);
   await service.from('semaines_ecrites').update({ realise: null }).eq('plan_id', planId);
   await service.from('tests_lus').delete().eq('plan_id', planId);
+  // Ses badges partent avec l'accord (BG1 à BG3, décisions coach du 20/10/2026).
+  if (o.nolioAthlete) await service.from('badges').delete().eq('nolio_athlete_id', o.nolioAthlete);
   const hooper = o.envois.find((e) => e.semaine === QUESTIONNAIRES)?.seances.find((s) => s.jour_id === 'questionnaire:hooper');
   // Les questionnaires du soir des tests de la parole à venir (TN4) quittent Nolio avec le Hooper.
   const paroles = o.envois.filter((e) => e.semaine.endsWith(':parole')).flatMap((e) => e.seances as SeanceEnvoyee[]);

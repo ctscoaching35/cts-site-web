@@ -43,6 +43,7 @@ export async function POST(request: Request) {
         const { data: plans } = await service.from('plans').select('id').eq('nolio_athlete_id', usr);
         for (const p of plans ?? []) await service.from('semaines_ecrites').update({ journal: [], notes: [] }).eq('plan_id', p.id);
         await service.from('nolio_accords').delete().eq('nolio_athlete_id', usr);
+        await service.from('badges').delete().eq('nolio_athlete_id', usr);
       }
     }
     return Response.json({ recu: true });

@@ -1,10 +1,13 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { CarteNouveauBadge } from '@/components/app/Badges';
 import EnTeteApp from '@/components/app/EnTeteApp';
 import {
   CarteNolio, CarteObjectif, CetteSemaine, CoursesPreparation, FicheDuMoment, Piliers,
 } from '@/components/app/TableauDeBord';
+import { nouveauxBadges } from '@/lib/app/badges';
+import { mesBadges } from '@/lib/app/badgesNolio';
 import { COOKIE_BIENVENUE } from '@/lib/app/bienvenue';
 import { contexte, lien, prenom, type Recherche } from '@/lib/app/contexte';
 import { dateLongue, joursEntre, moment } from '@/lib/app/plan';
@@ -12,8 +15,8 @@ import { ficheDuMoment, jaugeDuPlan, momentDe } from '@/lib/app/tableau';
 import { donneesTableau, semaineDansNolio, semaineEcrite } from '@/lib/app/tableauDuPlan';
 
 // L'accueil (CTS_NOLIO_CADRAGE.md dans le dépôt du moteur, T1, AP1, AP2 ; maquette validée par le coach le
-// 19/10/2026) : les séances vivent dans Nolio ; ici l'objectif et sa montagne, les piliers, les courses de
-// préparation, la semaine en cours, la fiche du moment. Les données, le profil et la bibliothèque ont leur onglet.
+// 19/10/2026) : les séances vivent dans Nolio ; ici l'objectif et sa montagne, un badge tout neuf (BG3), les piliers,
+// les courses de préparation, la semaine en cours, la fiche du moment. Les données, le profil et la bibliothèque ont leur onglet.
 export default async function Accueil({ searchParams }: { searchParams: Recherche }) {
   const ctx = await contexte(searchParams);
   // La première fois sur cet appareil : l'écran de bienvenue (cadrage, 2.6), lu avant d'entrer.
@@ -30,6 +33,9 @@ export default async function Accueil({ searchParams }: { searchParams: Recherch
   const jauge = jaugeDuPlan(d.trame, d.realises, jour);
   const fiche = ficheDuMoment(d.fiches, jour);
   const nom = prenom(plan.athlete.nom);
+  // Un badge débloqué la semaine écoulée (BG3, décision coach du 20/10/2026).
+  const badges = await mesBadges(ctx);
+  const nouveaux = badges.etat ? nouveauxBadges(badges.etat, jour) : [];
   // Une course de préparation s'ajoute dans l'objectif, tant que la course est à venir et le plan écrit semaine par
   // semaine.
   const ajout = d.ecrit && !ctx.demonstration && plan.course.date >= jour ? `${lien('/app/plan', ctx)}#ajouter-course` : null;
@@ -44,6 +50,7 @@ export default async function Accueil({ searchParams }: { searchParams: Recherch
 
         <CarteObjectif plan={plan} restants={restants} jauge={jauge} etape={etape} href={lien('/app/plan', ctx)} />
         {etape !== 'apres' && <CarteNolio etat={d.nolio} />}
+        <CarteNouveauBadge badges={nouveaux} href={`${lien('/app/profil', ctx)}#badges`} />
 
         {etape !== 'apres' && restants <= 7 && (
           <Link href={lien('/app/plan/jour-j', ctx)} className="block bg-teal text-white rounded-2xl p-[18px]">

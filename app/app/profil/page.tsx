@@ -1,14 +1,16 @@
 import Link from 'next/link';
 import clsx from 'clsx';
+import { TesBadges } from '@/components/app/Badges';
 import EnTeteApp from '@/components/app/EnTeteApp';
 import { Carte, CarteSombre, Surtitre } from '@/components/app/Ui';
 import { contexte, lien, type Recherche } from '@/lib/app/contexte';
 import { allure, decalageSeuil1, profilCoureur, texteAllureLigne, texteFc } from '@/lib/app/zones';
+import { mesBadges } from '@/lib/app/badgesNolio';
 import { donneesTableau } from '@/lib/app/tableauDuPlan';
 
 // Mon profil de coureur (CTS_NOLIO_CADRAGE.md dans le dépôt du moteur, AP1, AP4 ; maquette validée par le coach le
 // 19/10/2026) : ses trois repères, son profil (la règle du calculateur « Ton profil de traileur » : le coefficient de
-// Riegel du test de vitesse critique, ses deux conseils), ses zones, ses tests. Un coaché lit les repères que son
+// Riegel du test de vitesse critique, ses deux conseils), ses badges (BG1 à BG3), ses zones, ses tests. Un coaché lit les repères que son
 // coach pose sur sa fiche (T8) ; un acheteur saisit les siens dans « Tes zones ».
 
 // La couleur de chaque zone, de la récupération au sprint (maquette).
@@ -23,6 +25,7 @@ export default async function MonProfil({ searchParams }: { searchParams: Recher
   const ctx = await contexte(searchParams);
   const { plan, profil } = ctx;
   const d = await donneesTableau(ctx);
+  const badges = await mesBadges(ctx);
   const coureur = profilCoureur(profil);
   const zones = plan.zones;
   const decalage = decalageSeuil1(profil, zones);
@@ -84,6 +87,9 @@ export default async function MonProfil({ searchParams }: { searchParams: Recher
             </p>
           </Carte>
         )}
+
+        {/* Ses badges (BG1 à BG3, maquette validée par le coach le 20/10/2026). */}
+        <TesBadges etat={badges.etat} accord={badges.accord} aujourdhui={ctx.jour} />
 
         {zones && (
           <Carte className="!pb-2.5">
