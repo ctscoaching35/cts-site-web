@@ -3,13 +3,15 @@ import { notFound } from 'next/navigation';
 import EnTeteApp from '@/components/app/EnTeteApp';
 import FormulaireZones from '@/components/app/FormulaireZones';
 import { effacerZones } from '@/lib/app/actionsZones';
+import { maFiche } from '@/lib/app/coaching';
 import { contexte, lien, type Recherche } from '@/lib/app/contexte';
 import { dateLongue, type CleTest } from '@/lib/app/plan';
 import { allure, kmh, remplir, testFait, testOuvert, texteRecoupement, valeursChange, type Profil } from '@/lib/app/zones';
 
 // « Tes zones » (cadrage de l'app §7.1, textes validés par le coach le 08/10/2026) : trois tests de
 // terrain, leur protocole, ce qu'ils changent au plan, leurs limites et leurs sources, et la saisie.
-// Le RPE prime. Un plan d'avant le moteur v8.311 n'a pas la rubrique.
+// Le RPE prime. Un plan d'avant le moteur v8.311 n'a pas la rubrique. Un coaché y saisit aussi ses tests, sur sa fiche,
+// avec l'accord donné à son coach (décision coach du 20/10/2026).
 
 function valeurAffichee(cle: CleTest, p: Profil) {
   if (cle === 'parole' && p.fc_seuil1 !== null)
@@ -32,6 +34,8 @@ export default async function TesZones({ searchParams }: { searchParams: Recherc
   const valeurs = valeursChange(profil, zones) ?? {};
   const consentementDonne = (['parole', 'vitesse_critique', 'fc_seuil2'] as const).some((c) => testFait(c, profil));
   const tests = zones.tests.filter((t) => zones.tests_disponibles.includes(t.cle));
+  // Son accord tient lieu de la case à cocher ; en démonstration, la saisie se montre.
+  const accord = !ctx.coache || ctx.demonstration || Boolean((await maFiche())?.accord);
   return (
     <>
       <EnTeteApp ctx={ctx} />
@@ -87,14 +91,14 @@ export default async function TesZones({ searchParams }: { searchParams: Recherc
                 {t.limites && <p><strong className="text-indigo">Ses limites.</strong> {t.limites}</p>}
                 <p className="text-xs text-indigo/55 italic">Sources : {t.sources}</p>
               </div>
-              {ctx.coache ? (
-                <p className="text-sm text-indigo/60">Tes repères sont posés par ton coach, sur ta fiche : demande-lui de les changer après un test.</p>
+              {!accord ? (
+                <p className="text-sm text-indigo/60">Ton coach attend encore ton accord pour garder tes repères : réponds oui à son message, puis reviens ici.</p>
               ) : ouvert ? (
                 <FormulaireZones
                   cle={t.cle}
                   planId={ctx.cle}
                   consentement={zones.consentement}
-                  consentementDonne={consentementDonne}
+                  consentementDonne={consentementDonne || ctx.coache}
                   allureActuelle={t.cle === 'parole' && profil.v_seuil1_ms !== null
                     ? (allure(profil.v_seuil1_ms).split(':') as [string, string]) : null}
                   valeurActuelle={t.cle === 'parole' ? (profil.fc_seuil1?.toString() ?? null)

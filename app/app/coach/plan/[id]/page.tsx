@@ -25,6 +25,8 @@ import { fichesDePreparation, type CourseSecondaire } from '@/lib/app/tableauDuP
 export const dynamic = 'force-dynamic';
 
 const TESTS: Record<string, string> = { parole: 'Test de la parole', vitesse_critique: 'Test de vitesse critique', fc_seuil2: 'FC au seuil 2' };
+// Un test que la lecture dans Nolio n'a pas eu à lire : saisi par le coach ou par l'athlète dans l'app.
+const SAISI: Record<string, string> = { coach: ', saisi par toi', athlete: ', saisi par l’athlète' };
 const STATUTS: Record<string, string> = { illisible: 'illisible dans Nolio', sans_reponse: 'sans réponse au questionnaire du soir', non_fait: 'pas fait' };
 
 // Ce qu'un test lu a donné, en clair.
@@ -180,7 +182,7 @@ export default async function ObjectifCoache({ params }: { params: Promise<{ id:
                           {lus.map((t) => (
                             <p key={t.jour_id} className="flex items-start gap-2 p-2.5 rounded-[10px] bg-white text-[0.8rem] leading-relaxed text-[#3B3957]">
                               <span aria-hidden className={t.statut === 'lu' ? 'text-teal' : 'text-[#8A5E10]'}>{t.statut === 'lu' ? '✓' : '·'}</span>
-                              <span>{TESTS[t.cle] ?? 'Test'} : {t.statut === 'lu' ? `${resultatTest(t.resultat as Record<string, unknown>)}${(t.resultat as Record<string, unknown>)?.saisi === 'coach' ? ', saisi par toi' : ''}. Ses cibles et ses zones ont suivi.` : STATUTS[t.statut] ?? t.statut}</span>
+                              <span>{TESTS[t.cle] ?? 'Test'} : {t.statut === 'lu' ? `${resultatTest(t.resultat as Record<string, unknown>)}${SAISI[String((t.resultat as Record<string, unknown>)?.saisi)] ?? ''}. Ses cibles et ses zones ont suivi.` : STATUTS[t.statut] ?? t.statut}</span>
                             </p>
                           ))}
                           {ajuste && <AnnulerSemaine planId={id} numero={w.numero} />}

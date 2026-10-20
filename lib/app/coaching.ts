@@ -10,7 +10,8 @@ import { actionsTrame, dateDe, empreinte, type Voulu } from './trameNolio';
 import { lienFicheCourse } from './ficheCourse';
 import { ajouterJours, type Plan, type Semaine } from './plan';
 import { appelNolio, convertirIdsV1, listeNolio, moiNolio, nolioConfigure, refusNolio } from './nolio';
-import { clientService } from './supabase';
+import { ficheDuCompte } from './demandes';
+import { clientServeur, clientService } from './supabase';
 
 export type Objectif = { plan_id: string; course_nom: string; course_date: string };
 export type FicheAthlete = {
@@ -22,8 +23,9 @@ export type FicheAthlete = {
   // Son profil (PO1), sa D′ (AP4), la date et la source de chaque repère : null ou vides tant que la migration du
   // 19/10/2026 n'est pas passée.
   profil: Record<string, string | string[]> | null; d_prime_m: number | null;
-  // source : « test » lu dans Nolio, « test_coach » un test saisi par le coach, « coach » une valeur saisie.
-  reperes_sources: Record<string, { le: string; source: 'test' | 'test_coach' | 'coach' }>;
+  // source : « test » lu dans Nolio, « test_coach » un test saisi par le coach, « coach » une valeur saisie, « athlete » un
+  // test saisi par l'athlète dans l'app.
+  reperes_sources: Record<string, { le: string; source: 'test' | 'test_coach' | 'coach' | 'athlete' }>;
 };
 // Une séance envoyée : son jour du plan, son identifiant Nolio (« ptrn_… » ; un nombre pour un envoi de la v1,
 // converti à la visite suivante), sa révision à l'envoi (V4 : une révision changée, le coach l'a retouchée), et
@@ -562,4 +564,44 @@ export async function mettreAJourSemaineCible(c: Cible, numero: string, semaineE
   garde.push(...parJour.values());
   await garderEnvoi(coachId, planId, numero, garde);
   return bilan;
+}
+
+// Un test écrit dans les semaines d'un coaché (les deux derniers mois) et pas encore lu, dont le coach ou l'athlète saisit
+// la valeur : marqué lu, avec qui l'a saisi, pour que la lecture automatique dans Nolio ne revienne pas dessus.
+export async function marquerTestsLus(fiche: { objectifs: { plan_id: string }[] }, cle: 'parole' | 'vitesse_critique' | 'fc_seuil2',
+  resultat: Record<string, unknown>, saisi: 'coach' | 'athlete') {
+  const service = clientService();
+  const jour = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
+  const ilYA60 = new Date(Date.now() - 60 * 86_400_000).toISOString().slice(0, 10);
+  for (const o of fiche.objectifs) {
+    const { data: ecrites } = await service.from('semaines_ecrites').select('donnees').eq('plan_id', o.plan_id);
+    const { data: lus } = await service.from('tests_lus').select('jour_id, statut').eq('plan_id', o.plan_id);
+    const dejaLus = new Set((lus ?? []).filter((t) => t.statut === 'lu').map((t) => t.jour_id as string));
+    type JourTest = { id: string; date_iso: string | null; reperes?: { test?: { cle?: string; ecrit?: boolean } | null } | null };
+    const jours = (ecrites ?? []).flatMap((e) => ((e.donnees as { jours?: JourTest[] } | null)?.jours ?? []));
+    for (const j of jours) {
+      if (j.reperes?.test?.cle !== cle || !j.reperes.test.ecrit || !j.date_iso || dejaLus.has(j.id)) continue;
+      if (j.date_iso > jour || j.date_iso < ilYA60) continue;
+      await service.from('tests_lus').upsert({ plan_id: o.plan_id, jour_id: j.id, cle, statut: 'lu',
+        resultat: { ...resultat, saisi }, lu_le: new Date().toISOString() });
+    }
+  }
+}
+
+// E3 (CTS_LANCEMENT_CADRAGE.md, décision coach du 15/10/2026) : les repères d'un athlète ne se gardent qu'avec son
+// accord, le même que celui du suivi (« Accord reçu », table nolio_accords) ; le message d'accord les nomme.
+export async function accordDeLAthlete(coachId: string, athleteId: string): Promise<boolean> {
+  const { data: a } = await clientService().from('athletes_coaches').select('nolio_athlete_id').eq('id', athleteId).eq('coach_id', coachId).maybeSingle();
+  if (!a?.nolio_athlete_id) return false;
+  const { data } = await clientService().from('nolio_accords').select('nolio_athlete_id').eq('coach_id', coachId).eq('nolio_athlete_id', a.nolio_athlete_id).maybeSingle();
+  return !!data;
+}
+
+// La fiche du coaché connecté et son accord (E3) : il saisit ses tests dans l'app (décision coach du 20/10/2026) ; null
+// sans fiche.
+export async function maFiche(): Promise<{ id: string; coach_id: string; accord: boolean } | null> {
+  const { data } = await (await clientServeur()).auth.getClaims();
+  const id = data?.claims?.sub;
+  const fiche = id ? await ficheDuCompte(String(id)) : null;
+  return fiche ? { id: fiche.id, coach_id: fiche.coach_id, accord: await accordDeLAthlete(fiche.coach_id, fiche.id) } : null;
 }

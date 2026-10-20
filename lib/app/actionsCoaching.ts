@@ -6,7 +6,7 @@
  */
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { envoyerSemaine, ficheAthlete, mettreAJourSemaine, objectifCoache } from './coaching';
+import { accordDeLAthlete, envoyerSemaine, ficheAthlete, marquerTestsLus, mettreAJourSemaine, objectifCoache } from './coaching';
 import { fermerEspace, ouvrirEspace } from './espaceAthlete';
 import { objectifEcrit, retirerDeNolio, zonesVersNolio } from './ecriture';
 import { coachConnecte } from './nolio';
@@ -14,15 +14,6 @@ import { lireAllure } from './allureCoach';
 import { clientService } from './supabase';
 
 export type EtatCoach = { message: string; ok: boolean } | null;
-
-// E3 (CTS_LANCEMENT_CADRAGE.md, décision coach du 15/10/2026) : les repères d'un athlète ne se gardent qu'avec son
-// accord, le même que celui du suivi (« Accord reçu », table nolio_accords) ; le message d'accord les nomme.
-async function accordDeLAthlete(coachId: string, athleteId: string): Promise<boolean> {
-  const { data: a } = await clientService().from('athletes_coaches').select('nolio_athlete_id').eq('id', athleteId).eq('coach_id', coachId).maybeSingle();
-  if (!a?.nolio_athlete_id) return false;
-  const { data } = await clientService().from('nolio_accords').select('nolio_athlete_id').eq('coach_id', coachId).eq('nolio_athlete_id', a.nolio_athlete_id).maybeSingle();
-  return !!data;
-}
 
 export async function associerNolio(athleteId: string, form: FormData): Promise<void> {
   const coach = await coachConnecte();
@@ -86,8 +77,8 @@ export async function enregistrerValeurs(athleteId: string, _e: EtatCoach, form:
     }
     if (change) await clientService().from('athletes_coaches').update({ reperes_sources: sources }).eq('id', athleteId).eq('coach_id', coach.compteId);
     // Un test de la parole ou de FC au seuil 2 en attente de lecture : la valeur du coach le clôt.
-    if (nouveau.fc_seuil1 !== null && nouveau.fc_seuil1 !== avant.fc_seuil1) await marquerTestsLus(avant, 'parole', { fc_seuil1: nouveau.fc_seuil1 });
-    if (nouveau.fc_seuil2 !== null && nouveau.fc_seuil2 !== avant.fc_seuil2) await marquerTestsLus(avant, 'fc_seuil2', { fc_seuil2: nouveau.fc_seuil2 });
+    if (nouveau.fc_seuil1 !== null && nouveau.fc_seuil1 !== avant.fc_seuil1) await marquerTestsLus(avant, 'parole', { fc_seuil1: nouveau.fc_seuil1 }, 'coach');
+    if (nouveau.fc_seuil2 !== null && nouveau.fc_seuil2 !== avant.fc_seuil2) await marquerTestsLus(avant, 'fc_seuil2', { fc_seuil2: nouveau.fc_seuil2 }, 'coach');
   }
   revalidatePath(`/app/coach/athlete/${athleteId}`);
   // ZN1 : les mêmes zones dans son Nolio, d'après son objectif écrit semaine par semaine le plus récent.
@@ -266,33 +257,11 @@ export async function enregistrerTestVc(athleteId: string, _e: EtatCoach, form: 
   }).eq('id', athleteId).eq('coach_id', coach.compteId);
   if (error) return { ok: false, message: 'L’enregistrement n’a pas abouti. Réessaie.' };
   // Les tests de vitesse critique écrits dans ses semaines, pas encore lus : lus, par le coach.
-  await marquerTestsLus(fiche, 'vitesse_critique', { vc_ms, d_prime_m, le });
+  await marquerTestsLus(fiche, 'vitesse_critique', { vc_ms, d_prime_m, le }, 'coach');
   revalidatePath(`/app/coach/athlete/${athleteId}`);
   const dernier = fiche.objectifs[fiche.objectifs.length - 1];
   const o = dernier ? await objectifEcrit(dernier.plan_id).catch(() => null) : null;
   const soucis = o ? await zonesVersNolio(o, { vc_ms, d_prime_m }) : [];
   const { allure } = await import('./zones');
   return { ok: true, message: `C’est enregistré : vitesse critique à ${allure(vc_ms)}/km. Ses prochaines semaines et ses zones la prennent en repère.${soucis.length ? ` Zones Nolio : ${soucis.join(' ; ')}.` : ''}` };
-}
-
-// Un test écrit dans les semaines d'un coaché (les deux derniers mois) et pas encore lu, dont le coach saisit la valeur :
-// marqué lu, « saisi par le coach », pour que la lecture automatique dans Nolio ne revienne pas dessus.
-async function marquerTestsLus(fiche: { objectifs: { plan_id: string }[] }, cle: 'parole' | 'vitesse_critique' | 'fc_seuil2',
-  resultat: Record<string, unknown>) {
-  const service = clientService();
-  const jour = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
-  const ilYA60 = new Date(Date.now() - 60 * 86_400_000).toISOString().slice(0, 10);
-  for (const o of fiche.objectifs) {
-    const { data: ecrites } = await service.from('semaines_ecrites').select('donnees').eq('plan_id', o.plan_id);
-    const { data: lus } = await service.from('tests_lus').select('jour_id, statut').eq('plan_id', o.plan_id);
-    const dejaLus = new Set((lus ?? []).filter((t) => t.statut === 'lu').map((t) => t.jour_id as string));
-    type JourTest = { id: string; date_iso: string | null; reperes?: { test?: { cle?: string; ecrit?: boolean } | null } | null };
-    const jours = (ecrites ?? []).flatMap((e) => ((e.donnees as { jours?: JourTest[] } | null)?.jours ?? []));
-    for (const j of jours) {
-      if (j.reperes?.test?.cle !== cle || !j.reperes.test.ecrit || !j.date_iso || dejaLus.has(j.id)) continue;
-      if (j.date_iso > jour || j.date_iso < ilYA60) continue;
-      await service.from('tests_lus').upsert({ plan_id: o.plan_id, jour_id: j.id, cle, statut: 'lu',
-        resultat: { ...resultat, saisi: 'coach' }, lu_le: new Date().toISOString() });
-    }
-  }
 }

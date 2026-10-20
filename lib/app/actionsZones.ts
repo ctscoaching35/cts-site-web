@@ -3,9 +3,12 @@
  * « Tes zones » : enregistrer ou effacer le profil d'un plan (cadrage §7.1). La session est vérifiée,
  * le plan doit être à l'athlète (les règles de la base ne lui montrent que les siens), puis le serveur
  * écrit avec la clé de service, comme pour le reste. La FC n'est gardée qu'avec le consentement
- * explicite de l'athlète (Z2) ; un consentement déjà donné pour ce plan vaut pour les tests suivants.
+ * explicite de l'athlète (Z2) ; un consentement déjà donné pour ce plan vaut pour les tests suivants. Un coaché garde
+ * ses tests sur sa fiche (décision coach du 20/10/2026, « ça doit être vivant »).
  */
 import { revalidatePath } from 'next/cache';
+import { accordDeLAthlete, ficheAthlete, marquerTestsLus } from './coaching';
+import { ficheDuCompte } from './demandes';
 import { objectifEcrit, zonesVersNolio } from './ecriture';
 import { clientServeur, clientService } from './supabase';
 import { lireDistance, lireDuree, vitesseCritique } from './zones';
@@ -19,6 +22,8 @@ async function enregistrer(planId: string, consentement: boolean, valeurs: Recor
   const { data: session } = await supabase.auth.getClaims();
   const compteId = session?.claims?.sub;
   if (!compteId) return { ok: false, message: 'Ta session a expiré : reconnecte-toi.' };
+  const coache = await enregistrerSurLaFiche(compteId, planId, valeurs);
+  if (coache) return coache;
   const { data: plan } = await supabase.from('plans').select('id').eq('id', planId).maybeSingle();
   if (!plan) return { ok: false, message: 'Ce plan n’est pas dans ton compte.' };
   const { data: existant } = await supabase.from('zones').select('plan_id').eq('plan_id', planId).maybeSingle();
@@ -36,6 +41,53 @@ async function enregistrer(planId: string, consentement: boolean, valeurs: Recor
   if (o) await zonesVersNolio(o).catch(() => null);
   revalidatePath('/app', 'layout');
   return { ok: true, message: 'C’est enregistré : tes séances affichent leurs nouveaux repères.' };
+}
+
+// Le test d'un coaché, sur sa fiche (décision coach du 20/10/2026) : avec l'accord donné à son coach (E3), sa source
+// « saisi par l'athlète » ; ses zones suivent tout de suite (l'app et Nolio, ZN1), ses séances à partir de la semaine
+// écrite le dimanche suivant (la semaine en cours ne se réécrit pas). Un test écrit dans ses semaines et pas encore lu
+// est marqué lu, pour que la lecture dans Nolio ne revienne pas dessus. null : ce plan n'est pas l'un de ses objectifs.
+async function enregistrerSurLaFiche(compteId: string, planId: string, valeurs: Record<string, unknown>): Promise<EtatZones> {
+  const service = clientService();
+  const moi = await ficheDuCompte(compteId);
+  const { data: lien } = moi
+    ? await service.from('coaching').select('plan_id').eq('plan_id', planId).eq('athlete_id', moi.id).maybeSingle() : { data: null };
+  const fiche = lien && moi ? await ficheAthlete(moi.coach_id, moi.id) : null;
+  if (!fiche || !moi) return null;
+  if (!(await accordDeLAthlete(moi.coach_id, moi.id)))
+    return { ok: false, message: 'Ton coach attend encore ton accord pour garder tes repères : réponds oui à son message, puis reviens ici.' };
+  const le = aujourdhui();
+  const r3 = (x: unknown) => Math.round(Number(x) * 1000) / 1000;
+  const sources = { ...fiche.reperes_sources };
+  const maj: Record<string, unknown> = {};
+  const lus: ['parole' | 'vitesse_critique' | 'fc_seuil2', Record<string, unknown>][] = [];
+  if (typeof valeurs.fc_seuil1 === 'number') {
+    const v1 = valeurs.v_seuil1_ms === null ? null : r3(valeurs.v_seuil1_ms);
+    Object.assign(maj, { fc_seuil1: valeurs.fc_seuil1, v_seuil1_ms: v1 });
+    sources.fc_seuil1 = { le, source: 'athlete' };
+    lus.push(['parole', { fc_seuil1: valeurs.fc_seuil1, v_seuil1_ms: v1 }]);
+  }
+  if (typeof valeurs.vc_ms === 'number') {
+    Object.assign(maj, { vc_ms: r3(valeurs.vc_ms), d_prime_m: Math.round(Number(valeurs.d_prime_m)) });
+    sources.vc_ms = { le, source: 'athlete' };
+    lus.push(['vitesse_critique', { vc_ms: maj.vc_ms, d_prime_m: maj.d_prime_m, le }]);
+  }
+  if (typeof valeurs.fc_seuil2 === 'number') {
+    maj.fc_seuil2 = valeurs.fc_seuil2;
+    sources.fc_seuil2 = { le, source: 'athlete' };
+    lus.push(['fc_seuil2', { fc_seuil2: valeurs.fc_seuil2 }]);
+  }
+  const { error } = await service.from('athletes_coaches').update({ ...maj, reperes_sources: sources })
+    .eq('id', moi.id).eq('coach_id', moi.coach_id);
+  if (error) {
+    console.error(`Tes zones, fiche ${moi.id} :`, error.message);
+    return { ok: false, message: 'L’enregistrement n’a pas abouti. Réessaie dans un moment.' };
+  }
+  for (const [cle, resultat] of lus) await marquerTestsLus(fiche, cle, resultat, 'athlete');
+  const o = await objectifEcrit(planId).catch(() => null);
+  if (o) await zonesVersNolio(o).catch(() => null);
+  revalidatePath('/app', 'layout');
+  return { ok: true, message: 'C’est enregistré, ton coach le voit : tes zones changent dès maintenant, tes séances à partir de la semaine écrite dimanche.' };
 }
 
 const lireFc = (brut: FormDataEntryValue | null) => {

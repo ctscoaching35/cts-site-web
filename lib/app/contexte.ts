@@ -105,15 +105,17 @@ async function profilDuPlan(planId: string): Promise<Profil> {
   return zones ? { ...PROFIL_VIDE, ...pick(zones) } : PROFIL_VIDE;
 }
 
-// Les repères d'un coaché : ceux de sa fiche, posés par son coach (T8).
+// Les repères d'un coaché : ceux de sa fiche, lus dans ses tests, posés par son coach (T8) ou saisis par lui.
 async function profilDuCoache(planId: string): Promise<Profil> {
   const service = clientService();
   const { data: c } = await service.from('coaching').select('athlete_id').eq('plan_id', planId).maybeSingle();
   // « * » : la D′ (AP4, pour son profil de coureur) n'existe qu'après la migration du 19/10/2026.
   const { data: a } = c ? await service.from('athletes_coaches').select('*').eq('id', c.athlete_id).maybeSingle()
     : { data: null };
+  // La date de chaque repère, celle de sa source (lu dans un test, saisi par le coach ou par lui).
+  const le = (cle: string) => ((a?.reperes_sources ?? {}) as Record<string, { le?: string } | undefined>)[cle]?.le ?? null;
   return a ? { ...PROFIL_VIDE, fc_seuil1: a.fc_seuil1, vc_ms: a.vc_ms, fc_seuil2: a.fc_seuil2, v_seuil1_ms: a.v_seuil1_ms ?? null,
-    d_prime_m: a.d_prime_m ?? null } : PROFIL_VIDE;
+    d_prime_m: a.d_prime_m ?? null, fc_seuil1_le: le('fc_seuil1'), vc_le: le('vc_ms'), fc_seuil2_le: le('fc_seuil2') } : PROFIL_VIDE;
 }
 
 const CHAMPS_PROFIL = ['fc_seuil1', 'fc_seuil1_le', 'vc_ms', 'd_prime_m', 'vc_le', 'fc_seuil2', 'fc_seuil2_le', 'v_seuil1_ms'] as const;

@@ -39,8 +39,8 @@ export default async function MonProfil({ searchParams }: { searchParams: Recher
     ['Vitesse critique', profil.vc_ms !== null ? allure(profil.vc_ms) : null, 'min/km · ton seuil 2 en allure'],
     ['Seuil 2', profil.fc_seuil2 !== null ? String(profil.fc_seuil2) : null, 'bpm · mesurée en séance'],
   ];
-  // Un acheteur saisit ses repères dans « Tes zones » ; un coaché les reçoit de son coach.
-  const saisie = !ctx.coache && zones ? lien('/app/plan/zones', ctx) : null;
+  // Ses repères se saisissent dans « Tes zones » ; ceux d'un coaché vont sur sa fiche (décision coach du 20/10/2026).
+  const saisie = zones ? lien('/app/plan/zones', ctx) : null;
   return (
     <>
       <EnTeteApp ctx={ctx} />
@@ -163,7 +163,7 @@ export default async function MonProfil({ searchParams }: { searchParams: Recher
               </li>
             ))}
           </ul>
-          {ctx.coache && <p className="text-xs text-[#5E5C78]">Tes repères sont posés par ton coach : demande-lui de les changer après un test.</p>}
+          {ctx.coache && saisie && <p className="text-xs text-[#5E5C78]">Un test refait de ton côté s’entre ici : tes zones changent dès maintenant, tes séances à partir de la semaine écrite dimanche, et ton coach le voit sur ta fiche.</p>}
         </Carte>
       </main>
     </>
