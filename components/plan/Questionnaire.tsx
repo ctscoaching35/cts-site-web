@@ -646,14 +646,26 @@ export default function Questionnaire({
             </div>
           </div>
         ))}
-        <p className="text-sm text-indigo/60">Cette réponse reste sur ta page : elle sert seulement à t’afficher un conseil avant de générer ton plan.</p>
+        {/* « Oui » arrête l'achat (décision coach du 20/10/2026) : une préparation automatique ne convient pas à une blessure
+            en cours (O1, CGV) ; l'athlète est orienté vers un professionnel de santé, et vers le coaching des kinés du sport. La
+            réponse ne quitte toujours pas la page. */}
+        {c.blessure === 'oui' && (
+          <div role="alert" className="border-l-4 border-teal bg-sand p-4 space-y-3 text-indigo leading-relaxed">
+            <p>
+              Avec une douleur ou une blessure en cours, une préparation automatique n’est pas adaptée. Fais d’abord le point
+              avec un professionnel de santé (médecin, kinésithérapeute).
+            </p>
+            <p>Si tu veux être accompagné pour reprendre, nos coachs sont kinés du sport :</p>
+            <a href="/#contact" className="inline-flex items-center min-h-11 font-bold text-teal">Parle-nous de ton projet ›</a>
+          </div>
+        )}
       </Section>}
 
       {refus && (
         <p role="alert" className="bg-white border-l-4 border-red-400 p-5 text-indigo leading-relaxed">{refus}</p>
       )}
       <div className="flex justify-end">
-        <button type="submit" className="btn btn-primary disabled:opacity-50" disabled={joursCoches.length === 0 || envoi}>
+        <button type="submit" className="btn btn-primary disabled:opacity-50" disabled={joursCoches.length === 0 || envoi || (!coach && c.blessure === 'oui')}>
           {envoi ? 'Vérification…' : 'Vérifier mes réponses →'}
         </button>
       </div>

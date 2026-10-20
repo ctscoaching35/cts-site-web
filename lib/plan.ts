@@ -48,7 +48,7 @@ export type Champs = {
   jours_disponibles: string[];
   jour_sl: string;
   freq_hebdo: string;
-  // Section 7 : la blessure ne quitte jamais le navigateur (avertissement seulement).
+  // Section 7 : la blessure ne quitte jamais le navigateur ; « oui » arrête l'achat (décision coach du 20/10/2026).
   blessure: string;
   // Section 2 : l'arrêt récent part avec le plan, comme la charge actuelle (second audit
   // du moteur, D16) : il fait démarrer le plan par deux semaines sans séance dure.
@@ -129,11 +129,8 @@ export const textes = {
 /** Avertissements non bloquants (CONTRAT_API_CTS.md §5 bis), confirmés avant de continuer. */
 export function avertissements(c: Champs, config: ConfigPlan, aujourdhui = new Date()): string[] {
   const out: string[] = [];
-  if (c.blessure === 'oui') {
-    out.push(
-      'Ce plan est conçu pour un coureur sans blessure en cours. Avant de le commencer, fais le point avec un professionnel de santé (médecin, kinésithérapeute) : une douleur qui empêche de courir normalement ne se règle pas par l’entraînement.'
-    );
-  }
+  // La blessure en cours n'est plus un avertissement : elle arrête l'achat, dans le questionnaire (décision coach du
+  // 20/10/2026).
   if (c.coupure === 'oui') {
     out.push(
       c.niveau === 'debutant'
