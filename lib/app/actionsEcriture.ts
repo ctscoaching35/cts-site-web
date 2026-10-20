@@ -26,7 +26,8 @@ export async function demarrerDansNolio(planId: string, _e: EtatGeste): Promise<
   const o = await objectifEcrit(planId);
   if (!coachId || !o || o.coachId !== coachId) return { ok: false, message: 'Réservé au coach de cet objectif.' };
   try {
-    const depart = await demarrerObjectif(planId);
+    // Le coach lit la raison d'un échec ici : pas d'e-mail.
+    const depart = await demarrerObjectif(planId, { prevenir: false });
     revalidatePath(`/app/coach/plan/${planId}`);
     if ('prevu' in depart) {
       const le = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('fr-FR');

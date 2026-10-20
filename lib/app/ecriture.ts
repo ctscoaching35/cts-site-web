@@ -417,7 +417,9 @@ export async function annonceDepart(planId: string): Promise<{ lundi: string; de
   return seancesDejaPosees(o, aujourdhuiParis()).catch(() => null);
 }
 
-export async function demarrerObjectif(planId: string): Promise<Depart> {
+// Un départ d'acheteur en échec (décision coach du 20/10/2026) : le coach est prévenu au premier échec, avec la raison,
+// et le passage quotidien le reprend chaque jour (departsDuJour) ; prevenir : false pour ces reprises.
+export async function demarrerObjectif(planId: string, { prevenir = true }: { prevenir?: boolean } = {}): Promise<Depart> {
   const o = await objectifEcrit(planId);
   if (!o) throw new Error('Ce plan ne s’écrit pas semaine par semaine.');
   if ((await plansALaMain()).has(planId))
@@ -477,6 +479,12 @@ export async function demarrerObjectif(planId: string): Promise<Depart> {
     if (!o.coache) await rangerAcheteur(o);
   } catch (e) {
     await service.from('plans').update({ demarre_le: null }).eq('id', planId);
+    if (prevenir && !o.coache) {
+      await prevenirCoach('Plan CTS : une préparation n’a pas démarré dans Nolio',
+        `La préparation de l’acheteur du plan « ${o.plan.course.nom} » n’a pas démarré dans Nolio : `
+        + `${e instanceof Error ? e.message : String(e)} Le site réessaie chaque jour à 18 h 30 ; sa première semaine part `
+        + 'au premier essai réussi, à partir de ce jour-là.');
+    }
     throw e;
   }
   return { numero: debut.numero };
@@ -520,14 +528,18 @@ function debutApres(q: Pick<Voisin, 'course_date' | 'temps_h'>): string {
   return ajouterJours(fin, 7 - rang);
 }
 
-// Les objectifs programmés (OM4) qui démarrent aujourd'hui.
+// Les objectifs programmés (OM4) qui démarrent aujourd'hui, et les départs d'acheteurs restés en échec (décision coach
+// du 20/10/2026), repris en silence : le coach a été prévenu au premier échec.
 async function departsDuJour(): Promise<Compte[]> {
-  const { data } = await clientService().from('plans').select('id').lte('depart_prevu', aujourdhuiParis()).is('demarre_le', null);
+  const aujourdhui = aujourdhuiParis();
+  const { data } = await clientService().from('plans').select('id, depart_prevu').is('demarre_le', null)
+    .not('parametres', 'is', null).gte('course_date', aujourdhui)
+    .or(`depart_prevu.lte.${aujourdhui},and(depart_prevu.is.null,nolio_statut.eq.actif)`);
   const comptes: Compte[] = [];
   const aLaMain = await plansALaMain();
   for (const p of (data ?? []).filter((x) => !aLaMain.has(x.id as string))) {
     try {
-      const d = await demarrerObjectif(p.id as string);
+      const d = await demarrerObjectif(p.id as string, { prevenir: p.depart_prevu === aujourdhui });
       comptes.push({ plan: p.id as string, quoi: 'numero' in d ? `démarré (${d.numero})` : `reprogrammé au ${d.prevu}` });
     } catch (e) {
       comptes.push({ plan: p.id as string, quoi: 'départ non fait', erreur: e instanceof Error ? e.message : String(e) });

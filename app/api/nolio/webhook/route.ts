@@ -26,7 +26,10 @@ export async function POST(request: Request) {
       const { data: plans } = await service.from('plans').select('id').eq('nolio_athlete_id', usr).eq('nolio_statut', 'invite');
       for (const p of plans ?? []) {
         await service.from('plans').update({ nolio_statut: 'actif' }).eq('id', p.id);
-        await demarrerObjectif(p.id as string);
+        // Un départ en échec prévient le coach et se reprend chaque jour (passageQuotidien) : Nolio ne le relance pas, ce
+        // qui redoublerait l'e-mail.
+        await demarrerObjectif(p.id as string).catch((err) =>
+          console.error(`Départ du plan ${p.id} :`, err instanceof Error ? err.message : err));
       }
     } else if (e.type === 'team.invitation.refused') {
       const { data: plans } = await service.from('plans').select('id, course_nom').eq('nolio_athlete_id', usr).eq('nolio_statut', 'invite');
