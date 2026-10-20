@@ -119,7 +119,8 @@ export const textes = {
   },
   disponibilite: {
     aide:
-      'Ton plan se cale sur ta semaine : tes séances sur tes jours disponibles, ta sortie longue sur le jour que tu choisis, et jamais deux séances dures d’affilée.',
+      // Le point de départ (décision coach du 20/10/2026) : le questionnaire du dimanche dans Nolio les change ensuite.
+      'Ton plan se cale sur ta semaine : tes séances sur tes jours disponibles, ta sortie longue sur le jour que tu choisis, et jamais deux séances dures d’affilée. Ce sont tes jours habituels : chaque dimanche, un court questionnaire dans Nolio te permet de les changer pour la semaine suivante.',
   },
   sante: {
     blessure: 'Une blessure ou une douleur t’empêche-t-elle de courir normalement en ce moment ?',
