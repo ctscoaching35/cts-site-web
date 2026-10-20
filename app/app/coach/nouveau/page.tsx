@@ -40,7 +40,7 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
               ? 'Son profil est déjà rempli : seules sa charge du moment et la course sont demandées.'
               : suite
               ? 'Son profil n’est pas encore connu : remplis le questionnaire avec ses réponses. L’objectif rejoint sa fiche.'
-              : 'Remplis le questionnaire avec ses réponses. Le plan se génère sans paiement et rejoint ton espace coach.'}
+              : 'Remplis le questionnaire avec ses réponses. L’objectif se crée sans paiement et rejoint ton espace coach.'}
           </p>
         </div>
         {court && (

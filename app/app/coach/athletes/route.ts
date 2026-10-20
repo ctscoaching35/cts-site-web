@@ -5,8 +5,8 @@ import { coachConnecte } from '@/lib/app/nolio';
 import { clientService } from '@/lib/app/supabase';
 
 // « Ajouter un athlète » et « Nouvel objectif » (CTS_NOLIO_CADRAGE.md, N1, N2, N5, N9) : le questionnaire rempli
-// par le coach part au moteur avec le code du coach (CTS_CLE_COACH), sans paiement ; le plan et son PDF sont
-// rangés dans le compte du coach, comme objectif de l'athlète (sa fiche, créée au premier objectif). Aucun compte
+// par le coach part au moteur avec le code du coach (CTS_CLE_COACH), sans paiement ; le plan est rangé dans le compte
+// du coach, comme objectif de l'athlète (sa fiche, créée au premier objectif). Aucun compte
 // ni e-mail pour l'athlète.
 export async function POST(request: NextRequest) {
   const coach = await coachConnecte();
@@ -42,7 +42,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: c2?.message || 'La génération du plan n’a pas abouti.' }, { status: 502 });
   }
   const donnees: Plan = await (await fetch(`${API_URL}${c2.donnees_url}`, { cache: 'no-store' })).json();
-  const pdf = await (await fetch(`${API_URL}${c2.pdf_url}`, { cache: 'no-store' })).arrayBuffer();
   const service = clientService();
   const { data: plan, error } = await service.from('plans').insert({
     compte_id: coach.compteId, course_nom: donnees.course.nom, course_date: donnees.course.date,
@@ -55,9 +54,8 @@ export async function POST(request: NextRequest) {
     console.error('Plan coaché :', error?.message);
     return NextResponse.json({ message: 'Le plan n’a pas pu être rangé. Réessaie.' }, { status: 500 });
   }
-  const chemin = `${coach.compteId}/${plan.id}.pdf`;
-  const { error: erreurPdf } = await service.storage.from('plans-pdf').upload(chemin, pdf, { contentType: 'application/pdf', upsert: true });
-  if (!erreurPdf) await service.from('plans').update({ pdf_chemin: chemin }).eq('id', plan.id);
+  // Plus de PDF rangé pour un objectif coaché (décisions coach du 19/10/2026 : le PDF a quitté l'app et l'espace coach) :
+  // l'objectif se crée plus vite.
   const nom = String(c2.resume?.athlete || donnees.athlete.nom);
   // La fiche de l'athlète : celle d'un nouvel objectif si elle est au coach, sinon une nouvelle.
   let athleteId: string | null = null;

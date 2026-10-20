@@ -83,8 +83,8 @@ export default async function ObjectifCoache({ params }: { params: Promise<{ id:
       {retrait && (
         <Carte id="retrait" className="!p-5 space-y-3 border-[1.5px] border-[#C9A25A] scroll-mt-6">
           <p className="text-sm text-indigo">
-            <strong>{o.athlete.nom}</strong> demande le retrait de cet objectif. Le retirer fait partir son plan de ton espace
-            et, dans Nolio, ce qui est encore à venir ; le passé reste.
+            <strong>{o.athlete.nom}</strong> demande le retrait de cet objectif. Le retirer le fait partir de ton espace et,
+            dans Nolio, ce qui est encore à venir ; le passé reste.
           </p>
           <div className="flex flex-wrap gap-2">
             <form action={retirerObjectif.bind(null, id)}>
@@ -282,8 +282,8 @@ export default async function ObjectifCoache({ params }: { params: Promise<{ id:
             <summary className="cursor-pointer min-h-8 font-bold text-indigo">Retirer cet objectif</summary>
             <p className="mt-2 mb-3 leading-relaxed">
               {ecriture?.parametres
-                ? 'Son plan quitte ton espace coach. Dans Nolio, ce qu’il a posé et qui est encore à venir part aussi (bandeaux, notes, séances, questionnaires, course) ; le passé reste.'
-                : 'Son plan quitte ton espace coach. Les séances déjà envoyées restent dans Nolio.'}
+                ? 'Il quitte ton espace coach. Dans Nolio, ce qu’il a posé et qui est encore à venir part aussi (bandeaux, notes, séances, questionnaires, course) ; le passé reste.'
+                : 'Il quitte ton espace coach. Les séances déjà envoyées restent dans Nolio.'}
             </p>
             <form action={retirerObjectif.bind(null, id)}>
               <button type="submit" className="min-h-11 px-4 rounded-[10px] border border-indigo/25 bg-white text-indigo font-bold">Retirer {course.nom}</button>
