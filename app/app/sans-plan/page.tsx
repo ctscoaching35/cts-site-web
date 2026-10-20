@@ -1,17 +1,20 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { coachConnecte } from '@/lib/app/nolio';
 import { clientServeur, clientService, supabaseConfigure } from '@/lib/app/supabase';
 
 // La session se lit à chaque visite : jamais figée à la compilation.
 export const dynamic = 'force-dynamic';
 
 // Un compte sans plan : il en construit un par le questionnaire (D2 : depuis le site ou l'app) ; un coaché invité par
-// son coach (T6) attend son premier objectif.
+// son coach (T6) attend son premier objectif ; le compte coach va dans son espace (décision coach du 20/10/2026 : chaque
+// version par son compte, la sienne est l'espace coach).
 export default async function SansPlan() {
   if (!supabaseConfigure()) redirect('/app');
   const supabase = await clientServeur();
   const { data } = await supabase.auth.getClaims();
   if (!data?.claims?.sub) redirect('/app/connexion');
+  if (await coachConnecte()) redirect('/app/coach');
   const { data: fiche } = await clientService().from('athletes_coaches').select('id').eq('compte_id', data.claims.sub).limit(1);
   if (fiche?.length) {
     return (
