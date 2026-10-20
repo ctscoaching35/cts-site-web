@@ -3,13 +3,13 @@
  * 20/10/2026, « tableau de bord complet ») : celles d'un athlète que le coach programme à la main, et, pour tous, celles
  * d'entre deux objectifs ou d'avant une préparation. Chaque nuit, pour chaque coaché qui a donné son accord de lecture,
  * la semaine en cours et la précédente se résument depuis Nolio, dans la forme de semaines_ecrites.realise : ses
- * séances prévues et réalisées, leur durée et leur RPE (la charge), la plus longue, le dénivelé, son Hooper. Une
+ * séances de course et de trail prévues et réalisées, leur durée et leur RPE (la charge), la plus longue, le dénivelé, son Hooper. Une
  * semaine que le moteur a écrite garde son propre résumé. Aucune séance n'est gardée (table semaines_athlete). Côté
  * serveur seulement.
  */
 import { indiceHooper, type Realise } from './ecriture';
 import { resumeDeLaSemaine, type Prevue, type Reelle } from './resumeSemaine';
-import { listeNolio, moiNolio, nolioConfigure } from './nolio';
+import { listeNolio, moiNolio, nolioConfigure, SPORTS_COURSE } from './nolio';
 import { ajouterJours } from './plan';
 import { clientService } from './supabase';
 
@@ -56,9 +56,11 @@ export async function resumerSemaines(budgetMs = 240_000): Promise<CompteSemaine
       const item = await indiceHooper();
       for (const lundi of aResumer) {
         const dimanche = ajouterJours(lundi, 6);
-        const prevues = await listeNolio<Prevue>(`planned/trainings/?date_from=${lundi}&date_to=${dimanche}${qui}`);
-        const reelles = await listeNolio<Reelle>(`real/trainings/?date_from=${lundi}&date_to=${dimanche}`
-          + `&fields=id,date_start,duration,elevation_gain,planned,debrief${qui}`);
+        // Course et trail seulement (décision coach du 20/10/2026), comme ce que le moteur prescrit et mesure.
+        const course = (x: { sport?: string | null }) => SPORTS_COURSE.includes(String(x.sport));
+        const prevues = (await listeNolio<Prevue>(`planned/trainings/?date_from=${lundi}&date_to=${dimanche}${qui}`)).filter(course);
+        const reelles = (await listeNolio<Reelle>(`real/trainings/?date_from=${lundi}&date_to=${dimanche}`
+          + `&fields=id,date_start,sport,duration,elevation_gain,planned,debrief${qui}`)).filter(course);
         const valeurs = item
           ? await listeNolio<{ id: string; date_start: string; value: number | null }>(`metrics/values/?item=${item}&date_from=${lundi}&date_to=${dimanche}${qui}`)
           : [];

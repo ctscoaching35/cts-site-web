@@ -10,6 +10,8 @@ import { clientServeur } from './supabase';
 const NOLIO = 'https://www.nolio.io/api/v2';
 
 export const nolioConfigure = () => Boolean(process.env.NOLIO_API_KEY?.trim());
+// « Course à pied » et « Trail » dans le catalogue de Nolio (cts_nolio.SPORT_COURSE, SPORT_TRAIL).
+export const SPORTS_COURSE = ['spt_kNYHjuEzDJRiYCX', 'spt_YprHS7jgV5vdsz0'];
 
 // Une erreur de Nolio dite au coach : sa phrase est faite pour lui et ne contient jamais la clé. Toute autre erreur
 // reste dans les journaux du serveur (elle pourrait la contenir : un en-tête refusé est cité en entier).

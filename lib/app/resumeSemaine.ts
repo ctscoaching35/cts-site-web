@@ -4,9 +4,9 @@
  */
 import type { Realise } from './ecriture';
 
-export type Prevue = { id: string; date_start: string; duration?: { value?: number } | null; rpe?: number | null };
+export type Prevue = { id: string; date_start: string; sport?: string | null; duration?: { value?: number } | null; rpe?: number | null };
 export type Reelle = {
-  id: string; date_start: string; duration?: { value?: number } | null; elevation_gain?: { value?: number } | null;
+  id: string; date_start: string; sport?: string | null; duration?: { value?: number } | null; elevation_gain?: { value?: number } | null;
   planned?: string | null; debrief?: { rpe?: number | null } | null;
 };
 

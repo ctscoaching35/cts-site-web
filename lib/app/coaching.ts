@@ -9,7 +9,7 @@ import { API_URL } from '@/lib/plan';
 import { actionsTrame, dateDe, empreinte, type Voulu } from './trameNolio';
 import { lienFicheCourse } from './ficheCourse';
 import { ajouterJours, type Plan, type Semaine } from './plan';
-import { appelNolio, convertirIdsV1, listeNolio, moiNolio, nolioConfigure, refusNolio } from './nolio';
+import { appelNolio, convertirIdsV1, listeNolio, moiNolio, nolioConfigure, refusNolio, SPORTS_COURSE } from './nolio';
 import { ficheDuCompte } from './demandes';
 import { clientServeur, clientService } from './supabase';
 
@@ -120,7 +120,6 @@ export async function questionnairePrerempli(coachId: string, athleteId: string)
 // Suivi, pour préremplir son questionnaire (relue et corrigible) : le volume moyen et la plus longue sortie de course
 // des 4 dernières semaines, et un arrêt de plus de 4 semaines sur les 2 derniers mois. null sans accord ; sans course
 // ces 4 semaines, seul l'arrêt est rempli (le questionnaire demande alors la dernière sortie régulière).
-const SPORTS_COURSE = ['spt_kNYHjuEzDJRiYCX', 'spt_YprHS7jgV5vdsz0'];
 const enHeuresMinutes = (min: number) => `${Math.floor(min / 60)}h${String(Math.round(min % 60)).padStart(2, '0')}`;
 export async function chargeDepuisNolio(coachId: string, usr: string | null): Promise<Record<string, string> | null> {
   if (!usr || !nolioConfigure()) return null;

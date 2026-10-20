@@ -20,7 +20,7 @@ import {
 } from './coaching';
 import { EXPEDITEUR } from './emailBienvenue';
 import { lienFicheCourse } from './ficheCourse';
-import { appelNolio, coachs, listeNolio, refusNolio } from './nolio';
+import { appelNolio, coachs, listeNolio, refusNolio, SPORTS_COURSE } from './nolio';
 import { ajouterJours, type Plan, type Semaine } from './plan';
 import { clientService } from './supabase';
 import type { Fiche } from './tableau';
@@ -40,7 +40,20 @@ export type RetourSeance = {
   id: string; date: string; faite: boolean; duree_min: number | null; rpe: number | null; ressenti: number | null; dplus_m: number | null;
 };
 export type Questionnaire = { jours: string[]; jour_sl: string | null; nb_seances: number | null; arret: boolean };
-export type Retours = { seances: RetourSeance[]; hooper: { date: string; valeur: number }[]; questionnaire?: Questionnaire };
+export type Retours = {
+  seances: RetourSeance[]; hooper: { date: string; valeur: number }[]; questionnaire?: Questionnaire; nolio?: SemaineNolio;
+};
+// « Nolio fait foi » (décisions coach du 20/10/2026) : la semaine telle qu'elle est dans Nolio, que le moteur juge
+// (cts_ajustements.semaine_reelle) : chaque séance qu'il a écrite et qui y est encore, avec sa durée et son RPE (une
+// absente et non faite, le coach l'a supprimée) ; les séances de course et de trail ajoutées, posées par le coach ou
+// courues par l'athlète, hors jours de course.
+type SemaineNolio = {
+  prevues: Record<string, { duree_min: number | null; rpe: number | null }>;
+  ajoutees: {
+    date: string; prevue_min: number | null; rpe_prevu: number | null; faite: boolean; duree_min?: number | null;
+    rpe?: number | null; ressenti?: number | null; dplus_m?: number | null;
+  }[];
+};
 type SortieMoteur = {
   semaine: Semaine; notes: { regle: string; texte: string }[]; bilan: string | null; journal: Record<string, unknown>[];
   etat: Etat; parametres: Record<string, unknown> | null;
@@ -203,17 +216,18 @@ function lireQuestionnaire(items: { question: string; value: unknown }[]): Quest
     nb_seances: Number.isFinite(nb) && nb > 0 ? Math.round(nb) : null, arret: reponse(3) === true || reponse(3) === 'true' };
 }
 
-// Ce que le moteur juge : les séances faites (reliées à leur jour du plan par l'envoi), le Hooper, le questionnaire.
-// Rien n'est gardé : le moteur en tire ce qu'il garde dans son état (la plus longue sortie courue, le volume fait).
+// Ce que le moteur juge : les séances faites (reliées à leur jour du plan par l'envoi), le Hooper, le questionnaire, et
+// la semaine telle qu'elle est dans Nolio (« Nolio fait foi »). Rien n'est gardé : le moteur en tire ce qu'il garde dans
+// son état (la plus longue sortie courue, le volume fait).
 export async function lireRetours(o: Objectif, du: string, au: string): Promise<Retours> {
   const qui = await requeteAthlete(o);
   const parNolio = new Map<string, string>();
   for (const e of o.envois) for (const s of e.seances as SeanceEnvoyee[])
     if (s.nolio_id && (s.genre ?? 'seance') === 'seance' && !s.jour_id.includes(':')) parNolio.set(String(s.nolio_id), s.jour_id);
-  type Reel = { id: string; date_start: string; duration?: { value: number } | null; planned?: string | null;
+  type Reel = { id: string; date_start: string; sport?: string | null; duration?: { value: number } | null; planned?: string | null;
     elevation_gain?: { value: number } | null; debrief?: { rpe?: number | null; feeling?: number | null } | null };
   const reels = await listeNolio<Reel>(
-    `real/trainings/?date_from=${du}&date_to=${au}&fields=id,date_start,duration,elevation_gain,planned,debrief${qui}`);
+    `real/trainings/?date_from=${du}&date_to=${au}&fields=id,date_start,sport,duration,elevation_gain,planned,debrief${qui}`);
   const seances: RetourSeance[] = reels.filter((r) => r.planned && parNolio.has(r.planned)).map((r) => ({
     id: parNolio.get(r.planned as string) as string, date: r.date_start.slice(0, 10), faite: true,
     duree_min: r.duration?.value ? Math.round(r.duration.value / 60) : null,
@@ -231,7 +245,35 @@ export async function lireRetours(o: Objectif, du: string, au: string): Promise<
   const resultats = await listeNolio<{ id: string; name?: string; date_start: string; items: { question: string; value: unknown }[] }>(
     `real/quiz_results/?date_from=${ajouterJours(au, -6)}&date_to=${au}${qui}`).catch(() => []);
   const dernier = resultats.filter((r) => r.name === QUESTIONNAIRE_SEMAINE.name).sort((a, b) => b.date_start.localeCompare(a.date_start))[0];
-  return { seances, hooper, ...(dernier ? { questionnaire: lireQuestionnaire(dernier.items) } : {}) };
+  // « Nolio fait foi » : les séances prévues de ces semaines, une semaine de marge de chaque côté (une séance déplacée
+  // juste à côté reste la sienne).
+  type Prevue = { id: string; date_start: string; sport?: string | null; duration?: { value?: number } | null; rpe?: number | null };
+  const planifiees = await listeNolio<Prevue>(`planned/trainings/?date_from=${ajouterJours(du, -7)}&date_to=${ajouterJours(au, 7)}${qui}`);
+  const minutes = (d: { value?: number } | null | undefined) => (typeof d?.value === 'number' ? Math.round(d.value / 60) : null);
+  const rpe = (x: unknown) => (typeof x === 'number' ? x : null);
+  const jours = new Set([o.plan.course.date, ...((o.parametres.courses_secondaires ?? []) as Course[]).map((c) => c.date)]);
+  // Course ou trail, dans la période, hors jours de course (la course n'est pas une charge d'entraînement).
+  const deCourse = (sport: unknown, date: string) =>
+    SPORTS_COURSE.includes(String(sport)) && date.slice(0, 10) >= du && date.slice(0, 10) <= au && !jours.has(date.slice(0, 10));
+  const prevues: SemaineNolio['prevues'] = Object.fromEntries(planifiees.filter((p) => parNolio.has(p.id))
+    .map((p) => [parNolio.get(p.id) as string, { duree_min: minutes(p.duration), rpe: rpe(p.rpe) }]));
+  const posees = new Map(planifiees.filter((p) => !parNolio.has(p.id) && deCourse(p.sport, p.date_start)).map((p) => [p.id, p]));
+  const ajoutees: SemaineNolio['ajoutees'] = [];
+  for (const r of reels) {
+    if ((r.planned && parNolio.has(r.planned)) || !deCourse(r.sport, r.date_start)) continue;
+    const p = r.planned ? posees.get(r.planned) : undefined;
+    if (p) posees.delete(p.id);
+    ajoutees.push({
+      date: r.date_start.slice(0, 10), prevue_min: p ? minutes(p.duration) : null, rpe_prevu: p ? rpe(p.rpe) : null, faite: true,
+      duree_min: r.duration?.value ? Math.round(r.duration.value / 60) : null,
+      rpe: o.accordLecture ? r.debrief?.rpe ?? null : null, ressenti: o.accordLecture ? r.debrief?.feeling ?? null : null,
+      dplus_m: typeof r.elevation_gain?.value === 'number' ? Math.round(r.elevation_gain.value) : null,
+    });
+  }
+  for (const p of posees.values()) {
+    ajoutees.push({ date: p.date_start.slice(0, 10), prevue_min: minutes(p.duration), rpe_prevu: rpe(p.rpe), faite: false });
+  }
+  return { seances, hooper, nolio: { prevues, ajoutees }, ...(dernier ? { questionnaire: lireQuestionnaire(dernier.items) } : {}) };
 }
 
 // ─── Écrire et envoyer ────────────────────────────────────────────────────

@@ -8,12 +8,10 @@
 import { ajouterSeances, ETAT_VIDE, type Activite, type EtatBadges } from './badges';
 import type { Contexte } from './contexte';
 import { objectifAffiche } from './ecriture';
-import { listeNolio, moiNolio, nolioConfigure } from './nolio';
+import { listeNolio, moiNolio, nolioConfigure, SPORTS_COURSE } from './nolio';
 import { ajouterJours } from './plan';
 import { clientService } from './supabase';
 
-// « Course à pied » et « Trail » dans le catalogue de Nolio (cts_nolio.SPORT_COURSE, SPORT_TRAIL).
-const SPORTS_COURSE = ['spt_kNYHjuEzDJRiYCX', 'spt_YprHS7jgV5vdsz0'];
 const PREMIERE_ANNEE = 2010;
 const aujourdhuiParis = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
 
