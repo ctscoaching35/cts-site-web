@@ -49,9 +49,9 @@ export default async function Accueil({ searchParams }: { searchParams: Recherch
           <CarteNouveauBadge badges={nouveaux} href={`${lien('/app/profil', ctx)}#badges`} />
           <CarteSombre className="space-y-3">
             <Surtitre ton="clair" as="div">Ton prochain objectif</Surtitre>
-            <p className="text-[0.9375rem] font-bold">Une course en vue ? Propose-la à ton coach.</p>
+            <p className="text-[0.9375rem] font-bold">Un objectif majeur en vue ? Propose-le à ton coach.</p>
             <Link href="/app/objectif/nouveau" className="inline-flex items-center min-h-11 px-4 rounded-full bg-white text-indigo text-[0.8125rem] font-bold">
-              Proposer un objectif
+              Proposer un objectif majeur
             </Link>
           </CarteSombre>
         </main>
@@ -93,7 +93,7 @@ export default async function Accueil({ searchParams }: { searchParams: Recherch
             <Surtitre ton="clair" as="div">Ton prochain objectif</Surtitre>
             <p className="text-[0.9375rem] font-bold">Il se prépare avec ton coach.</p>
             <Link href="/app/objectif/nouveau" className="inline-flex items-center min-h-11 px-4 rounded-full bg-white text-indigo text-[0.8125rem] font-bold">
-              Proposer un objectif
+              Proposer un objectif majeur
             </Link>
           </CarteSombre>
           <Link href={lien('/app/plan', ctx)} className="block bg-white rounded-2xl border border-indigo/[0.08] p-4 text-sm text-indigo">

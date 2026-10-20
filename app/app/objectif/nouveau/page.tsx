@@ -12,13 +12,20 @@ export const dynamic = 'force-dynamic';
 // « Nouvel objectif » dans l'app (CTS_NOLIO_CADRAGE.md, OM1, décision coach du 19/10/2026) : le questionnaire,
 // prérempli des dernières réponses, la course à remplir. Un acheteur paie sa nouvelle préparation ; un coaché envoie sa
 // demande à son coach, qui la relit et lance l'objectif.
-export default async function NouvelObjectif() {
+export default async function NouvelObjectif({ searchParams }: { searchParams: Promise<{ majeur?: string }> }) {
   if (!supabaseConfigure()) notFound();
   const supabase = await clientServeur();
   const { data } = await supabase.auth.getClaims();
   const compteId = data?.claims?.sub as string | undefined;
   if (!compteId) redirect('/app/connexion?suite=/app/objectif/nouveau');
   const fiche = await ficheDuCompte(compteId);
+  // Un coaché (décision coach du 20/10/2026 : « parle bien d'objectifs majeurs ») : d'abord l'aiguillage, objectif
+  // majeur ou course de préparation ; le questionnaire ensuite (?majeur=1).
+  if (fiche && (await searchParams).majeur !== '1') {
+    const aujourdhui = new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris' }).format(new Date());
+    const enCours = (await plansDuCompte(compteId)).some((p) => p.course_date >= aujourdhui);
+    return <Aiguillage enCours={enCours} />;
+  }
   let initial: Record<string, string | string[]>;
   let depuisNolio = false;
   // PO1 : un coaché qui a déjà un objectif garde son profil ; seules sa charge du moment et sa course se demandent.
@@ -39,7 +46,7 @@ export default async function NouvelObjectif() {
       <main className="mx-auto max-w-3xl px-4 sm:px-6 py-8 sm:py-12">
         <Link href="/app/plan" className="inline-flex items-center min-h-11 text-teal font-bold text-sm">‹ Ton objectif</Link>
         <div className="my-6 px-2">
-          <div className="eyebrow text-teal mb-3">Nouvel objectif</div>
+          <div className="eyebrow text-teal mb-3">{fiche ? 'Nouvel objectif majeur' : 'Nouvel objectif'}</div>
           <h1 className="text-3xl sm:text-4xl text-indigo leading-tight">Ta prochaine course</h1>
           <p className="text-indigo/70 mt-2">
             {fiche
@@ -72,6 +79,38 @@ export default async function NouvelObjectif() {
         {fiche
           ? <Questionnaire coach demande court={court} athleteId={fiche.id} initial={initial} />
           : <Questionnaire initial={initial} />}
+      </main>
+    </div>
+  );
+}
+
+// Objectif majeur ou course de préparation : une définition, puis deux chemins. Sans objectif majeur à venir, une course
+// de préparation n'a pas encore où s'ajouter.
+function Aiguillage({ enCours }: { enCours: boolean }) {
+  const bouton = 'flex items-center justify-center min-h-12 px-5 rounded-xl text-sm font-bold';
+  return (
+    <div className="min-h-screen bg-sand">
+      <main className="mx-auto max-w-xl px-4 sm:px-6 py-8 sm:py-12 space-y-5">
+        <Link href="/app/plan" className="inline-flex items-center min-h-11 text-teal font-bold text-sm">‹ Ton objectif</Link>
+        <div className="px-2">
+          <div className="eyebrow text-teal mb-3">Nouvel objectif majeur</div>
+          <h1 className="text-3xl sm:text-4xl text-indigo leading-tight">Ta prochaine course</h1>
+          <p className="text-indigo/80 mt-3 leading-relaxed">
+            Un objectif majeur, c’est la course que toute ta préparation vise : une à trois par saison. Les autres courses
+            de ta saison sont des courses de préparation : elles se glissent dans ta préparation, sans la changer.
+          </p>
+        </div>
+        <div className="space-y-2.5 px-2">
+          <Link href="/app/objectif/nouveau?majeur=1" className={`${bouton} bg-teal text-white`}>C’est mon objectif majeur</Link>
+          {enCours ? (
+            <Link href="/app/plan#ajouter-course" className={`${bouton} border border-teal text-teal`}>C’est une course de préparation ›</Link>
+          ) : (
+            <p className="text-sm text-indigo/70 leading-relaxed">
+              Une course de préparation s’ajoute à ton objectif majeur : propose-le d’abord.
+            </p>
+          )}
+        </div>
+        <p className="px-2 text-sm text-indigo/60">Ton coach relit chaque objectif majeur avant de le lancer.</p>
       </main>
     </div>
   );
