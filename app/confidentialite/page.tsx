@@ -152,6 +152,11 @@ export default async function Confidentialite() {
           </li>
           <li>ton espace CTS t’affiche ta semaine telle qu’elle est dans Nolio, lue au moment où tu l’ouvres, sans en garder de copie ;</li>
           <li>
+            pour tes badges, nous lisons toutes tes séances de course et de trail réalisées dans Nolio (date, distance, durée,
+            dénivelé) et ne gardons que tes badges débloqués, avec leur date, et tes totaux de kilomètres et de dénivelé par
+            mois ;
+          </li>
+          <li>
             chaque dimanche, tes séances de la semaine suivante s’écrivent d’après ta semaine écoulée, avec les mêmes
             lectures ; nous gardons un résumé chiffré de chaque semaine (charge, séances faites, plus longue sortie,
             Hooper), pour ajuster tes séances et afficher tes graphiques dans ton espace CTS ;
@@ -164,7 +169,7 @@ export default async function Confidentialite() {
           <li>nous gardons ton nom, ton identifiant Nolio et la date de ton accord.</li>
         </Liste>
         <p>
-          Retirer ton accord efface tes repères et ces résumés, et arrête la lecture. Personne d’autre que ton coach et toi
+          Retirer ton accord efface tes repères, ces résumés et tes badges, et arrête la lecture. Personne d’autre que ton coach et toi
           ne voit ces données.
           Les séances écrites dans ton calendrier restent dans Nolio, qui applique sa propre politique de
           confidentialité. Ta fiche de course est une page à lien privé, que seuls ceux qui ont le lien peuvent ouvrir.
