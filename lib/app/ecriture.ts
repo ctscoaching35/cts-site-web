@@ -426,9 +426,12 @@ export async function seancesDejaPosees(o: Objectif, aujourdhui: string): Promis
   if (!o.coache || !o.nolioAthlete) return null;
   const d = await destinataire(o.nolioAthlete);
   const poses = new Set(o.envois.flatMap((e) => e.seances as SeanceEnvoyee[]).map((x) => String(x.nolio_id ?? '')));
-  const seances = await listeNolio<{ id: string; date_start: string }>(
+  const seances = await listeNolio<{ id: string; date_start: string; sport?: string | null }>(
     `planned/trainings/?date_from=${aujourdhui}&date_to=${o.plan.course.date}${d.moi ? '' : `&athlete=${d.usr}`}`);
-  const derniere = seances.filter((x) => !poses.has(x.id)).map((x) => x.date_start.slice(0, 10)).sort().pop();
+  // Course et trail seulement (décision coach du 21/10/2026, comme « Nolio fait foi ») : la renfo, le vélo ou une série
+  // d'un autre sport vivent à côté des séances du moteur, sans repousser le départ.
+  const derniere = seances.filter((x) => !poses.has(x.id) && SPORTS_COURSE.includes(String(x.sport)))
+    .map((x) => x.date_start.slice(0, 10)).sort().pop();
   if (!derniere) return null;
   const rang = (new Date(`${derniere}T12:00:00Z`).getUTCDay() + 6) % 7;
   return { derniere, lundi: ajouterJours(derniere, 7 - rang) };
