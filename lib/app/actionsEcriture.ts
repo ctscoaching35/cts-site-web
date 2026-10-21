@@ -7,8 +7,8 @@
 import { revalidatePath } from 'next/cache';
 import { API_URL } from '@/lib/plan';
 import {
-  annulerAjustements, demarrerObjectif, donnerAccordLecture, objectifEcrit, plansALaMain, poserCourse, poserFichePreparation, retirerAccordLecture,
-  retirerCourseDeNolio,
+  annulerAjustements, demarrerObjectif, donnerAccordLecture, objectifEcrit, plansALaMain, poserCourse, poserFichePreparation, rattraperLaSemaine,
+  retirerAccordLecture, retirerCourseDeNolio,
 } from './ecriture';
 import { coachConnecte } from './nolio';
 import { clientServeur, clientService } from './supabase';
@@ -171,6 +171,21 @@ function heuresDuChrono(brut: string): number | null {
 }
 
 // T5 : l'acheteur retire son accord de lecture, depuis son Compte.
+// « Réessayer » sur une semaine pas partie dans Nolio : réservé au coach de cet objectif.
+export async function reessayerLaSemaine(planId: string, _e: EtatGeste): Promise<EtatGeste> {
+  const { coachId } = await qui();
+  const o = await objectifEcrit(planId);
+  if (!coachId || !o || o.coachId !== coachId) return { ok: false, message: 'Réservé au coach de cet objectif.' };
+  try {
+    const numero = await rattraperLaSemaine(planId);
+    revalidatePath('/app/coach');
+    return { ok: true, message: `C’est fait : sa semaine ${numero.replace('S', '')} est dans Nolio.` };
+  } catch (e) {
+    console.error(`Semaine de ${planId} :`, e instanceof Error ? e.message : e);
+    return { ok: false, message: e instanceof Error ? e.message : 'La semaine n’est pas partie : réessaie dans un moment.' };
+  }
+}
+
 export async function donnerMonAccord(planId: string, _e: EtatGeste): Promise<EtatGeste> {
   const { compteId } = await qui();
   const o = await objectifEcrit(planId);

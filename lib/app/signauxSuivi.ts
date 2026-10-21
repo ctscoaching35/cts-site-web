@@ -5,7 +5,11 @@
  */
 import { ajouterJours } from './plan';
 
-export type Seuils = { jours: number; rpe_au_dessus: number; sensations_max: number; hooper_semaines: number; hooper_ecart: number };
+export type Seuils = { jours: number; rpe_au_dessus: number; rpe_au_dessus_sl?: number; sensations_max: number; hooper_semaines: number;
+  hooper_ecart: number };
+// Une sortie longue, d'après son nom dans Nolio (« SL plaisir », « Back-to-back — Jour 1/2 (sortie longue) ») : son RPE
+// se juge à prévu + 3 (décision coach du 21/10/2026, comme la règle R2 du moteur).
+const SORTIE_LONGUE = /^SL\b|back-to-back|sortie longue/i;
 export type Prevue = { id: string; name: string; date_start: string; rpe?: number | null };
 export type Realisee = {
   id: string; name: string; date_start: string; planned?: string | null;
@@ -39,7 +43,8 @@ export function signaux(prevues: Prevue[], realisees: Realisee[], hooper: Valeur
   for (const r of realisees.filter((x) => dans(x.date_start))) {
     const d = r.debrief ?? {};
     const prevue = r.planned ? prevueDe.get(r.planned) : undefined;
-    if (prevue?.rpe != null && d.rpe != null && d.rpe >= prevue.rpe + s.rpe_au_dessus)
+    const ecart = prevue && SORTIE_LONGUE.test(prevue.name ?? '') ? (s.rpe_au_dessus_sl ?? 3) : s.rpe_au_dessus;
+    if (prevue?.rpe != null && d.rpe != null && d.rpe >= prevue.rpe + ecart)
       liste.push({ genre: 'plus_dur', jour: r.date_start, seance: r.name, detail: `RPE ${d.rpe} pour ${prevue.rpe} prévu` });
     if (d.feeling != null && d.feeling <= s.sensations_max)
       liste.push({ genre: 'sensations', jour: r.date_start, seance: r.name, detail: `sensations ${d.feeling}/5` });

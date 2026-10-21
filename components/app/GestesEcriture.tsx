@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
-import { ajouterCourse, annulerSemaine, demarrerDansNolio, donnerMonAccord, retirerCourse, retirerMonAccord, type EtatGeste } from '@/lib/app/actionsEcriture';
+import { ajouterCourse, annulerSemaine, demarrerDansNolio, donnerMonAccord, reessayerLaSemaine, retirerCourse, retirerMonAccord, type EtatGeste } from '@/lib/app/actionsEcriture';
 
 // Les gestes de l'écriture semaine par semaine (lib/app/actionsEcriture.ts) : démarrer un objectif dans Nolio, annuler
 // les ajustements d'une semaine, ajouter une course secondaire.
@@ -114,6 +114,20 @@ export function RetirerAccord({ planId }: { planId: string }) {
     <form action={action} className="space-y-1">
       <button type="submit" disabled={enCours} className="text-sm font-semibold text-red-700 underline underline-offset-2 disabled:opacity-50">
         {enCours ? 'Retrait…' : 'Retirer mon accord'}
+      </button>
+      <Message etat={etat} />
+    </form>
+  );
+}
+
+// La semaine en cours pas partie dans Nolio (« À regarder », décision coach du 21/10/2026) : la réécrire et l'envoyer.
+export function ReessayerSemaine({ planId }: { planId: string }) {
+  const [etat, action, enCours] = useActionState<EtatGeste, FormData>(reessayerLaSemaine.bind(null, planId), null);
+  if (etat?.ok) return <Message etat={etat} />;
+  return (
+    <form action={action} className="space-y-1">
+      <button type="submit" disabled={enCours} className="inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal disabled:opacity-50">
+        {enCours ? 'Envoi…' : 'Réessayer ›'}
       </button>
       <Message etat={etat} />
     </form>

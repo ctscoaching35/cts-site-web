@@ -144,7 +144,7 @@ export default async function SuiviCoach() {
         )}
 
         {sansAccord.length > 0 && (
-          <section className="bg-white rounded-2xl border border-indigo/[0.08] p-4 space-y-2">
+          <section id="sans-accord" className="bg-white rounded-2xl border border-indigo/[0.08] p-4 space-y-2 scroll-mt-6">
             <h2 className="eyebrow text-indigo/60">Sans accord ({sansAccord.length})</h2>
             <p className="text-sm text-indigo/70">
               Envoie-leur le message d’accord dans Nolio ; quand l’un répond oui, coche « Accord reçu » : sa réponse

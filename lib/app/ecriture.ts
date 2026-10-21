@@ -283,6 +283,33 @@ export function semaineDu(plan: Plan, dateIso: string): Semaine | null {
   return plan.semaines.find((s) => s.lundi && s.lundi <= dateIso && dateIso <= ajouterJours(s.lundi, 6)) ?? null;
 }
 
+// La semaine en cours rattrapée à la main (« Réessayer » dans « À regarder », décision coach du 21/10/2026) : écrite et
+// envoyée comme le dimanche, à partir d'aujourd'hui, avec la même réservation qui empêche de la doubler.
+export async function rattraperLaSemaine(planId: string): Promise<string> {
+  const o = await objectifEcrit(planId);
+  if (!o?.nolioAthlete) throw new Error('L’athlète n’a pas encore de compte Nolio relié.');
+  if ((await plansALaMain()).has(planId)) throw new Error('Tu programmes cet athlète à la main : rien ne s’écrit dans son Nolio.');
+  const aujourdhui = aujourdhuiParis();
+  const lundi = ajouterJours(aujourdhui, -((new Date(`${aujourdhui}T12:00:00Z`).getUTCDay() + 6) % 7));
+  const s = semaineDu(o.plan, lundi);
+  if (!s) throw new Error('Pas de semaine de préparation cette semaine.');
+  if (o.envois.some((e) => e.semaine === s.numero)) return s.numero;
+  const service = clientService();
+  const { data: prise } = await service.from('nolio_envois')
+    .upsert({ plan_id: planId, semaine: s.numero, coach_id: o.coachId, seances: [] }, { onConflict: 'plan_id,semaine', ignoreDuplicates: true })
+    .select('plan_id');
+  if (!prise?.length) throw new Error('Cette semaine est déjà en train de partir : regarde dans une minute.');
+  try {
+    const retours = await lireRetours(o, ajouterJours(lundi, -35), aujourdhui);
+    await ecrireEtEnvoyer(o, s.numero, retours, { depuis: aujourdhui });
+  } catch (e) {
+    const { data: ligne } = await service.from('nolio_envois').select('seances').eq('plan_id', planId).eq('semaine', s.numero).maybeSingle();
+    if (!((ligne?.seances as unknown[] | undefined) ?? []).length) await service.from('nolio_envois').delete().eq('plan_id', planId).eq('semaine', s.numero);
+    throw e;
+  }
+  return s.numero;
+}
+
 // Un coaché sans espace dans l'app (décision coach du 20/10/2026, « dis-le à ton coach ») : les notes Nolio ne
 // renvoient pas vers l'app, qu'il ne peut pas ouvrir ; il passe par son coach.
 const sansApp = (o: Objectif) => o.coache && !o.compteAthlete;
@@ -1315,15 +1342,17 @@ export async function ajustementsDuCoach(coachId: string): Promise<Ajustement[]>
 // Un e-mail par jour au plus : les ajustements de la journée chez les coachés (le dimanche, ceux de la semaine écrite).
 async function resumeAuCoach(fatigues: Compte[], tests: TestLu[] = []) {
   const service = clientService();
-  const debut = `${aujourdhuiParis()}T00:00:00`;
-  const { data: ecrites } = await service.from('semaines_ecrites').select('plan_id, numero, journal').gte('ecrite_le', debut);
+  // Les dernières 24 heures (décision coach du 21/10/2026) : les semaines écrites par les reprises du dimanche soir, après
+  // ce passage, comptent le lendemain ; un ajustement annulé n'est plus une nouveauté.
+  const debut = new Date(Date.now() - 24 * 3600_000).toISOString();
+  const { data: ecrites } = await service.from('semaines_ecrites').select('plan_id, numero, journal, sans_ajustement').gte('ecrite_le', debut);
   const { data: coaching } = await service.from('coaching').select('plan_id, athlete_nom');
   const nomDe = new Map((coaching ?? []).map((c) => [c.plan_id as string, c.athlete_nom as string]));
   const lignes: string[] = [];
   for (const e of ecrites ?? []) {
     const nom = nomDe.get(e.plan_id as string);
     const journal = (e.journal ?? []) as { regle?: string }[];
-    if (!nom || !journal.length) continue;
+    if (!nom || !journal.length || e.sans_ajustement) continue;
     lignes.push(`${nom}, ${e.numero} : ${[...new Set(journal.map((j) => REGLES_EN_CLAIR[j.regle ?? ''] ?? j.regle))].join(', ')}.`);
   }
   for (const f of fatigues) {
@@ -1334,6 +1363,6 @@ async function resumeAuCoach(fatigues: Compte[], tests: TestLu[] = []) {
   const valeurs = tests.map((t) => nomDe.get(t.plan) && `${nomDe.get(t.plan)} : ${t.texte.split('.')[0]}.`).filter(Boolean) as string[];
   if (!lignes.length && !valeurs.length) return;
   await prevenirCoach(`Tes coachés : ${lignes.length + valeurs.length} nouveauté${lignes.length + valeurs.length > 1 ? 's' : ''} aujourd’hui`,
-    [lignes.length ? `${lignes.join('\n')}\n\nChaque ajustement s’annule dans ton Suivi (${site.url}/app/coach/suivi).` : '',
+    [lignes.length ? `${lignes.join('\n')}\n\nTout est dans « À regarder » (${site.url}/app/coach) ; chaque ajustement s’annule dans ton Suivi.` : '',
       valeurs.length ? `Tests lus, valeurs posées sur leur fiche :\n${valeurs.join('\n')}` : ''].filter(Boolean).join('\n\n'));
 }

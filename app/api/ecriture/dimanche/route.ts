@@ -1,4 +1,5 @@
 import { passageDuDimanche, prevenirCoach, REMIS } from '@/lib/app/ecriture';
+import { site } from '@/lib/content';
 import { supabaseConfigure } from '@/lib/app/supabase';
 
 // Le passage du dimanche soir (vercel.json, crons ; CTS_NOLIO_CADRAGE.md, T3) : la semaine suivante de chaque plan
@@ -24,8 +25,8 @@ export async function GET(request: Request) {
   const planif = request.headers.get('x-vercel-cron-schedule');
   if (echecs.length && (!planif || planif === DERNIERE)) {
     await prevenirCoach(`Plans CTS : ${echecs.length} semaine${echecs.length > 1 ? 's' : ''} non écrite${echecs.length > 1 ? 's' : ''}`,
-      'Le passage du dimanche n’a pas pu écrire ou envoyer certaines semaines dans Nolio, même après ses reprises. Ouvre ton '
-      + 'espace coach : chaque plan concerné y garde son bouton pour réessayer.');
+      'Le passage du dimanche n’a pas pu écrire ou envoyer certaines semaines dans Nolio, même après ses reprises. Dès lundi, '
+      + `chacune est dans « À regarder », dans ton espace coach, avec son bouton « Réessayer » (${site.url}/app/coach).`);
   }
   return Response.json({ semaines: comptes.map(({ plan, quoi, erreur }) => ({ plan, quoi, erreur: erreur ?? null })) });
 }

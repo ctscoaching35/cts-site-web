@@ -3,7 +3,8 @@ import clsx from 'clsx';
 import { notFound } from 'next/navigation';
 import CadreCoach from '@/components/app/CadreCoach';
 import { Carte, Surtitre } from '@/components/app/Ui';
-import { vueDuCoach, type ARegarder } from '@/lib/app/espaceCoach';
+import { ReessayerSemaine } from '@/components/app/GestesEcriture';
+import { NIVEAUX, vueDuCoach } from '@/lib/app/espaceCoach';
 import { dateLongue, jMoins } from '@/lib/app/plan';
 import { clientService, supabaseConfigure } from '@/lib/app/supabase';
 import { athletesNolio, ErreurNolio, exigerCoach, nolioConfigure, type AthleteNolio } from '@/lib/app/nolio';
@@ -11,12 +12,8 @@ import { athletesNolio, ErreurNolio, exigerCoach, nolioConfigure, type AthleteNo
 // Toujours calculée à la visite : la page lit la session du coach.
 export const dynamic = 'force-dynamic';
 
-const PASTILLE: Record<ARegarder['genre'], { libelle: string; fond: string; encre: string }> = {
-  demande: { libelle: 'Objectif demandé', fond: '#E3EFE9', encre: '#0C6E5F' },
-  ajustement: { libelle: 'Ajustement', fond: '#F6E3E8', encre: '#8A2E4A' },
-  demarrer: { libelle: 'À démarrer', fond: '#E4E3EE', encre: '#2F2D4E' },
-  nolio: { libelle: 'Nolio', fond: '#F6ECD8', encre: '#7A520D' },
-};
+// La couleur de chaque niveau de « À regarder » (décision coach du 21/10/2026, « une liste, quatre niveaux »).
+const ENCRE = { bloque: '#9A3B2C', sante: '#8A2E4A', moteur: '#2F2D4E', arrive: '#0C6E5F' } as const;
 const TON = { bien: '#0C6E5F', retrait: '#C2410C', retard: '#9A3B2C' } as const;
 
 // L'espace coach, « Tes athlètes » (CTS_NOLIO_CADRAGE.md, N2 ; maquette validée par le coach le 19/10/2026) : réservé
@@ -25,7 +22,6 @@ const TON = { bien: '#0C6E5F', retrait: '#C2410C', retard: '#9A3B2C' } as const;
 export default async function Coach() {
   if (!supabaseConfigure()) notFound();
   const coach = await exigerCoach();
-  const vue = await vueDuCoach(coach.compteId);
   const { data: compte } = await clientService().from('comptes').select('nom').eq('id', coach.compteId).maybeSingle();
   let nolio: AthleteNolio[] | null = null;
   let erreur: string | null = null;
@@ -38,6 +34,8 @@ export default async function Coach() {
       erreur = e instanceof ErreurNolio ? message : 'Nolio ne répond pas pour l’instant : réessaie dans un moment.';
     }
   }
+  // L'équipe Nolio, pour dire qui l'a quittée ; sans réponse de Nolio, personne.
+  const vue = await vueDuCoach(coach.compteId, nolio ? new Set(nolio.map((x) => x.id)) : null);
   // Les athlètes de Nolio qui n'ont pas encore de fiche (le coach lui-même, « (toi) », à part).
   const relies = new Set(vue.athletes.map((a) => a.usr).filter(Boolean));
   const sansFiche = (nolio ?? []).filter((x) => !relies.has(x.id) && !x.name.endsWith('(toi)'));
@@ -74,17 +72,23 @@ export default async function Coach() {
         {vue.aRegarder.length === 0 ? (
           <p className="mt-3 text-sm text-teal font-semibold">Rien qui attende ton regard.</p>
         ) : (
-          <ul className="mt-2">
-            {vue.aRegarder.map((r, i) => (
-              <li key={`${r.genre}-${r.athlete}-${i}`} className="flex flex-wrap items-center gap-3 min-h-14 py-2 border-b last:border-b-0 border-indigo/[0.06]">
-                <span className="text-[0.72rem] font-bold px-2.5 py-1 rounded-xl" style={{ backgroundColor: PASTILLE[r.genre].fond, color: PASTILLE[r.genre].encre }}>
-                  {PASTILLE[r.genre].libelle}
-                </span>
-                <span className="flex-[1_1_260px] text-sm"><strong>{r.athlete}</strong> · {r.texte}</span>
-                <Link href={r.href} className="inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">{r.action}</Link>
-              </li>
+          <div className="mt-2 space-y-4">
+            {NIVEAUX.filter((n) => vue.aRegarder.some((r) => r.niveau === n.cle)).map((n) => (
+              <section key={n.cle}>
+                <h3 className="text-[0.6875rem] font-bold tracking-[0.12em] uppercase" style={{ color: ENCRE[n.cle] }}>{n.titre}</h3>
+                <ul className="mt-1">
+                  {vue.aRegarder.filter((r) => r.niveau === n.cle).map((r, i) => (
+                    <li key={`${r.genre}-${r.athlete}-${i}`} className="flex flex-wrap items-center gap-x-3 gap-y-1 min-h-12 py-2 border-b last:border-b-0 border-indigo/[0.06]">
+                      <span className="flex-[1_1_260px] text-sm"><strong>{r.athlete}</strong> · {r.texte}</span>
+                      {r.genre === 'semaine' && r.planId ? <ReessayerSemaine planId={r.planId} />
+                        : r.externe ? <a href={r.href} target="_blank" rel="noopener" className="inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">{r.action}</a>
+                          : <Link href={r.href} className="inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">{r.action}</Link>}
+                    </li>
+                  ))}
+                </ul>
+              </section>
             ))}
-          </ul>
+          </div>
         )}
       </Carte>
 
