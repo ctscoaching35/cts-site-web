@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { CarteNouveauBadge } from '@/components/app/Badges';
 import EnTeteApp from '@/components/app/EnTeteApp';
 import {
-  CarteNolio, CarteObjectif, CetteSemaine, CoursesPreparation, FicheDuMoment, Piliers,
+  CarteNolio, CarteObjectif, CetteSemaine, CoursesPreparation, FichesDeLaSemaine, Piliers,
 } from '@/components/app/TableauDeBord';
 import { nouveauxBadges } from '@/lib/app/badges';
 import { mesBadges } from '@/lib/app/badgesNolio';
@@ -13,7 +13,7 @@ import { Carte, CarteSombre, Surtitre } from '@/components/app/Ui';
 import { contexte, lien, objectifAVenir, prenom, type Contexte, type Recherche } from '@/lib/app/contexte';
 import { lireTemps } from '@/lib/plan';
 import { ajouterJours, dateLongue, joursEntre, moment } from '@/lib/app/plan';
-import { ficheDuMoment, jaugeDuPlan, momentDe } from '@/lib/app/tableau';
+import { fichesDeLaSemaine, jaugeDuPlan, momentDe } from '@/lib/app/tableau';
 import { donneesTableau, semaineDansNolio, semaineEcrite } from '@/lib/app/tableauDuPlan';
 
 // L'accueil (CTS_NOLIO_CADRAGE.md dans le dépôt du moteur, T1, AP1, AP2 ; maquette validée par le coach le
@@ -73,7 +73,7 @@ export default async function Accueil({ searchParams }: { searchParams: Recherch
   // Pas encore dans Nolio : la semaine de la préparation, et quand elle y arrive (décision coach du 20/10/2026).
   const arrivee = nolio || ctx.demonstration ? null : !ctx.coache && d.nolio !== 'actif' ? 'invitation' as const : 'bientot' as const;
   const jauge = jaugeDuPlan(d.trame, d.realises, jour);
-  const fiche = ficheDuMoment(d.fiches, jour);
+  const fiches = fichesDeLaSemaine(d.fiches, jour);
   const nom = prenom(plan.athlete.nom);
   // Un badge débloqué la semaine écoulée (BG3, décision coach du 20/10/2026).
   const badges = await mesBadges(ctx);
@@ -140,7 +140,7 @@ export default async function Accueil({ searchParams }: { searchParams: Recherch
             arrivee={arrivee} depuis={arrivee ? jour : null} premiere={etape === 'avant'} />
         )}
         {etape !== 'apres' && ctx.aLaMain && <CetteSemaine semaine={null} ligne={null} questionnaire={false} nolio={nolio} />}
-        {fiche && etape !== 'apres' && <FicheDuMoment fiche={fiche.fiche} avenir={fiche.avenir} ctx={ctx} />}
+        {etape !== 'apres' && <FichesDeLaSemaine fiches={fiches} ctx={ctx} />}
       </main>
     </>
   );

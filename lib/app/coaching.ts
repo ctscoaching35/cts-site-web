@@ -179,8 +179,10 @@ export async function seancesDuMoteur(plan: Plan, planId: string, semaine: Semai
   const jours = (corps.seances ?? []).map((s: JourTraduit) => ({ ...s, note: s.note ?? null })) as JourTraduit[];
   const brut = (corps.renfo ?? []) as { id: string; nolio: Record<string, unknown> }[];
   const renfo = brut.length ? await monterRenfo(brut) : [];
-  // Les fiches, des notes de plus (« fiche:pieds ») ; la fiche de course reçoit son lien privé.
-  const fiches = ((corps.fiches ?? []) as { id: string; note: Record<string, unknown> }[]).map((f) => ({
+  // La fiche de course, une note de plus (« fiche:course »), avec son lien privé. Les fiches de la bibliothèque ne
+  // partent plus dans Nolio (décision coach du 21/10/2026 : une note ne s'y lit pas d'un coup d'œil ; l'app les donne
+  // chaque semaine, « Les fiches de la semaine »).
+  const fiches = ((corps.fiches ?? []) as { id: string; note: Record<string, unknown> }[]).filter((f) => f.id === 'fiche:course').map((f) => ({
     id: f.id, nolio: null,
     note: { ...f.note, description: String(f.note.description ?? '').replace('{lien_fiche_course}', lienFicheCourse(planId)) },
   }));

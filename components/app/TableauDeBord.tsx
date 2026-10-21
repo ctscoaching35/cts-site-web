@@ -253,16 +253,26 @@ export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null, arri
   );
 }
 
-// ─── La fiche du moment ───────────────────────────────────────────────────
+// ─── Les fiches de la semaine ─────────────────────────────────────────────
 
-export function FicheDuMoment({ fiche, avenir, ctx }: { fiche: Fiche; avenir: boolean; ctx: Contexte }) {
-  const href = fiche.cle === 'course' ? lien('/app/plan/course', ctx) : lien(`/app/bibliotheque/${fiche.url ? slugFiche(fiche.url) : fiche.cle}`, ctx);
+export function FichesDeLaSemaine({ fiches, ctx }: { fiches: Fiche[]; ctx: Contexte }) {
+  if (!fiches.length) return null;
+  const href = (f: Fiche) => (f.cle === 'course' ? lien('/app/plan/course', ctx) : lien(`/app/bibliotheque/${f.url ? slugFiche(f.url) : f.cle}`, ctx));
   return (
-    <Carte className="space-y-2">
-      <Surtitre ton="ocre">{avenir ? 'Bientôt, à lire' : 'La fiche du moment'}</Surtitre>
-      <p className="text-[1.0625rem] font-bold text-indigo leading-snug">{fiche.titre}</p>
-      <p className="text-[0.8125rem] text-[#4A4866] leading-relaxed">{fiche.pourquoi}</p>
-      <Link href={href} className="inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-[#8A5E10]">Lire la fiche ›</Link>
+    <Carte className="space-y-1">
+      <Surtitre ton="ocre">{fiches.length > 1 ? 'Les fiches de la semaine' : 'La fiche de la semaine'}</Surtitre>
+      <ul>
+        {fiches.map((f) => (
+          <li key={f.cle} className="border-b border-indigo/[0.06] last:border-b-0">
+            <Link href={href(f)} className="block py-2.5">
+              <span className="block text-[0.9375rem] font-bold text-indigo leading-snug">{f.titre}</span>
+              <span className="block mt-0.5 text-[0.8125rem] text-[#4A4866] leading-relaxed">
+                {f.pourquoi} <span className="font-bold text-[#8A5E10]">›</span>
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
     </Carte>
   );
 }

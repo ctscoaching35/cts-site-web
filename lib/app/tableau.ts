@@ -201,12 +201,12 @@ export function pointsHooper(trame: LigneTrame[], realises: Realise[], aujourdhu
 }
 export const ECART_ZONE_HOOPER = ECART_HOOPER;
 
-// La fiche du moment : la dernière arrivée (dans les 14 derniers jours), sinon la prochaine.
-export function ficheDuMoment(fiches: Fiche[], aujourdhui: string): { fiche: Fiche; avenir: boolean } | null {
-  const passees = fiches.filter((f) => f.date <= aujourdhui && f.date >= ajouterJours(aujourdhui, -13));
-  if (passees.length) return { fiche: passees[passees.length - 1], avenir: false };
-  const prochaine = fiches.find((f) => f.date > aujourdhui);
-  return prochaine ? { fiche: prochaine, avenir: true } : null;
+// Les fiches de la semaine (décision coach du 21/10/2026 : « aiguiller la lecture des fiches par l'athlète » dans
+// l'app, plus de notes de fiches dans Nolio) : celles de la semaine en cours, du lundi au dimanche ; aucune les semaines
+// sans fiche, la bibliothèque reste dans son onglet.
+export function fichesDeLaSemaine(fiches: Fiche[], aujourdhui: string): Fiche[] {
+  const lundi = ajouterJours(aujourdhui, -((new Date(`${aujourdhui}T12:00:00Z`).getUTCDay() + 6) % 7));
+  return fiches.filter((f) => f.date >= lundi && f.date <= ajouterJours(lundi, 6));
 }
 
 // ─── La préparation, bloc par bloc ────────────────────────────────────────
@@ -216,9 +216,7 @@ export function ficheDuMoment(fiches: Fiche[], aujourdhui: string): { fiche: Fic
 // de son premier lundi à son dernier dimanche (la veille de la course au plus tard), avec ce que le bloc développe et ce
 // qu'il entretient, lus dans le tableau du plan (« Ce que tu travailles », « En rappel »).
 export type BlocDuPlan = { nom: string; du: string; au: string; moment: 'fait' | 'encours' | 'avenir'; travail: string[]; rappel: string[] };
-// depuis : pour un coaché qui a rejoint la préparation en cours de route (course.rejoint), son lundi d'arrivée : les blocs
-// d'avant, qu'il n'a pas faits, ne s'affichent pas, et le bloc en cours commence à son arrivée (décision coach du
-// 20/10/2026 : « parler du bloc actuel sans parler des blocs antérieurs » ; le coaching part de l'objectif, à reculons).
+
 // Ce qu'un bloc travaille et entretient, d'après la vue d'ensemble du plan (« Ce que tu travailles », « En rappel ») :
 // pour « Ta préparation, bloc par bloc » et la description du bandeau Nolio de chaque semaine (décision coach du
 // 21/10/2026).
@@ -231,6 +229,9 @@ export function qualitesDuBloc(plan: Plan, bloc: string): { travail: string[]; r
   return { travail: qualites(cTravail), rappel: qualites(cRappel) };
 }
 
+// depuis : pour un coaché qui a rejoint la préparation en cours de route (course.rejoint), son lundi d'arrivée : les blocs
+// d'avant, qu'il n'a pas faits, ne s'affichent pas, et le bloc en cours commence à son arrivée (décision coach du
+// 20/10/2026 : « parler du bloc actuel sans parler des blocs antérieurs » ; le coaching part de l'objectif, à reculons).
 export function blocsDuPlan(trame: LigneTrame[], plan: Plan, aujourdhui: string, depuis: string | null = null): BlocDuPlan[] {
   const veille = ajouterJours(plan.course.date, -1);
   const blocs: BlocDuPlan[] = [];
