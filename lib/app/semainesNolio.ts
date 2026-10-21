@@ -7,6 +7,7 @@
  * semaine que le moteur a écrite garde son propre résumé. Aucune séance n'est gardée (table semaines_athlete). Côté
  * serveur seulement.
  */
+import { noterLeMot } from './dimanchesCoaches';
 import { indiceHooper, type Realise } from './ecriture';
 import { resumeDeLaSemaine, type Prevue, type Reelle } from './resumeSemaine';
 import { listeNolio, moiNolio, nolioConfigure, SPORTS_COURSE } from './nolio';
@@ -45,6 +46,8 @@ export async function resumerSemaines(budgetMs = 240_000): Promise<CompteSemaine
     try {
       const { data: fiches } = await service.from('athletes_coaches').select('id').eq('coach_id', a.coach_id).eq('nolio_athlete_id', usr);
       if (!fiches?.length) continue;
+      // Un mot à la question ouverte du dimanche (décision coach du 21/10/2026) : sa date seulement, le texte reste dans Nolio.
+      await noterLeMot(fiches.map((f) => f.id as string), usr === moi ? '' : `&athlete=${usr}`).catch(() => {});
       const { data: liens } = await service.from('coaching').select('plan_id').in('athlete_id', fiches.map((f) => f.id));
       const ecrits = await lundisEcrits((liens ?? []).map((l) => l.plan_id as string));
       const aResumer = lundis.filter((l) => !ecrits.has(l));

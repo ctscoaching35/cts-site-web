@@ -117,6 +117,11 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
           texte: `fatigue franche : sa séance ${j.origine.seance ?? ''} de ${j.jour.toLowerCase()} est passée en EF.` });
       }
     }
+    // Un mot à la question ouverte du dimanche, ces 7 derniers jours (décision coach du 21/10/2026) : à lire dans Nolio.
+    if ((a.questionnaires?.mot_le ?? '') >= ajouterJours(jour, -7)) {
+      aRegarder.push({ niveau: 'sante', genre: 'mot', athlete: a.nom, action: 'Lire dans Nolio ›', href: NOLIO, externe: true,
+        texte: 'a un mot pour toi dans son questionnaire du dimanche.' });
+    }
     // Le RPE à revoir (décision coach du 21/10/2026) : une séance clé jugée trop dure sur son RPE deux semaines de suite.
     const deuxDernieres = [...semaines].sort((x, y) => Number(num(y.numero)) - Number(num(x.numero))).slice(0, 2);
     if (deuxDernieres.length === 2 && Number(num(deuxDernieres[0].numero)) === Number(num(deuxDernieres[1].numero)) + 1

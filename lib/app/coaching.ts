@@ -21,6 +21,8 @@ export type FicheAthlete = {
   objectifs: Objectif[];
   // Son compte dans l'app, quand le coach l'y a invité (T6).
   compte_id: string | null;
+  // Sa série du dimanche dans Nolio et le dernier mot écrit à la question ouverte (dimanchesCoaches, 21/10/2026).
+  questionnaires?: { mot_le?: string | null } | null;
   // Son profil (PO1), sa D′ (AP4), la date et la source de chaque repère : null ou vides tant que la migration du
   // 19/10/2026 n'est pas passée.
   profil: Record<string, string | string[]> | null; d_prime_m: number | null;
@@ -59,7 +61,7 @@ export async function athletesCoaches(coachId: string): Promise<FicheAthlete[]> 
   await convertirAthletesV1(athletes ?? []);
   return (athletes ?? []).map((a) => ({
     id: a.id, nom: a.nom, nolio_athlete_id: a.nolio_athlete_id, fc_seuil1: a.fc_seuil1, vc_ms: a.vc_ms, fc_seuil2: a.fc_seuil2,
-    v_seuil1_ms: a.v_seuil1_ms ?? null, compte_id: a.compte_id ?? null,
+    v_seuil1_ms: a.v_seuil1_ms ?? null, compte_id: a.compte_id ?? null, questionnaires: a.questionnaires ?? null,
     profil: (a.profil ?? null) as FicheAthlete['profil'], d_prime_m: a.d_prime_m ?? null,
     reperes_sources: (a.reperes_sources ?? {}) as FicheAthlete['reperes_sources'],
     programmation: a.programmation === 'main' ? 'main' : 'auto',

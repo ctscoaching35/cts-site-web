@@ -384,7 +384,8 @@ async function envoyerTrame(o: Objectif, depuis: string) {
 // Les questionnaires du dimanche, récurrents jusqu'à la course : « Ta semaine prochaine » pour tous, le Hooper avec
 // l'accord de lecture (T5, Hooper chaque dimanche matin, question 12).
 async function programmerQuestionnaires(o: Objectif, premierDimanche: string) {
-  if (o.envois.some((e) => e.semaine === QUESTIONNAIRES)) return;
+  // Un coaché a sa série à lui, sur sa fiche (dimanchesCoaches, décision coach du 21/10/2026) : acheteurs seulement ici.
+  if (o.coache || o.envois.some((e) => e.semaine === QUESTIONNAIRES)) return;
   const d = await destinataire(o.nolioAthlete);
   const jusqua = ajouterJours(o.plan.course.date, -1);
   if (premierDimanche > jusqua) return;
@@ -1358,6 +1359,12 @@ async function resumeAuCoach(fatigues: Compte[], tests: TestLu[] = []) {
   for (const f of fatigues) {
     const nom = nomDe.get(f.plan);
     if (nom) lignes.push(`${nom} : ${f.quoi} (fatigue franche).`);
+  }
+  // Un mot à la question ouverte du dimanche, noté ces 24 dernières heures (décision coach du 21/10/2026) : à lire dans Nolio.
+  const { data: fichesMot } = await service.from('athletes_coaches').select('nom, questionnaires').not('questionnaires', 'is', null);
+  for (const f of fichesMot ?? []) {
+    const note = String((f.questionnaires as { mot_note?: string | null } | null)?.mot_note ?? '');
+    if (note && note >= debut) lignes.push(`${f.nom} a un mot pour toi dans son questionnaire du dimanche, à lire dans Nolio.`);
   }
   // TN3 : les valeurs lues dans un test, posées sur la fiche du coaché ; le coach les corrige sur sa fiche.
   const valeurs = tests.map((t) => nomDe.get(t.plan) && `${nomDe.get(t.plan)} : ${t.texte.split('.')[0]}.`).filter(Boolean) as string[];
