@@ -17,15 +17,15 @@ export default async function Bienvenue({ searchParams }: { searchParams: Recher
   // installation est dans son Compte.
   if (ctx.coache) redirect(lien('/app', ctx));
   // Un acheteur (décision coach du 20/10/2026, les nuances des plans, point 3 : « l'essentiel », au format de l'app) : sa
-  // course et ses chiffres, le début de sa préparation, l'installation, l'avertissement santé à lire, « Entrer ». Plus
-  // de « fondements » à la première ouverture : ils sont dans son PDF.
+  // course et ses chiffres, le début de sa préparation, ce que font Nolio et l'app (décision coach du 21/10/2026),
+  // l'installation, l'avertissement santé à lire, « Entrer ». Plus de « fondements » à la première ouverture.
   const nom = prenom(plan.athlete.nom);
   const c = plan.couverture;
   return (
     <main className="mx-auto max-w-md px-4 py-8 space-y-4">
       <div className="text-center space-y-2">
         <Image src="/logo/cts-logo-rond-navy.png" alt="CTS Coaching" width={64} height={64} className="mx-auto w-16 h-16" />
-        {/* Le nom de l'offre (O1 ; décision coach du 20/10/2026, point 5) ; le PDF garde sa couverture. */}
+        {/* Le nom de l'offre (O1 ; décision coach du 20/10/2026, point 5). */}
         <div className="text-[0.6875rem] font-bold tracking-[0.14em] uppercase text-teal">Préparation CTS</div>
         <h1 className="text-[1.75rem] font-extrabold text-indigo tracking-tight leading-tight">{nom ? `Bienvenue ${nom}` : 'Bienvenue'}</h1>
         <p className="text-[0.8125rem] text-[#5E5C78]">{plan.course.nom} · {plan.course.format_clair}</p>
@@ -43,6 +43,11 @@ export default async function Bienvenue({ searchParams }: { searchParams: Recher
       <Carte className="text-center">
         <p className="text-[0.9375rem] font-bold text-indigo">{c.debut}</p>
         <p className="mt-1 text-[0.8125rem] text-[#5E5C78]">{c.rendez_vous}</p>
+      </Carte>
+
+      <Carte className="text-[0.8125rem] text-[#4A4866] leading-relaxed space-y-1">
+        <p><strong className="text-indigo">Nolio</strong> : tes séances, au jour le jour, jusqu’à ta montre.</p>
+        <p><strong className="text-indigo">L’app CTS</strong> : ta course, ta préparation, tes données et tes fiches.</p>
       </Carte>
 
       <Carte className="space-y-2.5">

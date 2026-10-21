@@ -110,7 +110,7 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
           </Carte>
         )}
 
-        <Carte className="space-y-2">
+        <Carte className="space-y-2" id="installer">
           <Surtitre>Installer l’app</Surtitre>
           <Installation />
         </Carte>

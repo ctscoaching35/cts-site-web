@@ -3,12 +3,13 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { CarteNouveauBadge } from '@/components/app/Badges';
 import EnTeteApp from '@/components/app/EnTeteApp';
+import PourBienDemarrer from '@/components/app/PourBienDemarrer';
 import {
   CarteNolio, CarteObjectif, CetteSemaine, CoursesPreparation, FichesDeLaSemaine, Piliers,
 } from '@/components/app/TableauDeBord';
 import { nouveauxBadges } from '@/lib/app/badges';
 import { mesBadges } from '@/lib/app/badgesNolio';
-import { COOKIE_BIENVENUE } from '@/lib/app/bienvenue';
+import { COOKIE_BIENVENUE, COOKIE_DEMARRAGE } from '@/lib/app/bienvenue';
 import { Carte, CarteSombre, Surtitre } from '@/components/app/Ui';
 import { contexte, lien, objectifAVenir, prenom, type Contexte, type Recherche } from '@/lib/app/contexte';
 import { lireTemps } from '@/lib/plan';
@@ -26,6 +27,9 @@ export default async function Accueil({ searchParams }: { searchParams: Recherch
   // avant d'entrer ; un coaché entre directement (décision coach du 20/10/2026).
   if (!ctx.coache && !(await cookies()).get(COOKIE_BIENVENUE)) redirect(lien('/app/bienvenue', ctx));
   const { plan, jour } = ctx;
+  // « Pour bien démarrer » (décision coach du 21/10/2026), tant qu'elle n'est pas masquée sur cet appareil.
+  const demarrage = !(await cookies()).get(COOKIE_DEMARRAGE);
+  const installer = `${lien('/app/compte', ctx)}#installer`;
   const lundiCourant = ajouterJours(jour, -((new Date(`${jour}T12:00:00Z`).getUTCDay() + 6) % 7));
   // Un coaché sans objectif (décision coach du 20/10/2026, « tableau de bord complet ») : sa semaine dans Nolio, un
   // badge tout neuf, de quoi proposer un objectif ; ses données, son profil et la bibliothèque ont leur onglet.
@@ -46,6 +50,7 @@ export default async function Accueil({ searchParams }: { searchParams: Recherch
           {demande && (
             <Carte className="text-sm text-indigo"><p role="status">Ta demande est partie chez ton coach : il la relit et lance ta préparation.</p></Carte>
           )}
+          {demarrage && <PourBienDemarrer acheteur={false} nolio="coache" accord={Boolean(ctx.fiche?.accord)} questionnaire={false} installer={installer} />}
           <CetteSemaine semaine={null} ligne={null} questionnaire={false} nolio={semaine} />
           <CarteNouveauBadge badges={nouveaux} href={`${lien('/app/profil', ctx)}#badges`} />
           <CarteSombre className="space-y-3">
@@ -94,6 +99,7 @@ export default async function Accueil({ searchParams }: { searchParams: Recherch
             <div className="text-xs font-semibold text-[#5E5C78] first-letter:uppercase">{dateLongue(jour)}</div>
             <h1 className="mt-1 text-[1.625rem] font-extrabold text-indigo tracking-tight">{nom ? `Bonjour ${nom}` : 'Bonjour'}</h1>
           </div>
+          {demarrage && <PourBienDemarrer acheteur={false} nolio="coache" accord={d.accord} questionnaire={false} installer={installer} />}
           <CarteSombre className="space-y-3">
             <Surtitre ton="clair" as="div">Ton prochain objectif</Surtitre>
             <p className="text-[0.9375rem] font-bold">Il se prépare avec ton coach.</p>
@@ -120,9 +126,13 @@ export default async function Accueil({ searchParams }: { searchParams: Recherch
           <h1 className="mt-1 text-[1.625rem] font-extrabold text-indigo tracking-tight">{nom ? `Bonjour ${nom}` : 'Bonjour'}</h1>
         </div>
 
+        {/* Sa liste dit où en est l'invitation Nolio ; masquée, la carte Nolio le redit. */}
+        {etape !== 'apres' && demarrage && d.nolio !== 'sorti' && (
+          <PourBienDemarrer acheteur={!ctx.coache} nolio={d.nolio} accord={d.accord} questionnaire={d.ecrit && !ctx.aLaMain} installer={installer} />
+        )}
         <CarteObjectif plan={plan} restants={restants} jauge={ctx.aLaMain ? null : jauge} etape={etape} href={lien('/app/plan', ctx)}
           surtitre={!ctx.coache ? 'Ton objectif' : etape === 'apres' ? 'Ton dernier objectif majeur' : 'Ton prochain objectif majeur'} />
-        {etape !== 'apres' && <CarteNolio etat={d.nolio} />}
+        {etape !== 'apres' && (!demarrage || d.nolio === 'sorti') && <CarteNolio etat={d.nolio} />}
         <CarteNouveauBadge badges={nouveaux} href={`${lien('/app/profil', ctx)}#badges`} />
 
         {etape !== 'apres' && restants <= 7 && (
