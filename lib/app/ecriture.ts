@@ -491,6 +491,8 @@ export async function demarrerObjectif(planId: string, { prevenir = true }: { pr
     .eq('id', planId).is('demarre_le', null).select('id');
   if (!pris?.length) return { numero: debut.numero };
   try {
+    // Juste après la course d'un autre objectif : calé sur ce que l'athlète y a vraiment couru.
+    if (reprise && apres && !o.envois.length) await recalerSurLePrecedent(o, apres.q.id, premier);
     await envoyerTrame(o, aujourdhui);
     await programmerQuestionnaires(o, dimancheSuivant(debut.lundi < aujourdhui ? aujourdhui : debut.lundi));
     // OM3 : l'objectif et ses courses de préparation, en compétitions dans Nolio.
@@ -515,6 +517,34 @@ export async function demarrerObjectif(planId: string, { prevenir = true }: { pr
     throw e;
   }
   return { numero: debut.numero };
+}
+
+// OM4 (décision coach du 21/10/2026) : un objectif qui démarre juste après la course d'un autre part de ce que
+// l'athlète y a vraiment couru — le volume moyen de ses 4 dernières semaines faites, sa plus longue sortie (hors course :
+// la semaine de la course ne s'écrit pas) —, comme un plan rejoint ce jour-là, et non des chiffres saisis à sa création.
+// Sans historique, ou refusés par le moteur, ces chiffres restent.
+async function recalerSurLePrecedent(o: Objectif, precedentId: string, lundi: string) {
+  const service = clientService();
+  const { data } = await service.from('plans').select('etat_ecriture').eq('id', precedentId).maybeSingle();
+  const etat = (data?.etat_ecriture ?? null) as { volumes_reels?: Record<string, number>; sl_reelles?: Record<string, number> } | null;
+  const volumes = Object.entries(etat?.volumes_reels ?? {}).sort((a, b) => Number(a[0]) - Number(b[0])).map(([, v]) => v).slice(-4);
+  const sl = Object.values(etat?.sl_reelles ?? {}).filter((v) => v > 0);
+  if (!volumes.some((v) => v > 0)) return;
+  // « 4h05 », comme le moteur les écrit (cts_semaine._duree_texte).
+  const duree = (min: number) => { const m = Math.round(min); return `${Math.floor(m / 60)}h${String(m % 60).padStart(2, '0')}`; };
+  const champs = {
+    ...((o.parametres.champs ?? {}) as Record<string, unknown>),
+    volume_hebdo_actuel: duree(volumes.reduce((a, b) => a + b, 0) / volumes.length),
+    ...(sl.length ? { sortie_longue_actuelle: duree(Math.max(...sl)) } : {}),
+  };
+  const parametres = { ...o.parametres, champs, declaree_le: lundi };
+  try {
+    await moteur('/v1/trame', { parametres });
+  } catch {
+    return;
+  }
+  await service.from('plans').update({ parametres, trame: null }).eq('id', o.planId);
+  o.parametres = parametres;
 }
 
 // Les autres objectifs écrits semaine par semaine du même athlète (sa fiche de coaché, ou son compte d'acheteur).
