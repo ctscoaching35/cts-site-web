@@ -32,9 +32,10 @@ import { ecrireZonesNolio } from './zonesNolio';
 export type Etat = Record<string, unknown>;
 // compteAthlete : le compte d'un coaché invité dans l'app (T6) ; ses gestes (une course, le veto) valent comme ceux du
 // propriétaire du plan.
+// reperesSources : la date de chaque repère d'un coaché (sa fiche), pour refaire ses tests tous les 6 mois.
 export type Objectif = Cible & {
   compteId: string; parametres: Record<string, unknown>; etat: Etat | null; accordLecture: boolean; coache: boolean;
-  compteAthlete: string | null; tempsH: number;
+  compteAthlete: string | null; tempsH: number; reperesSources?: Record<string, { le?: string } | undefined>;
 };
 export type RetourSeance = {
   id: string; date: string; faite: boolean; duree_min: number | null; rpe: number | null; ressenti: number | null; dplus_m: number | null;
@@ -129,13 +130,14 @@ export async function objectifEcrit(planId: string): Promise<Objectif | null> {
   const { data: c } = await service.from('coaching').select('athlete_id, coach_id').eq('plan_id', planId).maybeSingle();
   if (c?.athlete_id) {
     const { data: a } = await service.from('athletes_coaches')
-      .select('nolio_athlete_id, fc_seuil1, vc_ms, fc_seuil2, v_seuil1_ms, compte_id').eq('id', c.athlete_id).single();
+      .select('nolio_athlete_id, fc_seuil1, vc_ms, fc_seuil2, v_seuil1_ms, compte_id, reperes_sources').eq('id', c.athlete_id).single();
     const usr = (a?.nolio_athlete_id ?? null) as string | null;
     const { data: accord } = usr
       ? await service.from('nolio_accords').select('accord_le').eq('coach_id', c.coach_id).eq('nolio_athlete_id', usr).maybeSingle()
       : { data: null };
     return { ...base, coachId: c.coach_id as string, nolioAthlete: usr, coache: true, accordLecture: Boolean(accord),
       compteAthlete: (a?.compte_id ?? null) as string | null,
+      reperesSources: (a?.reperes_sources ?? {}) as Objectif['reperesSources'],
       profil: a ? profilDe({ fc_seuil1: a.fc_seuil1, vc_ms: a.vc_ms, fc_seuil2: a.fc_seuil2, v_seuil1_ms: a.v_seuil1_ms ?? null }) : {} };
   }
   const coachId = (p.coach_id as string | null) ?? (await compteDuCoach());
@@ -328,7 +330,7 @@ export async function ecrireEtEnvoyer(o: Objectif, numero: string, retours: Reto
 } = {}): Promise<SortieMoteur> {
   const sortie = await moteur<SortieMoteur>('/v1/semaine', {
     parametres: o.parametres, numero, etat: o.etat, retours, sans_ajustement: Boolean(options.sansAjustement),
-    valeurs: valeursConnues(o), reprise: Boolean(options.reprise),
+    valeurs: valeursConnues(o, o.plan.semaines.find((x) => x.numero === numero)?.lundi), reprise: Boolean(options.reprise),
   });
   const service = clientService();
   if (sortie.parametres) {
@@ -956,9 +958,16 @@ export async function poserCourse(o: Objectif, c: Course, principale: boolean) {
 // avec l'accord, le site lit le résultat dans Nolio, sinon les textes du test renvoient à l'app.
 // coache : sans accord de lecture, un coaché donne la valeur d'un test dans l'app ou à son coach dans Nolio ; un
 // acheteur, qui n'a pas de coach attitré, dans son app (décision coach du 20/10/2026).
-function valeursConnues(o: Objectif) {
-  return { fc_seuil1: 'fc_seuil1' in o.profil, vc: 'vc_ms' in o.profil, fc_seuil2: 'fc_seuil2' in o.profil, lecture: o.accordLecture,
-    coache: o.coache };
+// Les tests d'un coaché se refont tous les 6 mois, loin de la course (décision coach du 21/10/2026) : un repère de plus
+// de 6 mois, ou sans date, compte comme manquant, et le moteur replace son test au prochain moment qui s'y prête ;
+// jamais à moins de 8 semaines de l'objectif. L'ancienne valeur sert jusque-là. Les acheteurs : la règle d'avant.
+const RETEST_J = 182;
+const RETEST_HORS_COURSE_J = 56;
+function valeursConnues(o: Objectif, lundi?: string | null) {
+  const loin = o.coache && Boolean(lundi) && joursEntre(lundi as string, o.plan.course.date) > RETEST_HORS_COURSE_J;
+  const frais = (cle: string) => !loin || String(o.reperesSources?.[cle]?.le ?? '').slice(0, 10) >= ajouterJours(lundi as string, -RETEST_J);
+  return { fc_seuil1: 'fc_seuil1' in o.profil && frais('fc_seuil1'), vc: 'vc_ms' in o.profil && frais('vc_ms'),
+    fc_seuil2: 'fc_seuil2' in o.profil && frais('fc_seuil2'), lecture: o.accordLecture, coache: o.coache };
 }
 
 const testEcrit = (j: Semaine['jours'][number]) =>
