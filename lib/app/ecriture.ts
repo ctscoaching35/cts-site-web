@@ -370,20 +370,44 @@ async function programmerQuestionnaires(o: Objectif, premierDimanche: string) {
   crees.push({ jour_id: 'questionnaire:semaine', nolio_id: String(semaine.corps?.id ?? ''), genre: 'note' });
   // Noté aussitôt : un départ repris ne le pose pas deux fois.
   await garderEnvoi(o.coachId, o.planId, QUESTIONNAIRES, crees);
-  // Le Hooper pour les acheteurs, avec leur accord ; les coachés remplissent déjà celui que leur coach programme. Il ne
-  // bloque jamais le départ (défaut vu le 20/10/2026 sur l'achat test : un paramètre que Nolio refusait arrêtait tout,
-  // avant la première semaine).
+  // Le Hooper pour les acheteurs, avec leur accord ; les coachés remplissent déjà celui que leur coach programme.
   if (o.accordLecture && !o.coache) {
-    const cadres = await listeNolio<{ id: string; scope?: string; quiz_type?: string }>('library/quiz_frames/?quiz_type=hooper')
-      .catch(() => []);
-    const hooper = cadres.find((c) => c.scope === 'nolio') ?? cadres[0];
-    if (hooper) {
-      const h = await appelNolio('POST', 'planned/quizzes/', pour({ quiz_frame: hooper.id, date_start: premierDimanche,
-        hour_start: '08:00', recurrence }));
-      if (h.statut === 201 || h.statut === 200) crees.push({ jour_id: 'questionnaire:hooper', nolio_id: String(h.corps?.id ?? ''), genre: 'note' });
-    }
+    const h = await programmerHooper(o, premierDimanche);
+    if (h) crees.push(h);
   }
   await garderEnvoi(o.coachId, o.planId, QUESTIONNAIRES, crees);
+}
+
+// Le Hooper du dimanche, récurrent jusqu'à la veille de la course ; null s'il n'a pas pu être posé. Il ne bloque jamais
+// le départ (défaut vu le 20/10/2026 sur l'achat test : un paramètre que Nolio refusait arrêtait tout, avant la première
+// semaine).
+async function programmerHooper(o: Objectif, premierDimanche: string): Promise<SeanceEnvoyee | null> {
+  const jusqua = ajouterJours(o.plan.course.date, -1);
+  if (!o.nolioAthlete || premierDimanche > jusqua) return null;
+  const d = await destinataire(o.nolioAthlete);
+  const cadres = await listeNolio<{ id: string; scope?: string; quiz_type?: string }>('library/quiz_frames/?quiz_type=hooper')
+    .catch(() => []);
+  const hooper = cadres.find((c) => c.scope === 'nolio') ?? cadres[0];
+  if (!hooper) return null;
+  const corps = { quiz_frame: hooper.id, date_start: premierDimanche, hour_start: '08:00',
+    recurrence: { frequency: 'weekly', weekdays: [7], until: jusqua } };
+  const h = await appelNolio('POST', 'planned/quizzes/', d.moi ? corps : { ...corps, athletes: [d.usr] }).catch(() => null);
+  return h && (h.statut === 201 || h.statut === 200) ? { jour_id: 'questionnaire:hooper', nolio_id: String(h.corps?.id ?? ''), genre: 'note' } : null;
+}
+
+// L'accord de lecture donné après l'achat, dans l'onglet Compte (décision coach du 21/10/2026) : noté, et, la préparation
+// partie dans Nolio, le Hooper du dimanche s'y ajoute à partir du dimanche qui vient ; avant le départ, il part avec les
+// questionnaires. Retirable comme celui du questionnaire (retirerAccordLecture).
+export async function donnerAccordLecture(planId: string): Promise<void> {
+  const o = await objectifEcrit(planId);
+  if (!o || o.coache) throw new Error('Plan introuvable');
+  await clientService().from('plans').update({ accord_lecture_le: new Date().toISOString() }).eq('id', planId);
+  const questionnaires = o.envois.find((e) => e.semaine === QUESTIONNAIRES);
+  if (!questionnaires) return;
+  const h = await programmerHooper(o, dimancheSuivant(ajouterJours(aujourdhuiParis(), 1)));
+  if (!h) return;
+  const gardes = (questionnaires.seances as SeanceEnvoyee[]).filter((s) => s.jour_id !== 'questionnaire:hooper');
+  await garderEnvoi(o.coachId, o.planId, QUESTIONNAIRES, [...gardes, h]);
 }
 
 const aujourdhuiParis = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());

@@ -3,7 +3,7 @@ import EnTeteApp from '@/components/app/EnTeteApp';
 import { Avertissement } from '@/components/app/Texte';
 import { Deconnexion, Suppression } from '@/components/app/BoutonsCompte';
 import Installation from '@/components/app/Installation';
-import { RetirerAccord } from '@/components/app/GestesEcriture';
+import { DonnerAccord, RetirerAccord } from '@/components/app/GestesEcriture';
 import { Carte, CarteSombre, Surtitre } from '@/components/app/Ui';
 import { contexte, initiales, type Recherche } from '@/lib/app/contexte';
 import { dateLongue } from '@/lib/app/plan';
@@ -105,6 +105,7 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
                       : 'Sans accord de lecture, ta préparation suit sa trame, ton questionnaire du dimanche et tes séances faites ou manquées, et tu donnes toi-même tes repères.'}
                 </p>
                 {!ctx.coache && affiche?.parametres && affiche.accord_lecture_le && <RetirerAccord planId={ctx.cle} />}
+                {!ctx.coache && affiche?.parametres && !affiche.accord_lecture_le && <DonnerAccord planId={ctx.cle} />}
               </div>
             </div>
           </Carte>

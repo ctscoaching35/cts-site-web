@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
-import { ajouterCourse, annulerSemaine, demarrerDansNolio, retirerCourse, retirerMonAccord, type EtatGeste } from '@/lib/app/actionsEcriture';
+import { ajouterCourse, annulerSemaine, demarrerDansNolio, donnerMonAccord, retirerCourse, retirerMonAccord, type EtatGeste } from '@/lib/app/actionsEcriture';
 
 // Les gestes de l'écriture semaine par semaine (lib/app/actionsEcriture.ts) : démarrer un objectif dans Nolio, annuler
 // les ajustements d'une semaine, ajouter une course secondaire.
@@ -82,6 +82,25 @@ export function AjouterCourse({ planId }: { planId: string }) {
       <button type="submit" disabled={enCours}
         className="w-full min-h-12 rounded-xl bg-teal text-white text-sm font-bold disabled:opacity-50">
         {enCours ? 'Vérification…' : 'Ajouter la course'}
+      </button>
+      <Message etat={etat} />
+    </form>
+  );
+}
+
+// L'accord de lecture donné après l'achat (décision coach du 21/10/2026), avec la phrase du questionnaire d'achat.
+export function DonnerAccord({ planId }: { planId: string }) {
+  const [etat, action, enCours] = useActionState<EtatGeste, FormData>(donnerMonAccord.bind(null, planId), null);
+  if (etat?.ok) return <Message etat={etat} />;
+  return (
+    <form action={action} className="space-y-2">
+      <p className="text-[0.8rem] text-[#4A4866] leading-relaxed">
+        J’accepte que l’app lise dans Nolio mes séances faites, mon RPE, mon ressenti et mon Hooper, et la trace de mes
+        séances test (distance, FC) pour en tirer mes repères (FC aux seuils, allures) et les garder, seulement pour ajuster
+        ma préparation et afficher mes graphiques. Je peux retirer cet accord à tout moment.
+      </p>
+      <button type="submit" disabled={enCours} className="btn btn-primary disabled:opacity-50">
+        {enCours ? 'Envoi…' : 'Donner mon accord'}
       </button>
       <Message etat={etat} />
     </form>

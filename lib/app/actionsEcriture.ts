@@ -7,7 +7,8 @@
 import { revalidatePath } from 'next/cache';
 import { API_URL } from '@/lib/plan';
 import {
-  annulerAjustements, demarrerObjectif, objectifEcrit, plansALaMain, poserCourse, poserFichePreparation, retirerAccordLecture, retirerCourseDeNolio,
+  annulerAjustements, demarrerObjectif, donnerAccordLecture, objectifEcrit, plansALaMain, poserCourse, poserFichePreparation, retirerAccordLecture,
+  retirerCourseDeNolio,
 } from './ecriture';
 import { coachConnecte } from './nolio';
 import { clientServeur, clientService } from './supabase';
@@ -170,6 +171,21 @@ function heuresDuChrono(brut: string): number | null {
 }
 
 // T5 : l'acheteur retire son accord de lecture, depuis son Compte.
+export async function donnerMonAccord(planId: string, _e: EtatGeste): Promise<EtatGeste> {
+  const { compteId } = await qui();
+  const o = await objectifEcrit(planId);
+  if (!o || !compteId || o.compteId !== compteId || o.coache) return { ok: false, message: 'Plan introuvable.' };
+  try {
+    await donnerAccordLecture(planId);
+    revalidatePath('/app');
+    revalidatePath('/app/compte');
+    return { ok: true, message: 'C’est fait : l’app lit maintenant tes séances faites, ton RPE, ton ressenti et ton Hooper. Le questionnaire Hooper s’ajoute dans Nolio à partir de dimanche.' };
+  } catch (e) {
+    console.error(`Accord de ${planId} :`, e instanceof Error ? e.message : e);
+    return { ok: false, message: 'L’accord n’a pas abouti : réessaie dans un moment.' };
+  }
+}
+
 export async function retirerMonAccord(planId: string, _e: EtatGeste): Promise<EtatGeste> {
   const { compteId } = await qui();
   const o = await objectifEcrit(planId);
