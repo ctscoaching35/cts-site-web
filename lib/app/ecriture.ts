@@ -18,10 +18,10 @@ import {
   creer, destinataire, envoyerSemaineCible, garderEnvoi, mettreAJourSemaineCible, profilDe, seancesDuMoteur,
   type Cible, type Envoi, type SeanceEnvoyee,
 } from './coaching';
-import { EXPEDITEUR } from './emailBienvenue';
+import { envoyerRelanceInvitation, EXPEDITEUR } from './emailBienvenue';
 import { lienFicheCourse } from './ficheCourse';
 import { appelNolio, coachs, listeNolio, refusNolio, SPORTS_COURSE } from './nolio';
-import { ajouterJours, type Plan, type Semaine } from './plan';
+import { ajouterJours, joursEntre, type Plan, type Semaine } from './plan';
 import { clientService } from './supabase';
 import type { Fiche } from './tableau';
 import { fcSeuil2DuTest, lireParole, vcDuTest, type Flux, type Tour } from './tests';
@@ -1159,6 +1159,41 @@ export async function reinviter(): Promise<Compte[]> {
   return comptes;
 }
 
+// Une invitation envoyée et jamais acceptée (décision coach du 21/10/2026 : « relance puis alerte ») : 3 jours après
+// l'achat, un e-mail à l'acheteur ; 7 jours après, un e-mail au coach, avec son adresse. Le passage tourne une fois par
+// jour : chaque envoi tombe un seul jour, sans rien garder.
+export const JOURS_RELANCE = 3;
+export const JOURS_ALERTE = 7;
+export async function relancerInvitations(): Promise<Compte[]> {
+  const service = clientService();
+  const aujourdhui = aujourdhuiParis();
+  const { data } = await service.from('plans').select('id, compte_id, course_nom, cree_le, nom:donnees->athlete->>nom')
+    .eq('nolio_statut', 'invite').gte('course_date', aujourdhui);
+  const comptes: Compte[] = [];
+  for (const p of data ?? []) {
+    const depuis = joursEntre(new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date(p.cree_le as string)), aujourdhui);
+    if (depuis !== JOURS_RELANCE && depuis !== JOURS_ALERTE) continue;
+    try {
+      const { data: u } = await service.auth.admin.getUserById(p.compte_id as string);
+      const email = u?.user?.email;
+      if (!email) continue;
+      if (depuis === JOURS_RELANCE) {
+        await envoyerRelanceInvitation(email, String(p.nom ?? ''), `${site.url}/app`);
+        comptes.push({ plan: p.id as string, quoi: 'invitation relancée' });
+      } else {
+        await prevenirCoach('Plan CTS : invitation Nolio toujours en attente',
+          `L’acheteur du plan « ${p.course_nom} » n’a toujours pas accepté l’invitation dans ton équipe Nolio, `
+          + `${JOURS_ALERTE} jours après son achat : ses séances ne peuvent pas lui arriver. Il a été relancé par e-mail `
+          + `au bout de ${JOURS_RELANCE} jours. Son adresse : ${email}.`);
+        comptes.push({ plan: p.id as string, quoi: 'coach prévenu (invitation en attente)' });
+      }
+    } catch (e) {
+      comptes.push({ plan: p.id as string, quoi: 'relance non faite', erreur: e instanceof Error ? e.message : String(e) });
+    }
+  }
+  return comptes;
+}
+
 // ─── Le passage quotidien ─────────────────────────────────────────────────
 
 // Chaque jour : la fatigue franche de chaque plan actif (avec l'accord de lecture), les invitations à refaire, et un
@@ -1183,6 +1218,7 @@ export async function passageQuotidien(): Promise<Compte[]> {
     }
   }
   comptes.push(...await reinviter());
+  comptes.push(...await relancerInvitations());
   comptes.push(...await departsDuJour());
   await resumeAuCoach(comptes.filter((c) => c.coache && c.journal?.length), tests.filter((t) => t.coache));
   return comptes;

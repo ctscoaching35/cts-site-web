@@ -108,3 +108,47 @@ export async function envoyerBienvenue(
   });
   if (!reponse.ok) throw new Error(`Brevo ${reponse.status} : ${await reponse.text()}`);
 }
+
+// La relance d'une invitation Nolio pas encore acceptée, trois jours après l'achat (décision coach du 21/10/2026 :
+// « relance puis alerte ») ; lib/app/ecriture.ts, relancerInvitations. BROUILLON validé par le coach le 21/10/2026.
+export function contenuRelanceInvitation(nom: string, lienApp: string) {
+  const prenom = nom.trim().split(/\s+/)[0] ?? '';
+  const paragraphes = [
+    'Tes séances n’ont pas encore pu arriver : Nolio attend que tu acceptes son invitation à rejoindre l’équipe CTS. '
+      + 'Elle est arrivée par e-mail à l’adresse de ton achat, ou à celle de ton compte Nolio (pense à regarder dans tes '
+      + 'indésirables). Dès que tu l’acceptes, ta préparation s’installe dans ton calendrier Nolio.',
+    'Tu ne la trouves pas ? Réponds simplement à cet e-mail : nous t’en renvoyons une.',
+  ];
+  const signature = 'Juliette et Romain — CTS Coaching';
+  const bouton = 'Ouvrir mon tableau de bord';
+  const bonjour = prenom ? `Bonjour ${prenom},` : 'Bonjour,';
+  const texte = [bonjour, ...paragraphes, `${bouton} : ${lienApp}`, signature].join('\n\n');
+  const p = (contenu: string) => `<p style="margin:0 0 16px;line-height:1.55">${contenu}</p>`;
+  const html = `<!doctype html><html lang="fr"><body style="margin:0;padding:24px 12px;background:#F3F7F0">
+<div style="max-width:560px;margin:0 auto;background:#ffffff;padding:32px 28px;font-family:Helvetica,Arial,sans-serif;font-size:16px;color:#2F2D4E">
+${p(echapper(bonjour))}
+${paragraphes.map((x) => p(echapper(x))).join('\n')}
+<p style="margin:24px 0"><a href="${echapper(lienApp)}" style="display:inline-block;background:#0C6E5F;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 24px">${bouton}</a></p>
+<p style="margin:24px 0 0;line-height:1.55;font-weight:bold">${signature}</p>
+</div></body></html>`;
+  return { sujet: 'Ta Préparation CTS t’attend dans Nolio', texte, html };
+}
+
+export async function envoyerRelanceInvitation(email: string, nom: string, lienApp: string) {
+  const cle = process.env.BREVO_API_KEY?.trim();
+  if (!cle) {
+    console.warn('Relance de l’invitation non envoyée : BREVO_API_KEY absente.');
+    return;
+  }
+  const { sujet, texte, html } = contenuRelanceInvitation(nom, lienApp);
+  const reponse = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: { 'api-key': cle, 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({
+      sender: EXPEDITEUR, replyTo: EXPEDITEUR, to: [{ email, name: nom.trim() || email }],
+      subject: sujet, textContent: texte, htmlContent: html,
+    }),
+    cache: 'no-store',
+  });
+  if (!reponse.ok) throw new Error(`Brevo ${reponse.status} : ${await reponse.text()}`);
+}
