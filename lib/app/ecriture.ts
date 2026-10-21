@@ -25,7 +25,7 @@ import { ajouterJours, joursEntre, type Plan, type Semaine } from './plan';
 import { clientService } from './supabase';
 import type { Fiche } from './tableau';
 import { fcSeuil2DuTest, lireParole, vcDuTest, type Flux, type Tour } from './tests';
-import { allure, kmh, PROFIL_VIDE } from './zones';
+import { allure, coefficientRiegel, kmh, PROFIL_VIDE } from './zones';
 import { reperesDeBase } from './reperes';
 import { ecrireZonesNolio } from './zonesNolio';
 
@@ -36,6 +36,7 @@ export type Etat = Record<string, unknown>;
 export type Objectif = Cible & {
   compteId: string; parametres: Record<string, unknown>; etat: Etat | null; accordLecture: boolean; coache: boolean;
   compteAthlete: string | null; tempsH: number; reperesSources?: Record<string, { le?: string } | undefined>;
+  dPrime?: number | null;
 };
 export type RetourSeance = {
   id: string; date: string; faite: boolean; duree_min: number | null; rpe: number | null; ressenti: number | null; dplus_m: number | null;
@@ -130,21 +131,21 @@ export async function objectifEcrit(planId: string): Promise<Objectif | null> {
   const { data: c } = await service.from('coaching').select('athlete_id, coach_id').eq('plan_id', planId).maybeSingle();
   if (c?.athlete_id) {
     const { data: a } = await service.from('athletes_coaches')
-      .select('nolio_athlete_id, fc_seuil1, vc_ms, fc_seuil2, v_seuil1_ms, compte_id, reperes_sources').eq('id', c.athlete_id).single();
+      .select('nolio_athlete_id, fc_seuil1, vc_ms, fc_seuil2, v_seuil1_ms, compte_id, reperes_sources, d_prime_m').eq('id', c.athlete_id).single();
     const usr = (a?.nolio_athlete_id ?? null) as string | null;
     const { data: accord } = usr
       ? await service.from('nolio_accords').select('accord_le').eq('coach_id', c.coach_id).eq('nolio_athlete_id', usr).maybeSingle()
       : { data: null };
     return { ...base, coachId: c.coach_id as string, nolioAthlete: usr, coache: true, accordLecture: Boolean(accord),
       compteAthlete: (a?.compte_id ?? null) as string | null,
-      reperesSources: (a?.reperes_sources ?? {}) as Objectif['reperesSources'],
+      reperesSources: (a?.reperes_sources ?? {}) as Objectif['reperesSources'], dPrime: (a?.d_prime_m ?? null) as number | null,
       profil: a ? profilDe({ fc_seuil1: a.fc_seuil1, vc_ms: a.vc_ms, fc_seuil2: a.fc_seuil2, v_seuil1_ms: a.v_seuil1_ms ?? null }) : {} };
   }
   const coachId = (p.coach_id as string | null) ?? (await compteDuCoach());
   if (!coachId) return null;
-  const { data: z } = await service.from('zones').select('fc_seuil1, vc_ms, fc_seuil2, v_seuil1_ms').eq('plan_id', planId).maybeSingle();
+  const { data: z } = await service.from('zones').select('fc_seuil1, vc_ms, fc_seuil2, v_seuil1_ms, d_prime_m').eq('plan_id', planId).maybeSingle();
   return { ...base, coachId, nolioAthlete: (p.nolio_athlete_id ?? null) as string | null, coache: false, compteAthlete: null,
-    accordLecture: Boolean(p.accord_lecture_le),
+    accordLecture: Boolean(p.accord_lecture_le), dPrime: (z?.d_prime_m ?? null) as number | null,
     profil: z ? profilDe({ fc_seuil1: z.fc_seuil1, vc_ms: z.vc_ms, fc_seuil2: z.fc_seuil2, v_seuil1_ms: z.v_seuil1_ms ?? null }) : {} };
 }
 
@@ -325,9 +326,23 @@ async function garderNote(o: Objectif, cle: string, dateIso: string, titre: stri
 
 // Écrire une semaine et l'envoyer (la créer, ou la mettre à jour si elle est déjà partie : le coach a annulé, la fatigue).
 // depuis : les jours d'avant ne partent pas (un départ en milieu de semaine).
+// Le profil du coureur (décision coach du 21/10/2026, « le point faible à distance ») : « rapide » ou « endurant », tiré
+// de son test de vitesse critique par la règle de l'app (coefficient de Riegel sous 0,90), porté par les paramètres du
+// plan, que le moteur lit pour son développement ; sans test, aucun. Remis à jour à chaque semaine écrite.
+async function suivreLeProfil(o: Objectif) {
+  const vc = (o.profil as { vc_ms?: number }).vc_ms;
+  const profil = vc && o.dPrime ? (coefficientRiegel(vc, o.dPrime) < 0.9 ? 'rapide' : 'endurant') : null;
+  if ((o.parametres.profil_coureur ?? null) === profil) return;
+  const { profil_coureur: _ancien, ...reste } = o.parametres;
+  const parametres = profil ? { ...reste, profil_coureur: profil } : reste;
+  await clientService().from('plans').update({ parametres, trame: null }).eq('id', o.planId);
+  o.parametres = parametres;
+}
+
 export async function ecrireEtEnvoyer(o: Objectif, numero: string, retours: Retours | null, options: {
   sansAjustement?: boolean; depuis?: string; reprise?: boolean;
 } = {}): Promise<SortieMoteur> {
+  await suivreLeProfil(o);
   const sortie = await moteur<SortieMoteur>('/v1/semaine', {
     parametres: o.parametres, numero, etat: o.etat, retours, sans_ajustement: Boolean(options.sansAjustement),
     valeurs: valeursConnues(o, o.plan.semaines.find((x) => x.numero === numero)?.lundi), reprise: Boolean(options.reprise),
