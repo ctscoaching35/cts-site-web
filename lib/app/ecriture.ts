@@ -382,7 +382,7 @@ async function envoyerTrame(o: Objectif, depuis: string) {
   const crees: SeanceEnvoyee[] = [];
   for (const s of o.plan.semaines) {
     if (!s.lundi || ajouterJours(s.lundi, 6) < depuis) continue;
-    const { cycle, renfo } = await seancesDuMoteur(o.plan, o.planId, { ...s, jours: [] }, o.profil, o.niveau, true);
+    const { cycle, renfo } = await seancesDuMoteur(o.plan, o.planId, { ...s, jours: [] }, o.profil, o.niveau, true, o.coache);
     if (cycle) {
       const c = await creer(d, `${TRAME}:${s.numero}`, cycle, 'cycle');
       if (c.erreur) throw new Error(c.erreur);

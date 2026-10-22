@@ -8,7 +8,7 @@
 import { API_URL } from '@/lib/plan';
 import { actionsTrame, dateDe, empreinte, type Voulu } from './trameNolio';
 import { lienFicheCourse } from './ficheCourse';
-import { ajouterJours, type Plan, type Semaine } from './plan';
+import { ajouterJours, jMoins, type Plan, type Semaine } from './plan';
 import { qualitesDuBloc } from './tableau';
 import { appelNolio, convertirIdsV1, listeNolio, moiNolio, nolioConfigure, refusNolio, SPORTS_COURSE } from './nolio';
 import { ficheDuCompte } from './demandes';
@@ -160,7 +160,7 @@ type JourTraduit = { id: string; nolio: Record<string, unknown> | null; note: Re
 const SEMAINE = 'semaine';
 const RENFO = ':renfo';
 export async function seancesDuMoteur(plan: Plan, planId: string, semaine: Semaine, profil: Record<string, number>, niveau: string,
-  avecTrame = true) {
+  avecTrame = true, coache = false) {
   // La place de la semaine dans son bloc : la dose du renfo monte à partir de la troisième. Et parmi ses semaines de
   // charge : les deux séances de renfo du bloc alternent sans se répéter après une assimilation (RF5).
   const duBloc = plan.semaines.filter((s) => s.bloc === semaine.bloc);
@@ -178,6 +178,8 @@ export async function seancesDuMoteur(plan: Plan, planId: string, semaine: Semai
       // Sa place et les qualités de son bloc : la description du bandeau (décision coach du 21/10/2026).
       semaine: { type: semaine.type, bloc: semaine.bloc, lundi: semaine.lundi, rang_bloc: rang || 1,
         rang_charge: rangCharge || null, numero: semaine.numero,
+        // Un coaché : le compte à rebours de l'app dans son bandeau (décision coach du 22/10/2026).
+        compte_a_rebours: coache && semaine.lundi ? jMoins(semaine.lundi, plan.course.date) : null,
         total: plan.semaines.length, ...qualitesDuBloc(plan, semaine.bloc) } }),
   });
   if (!r.ok) throw new Error(`Moteur /v1/nolio/seances : ${r.status}`);
@@ -224,16 +226,17 @@ async function monterRenfo(seances: { id: string; nolio: Record<string, unknown>
 // Ce qu'un envoi dans Nolio demande, d'où que vienne le plan : un objectif coaché (son compte coach, sa fiche) ou le
 // plan d'un acheteur (écriture semaine par semaine, lib/app/ecriture.ts). avecTrame : le bandeau et les fiches partent
 // avec chaque semaine (l'envoi en entier d'avant le 19/10/2026), ou au départ avec la trame (semaine par semaine).
+// coache : un coaché, dont le bandeau dit le compte à rebours plutôt que le rang de la semaine (22/10/2026).
 export type Cible = {
   coachId: string; planId: string; plan: Plan; nolioAthlete: string | null; profil: Record<string, number>;
-  niveau: string; envois: Envoi[]; avecTrame: boolean;
+  niveau: string; envois: Envoi[]; avecTrame: boolean; coache?: boolean;
 };
 
 async function cibleCoache(coachId: string, planId: string): Promise<Cible> {
   const o = await objectifCoache(coachId, planId);
   if (!o) throw new Error('Objectif introuvable');
   return { coachId, planId, plan: o.plan, nolioAthlete: o.athlete.nolio_athlete_id, profil: profilDe(o.athlete),
-    niveau: o.niveau, envois: o.envois, avecTrame: true };
+    niveau: o.niveau, envois: o.envois, avecTrame: true, coache: true };
 }
 
 type Destinataire = { usr: string; moi: boolean };
@@ -287,7 +290,7 @@ export async function envoyerSemaineCible(c: Cible, numero: string, semaineEcrit
   if (c.envois.some((e) => e.semaine === numero)) throw new Error('Cette semaine est déjà envoyée : mets-la à jour.');
   const semaine = semaineEcrite ?? c.plan.semaines.find((s) => s.numero === numero);
   if (!semaine) throw new Error('Semaine introuvable');
-  const { jours, cycle, renfo } = await seancesDuMoteur(c.plan, planId, semaine, c.profil, c.niveau, c.avecTrame);
+  const { jours, cycle, renfo } = await seancesDuMoteur(c.plan, planId, semaine, c.profil, c.niveau, c.avecTrame, Boolean(c.coache));
   const crees: SeanceEnvoyee[] = [];
   let bandeau = '';
   if (cycle) {
@@ -403,7 +406,7 @@ export async function realignerTrame(c: Cible, cle: string, aujourdhui: string):
   const d = await destinataire(c.nolioAthlete);
   const voulus = new Map<string, Voulu>();
   for (const s of c.plan.semaines.filter((x) => x.lundi && x.lundi > aujourdhui)) {
-    const { cycle, renfo } = await seancesDuMoteur(c.plan, c.planId, { ...s, jours: [] }, c.profil, c.niveau, true);
+    const { cycle, renfo } = await seancesDuMoteur(c.plan, c.planId, { ...s, jours: [] }, c.profil, c.niveau, true, Boolean(c.coache));
     if (cycle) voulus.set(`${cle}:${s.numero}`, { genre: 'cycle', corps: cycle });
     for (const f of renfo) {
       const note = f.note as Record<string, unknown> | null;
@@ -493,7 +496,7 @@ export async function mettreAJourSemaineCible(c: Cible, numero: string, semaineE
   if (!envoi || !semaine?.lundi) throw new Error('Cette semaine n’est pas encore envoyée.');
   await convertirEnvoisV1(planId, d, [envoi]);
   const dansNolio = await versions(d, ajouterJours(semaine.lundi, -1), ajouterJours(semaine.lundi, 7));
-  const { jours, cycle, renfo } = await seancesDuMoteur(c.plan, planId, semaine, c.profil, c.niveau, c.avecTrame);
+  const { jours, cycle, renfo } = await seancesDuMoteur(c.plan, planId, semaine, c.profil, c.niveau, c.avecTrame, Boolean(c.coache));
   const date = (jourId: string) => {
     if (jourId === SEMAINE) return 'la semaine';
     const jour = semaine.jours.find((j) => j.id === jourId.replace(RENFO, ''))?.date ?? jourId;
