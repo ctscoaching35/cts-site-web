@@ -10,6 +10,7 @@ import { Montagne } from '@/components/app/TableauDeBord';
 import { Carte, CarteSombre, PastilleDate, Surtitre } from '@/components/app/Ui';
 import { garderObjectif, retirerObjectif } from '@/lib/app/actionsCoaching';
 import { objectifCoache, verifierEnvois } from '@/lib/app/coaching';
+import { courseNolio } from '@/lib/app/coursesNolio';
 import { demandesDuCoach } from '@/lib/app/demandes';
 import { annonceDepart, trameDuPlan, type Realise } from '@/lib/app/ecriture';
 import { lienFicheCourse } from '@/lib/app/ficheCourse';
@@ -41,7 +42,9 @@ function resultatTest(r: Record<string, unknown>): string {
 // 19/10/2026). Écrit semaine par semaine : son départ dans Nolio, puis le journal des semaines écrites (ce qui a été
 // fait, les ajustements, que le coach peut annuler, les tests lus), sa montagne, ses courses de préparation. Envoyé en
 // entier (avant le 19/10/2026) : ses semaines et leur envoi, comme avant.
-export default async function ObjectifCoache({ params }: { params: Promise<{ id: string }> }) {
+export default async function ObjectifCoache({ params, searchParams }: {
+  params: Promise<{ id: string }>; searchParams: Promise<{ course?: string }>;
+}) {
   if (!supabaseConfigure()) notFound();
   const coach = await exigerCoach();
   const { id } = await params;
@@ -59,6 +62,9 @@ export default async function ObjectifCoache({ params }: { params: Promise<{ id:
   // La demande de retrait de l'athlète, en attente (décision coach du 20/10/2026).
   const retrait = demandes.find((d) => d.plan_id === id) ?? null;
   const nolio = o.athlete.nolio_athlete_id;
+  // Une course B de Nolio, depuis sa fiche (« En préparation ») : le formulaire s'ouvre déjà rempli.
+  const { course: courseId } = await searchParams;
+  const depuisNolio = nolio && courseId ? await courseNolio(nolio, courseId).catch(() => null) : null;
   const envois = nolio ? await verifierEnvois(id, nolio, o.plan, o.envois) : o.envois.map((e) => ({ ...e, retouchees: 0, supprimees: 0 }));
   const jour = aujourdhuiParis();
   const trame = ecriture?.parametres ? await trameDuPlan(id).catch(() => null) : null;
@@ -270,11 +276,12 @@ export default async function ObjectifCoache({ params }: { params: Promise<{ id:
                 </div>
               ))}
               {course.date >= jour && (
-                <details className="text-sm" open={preps.length === 0}>
+                <details className="text-sm" open={preps.length === 0 || Boolean(depuisNolio)}>
                   <summary className="cursor-pointer flex items-center justify-center min-h-11 rounded-xl border-[1.5px] border-dashed border-teal/45 text-[0.8125rem] font-bold text-teal list-none">
                     + Ajouter une course de préparation
                   </summary>
-                  <div className="mt-3"><AjouterCourse planId={id} /></div>
+                  {depuisNolio && <p className="mt-3 text-[0.8125rem] text-[#4A4866]">Reprise de Nolio : relis la distance, le D+ et le chrono visé.</p>}
+                  <div className="mt-3"><AjouterCourse planId={id} initial={depuisNolio} /></div>
                 </details>
               )}
             </Carte>

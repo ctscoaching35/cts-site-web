@@ -15,8 +15,9 @@ import { ficheAthlete } from '@/lib/app/coaching';
 import { initiales } from '@/lib/app/contexte';
 import { demandesDuCoach } from '@/lib/app/demandes';
 import { entreeDe } from '@/lib/app/entree';
+import { coursesDansNolio, pasEncoreIci } from '@/lib/app/coursesNolio';
 import { athletesNolio, ErreurNolio, exigerCoach, nolioConfigure, type AthleteNolio } from '@/lib/app/nolio';
-import { dateLongue } from '@/lib/app/plan';
+import { ajouterJours, dateLongue } from '@/lib/app/plan';
 import { textes } from '@/lib/plan';
 import { allureDepuisVitesse } from '@/lib/app/allureCoach';
 import { clientService, supabaseConfigure } from '@/lib/app/supabase';
@@ -75,14 +76,24 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
   const jour = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
   const prochain = a.objectifs.find((o) => o.course_date >= jour)?.plan_id ?? null;
   const nomNolio = liste.find((x) => x.id === a.nolio_athlete_id)?.name ?? null;
+  // Ses courses dans Nolio pas encore dans CTS (décision coach du 22/10/2026, « proposer, tu valides ») : aucun objectif
+  // ni course de préparation à leur date.
+  const dejaIci = new Set([...a.objectifs.map((o) => o.course_date), ...(plans ?? []).flatMap((p) =>
+    (((p.parametres as Record<string, unknown> | null)?.courses_secondaires ?? []) as CourseSecondaire[]).map((c) => c.date))]);
+  const coursesNolio = a.nolio_athlete_id && relie
+    ? pasEncoreIci(await coursesDansNolio(a.nolio_athlete_id).catch(() => []), dejaIci) : [];
+  const courseA = coursesNolio.find((c) => c.type === 'a') ?? null;
   // Son entrée (décision coach du 22/10/2026), sur son prochain objectif.
   const pp = prochain ? etat.get(prochain) : undefined;
   const entree = entreeDe({
     athleteId: a.id, nolio: Boolean(a.nolio_athlete_id), accord: Boolean(accord), programmation: a.programmation,
     objectif: prochain ? { plan_id: prochain, ecrit: Boolean(pp?.parametres), demarre: Boolean(pp?.demarre_le),
       prevu: (pp?.depart_prevu as string | null) ?? null } : null,
-    dimanchesJusqua: a.questionnaires?.jusqua ?? null, aujourdhui: jour,
+    dimanchesJusqua: a.questionnaires?.jusqua ?? null, aujourdhui: jour, courseA,
   });
+  // Une course B devient une préparation de son objectif en cours, à partir de lundi prochain et avant sa course.
+  const lundiProchain = ajouterJours(jour, 7 - ((new Date(`${jour}T12:00:00Z`).getUTCDay() + 6) % 7));
+  const dateProchain = a.objectifs.find((o) => o.plan_id === prochain)?.course_date ?? '';
   const pastilles: [string, boolean][] = [
     [a.nolio_athlete_id ? 'Nolio relié' : 'Nolio à associer', Boolean(a.nolio_athlete_id)],
     [accord ? 'Accord de lecture reçu' : 'Sans accord de lecture', Boolean(accord)],
@@ -157,6 +168,32 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
               );
             })}
           </Carte>
+
+          {coursesNolio.length > 0 && (
+            <Carte className="!p-5 space-y-3">
+              <Surtitre>Ses courses dans Nolio</Surtitre>
+              <p className="text-[0.8125rem] leading-relaxed text-[#4A4866]">Celles que tu as posées dans Nolio et qui ne sont pas encore ici.</p>
+              {coursesNolio.map((c) => {
+                const preparation = c.type === 'b' && prochain && pp?.parametres && c.date >= lundiProchain && c.date < dateProchain;
+                return (
+                  <div key={c.id} className="flex flex-wrap items-center gap-3 p-3 rounded-xl border border-indigo/[0.12]">
+                    <PastilleDate iso={c.date} />
+                    <span className="flex-[1_1_180px] min-w-0">
+                      <span className="block text-sm font-bold">{c.nom}</span>
+                      <span className="block text-xs text-[#5E5C78]">
+                        {[c.type === 'a' ? 'objectif A' : c.type === 'b' ? 'course B' : null,
+                          c.distance_km ? `${c.distance_km} km` : 'distance à saisir', c.dplus_m ? `${c.dplus_m} m D+` : null].filter(Boolean).join(' · ')}
+                      </span>
+                    </span>
+                    <Link href={preparation ? `/app/coach/plan/${prochain}?course=${c.id}#ajouter-course` : `/app/coach/nouveau?athlete=${a.id}&course=${c.id}`}
+                      className="inline-flex items-center min-h-10 px-3 rounded-[10px] border border-teal text-teal text-[0.8125rem] font-bold whitespace-nowrap">
+                      {preparation ? 'En préparation ›' : 'Créer l’objectif ›'}
+                    </Link>
+                  </div>
+                );
+              })}
+            </Carte>
+          )}
 
           <Carte className="!p-5 space-y-3">
             <Surtitre>Sa programmation</Surtitre>

@@ -4,6 +4,7 @@ import Questionnaire from '@/components/plan/Questionnaire';
 import { exigerCoach } from '@/lib/app/nolio';
 import { questionnairePrerempli } from '@/lib/app/coaching';
 import { demandeDuCoach } from '@/lib/app/demandes';
+import { courseNolio } from '@/lib/app/coursesNolio';
 import type { Recherche } from '@/lib/app/contexte';
 
 // Toujours calculée à la visite : la page lit la session du coach.
@@ -20,6 +21,14 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
   // OM1 : l'objectif demandé par le coaché, ses réponses à relire ; sa trace part avec la demande.
   const demande = suite && typeof r.demande === 'string' ? await demandeDuCoach(coach.compteId, r.demande) : null;
   const court = Boolean(suite?.profilConnu && !demande);
+  // Une course de Nolio, depuis sa fiche (« Créer l'objectif », décision coach du 22/10/2026) : la course déjà remplie.
+  const usr = suite?.athlete.nolio_athlete_id;
+  const c = usr && !demande && typeof r.course === 'string' ? await courseNolio(usr, r.course).catch(() => null) : null;
+  const deNolio = c ? {
+    course_nom: c.nom, date_course: c.date, ...(c.distance_km ? { distance_km: String(c.distance_km) } : {}),
+    ...(c.dplus_m ? { dplus_m: String(c.dplus_m) } : {}), ...(c.dmoins_m ? { dmoins_m: String(c.dmoins_m) } : {}),
+    ...(c.chrono ? { temps_cible: c.chrono } : {}),
+  } : null;
   const jour = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
   const enCours = suite?.athlete.objectifs.find((o) => o.course_date >= jour) ?? null;
   return (
@@ -32,6 +41,7 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
           <div className="eyebrow text-teal mb-3">Athlète coaché</div>
           <h1 className="text-3xl sm:text-4xl text-indigo leading-tight">{suite ? `Nouvel objectif pour ${suite.athlete.nom}` : 'Ajouter un athlète'}</h1>
           <p className="text-indigo/70 mt-2">
+            {deNolio ? `${c?.nom} vient de Nolio : la course est remplie, relis sa distance, son dénivelé et le temps visé. ` : ''}
             {demande
               ? `Sa demande du ${new Date(demande.cree_le).toLocaleDateString('fr-FR')} : relis ses réponses, corrige si besoin, et lance l’objectif.${demande.gpx_chemin ? ' Sa trace part avec la demande.' : ''}`
               : court && suite?.nolio
@@ -56,7 +66,7 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
           </div>
         )}
         <Questionnaire coach court={court} emailCoach={coach.email} athleteId={suite?.athlete.id} demandeId={demande?.id}
-          initial={demande ? { ...demande.champs, nom: suite?.athlete.nom ?? '' } : suite?.initial} />
+          initial={demande ? { ...demande.champs, nom: suite?.athlete.nom ?? '' } : deNolio ? { ...suite?.initial, ...deNolio } : suite?.initial} />
       </div>
     </CadreCoach>
   );

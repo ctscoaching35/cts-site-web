@@ -5,15 +5,17 @@
  * ce qui demande son intervention, classé par urgence, chaque ligne avec son geste — ce qui bloque (objectif demandé,
  * Nolio à associer ou quitté, accord manquant, objectif pas démarré, semaine pas partie), la santé (arrêt, fatigue
  * franche, RPE à revoir), les décisions du moteur (semaine manquée, séance trop dure), ce qui arrive (course de
- * préparation, objectif sans suite, test illisible). Les choix de l'athlète (disponibilités, séance en plus) n'y sont
- * pas : son objectif les montre. Tout vient de la base, sauf l'équipe Nolio que la page lit déjà : les signaux de chaque
- * séance restent dans « Suivi des 7 jours ». Côté serveur seulement.
+ * préparation, objectif sans suite, test illisible, course A de Nolio sans objectif). Les choix de l'athlète
+ * (disponibilités, séance en plus) n'y sont pas : son objectif les montre. Tout vient de la base, sauf l'équipe Nolio
+ * que la page lit déjà et les courses A de Nolio, lues une fois par heure : les signaux de chaque séance restent dans
+ * « Suivi des 7 jours ». Côté serveur seulement.
  */
 import { athletesCoaches, type FicheAthlete } from './coaching';
 import { demandesDuCoach, estRetrait, type Demande } from './demandes';
+import { coursesGardees, pasEncoreIci, type CourseNolio } from './coursesNolio';
 import { entreeDe } from './entree';
 import { plansALaMain, type LigneTrame, type Realise } from './ecriture';
-import { ajouterJours, jourMois, joursEntre, type Semaine } from './plan';
+import { ajouterJours, dateLongue, jourMois, joursEntre, type Semaine } from './plan';
 import { clientService } from './supabase';
 import { jaugeDuPlan, type Verdict } from './tableau';
 
@@ -84,6 +86,11 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
       : { niveau: 'bloque', genre: 'demande', athlete: d.nom, action: 'Relire et lancer ›', href: `/app/coach/nouveau?athlete=${d.athlete_id}&demande=${d.id}`,
         texte: `demande ${String(d.champs.course_nom ?? 'un objectif')}${le}.` };
   });
+  // Leurs courses A dans Nolio (décision coach du 22/10/2026, « proposer, tu valides ») : lues une fois par heure.
+  const coursesA = new Map<string, CourseNolio[]>(await Promise.all(fiches
+    .filter((a) => a.nolio_athlete_id && (!membres || membres.has(a.nolio_athlete_id)))
+    .map(async (a) => [a.id, (await coursesGardees(a.nolio_athlete_id as string).catch(() => [] as CourseNolio[]))
+      .filter((c) => c.type === 'a')] as [string, CourseNolio[]])));
   const athletes: LigneAthlete[] = fiches.map((a) => {
     const o = prochain(a);
     const p = o ? parPlan.get(o.plan_id) : undefined;
@@ -165,6 +172,13 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
         && semaines.some((l) => String((l.donnees as Semaine | null)?.lundi ?? '') < lundi)) {
       aRegarder.push({ niveau: 'bloque', genre: 'semaine', athlete: a.nom, action: 'Réessayer ›', href: hrefPlan, planId: o.plan_id,
         texte: `sa semaine du ${jourMois(lundi)} n’est pas partie dans Nolio.` });
+    }
+    // Ce qui arrive : une course A posée dans Nolio sans objectif ici, à créer d'un clic.
+    const dejaIci = new Set([...a.objectifs.map((x) => x.course_date), ...((((p?.parametres as { courses_secondaires?: { date?: string }[] } | null)
+      ?.courses_secondaires) ?? []).map((c) => String(c.date)))]);
+    for (const c of pasEncoreIci(coursesA.get(a.id) ?? [], dejaIci)) {
+      aRegarder.push({ niveau: 'arrive', genre: 'course_nolio', athlete: a.nom, action: 'Créer l’objectif ›',
+        href: `/app/coach/nouveau?athlete=${a.id}&course=${c.id}`, texte: `${c.nom}, le ${dateLongue(c.date, true)}, est dans Nolio sans objectif ici.` });
     }
     // Ce qui arrive : une course de préparation dans les 14 jours, un objectif dans les 21 jours sans suite, un test raté.
     if (o && avenir) {

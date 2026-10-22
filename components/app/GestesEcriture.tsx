@@ -53,26 +53,29 @@ export function RetirerCourse({ planId, date, nom }: { planId: string; date: str
   );
 }
 
-export function AjouterCourse({ planId }: { planId: string }) {
+// initial : une course B de Nolio (lib/app/coursesNolio.ts), à relire avant d'ajouter.
+export function AjouterCourse({ planId, initial }: {
+  planId: string; initial?: { nom: string; date: string; distance_km: number | null; dplus_m: number | null; chrono: string | null } | null;
+}) {
   const [etat, action, enCours] = useActionState<EtatGeste, FormData>(ajouterCourse.bind(null, planId), null);
   const champ = 'mt-1.5 w-full min-h-11 rounded-[10px] border border-indigo/20 px-3 text-sm font-normal text-indigo bg-white';
   return (
     <form action={action} className="space-y-3">
       <label className="block text-xs font-semibold text-indigo">Nom de la course
-        <input name="nom" className={champ} maxLength={80} placeholder="Trail de…" />
+        <input name="nom" className={champ} maxLength={80} placeholder="Trail de…" defaultValue={initial?.nom} />
       </label>
       <div className="grid grid-cols-2 gap-2.5">
         <label className="block text-xs font-semibold text-indigo">Date
-          <input name="date" type="date" required className={champ} />
+          <input name="date" type="date" required className={champ} defaultValue={initial?.date} />
         </label>
         <label className="block text-xs font-semibold text-indigo">Distance (km)
-          <input name="distance_km" inputMode="decimal" required className={champ} />
+          <input name="distance_km" inputMode="decimal" required className={champ} defaultValue={initial?.distance_km ?? undefined} />
         </label>
         <label className="block text-xs font-semibold text-indigo">D+ (m)
-          <input name="dplus_m" inputMode="numeric" className={champ} />
+          <input name="dplus_m" inputMode="numeric" className={champ} defaultValue={initial?.dplus_m ?? undefined} />
         </label>
         <label className="block text-xs font-semibold text-indigo">Chrono visé
-          <input name="chrono" required placeholder="2h15" className={champ} />
+          <input name="chrono" required placeholder="2h15" className={champ} defaultValue={initial?.chrono ?? undefined} />
         </label>
       </div>
       <label className="flex flex-col gap-1.5 text-xs font-semibold text-indigo">Trace GPX — facultative
