@@ -4,19 +4,21 @@ import clsx from 'clsx';
 import { Deconnexion } from './BoutonsCompte';
 
 // Le cadre de l'espace coach (maquettes validées par le coach le 19/10/2026) : un menu à gauche sur ordinateur, au-dessus
-// du contenu sur téléphone (Tes athlètes, Suivi des 7 jours, Objectifs demandés, Chiffres de la vente ; plus de
+// du contenu sur téléphone (Tes athlètes, Suivi des 7 jours, À regarder, Chiffres de la vente ; plus de
 // Bibliothèque, décision coach du 20/10/2026 : « ça ne m'apporte rien »),
 // le coach. Plus de lien « Voir l'app d'un athlète » (décision coach du 20/10/2026) : il ouvrait l'app du compte coach ;
 // chaque version se voit par son propre compte (coach, coaché, acheteur).
-export type RubriqueCoach = 'athletes' | 'suivi' | 'demandes' | 'chiffres';
+export type RubriqueCoach = 'athletes' | 'suivi' | 'regarder' | 'chiffres';
 
-export default function CadreCoach({ actif, demandes = 0, coach, children }: {
-  actif: RubriqueCoach; demandes?: number; coach?: string; children: React.ReactNode;
+// aRegarder : le nombre de lignes de « À regarder », que l'accueil de l'espace coach connaît (décision coach du
+// 22/10/2026 : l'onglet « Objectifs demandés » ouvrait « À regarder », il en prend le nom).
+export default function CadreCoach({ actif, aRegarder = 0, coach, children }: {
+  actif: RubriqueCoach; aRegarder?: number; coach?: string; children: React.ReactNode;
 }) {
   const liens: [RubriqueCoach, string, string][] = [
     ['athletes', 'Tes athlètes', '/app/coach'],
     ['suivi', 'Suivi des 7 jours', '/app/coach/suivi'],
-    ['demandes', 'Objectifs demandés', '/app/coach#demandes'],
+    ['regarder', 'À regarder', '/app/coach#demandes'],
     ['chiffres', 'Chiffres de la vente', '/app/coach/chiffres'],
   ];
   return (
@@ -37,8 +39,8 @@ export default function CadreCoach({ actif, demandes = 0, coach, children }: {
               className={clsx('flex items-center justify-between gap-2 min-h-11 px-3 rounded-[10px] text-sm',
                 cle === actif ? 'bg-white/10 text-white font-bold' : 'text-[#D6D5E6] font-semibold hover:bg-white/5')}>
               <span>{titre}</span>
-              {cle === 'demandes' && demandes > 0 && (
-                <span className="min-w-[22px] h-[22px] px-1 rounded-full bg-[#2BB39B] text-[#10302B] text-xs font-extrabold inline-flex items-center justify-center">{demandes}</span>
+              {cle === 'regarder' && aRegarder > 0 && (
+                <span className="min-w-[22px] h-[22px] px-1 rounded-full bg-[#2BB39B] text-[#10302B] text-xs font-extrabold inline-flex items-center justify-center">{aRegarder}</span>
               )}
             </Link>
           ))}

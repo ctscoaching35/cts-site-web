@@ -51,7 +51,7 @@ export default async function Coach() {
     [vue.demandes.length, `objectif${vue.demandes.length > 1 ? 's' : ''} demandé${vue.demandes.length > 1 ? 's' : ''} à valider`, 'text-teal'],
   ];
   return (
-    <CadreCoach actif="athletes" demandes={vue.demandes.length} coach={String(compte?.nom ?? '')}>
+    <CadreCoach actif="athletes" aRegarder={vue.aRegarder.length} coach={String(compte?.nom ?? '')}>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-[1.75rem] font-extrabold tracking-tight">Tes athlètes</h1>

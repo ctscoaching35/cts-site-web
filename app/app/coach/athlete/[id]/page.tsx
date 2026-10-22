@@ -13,7 +13,6 @@ import { associerNolio, changerProgrammation, retirerAcces, retirerAthlete } fro
 import { adresseDuCompte } from '@/lib/app/espaceAthlete';
 import { ficheAthlete } from '@/lib/app/coaching';
 import { initiales } from '@/lib/app/contexte';
-import { demandesDuCoach } from '@/lib/app/demandes';
 import { entreeDe } from '@/lib/app/entree';
 import { coursesDansNolio, pasEncoreIci } from '@/lib/app/coursesNolio';
 import { athletesNolio, ErreurNolio, exigerCoach, nolioConfigure, type AthleteNolio } from '@/lib/app/nolio';
@@ -37,7 +36,6 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
   const service = clientService();
   const relie = nolioConfigure();
   const adresse = await adresseDuCompte(a.compte_id).catch(() => null);
-  const demandes = await demandesDuCoach(coach.compteId).catch(() => []);
   let liste: AthleteNolio[] = [];
   let erreur: string | null = null;
   try {
@@ -100,7 +98,7 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
     [a.compte_id ? 'App : ouverte' : 'App : à inviter', Boolean(a.compte_id)],
   ];
   return (
-    <CadreCoach actif="athletes" demandes={demandes.length}>
+    <CadreCoach actif="athletes">
       <Link href="/app/coach" className="inline-flex items-center min-h-9 text-[0.8125rem] font-bold text-teal">‹ Tes athlètes</Link>
       <div className="flex flex-wrap items-center gap-4 !mt-2">
         <span className="w-14 h-14 rounded-full bg-[#E1EFEA] text-teal-dark flex items-center justify-center text-lg font-extrabold">{initiales(a.nom)}</span>
