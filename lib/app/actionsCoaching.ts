@@ -11,6 +11,7 @@ import { fermerEspace, ouvrirEspace } from './espaceAthlete';
 import { objectifEcrit, retirerDeNolio, zonesDeLaFicheVersNolio, zonesVersNolio } from './ecriture';
 import { athletesNolio, coachConnecte } from './nolio';
 import { usrAcheteurs } from './acheteurs';
+import { retirerFiche, supprimerPlans } from './retrait';
 import { lireAllure } from './allureCoach';
 import { clientService } from './supabase';
 
@@ -201,15 +202,6 @@ export async function mettreAJour(planId: string, numero: string, _e: EtatCoach)
   }
 }
 
-async function supprimerPlans(coachId: string, planIds: string[]) {
-  const service = clientService();
-  for (const id of planIds) {
-    const { data } = await service.from('plans').select('pdf_chemin').eq('id', id).eq('compte_id', coachId).maybeSingle();
-    if (data?.pdf_chemin) await service.storage.from('plans-pdf').remove([data.pdf_chemin]);
-    await service.from('plans').delete().eq('id', id).eq('compte_id', coachId);
-  }
-}
-
 // Retirer un objectif : son plan et son PDF partent. Écrit semaine par semaine, ce qu'il a posé dans Nolio et qui est
 // encore à venir en part aussi (décision coach du 19/10/2026) ; le passé reste. Envoyé en entier (avant le 19/10/2026),
 // ce qui est dans Nolio y reste.
@@ -242,8 +234,7 @@ export async function retirerAthlete(athleteId: string): Promise<void> {
   if (!coach) return;
   const a = await ficheAthlete(coach.compteId, athleteId);
   if (!a) return;
-  await supprimerPlans(coach.compteId, a.objectifs.map((o) => o.plan_id));
-  await clientService().from('athletes_coaches').delete().eq('id', athleteId).eq('coach_id', coach.compteId);
+  await retirerFiche(coach.compteId, athleteId, a.objectifs.map((o) => o.plan_id));
   revalidatePath('/app/coach');
   redirect('/app/coach');
 }

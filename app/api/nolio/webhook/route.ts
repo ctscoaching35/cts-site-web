@@ -1,10 +1,12 @@
 import { demarrerObjectif, prevenirCoach } from '@/lib/app/ecriture';
 import { signatureNolioValide } from '@/lib/app/nolioWebhook';
+import { retirerCoachePartiDeNolio } from '@/lib/app/retrait';
 import { clientService } from '@/lib/app/supabase';
 
 // Le webhook de Nolio (CTS_NOLIO_CADRAGE.md, P1 à P4) : un acheteur qui rejoint l'équipe déclenche l'envoi de son plan ;
 // un refus prévient le coach ; un athlète qui quitte l'équipe ou coupe l'accès (access.ended, obligatoire) n'est plus
-// lu, et ce que le site tenait de Nolio sur lui est effacé (conditions de l'API, article 7.2 : sous 30 jours).
+// lu, et ce que le site tenait de Nolio sur lui est effacé (conditions de l'API, article 7.2 : sous 30 jours) ; un coaché
+// retiré de l'équipe est retiré de l'app (lib/app/retrait.ts).
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
@@ -42,6 +44,10 @@ export async function POST(request: Request) {
     } else if (e.type === 'team.member.leave' || e.type === 'access.ended') {
       // Plus aucun chemin vers lui : on ne le lit plus, et l'état tiré de Nolio s'efface.
       await service.from('plans').update({ nolio_statut: 'sorti', etat_ecriture: null }).eq('nolio_athlete_id', usr);
+      // Un coaché retiré de l'équipe (la corbeille, décision coach du 22/10/2026) : retiré de l'app tout seul. Pas pour
+      // un rôle de coach ou d'assistant qui part.
+      const roles = e.data?.context?.roles_removed;
+      if (e.type === 'access.ended' || !Array.isArray(roles) || roles.includes('athlete')) await retirerCoachePartiDeNolio(usr);
       if (e.type === 'access.ended') {
         const { data: plans } = await service.from('plans').select('id').eq('nolio_athlete_id', usr);
         for (const p of plans ?? []) await service.from('semaines_ecrites').update({ journal: [], notes: [] }).eq('plan_id', p.id);

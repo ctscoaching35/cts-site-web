@@ -160,8 +160,9 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
         texte: 'son compte Nolio n’est pas encore associé à sa fiche.' });
     }
     if (a.nolio_athlete_id && membres && !membres.has(a.nolio_athlete_id)) {
-      aRegarder.push({ niveau: 'bloque', genre: 'equipe', athlete: a.nom, action: 'Voir ›', href: `/app/coach/athlete/${a.id}`,
-        texte: 'n’est plus dans ton équipe Nolio.' });
+      // Le message de Nolio perdu (la corbeille) : le retrait se fait d'ici, sur sa fiche.
+      aRegarder.push({ niveau: 'bloque', genre: 'equipe', athlete: a.nom, action: 'Retirer ›', href: `/app/coach/athlete/${a.id}#retirer`,
+        texte: 'n’est plus dans ton équipe Nolio : retire-le de l’app.' });
     } else if (a.nolio_athlete_id && !avecAccord.has(a.nolio_athlete_id)) {
       aRegarder.push({ niveau: 'bloque', genre: 'accord', athlete: a.nom, action: 'Accord reçu ›', href: '/app/coach/suivi#sans-accord',
         texte: 'sans accord de lecture : envoie-lui le message d’accord dans Nolio.' });
