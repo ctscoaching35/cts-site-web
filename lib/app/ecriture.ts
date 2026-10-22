@@ -492,7 +492,8 @@ export async function annonceDepart(planId: string): Promise<{ lundi: string; de
 // Un départ d'acheteur en échec (décision coach du 20/10/2026) : le coach est prévenu au premier échec, avec la raison,
 // et le passage quotidien le reprend chaque jour (departsDuJour) ; prevenir : false pour ces reprises. lundi : le
 // départ programmé (depart_prevu), que le passage de la veille tient même si plus rien n'est posé à partir de ce jour.
-export async function demarrerObjectif(planId: string, { prevenir = true, lundi }: { prevenir?: boolean; lundi?: string } = {}): Promise<Depart> {
+// aPartirDu : le lundi choisi par le coach sur la page de l'objectif.
+export async function demarrerObjectif(planId: string, { prevenir = true, lundi, aPartirDu }: { prevenir?: boolean; lundi?: string; aPartirDu?: string } = {}): Promise<Depart> {
   const o = await objectifEcrit(planId);
   if (!o) throw new Error('Ce plan ne s’écrit pas semaine par semaine.');
   if ((await plansALaMain()).has(planId))
@@ -519,13 +520,21 @@ export async function demarrerObjectif(planId: string, { prevenir = true, lundi 
   // PC1 : les séances que le coach a déjà posées restent ; l'écriture attend le lundi qui suit la dernière.
   const posees = await seancesDejaPosees(o, aujourdhui);
   const premierJour = debut.lundi > aujourdhui ? debut.lundi : aujourdhui;
-  const prevu = apres && apres.lundi > aujourdhui && (!posees || apres.lundi >= posees.lundi)
+  const derniere = [...o.plan.semaines].reverse().find((s) => s.lundi)?.lundi;
+  if (aPartirDu && derniere && aPartirDu > derniere) throw new Error('Choisis un lundi avant la semaine de sa course.');
+  const calcule = apres && apres.lundi > aujourdhui && (!posees || apres.lundi >= posees.lundi)
     ? { prevu: apres.lundi, apres: apres.q.course_nom, raison: 'recuperation' as const }
     : posees && posees.lundi > premierJour ? { prevu: posees.lundi, apres: posees.derniere, raison: 'seances' as const }
       // UN OBJECTIF LOINTAIN (décision coach du 22/10/2026) : sa préparation commence plus tard ; rien ne se pose
       // d'avance, le départ se programme au premier lundi de sa préparation (la veille au soir, comme les autres).
       : debut.lundi > ajouterJours(aujourdhui, 1) ? { prevu: debut.lundi, apres: debut.lundi, raison: 'preparation' as const }
         : lundi && lundi > aujourdhui ? { prevu: lundi, apres: aujourdhui, raison: 'seances' as const } : null;
+  // LE DÉPART CHOISI PAR LE COACH (décision coach du 22/10/2026 : « en coaching individuel, il faut plus de liberté ») :
+  // un lundi plus tard que le premier possible, par exemple après un objectif qu'il prépare à la main. Plus tôt, le
+  // premier possible l'emporte : la préparation n'a pas de semaine avant, ses séances posées et la récupération d'un
+  // autre objectif restent.
+  const prevu = aPartirDu && aPartirDu > (calcule?.prevu ?? aujourdhui)
+    ? { prevu: aPartirDu, apres: aujourdhui, raison: 'preparation' as const } : calcule;
   // UN DÉPART AU LUNDI QUI VIENT PART LA VEILLE (défaut vu le 22/10/2026 : programmé au lundi, il partait au passage
   // quotidien du lundi soir, la séance du jour arrivait trop tard) : sa première semaine part dès maintenant, le
   // dimanche soir, comme celles des autres ; plus loin, le départ se programme.
@@ -552,6 +561,9 @@ export async function demarrerObjectif(planId: string, { prevenir = true, lundi 
     // Une charge déclarée il y a plus de 4 semaines (un objectif lointain) : relue dans Nolio au départ réel.
     else if (o.coache && !o.envois.length && String(o.parametres.declaree_le ?? '') < ajouterJours(premier, -28)) {
       await recalerSurNolio(o, premier).catch((e) => console.error(`Recalage de ${planId} :`, e instanceof Error ? e.message : e));
+    }
+    if (o.coache && !o.envois.length) {
+      await ancrerAuDepart(o, premier).catch((e) => console.error(`Ancrage de ${planId} :`, e instanceof Error ? e.message : e));
     }
     await envoyerTrame(o, depart);
     await programmerQuestionnaires(o, dimancheSuivant(premier));
@@ -591,6 +603,21 @@ async function recalerSurNolio(o: Objectif, lundi: string) {
   if (!charge?.volume_hebdo_actuel) return;
   const champs = { ...((o.parametres.champs ?? {}) as Record<string, unknown>), ...charge };
   const parametres = { ...o.parametres, champs, declaree_le: lundi };
+  try {
+    await moteur('/v1/trame', { parametres });
+  } catch {
+    return;
+  }
+  await clientService().from('plans').update({ parametres, trame: null }).eq('id', o.planId);
+  o.parametres = parametres;
+}
+
+// La semaine rejointe est celle de la déclaration (cts_orchestrateur, B4) : un départ plus d'une semaine après elle (un
+// lundi choisi par le coach, des séances déjà posées) la reporte au premier lundi écrit, pour que chaque progression y
+// parte du plancher (D2) au lieu de supposer courues des semaines qu'il n'a pas faites. La charge déclarée reste.
+async function ancrerAuDepart(o: Objectif, lundi: string) {
+  if (String(o.parametres.declaree_le ?? '') >= ajouterJours(lundi, -7)) return;
+  const parametres = { ...o.parametres, declaree_le: lundi };
   try {
     await moteur('/v1/trame', { parametres });
   } catch {

@@ -22,13 +22,18 @@ async function qui(): Promise<{ compteId: string | null; coachId: string | null 
   return { compteId: (data?.claims?.sub as string | undefined) ?? null, coachId: coach?.compteId ?? null };
 }
 
-export async function demarrerDansNolio(planId: string, _e: EtatGeste): Promise<EtatGeste> {
+export async function demarrerDansNolio(planId: string, _e: EtatGeste, formulaire: FormData): Promise<EtatGeste> {
   const { coachId } = await qui();
   const o = await objectifEcrit(planId);
   if (!coachId || !o || o.coachId !== coachId) return { ok: false, message: 'Réservé au coach de cet objectif.' };
+  // Le lundi choisi (décision coach du 22/10/2026) ; vide, dès que possible.
+  const choisi = String(formulaire.get('depart') ?? '').trim();
+  if (choisi && !(/^\d{4}-\d{2}-\d{2}$/.test(choisi) && new Date(`${choisi}T12:00:00Z`).getUTCDay() === 1)) {
+    return { ok: false, message: 'Choisis un lundi.' };
+  }
   try {
     // Le coach lit la raison d'un échec ici : pas d'e-mail.
-    const depart = await demarrerObjectif(planId, { prevenir: false });
+    const depart = await demarrerObjectif(planId, { prevenir: false, aPartirDu: choisi || undefined });
     revalidatePath(`/app/coach/plan/${planId}`);
     if ('prevu' in depart) {
       const le = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('fr-FR');

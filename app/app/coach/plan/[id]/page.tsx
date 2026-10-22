@@ -74,6 +74,12 @@ export default async function ObjectifCoache({ params, searchParams }: {
   const debutPrepa = o.plan.semaines.find((s) => s.lundi && ajouterJours(s.lundi, 6) >= jour)?.lundi ?? null;
   const lointain = Boolean(ecriture?.parametres && !ecriture.demarre_le && !ecriture.depart_prevu && debutPrepa
     && debutPrepa > ajouterJours(jour, 1) && (!annonce || annonce.lundi <= debutPrepa));
+  // Le lundi du départ, au choix du coach (décision coach du 22/10/2026) : du premier possible à celui de la semaine de
+  // course ; affiché, celui qui s'appliquerait.
+  const lundiQuiVient = ajouterJours(jour, 7 - ((new Date(`${jour}T12:00:00Z`).getUTCDay() + 6) % 7));
+  const premierLundi = debutPrepa && debutPrepa > lundiQuiVient ? debutPrepa : lundiQuiVient;
+  const dernierLundi = [...o.plan.semaines].reverse().find((s) => s.lundi)?.lundi ?? o.plan.course.date;
+  const lundiDepart = ecriture?.depart_prevu ? String(ecriture.depart_prevu) : lointain && debutPrepa ? debutPrepa : annonce?.lundi ?? '';
   const realises = (ecrites ?? []).map((w) => w.realise as Realise | null).filter((r): r is Realise => Boolean(r))
     .sort((a, b) => Number(a.numero.slice(1)) - Number(b.numero.slice(1)));
   const jauge = trame ? jaugeDuPlan(trame.semaines, realises, jour) : null;
@@ -141,8 +147,9 @@ export default async function ObjectifCoache({ params, searchParams }: {
                   </p>
                   {lointain && debutPrepa && (
                     <p className="p-3.5 rounded-xl bg-[#E1EFEA] text-[0.8125rem] leading-relaxed text-[#0B4A40]">
-                      Sa préparation commence le {dateLongue(debutPrepa, true)} : sa première semaine partira la veille au soir,
-                      calée sur ce qu’il court alors. D’ici là, rien ne s’écrit pour cet objectif.
+                      Sa préparation commence au plus tôt le {dateLongue(debutPrepa, true)}, ou au lundi que tu choisis plus
+                      tard : sa première semaine partira la veille au soir, calée sur ce qu’il court alors. D’ici là, rien ne
+                      s’écrit pour cet objectif.
                     </p>
                   )}
                   {annonce && !lointain && (
@@ -154,7 +161,8 @@ export default async function ObjectifCoache({ params, searchParams }: {
                   {ecriture.depart_prevu && (
                     <p className="text-[0.8125rem] font-semibold text-teal">Programmé : il démarre tout seul le {dateLongue(String(ecriture.depart_prevu), true)}.</p>
                   )}
-                  <DemarrerNolio planId={id} actif={Boolean(nolio)} />
+                  <DemarrerNolio planId={id} actif={Boolean(nolio)} lundi={lundiDepart} premier={premierLundi} dernier={dernierLundi}
+                    programme={Boolean(ecriture.depart_prevu)} />
                 </div>
               ) : (
                 <>

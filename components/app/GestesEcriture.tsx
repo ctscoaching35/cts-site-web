@@ -10,12 +10,21 @@ function Message({ etat }: { etat: EtatGeste }) {
   return <p className={etat.ok ? 'text-sm text-teal font-semibold' : 'text-sm text-indigo'} role="status">{etat.message}</p>;
 }
 
-export function DemarrerNolio({ planId, actif }: { planId: string; actif: boolean }) {
+// Le lundi du départ, au choix du coach (décision coach du 22/10/2026) : vide, dès que possible ; premier : le premier
+// lundi possible, dernier : celui de la semaine de course ; programme : un départ déjà programmé, que le geste déplace.
+export function DemarrerNolio({ planId, actif, lundi, premier, dernier, programme }: {
+  planId: string; actif: boolean; lundi: string; premier: string; dernier: string; programme: boolean;
+}) {
   const [etat, action, enCours] = useActionState<EtatGeste, FormData>(demarrerDansNolio.bind(null, planId), null);
+  const champ = 'mt-1.5 w-full min-h-11 rounded-[10px] border border-indigo/20 px-3 text-sm font-normal text-indigo bg-white';
   return (
     <form action={action} className="space-y-2">
+      <label className="block max-w-[240px] text-xs font-semibold text-indigo">Démarre le lundi
+        <input name="depart" type="date" min={premier} max={dernier} step={7} defaultValue={lundi} className={champ} />
+      </label>
+      <p className="text-xs text-indigo/60">Vide : dès que possible. Plus tard : par exemple après un objectif que tu prépares à la main.</p>
       <button type="submit" disabled={!actif || enCours} className="btn btn-primary !py-2.5 disabled:opacity-50">
-        {enCours ? 'Départ…' : 'Démarrer dans Nolio'}
+        {enCours ? 'Départ…' : programme ? 'Changer le départ' : 'Démarrer dans Nolio'}
       </button>
       {!actif && <p className="text-xs text-indigo/60">Associe d’abord l’athlète à Nolio, sur sa fiche.</p>}
       <Message etat={etat} />
