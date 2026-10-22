@@ -6,8 +6,10 @@ import { redirect } from 'next/navigation';
 import { effacerCompte } from './effacement';
 import { clientServeur, clientService } from './supabase';
 
+// Seulement cet appareil, cette app (décision coach du 22/10/2026) : ses autres connexions restent ouvertes (son
+// téléphone, l'app « CTS Coach » à côté de celle de l'athlète).
 export async function seDeconnecter() {
-  await (await clientServeur()).auth.signOut();
+  await (await clientServeur()).auth.signOut({ scope: 'local' });
   redirect('/app/connexion');
 }
 
