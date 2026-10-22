@@ -136,7 +136,7 @@ export default async function ObjectifCoache({ params, searchParams }: {
                   {annonce && (
                     <p className="p-3.5 rounded-xl bg-[#E1EFEA] text-[0.8125rem] leading-relaxed text-[#0B4A40]">
                       Tu as déjà posé ses séances jusqu’au {dateLongue(annonce.derniere, true)} : l’écriture commence le lundi{' '}
-                      {dateLongue(annonce.lundi, true)}. Rien n’est écrasé.
+                      {dateLongue(annonce.lundi, true)}, sa première semaine part la veille au soir. Rien n’est écrasé.
                     </p>
                   )}
                   {ecriture.depart_prevu && (

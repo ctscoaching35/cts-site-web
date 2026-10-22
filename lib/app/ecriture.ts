@@ -490,8 +490,9 @@ export async function annonceDepart(planId: string): Promise<{ lundi: string; de
 }
 
 // Un départ d'acheteur en échec (décision coach du 20/10/2026) : le coach est prévenu au premier échec, avec la raison,
-// et le passage quotidien le reprend chaque jour (departsDuJour) ; prevenir : false pour ces reprises.
-export async function demarrerObjectif(planId: string, { prevenir = true }: { prevenir?: boolean } = {}): Promise<Depart> {
+// et le passage quotidien le reprend chaque jour (departsDuJour) ; prevenir : false pour ces reprises. lundi : le
+// départ programmé (depart_prevu), que le passage de la veille tient même si plus rien n'est posé à partir de ce jour.
+export async function demarrerObjectif(planId: string, { prevenir = true, lundi }: { prevenir?: boolean; lundi?: string } = {}): Promise<Depart> {
   const o = await objectifEcrit(planId);
   if (!o) throw new Error('Ce plan ne s’écrit pas semaine par semaine.');
   if ((await plansALaMain()).has(planId))
@@ -518,28 +519,35 @@ export async function demarrerObjectif(planId: string, { prevenir = true }: { pr
   // PC1 : les séances que le coach a déjà posées restent ; l'écriture attend le lundi qui suit la dernière.
   const posees = await seancesDejaPosees(o, aujourdhui);
   const premierJour = debut.lundi > aujourdhui ? debut.lundi : aujourdhui;
-  if (apres && apres.lundi > aujourdhui && (!posees || apres.lundi >= posees.lundi)) {
-    await clientService().from('plans').update({ depart_prevu: apres.lundi }).eq('id', planId);
-    return { prevu: apres.lundi, apres: apres.q.course_nom, raison: 'recuperation' };
+  const prevu = apres && apres.lundi > aujourdhui && (!posees || apres.lundi >= posees.lundi)
+    ? { prevu: apres.lundi, apres: apres.q.course_nom, raison: 'recuperation' as const }
+    : posees && posees.lundi > premierJour ? { prevu: posees.lundi, apres: posees.derniere, raison: 'seances' as const }
+      : lundi && lundi > aujourdhui ? { prevu: lundi, apres: aujourdhui, raison: 'seances' as const } : null;
+  // UN DÉPART AU LUNDI QUI VIENT PART LA VEILLE (défaut vu le 22/10/2026 : programmé au lundi, il partait au passage
+  // quotidien du lundi soir, la séance du jour arrivait trop tard) : sa première semaine part dès maintenant, le
+  // dimanche soir, comme celles des autres ; plus loin, le départ se programme.
+  if (prevu && prevu.prevu !== ajouterJours(aujourdhui, 1)) {
+    await clientService().from('plans').update({ depart_prevu: prevu.prevu }).eq('id', planId);
+    return prevu;
   }
-  if (posees && posees.lundi > premierJour) {
-    await clientService().from('plans').update({ depart_prevu: posees.lundi }).eq('id', planId);
-    return { prevu: posees.lundi, apres: posees.derniere, raison: 'seances' };
-  }
+  // La première semaine : celle d'aujourd'hui, ou, partie la veille, la première à partir du lundi qui vient.
+  const premiere = prevu ? o.plan.semaines.find((s) => s.lundi && ajouterJours(s.lundi, 6) >= prevu.prevu) : debut;
+  if (!premiere?.lundi) throw new Error('La course est passée.');
+  const depart = prevu ? prevu.prevu : aujourdhui;
   // La reprise allégée : la première semaine écrite suit de près la récupération (pas une préparation qui commence des
   // semaines plus tard, QD2).
-  const premier = debut.lundi > aujourdhui ? debut.lundi : aujourdhui;
+  const premier = premiere.lundi > depart ? premiere.lundi : depart;
   const reprise = Boolean(apres && apres.lundi >= ajouterJours(premier, -7));
   // Un seul départ à la fois : le premier appel prend la main ; en cas d'échec il la rend, pour un nouvel essai.
   const service = clientService();
   const { data: pris } = await service.from('plans').update({ demarre_le: new Date().toISOString() })
     .eq('id', planId).is('demarre_le', null).select('id');
-  if (!pris?.length) return { numero: debut.numero };
+  if (!pris?.length) return { numero: premiere.numero };
   try {
     // Juste après la course d'un autre objectif : calé sur ce que l'athlète y a vraiment couru.
     if (reprise && apres && !o.envois.length) await recalerSurLePrecedent(o, apres.q.id, premier);
-    await envoyerTrame(o, aujourdhui);
-    await programmerQuestionnaires(o, dimancheSuivant(debut.lundi < aujourdhui ? aujourdhui : debut.lundi));
+    await envoyerTrame(o, depart);
+    await programmerQuestionnaires(o, dimancheSuivant(premier));
     // OM3 : l'objectif et ses courses de préparation, en compétitions dans Nolio.
     const { course } = o.plan;
     await poserCourse(o, { nom: course.nom, date: course.date, distance_km: course.distance_km, dplus_m: course.dplus_m }, true);
@@ -548,8 +556,8 @@ export async function demarrerObjectif(planId: string, { prevenir = true }: { pr
     const { data: fp } = await service.from('plans').select('fiches_preparation').eq('id', planId).maybeSingle();
     const fiches = ((fp as { fiches_preparation?: Record<string, unknown> } | null)?.fiches_preparation ?? {});
     for (const c of ((o.parametres.courses_secondaires ?? []) as Course[])) if (c.date >= aujourdhui && fiches[c.date]) await poserFichePreparation(o, c);
-    const deja = o.envois.some((e) => e.semaine === debut.numero);
-    if (!deja) await ecrireEtEnvoyer(o, debut.numero, null, { depuis: aujourdhui > debut.lundi ? aujourdhui : undefined, reprise });
+    const deja = o.envois.some((e) => e.semaine === premiere.numero);
+    if (!deja) await ecrireEtEnvoyer(o, premiere.numero, null, { depuis: depart > premiere.lundi ? depart : undefined, reprise });
     if (!o.coache) await rangerAcheteur(o);
   } catch (e) {
     await service.from('plans').update({ demarre_le: null }).eq('id', planId);
@@ -561,7 +569,7 @@ export async function demarrerObjectif(planId: string, { prevenir = true }: { pr
     }
     throw e;
   }
-  return { numero: debut.numero };
+  return { numero: premiere.numero };
 }
 
 // OM4 (décision coach du 21/10/2026) : un objectif qui démarre juste après la course d'un autre part de ce que
@@ -634,14 +642,16 @@ function debutApres(q: Pick<Voisin, 'course_date' | 'temps_h'>): string {
 // du 20/10/2026), repris en silence : le coach a été prévenu au premier échec.
 async function departsDuJour(): Promise<Compte[]> {
   const aujourdhui = aujourdhuiParis();
+  // Un départ au lundi qui vient part la veille (défaut vu le 22/10/2026) : demarrerObjectif l'écrit dès ce soir.
+  const demain = ajouterJours(aujourdhui, 1);
   const { data } = await clientService().from('plans').select('id, depart_prevu').is('demarre_le', null)
     .not('parametres', 'is', null).gte('course_date', aujourdhui)
-    .or(`depart_prevu.lte.${aujourdhui},and(depart_prevu.is.null,nolio_statut.eq.actif)`);
+    .or(`depart_prevu.lte.${demain},and(depart_prevu.is.null,nolio_statut.eq.actif)`);
   const comptes: Compte[] = [];
   const aLaMain = await plansALaMain();
   for (const p of (data ?? []).filter((x) => !aLaMain.has(x.id as string))) {
     try {
-      const d = await demarrerObjectif(p.id as string, { prevenir: p.depart_prevu === aujourdhui });
+      const d = await demarrerObjectif(p.id as string, { prevenir: p.depart_prevu === demain, lundi: (p.depart_prevu as string | null) ?? undefined });
       comptes.push({ plan: p.id as string, quoi: 'numero' in d ? `démarré (${d.numero})` : `reprogrammé au ${d.prevu}` });
     } catch (e) {
       comptes.push({ plan: p.id as string, quoi: 'départ non fait', erreur: e instanceof Error ? e.message : String(e) });
