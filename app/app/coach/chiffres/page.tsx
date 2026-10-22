@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import CadreCoach from '@/components/app/CadreCoach';
 import { chiffresParSemaine } from '@/lib/app/mesure';
+import { acheteursDesPlans } from '@/lib/app/acheteurs';
 import { exigerCoach } from '@/lib/app/nolio';
 import { supabaseConfigure } from '@/lib/app/supabase';
 
@@ -15,11 +16,17 @@ const COLONNES: [string, string][] = [
 ];
 
 const date = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+// Où en est son invitation dans l'équipe Nolio.
+const STATUT_NOLIO: Record<string, string> = {
+  a_inviter: 'Invitation en préparation', en_cours: 'Invitation en préparation', invite: 'Invité dans Nolio',
+  actif: 'Dans l’équipe Nolio', refuse: 'Invitation sans suite', sorti: 'Sorti de Nolio',
+};
 
 export default async function Chiffres() {
   if (!supabaseConfigure()) notFound();
   await exigerCoach();
   const semaines = await chiffresParSemaine();
+  const acheteurs = await acheteursDesPlans().catch(() => []);
   return (
     <>
       <CadreCoach actif="chiffres">
@@ -55,6 +62,27 @@ export default async function Chiffres() {
             </table>
           </div>
         )}
+
+        {/* Les acheteurs (décision coach du 22/10/2026) : à part du coaching, en lecture ; leur accord est le leur. */}
+        <section className="bg-white rounded-2xl border border-indigo/[0.08] p-4 space-y-2">
+          <h2 className="eyebrow text-indigo/60">Les acheteurs ({acheteurs.length})</h2>
+          <p className="text-sm text-indigo/70">
+            Leurs séances partent toutes seules dans Nolio. Leur accord de lecture, ils le donnent eux-mêmes dans l’app.
+          </p>
+          {acheteurs.length > 0 && (
+            <ul className="divide-y divide-indigo/10">
+              {acheteurs.map((a) => (
+                <li key={a.id} className="flex flex-wrap justify-between gap-x-3 gap-y-1 py-2 text-sm">
+                  <span className="text-indigo"><strong>{a.nom}</strong> · {a.course}{a.date ? `, le ${date(a.date)}` : ''}</span>
+                  <span className="text-indigo/70">
+                    {STATUT_NOLIO[a.statut ?? ''] ?? 'Nolio'}{a.statut === 'actif' ? (a.demarre ? `, démarré le ${date(a.demarre)}` : ', pas encore démarré') : ''}
+                    {' · '}{a.accord ? 'accord donné' : 'sans accord'}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       </CadreCoach>
     </>
   );

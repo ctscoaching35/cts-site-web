@@ -10,6 +10,7 @@ import { accordDeLAthlete, envoyerSemaine, ficheAthlete, marquerTestsLus, mettre
 import { fermerEspace, ouvrirEspace } from './espaceAthlete';
 import { objectifEcrit, retirerDeNolio, zonesDeLaFicheVersNolio, zonesVersNolio } from './ecriture';
 import { athletesNolio, coachConnecte } from './nolio';
+import { usrAcheteurs } from './acheteurs';
 import { lireAllure } from './allureCoach';
 import { clientService } from './supabase';
 
@@ -37,9 +38,9 @@ export async function creerFicheDepuisNolio(nolioId: string): Promise<void> {
     .eq('nolio_athlete_id', nolioId).maybeSingle();
   let id = deja?.id as string | undefined;
   if (!id) {
-    // Son nom tel que Nolio le donne, et seulement un athlète de son équipe.
+    // Son nom tel que Nolio le donne, et seulement un athlète de son équipe, jamais un acheteur de plan.
     const membre = (await athletesNolio()).find((x) => x.id === nolioId && !x.name.endsWith('(toi)'));
-    if (!membre) return;
+    if (!membre || (await usrAcheteurs(coach.compteId)).has(nolioId)) return;
     const { data, error } = await service.from('athletes_coaches')
       .insert({ coach_id: coach.compteId, nom: membre.name, nolio_athlete_id: nolioId }).select('id').single();
     if (error || !data) {

@@ -6,6 +6,7 @@ import { AnnulerSemaine } from '@/components/app/GestesEcriture';
 import { ajustementsDuCoach, type Ajustement } from '@/lib/app/ecriture';
 import { accordRecu, retirerAccord } from '@/lib/app/actionsSuivi';
 import { athletesNolio, ErreurNolio, exigerCoach, moiNolio, nolioConfigure, type AthleteNolio } from '@/lib/app/nolio';
+import { usrAcheteurs } from '@/lib/app/acheteurs';
 import { accords, aujourdhuiParis, lireSuivi, seuilsSuivi, type GenreSignal, type Suivi } from '@/lib/app/suivi';
 import { supabaseConfigure } from '@/lib/app/supabase';
 
@@ -58,9 +59,11 @@ export default async function SuiviCoach() {
   let sansAccord: AthleteNolio[] = [];
   let erreur: string | null = null;
   try {
-    const [tous, moi, ok, seuils] = await Promise.all([athletesNolio(), moiNolio(), accords(coach.compteId), seuilsSuivi()]);
+    const [tous, moi, ok, seuils, acheteurs] = await Promise.all([athletesNolio(), moiNolio(), accords(coach.compteId), seuilsSuivi(),
+      usrAcheteurs(coach.compteId)]);
     const aujourdhui = aujourdhuiParis();
-    sansAccord = tous.filter((a) => !ok.has(a.id));
+    // Les acheteurs de plans donnent leur accord eux-mêmes, dans l'app (décision coach du 22/10/2026) : pas ici.
+    sansAccord = tous.filter((a) => !ok.has(a.id) && !acheteurs.has(a.id));
     lignes = await lireTous(tous.filter((a) => ok.has(a.id)), moi.id, seuils, aujourdhui);
     lignes.sort((a, b) => (b.suivi?.signaux.length ?? 0) - (a.suivi?.signaux.length ?? 0) || a.athlete.name.localeCompare(b.athlete.name, 'fr'));
   } catch (e) {

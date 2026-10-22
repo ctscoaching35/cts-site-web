@@ -6,6 +6,7 @@ import { Carte, Surtitre } from '@/components/app/Ui';
 import { ReessayerSemaine } from '@/components/app/GestesEcriture';
 import { NIVEAUX, vueDuCoach } from '@/lib/app/espaceCoach';
 import { creerFicheDepuisNolio } from '@/lib/app/actionsCoaching';
+import { usrAcheteurs } from '@/lib/app/acheteurs';
 import { dateLongue, jMoins } from '@/lib/app/plan';
 import { clientService, supabaseConfigure } from '@/lib/app/supabase';
 import { athletesNolio, ErreurNolio, exigerCoach, nolioConfigure, type AthleteNolio } from '@/lib/app/nolio';
@@ -39,7 +40,9 @@ export default async function Coach() {
   const vue = await vueDuCoach(coach.compteId, nolio ? new Set(nolio.map((x) => x.id)) : null);
   // Les athlètes de Nolio qui n'ont pas encore de fiche (le coach lui-même, « (toi) », à part).
   const relies = new Set(vue.athletes.map((a) => a.usr).filter(Boolean));
-  const sansFiche = (nolio ?? []).filter((x) => !relies.has(x.id) && !x.name.endsWith('(toi)'));
+  // Sans les acheteurs de plans (décision coach du 22/10/2026) : ils sont dans « Chiffres de la vente ».
+  const acheteurs = await usrAcheteurs(coach.compteId).catch(() => new Set<string>());
+  const sansFiche = (nolio ?? []).filter((x) => !relies.has(x.id) && !acheteurs.has(x.id) && !x.name.endsWith('(toi)'));
   const jour = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
   const compteurs: [number, string, string][] = [
     [vue.athletes.length, `athlète${vue.athletes.length > 1 ? 's' : ''} coaché${vue.athletes.length > 1 ? 's' : ''}`, 'text-indigo'],
