@@ -639,8 +639,11 @@ function debutApres(q: Pick<Voisin, 'course_date' | 'temps_h'>): string {
 }
 
 // Les objectifs programmés (OM4) qui démarrent aujourd'hui, et les départs d'acheteurs restés en échec (décision coach
-// du 20/10/2026), repris en silence : le coach a été prévenu au premier échec.
-async function departsDuJour(): Promise<Compte[]> {
+// du 20/10/2026), repris en silence : le coach a été prévenu au premier échec. budgetMs (décision coach du 22/10/2026 :
+// tous ses coachés démarrent le même dimanche) : passé ce temps, les départs suivants attendent le passage suivant
+// (REMIS), plutôt qu'une coupure en cours de départ ; le passage du dimanche les reprend aussi, à 17 h, 19 h et 21 h UTC.
+async function departsDuJour(budgetMs = 120_000): Promise<Compte[]> {
+  const debut = Date.now();
   const aujourdhui = aujourdhuiParis();
   // Un départ au lundi qui vient part la veille (défaut vu le 22/10/2026) : demarrerObjectif l'écrit dès ce soir.
   const demain = ajouterJours(aujourdhui, 1);
@@ -650,6 +653,10 @@ async function departsDuJour(): Promise<Compte[]> {
   const comptes: Compte[] = [];
   const aLaMain = await plansALaMain();
   for (const p of (data ?? []).filter((x) => !aLaMain.has(x.id as string))) {
+    if (Date.now() - debut > budgetMs) {
+      comptes.push({ plan: p.id as string, quoi: REMIS });
+      continue;
+    }
     try {
       const d = await demarrerObjectif(p.id as string, { prevenir: p.depart_prevu === demain, lundi: (p.depart_prevu as string | null) ?? undefined });
       comptes.push({ plan: p.id as string, quoi: 'numero' in d ? `démarré (${d.numero})` : `reprogrammé au ${d.prevu}` });
@@ -699,7 +706,8 @@ export async function passageDuDimanche(budgetMs = 240_000): Promise<Compte[]> {
   const debut = Date.now();
   const aujourdhui = aujourdhuiParis();
   const lundi = ajouterJours(aujourdhui, 1);
-  const comptes: Compte[] = [];
+  // Les départs du lundi d'abord (leur première semaine part avec eux), dans une partie du temps du passage.
+  const comptes: Compte[] = await departsDuJour(budgetMs * 0.75);
   const service = clientService();
   for (const planId of await plansActifs()) {
     if (Date.now() - debut > budgetMs) {
