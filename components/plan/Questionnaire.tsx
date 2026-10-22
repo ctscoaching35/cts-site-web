@@ -73,10 +73,12 @@ function Choix({
 // un athlète déjà connu, son profil rempli une fois (repris d'initial) ; seules sa charge du moment (PO2, préremplie) et
 // la course se demandent.
 export default function Questionnaire({
-  coach = false, emailCoach = '', athleteId, initial, demande = false, demandeId, court = false,
+  coach = false, emailCoach = '', athleteId, initial, demande = false, demandeId, court = false, modification,
 }: {
   coach?: boolean; emailCoach?: string; athleteId?: string; initial?: Record<string, string | string[]>; demande?: boolean;
   demandeId?: string; court?: boolean;
+  // « Modifier l'objectif » (décision coach du 22/10/2026) : l'objectif refait à sa place ; trace : il en a déjà une.
+  modification?: { planId: string; trace: boolean };
 } = {}) {
   const [config, setConfig] = useState<ConfigPlan | null>(null);
   const [erreurConfig, setErreurConfig] = useState('');
@@ -278,6 +280,7 @@ export default function Questionnaire({
     if (gpx) donnees.append('gpx', gpx);
     if (coach && athleteId) donnees.append('athlete_id', athleteId);
     if (coach && demandeId) donnees.append('demande_id', demandeId);
+    if (coach && modification) donnees.append('plan_id', modification.planId);
     if (!coach && debutImmediat) donnees.append('execution_immediate', '1');
     // La case de l'avertissement accepte aussi les CGV : l'API en garde la date chez Stripe, avec le paiement (E4).
     if (!coach && confirme) donnees.append('cgv_acceptees', '1');
@@ -331,7 +334,7 @@ export default function Questionnaire({
       ['En ce moment', `${c.volume_hebdo_actuel} de course par semaine · plus longue sortie ${c.sortie_longue_actuelle}`],
       ['Formule', coach ? `${nomFormat} — jusqu’à la course` : `${nomFormat} — ${c.duree_mois} mois`],
       ['Course', `${c.course_nom}, le ${new Date(`${c.date_course}T00:00:00`).toLocaleDateString('fr-FR')}`],
-      ['Parcours', `${nombreFr(c.distance_km)} km, ${nombreFr(c.dplus_m)} m D+${c.dmoins_m ? `, ${nombreFr(c.dmoins_m)} m D−` : ''}${gpx ? ` · trace ${gpx.name}` : ' · sans trace GPX'}`],
+      ['Parcours', `${nombreFr(c.distance_km)} km, ${nombreFr(c.dplus_m)} m D+${c.dmoins_m ? `, ${nombreFr(c.dmoins_m)} m D−` : ''}${gpx ? ` · trace ${gpx.name}` : modification?.trace ? ' · sa trace déjà donnée' : ' · sans trace GPX'}`],
       ['Temps cible', c.temps_cible], ['Terrain', nomTerrain],
       ['Disponibilité', `${c.freq_hebdo} séances par semaine · ${joursCoches.map((j) => NOMS_JOURS[j]).join(', ')} · sortie longue le ${c.jour_sl}`],
     ];
@@ -432,6 +435,8 @@ export default function Questionnaire({
               ? (demande ? 'Envoi…' : coach ? 'Génération…' : 'Vérification…')
               : demande
                 ? 'Envoyer à mon coach →'
+                : modification
+                ? 'Enregistrer les modifications →'
                 : coach
                 ? 'Générer le plan de l’athlète →'
                 : config.mode_paiement === 'test'

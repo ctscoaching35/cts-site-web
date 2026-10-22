@@ -23,6 +23,31 @@ export async function POST(request: NextRequest) {
     ? await service0.from('objectifs_demandes').select('id, gpx_chemin').eq('id', demandeId).eq('coach_id', coach.compteId).maybeSingle()
     : { data: null };
   formulaire.delete('demande_id');
+  // « Modifier l'objectif » (décision coach du 22/10/2026) : l'objectif refait à sa place. En route, sa date, sa distance
+  // et son format restent (les bandeaux posés dans Nolio en dépendent), sa durée et sa semaine rejointe aussi.
+  const planModifie = String(formulaire.get('plan_id') ?? '');
+  formulaire.delete('plan_id');
+  const { data: ancien } = planModifie
+    ? await service0.from('plans').select('id, parametres, demarre_le').eq('id', planModifie).eq('compte_id', coach.compteId)
+      .not('parametres', 'is', null).maybeSingle()
+    : { data: null };
+  if (planModifie && !ancien) return NextResponse.json({ message: 'Cet objectif ne se modifie pas.' }, { status: 404 });
+  const anciensParametres = (ancien?.parametres ?? {}) as Record<string, unknown>;
+  if (ancien?.demarre_le) {
+    const avant = (anciensParametres.champs ?? {}) as Record<string, unknown>;
+    let champs: Record<string, unknown>;
+    try {
+      champs = JSON.parse(String(formulaire.get('intake') ?? ''));
+    } catch {
+      return NextResponse.json({ message: 'Le formulaire n’a pas pu être lu. Recharge la page et recommence.' }, { status: 400 });
+    }
+    const km = (v: unknown) => Number(String(v ?? '').replace(',', '.'));
+    if (String(champs.date_course) !== String(avant.date_course) || km(champs.distance_km) !== km(avant.distance_km)
+      || String(champs.format) !== String(avant.format)) {
+      return NextResponse.json({ message: 'Il est déjà en route : sa date, sa distance et son format ne changent plus. Pour une autre course, retire cet objectif et crée-en un nouveau.' }, { status: 422 });
+    }
+    formulaire.set('intake', JSON.stringify({ ...champs, duree_mois: avant.duree_mois }));
+  }
   const gpxDonne = formulaire.get('gpx');
   if (demande?.gpx_chemin && !(gpxDonne instanceof File && gpxDonne.size > 0)) {
     const { data: trace } = await service0.storage.from('plans-pdf').download(demande.gpx_chemin);
@@ -43,6 +68,34 @@ export async function POST(request: NextRequest) {
   }
   const donnees: Plan = await (await fetch(`${API_URL}${c2.donnees_url}`, { cache: 'no-store' })).json();
   const service = clientService();
+  if (ancien) {
+    // Gardés : ses courses de préparation, son profil de coureur ; sa trace sans nouvelle trace ; en route, sa semaine
+    // rejointe. Avant le départ, un départ programmé s'annule : le coach redémarre l'objectif.
+    const nouveaux = (c2.parametres ?? {}) as Record<string, unknown>;
+    const parametres = {
+      ...anciensParametres, ...nouveaux,
+      plage_dominante: nouveaux.plage_dominante ?? anciensParametres.plage_dominante ?? null,
+      bande_majeure: nouveaux.bande_majeure ?? anciensParametres.bande_majeure ?? null,
+      ...(ancien.demarre_le ? { declaree_le: anciensParametres.declaree_le } : {}),
+    };
+    const r3 = await fetch(`${API_URL}/v1/trame`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ parametres }), cache: 'no-store',
+    });
+    if (!r3.ok) {
+      const c3 = await r3.json().catch(() => null);
+      return NextResponse.json({ message: c3?.message || 'Le moteur n’a pas accepté ces modifications.' }, { status: 422 });
+    }
+    const { error } = await service.from('plans').update({
+      course_nom: donnees.course.nom, course_date: donnees.course.date, debut_plan: donnees.course.date_debut_plan,
+      schema: donnees.schema, version_moteur: donnees.version_moteur, donnees, intake: c2.intake ?? {}, parametres, trame: null,
+      ...(ancien.demarre_le ? {} : { depart_prevu: null }),
+    }).eq('id', ancien.id);
+    if (error) {
+      console.error('Objectif modifié :', error.message);
+      return NextResponse.json({ message: 'Les modifications n’ont pas pu être enregistrées. Réessaie.' }, { status: 500 });
+    }
+    return NextResponse.json({ page: `/app/coach/plan/${ancien.id}` });
+  }
   const { data: plan, error } = await service.from('plans').insert({
     compte_id: coach.compteId, course_nom: donnees.course.nom, course_date: donnees.course.date,
     debut_plan: donnees.course.date_debut_plan, schema: donnees.schema, version_moteur: donnees.version_moteur,

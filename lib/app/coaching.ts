@@ -149,7 +149,12 @@ export async function chargeDepuisNolio(coachId: string, usr: string | null): Pr
 // Les réponses d'un objectif, sans celles de sa course : le point de départ du suivant (N9, OM1).
 export function reponsesSansLaCourse(intake: unknown): Record<string, string | string[]> {
   const COURSE = ['format', 'duree_mois', 'course_nom', 'date_course', 'distance_km', 'dplus_m', 'dmoins_m', 'temps_cible', 'coupure'];
-  return Object.fromEntries(Object.entries((intake ?? {}) as Record<string, unknown>).filter(([k]) => !COURSE.includes(k))
+  return Object.fromEntries(Object.entries(reponsesDe(intake)).filter(([k]) => !COURSE.includes(k)));
+}
+
+// Toutes les réponses d'un objectif, sa course comprise : « Modifier l'objectif » (décision coach du 22/10/2026).
+export function reponsesDe(intake: unknown): Record<string, string | string[]> {
+  return Object.fromEntries(Object.entries((intake ?? {}) as Record<string, unknown>)
     .map(([k, v]) => [k, Array.isArray(v) ? v.map(String) : String(v ?? '')]));
 }
 

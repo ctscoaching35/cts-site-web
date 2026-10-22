@@ -127,6 +127,10 @@ export default async function ObjectifCoache({ params, searchParams }: {
           </p>
         </div>
         <div className="flex flex-wrap gap-2.5">
+          {/* « Modifier l'objectif » (décision coach du 22/10/2026) : tout avant le départ ; en route, sauf sa date et sa distance. */}
+          {ecriture?.parametres && course.date >= jour && (
+            <Link href={`/app/coach/nouveau?athlete=${o.athlete.id}&modifier=${id}`} className="inline-flex items-center min-h-11 px-4 rounded-xl border border-indigo/[0.18] bg-white text-[0.8125rem] font-bold">Modifier</Link>
+          )}
           <a href={lienFicheCourse(id)} target="_blank" rel="noopener" className="inline-flex items-center min-h-11 px-4 rounded-xl border border-indigo/[0.18] bg-white text-[0.8125rem] font-bold">Fiche de course</a>
           <a href="https://www.nolio.io/" target="_blank" rel="noopener" className="inline-flex items-center min-h-11 px-4 rounded-xl bg-indigo text-white text-[0.8125rem] font-bold">Ouvrir dans Nolio</a>
         </div>

@@ -2,9 +2,10 @@ import Link from 'next/link';
 import CadreCoach from '@/components/app/CadreCoach';
 import Questionnaire from '@/components/plan/Questionnaire';
 import { exigerCoach } from '@/lib/app/nolio';
-import { questionnairePrerempli } from '@/lib/app/coaching';
+import { questionnairePrerempli, reponsesDe } from '@/lib/app/coaching';
 import { demandeDuCoach } from '@/lib/app/demandes';
 import { courseNolio } from '@/lib/app/coursesNolio';
+import { clientService } from '@/lib/app/supabase';
 import type { Recherche } from '@/lib/app/contexte';
 
 // Toujours calculée à la visite : la page lit la session du coach.
@@ -21,6 +22,14 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
   // OM1 : l'objectif demandé par le coaché, ses réponses à relire ; sa trace part avec la demande.
   const demande = suite && typeof r.demande === 'string' ? await demandeDuCoach(coach.compteId, r.demande) : null;
   const court = Boolean(suite?.profilConnu && !demande);
+  // « Modifier l'objectif » (décision coach du 22/10/2026) : ses réponses à lui, sa course comprise ; celles que le moteur
+  // tient à jour (parametres.champs : sa charge relue au départ) l'emportent sur celles de la création.
+  const aModifier = suite && !demande && typeof r.modifier === 'string' && suite.athlete.objectifs.some((o) => o.plan_id === r.modifier)
+    ? (await clientService().from('plans').select('id, intake, parametres, demarre_le, course_nom').eq('id', r.modifier)
+      .eq('compte_id', coach.compteId).not('parametres', 'is', null).maybeSingle()).data
+    : null;
+  const pm = (aModifier?.parametres ?? null) as Record<string, unknown> | null;
+  const traceDonnee = Boolean(pm?.plage_dominante || pm?.bande_majeure);
   // Une course de Nolio, depuis sa fiche (« Créer l'objectif », décision coach du 22/10/2026) : la course déjà remplie.
   const usr = suite?.athlete.nolio_athlete_id;
   const c = usr && !demande && typeof r.course === 'string' ? await courseNolio(usr, r.course).catch(() => null) : null;
@@ -34,15 +43,20 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
   return (
     <CadreCoach actif="athletes">
       <div className="max-w-3xl">
-        <Link href={suite ? `/app/coach/athlete/${suite.athlete.id}` : '/app/coach'} className="inline-flex items-center min-h-9 text-[0.8125rem] font-bold text-teal">
-          ‹ {suite ? suite.athlete.nom : 'Tes athlètes'}
+        <Link href={aModifier ? `/app/coach/plan/${aModifier.id}` : suite ? `/app/coach/athlete/${suite.athlete.id}` : '/app/coach'} className="inline-flex items-center min-h-9 text-[0.8125rem] font-bold text-teal">
+          ‹ {aModifier ? String(aModifier.course_nom) : suite ? suite.athlete.nom : 'Tes athlètes'}
         </Link>
         <div className="my-6 px-2">
           <div className="eyebrow text-teal mb-3">Athlète coaché</div>
-          <h1 className="text-3xl sm:text-4xl text-indigo leading-tight">{suite ? `Nouvel objectif pour ${suite.athlete.nom}` : 'Ajouter un athlète'}</h1>
+          <h1 className="text-3xl sm:text-4xl text-indigo leading-tight">{aModifier ? `Modifier ${aModifier.course_nom}` : suite ? `Nouvel objectif pour ${suite.athlete.nom}` : 'Ajouter un athlète'}</h1>
           <p className="text-indigo/70 mt-2">
-            {deNolio ? `${c?.nom} vient de Nolio : la course est remplie, relis sa distance, son dénivelé et le temps visé. ` : ''}
-            {demande
+            {aModifier
+              ? `${aModifier.demarre_le
+                ? 'Il est en route : les semaines déjà écrites restent, les suivantes suivront tes réponses. Sa date, sa distance et son format ne changent plus. Sa charge est celle de son départ : corrige-la seulement si elle était fausse, la suite s’ajuste déjà chaque dimanche sur ce qu’il fait.'
+                : 'Tout se modifie. Un départ déjà programmé s’annule : tu redémarreras l’objectif après.'}${traceDonnee ? ' Sa trace est gardée si tu n’en donnes pas d’autre.' : ''}`
+              : ''}
+            {!aModifier && deNolio ? `${c?.nom} vient de Nolio : la course est remplie, relis sa distance, son dénivelé et le temps visé. ` : ''}
+            {aModifier ? '' : demande
               ? `Sa demande du ${new Date(demande.cree_le).toLocaleDateString('fr-FR')} : relis ses réponses, corrige si besoin, et lance l’objectif.${demande.gpx_chemin ? ' Sa trace part avec la demande.' : ''}`
               : court && suite?.nolio
               ? 'Son profil est déjà rempli : seules sa charge du moment et la course sont demandées. Sa charge est préremplie depuis Nolio, sur ses 4 dernières semaines : relis et corrige si besoin.'
@@ -53,7 +67,7 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
               : 'Remplis le questionnaire avec ses réponses. L’objectif se crée sans paiement et rejoint ton espace coach.'}
           </p>
         </div>
-        {court && (
+        {court && !aModifier && (
           <div role="group" aria-label="Genre d’objectif" className="inline-flex mb-6 p-1 rounded-xl bg-sand-dark gap-1">
             <span aria-current="true" className="inline-flex items-center min-h-11 px-4 rounded-[9px] bg-white text-indigo text-sm font-bold shadow-sm">Objectif principal</span>
             {enCours ? (
@@ -65,8 +79,10 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
             )}
           </div>
         )}
-        <Questionnaire coach court={court} emailCoach={coach.email} athleteId={suite?.athlete.id} demandeId={demande?.id}
-          initial={demande ? { ...demande.champs, nom: suite?.athlete.nom ?? '' } : deNolio ? { ...suite?.initial, ...deNolio } : suite?.initial} />
+        <Questionnaire coach court={court && !aModifier} emailCoach={coach.email} athleteId={suite?.athlete.id} demandeId={demande?.id}
+          modification={aModifier ? { planId: String(aModifier.id), trace: traceDonnee } : undefined}
+          initial={aModifier ? { ...reponsesDe(aModifier.intake), ...reponsesDe(pm?.champs), nom: suite?.athlete.nom ?? '' }
+            : demande ? { ...demande.champs, nom: suite?.athlete.nom ?? '' } : deNolio ? { ...suite?.initial, ...deNolio } : suite?.initial} />
       </div>
     </CadreCoach>
   );
