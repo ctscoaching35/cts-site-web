@@ -5,6 +5,7 @@ import CadreCoach from '@/components/app/CadreCoach';
 import { Carte, Surtitre } from '@/components/app/Ui';
 import { ReessayerSemaine } from '@/components/app/GestesEcriture';
 import { NIVEAUX, vueDuCoach } from '@/lib/app/espaceCoach';
+import { creerFicheDepuisNolio } from '@/lib/app/actionsCoaching';
 import { dateLongue, jMoins } from '@/lib/app/plan';
 import { clientService, supabaseConfigure } from '@/lib/app/supabase';
 import { athletesNolio, ErreurNolio, exigerCoach, nolioConfigure, type AthleteNolio } from '@/lib/app/nolio';
@@ -147,12 +148,20 @@ export default async function Coach() {
         ) : erreur ? (
           <p className="text-sm text-[#4A4866]">{erreur}</p>
         ) : (
-          <details className="text-sm">
+          <details className="text-sm" open={sansFiche.length > 0}>
             <summary className="cursor-pointer min-h-11 flex items-center font-semibold text-indigo">
               {sansFiche.length ? `${sansFiche.length} athlète${sansFiche.length > 1 ? 's' : ''} de Nolio sans fiche ici` : 'Tous tes athlètes de Nolio ont leur fiche'}
             </summary>
+            {/* « Créer sa fiche » (décision coach du 22/10/2026) : d'un clic, déjà reliée à Nolio. */}
             <ul className="pb-2 text-[#4A4866] divide-y divide-indigo/[0.06]">
-              {sansFiche.map((x) => <li key={x.id} className="py-1.5">{x.name}</li>)}
+              {sansFiche.map((x) => (
+                <li key={x.id} className="flex items-center justify-between gap-3 py-1.5">
+                  <span>{x.name}</span>
+                  <form action={creerFicheDepuisNolio.bind(null, x.id)}>
+                    <button type="submit" className="min-h-10 px-3 rounded-[10px] border border-teal text-teal text-[0.8125rem] font-bold">Créer sa fiche ›</button>
+                  </form>
+                </li>
+              ))}
             </ul>
           </details>
         )}

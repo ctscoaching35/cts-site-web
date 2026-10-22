@@ -9,7 +9,7 @@ import { redirect } from 'next/navigation';
 import { accordDeLAthlete, envoyerSemaine, ficheAthlete, marquerTestsLus, mettreAJourSemaine, objectifCoache } from './coaching';
 import { fermerEspace, ouvrirEspace } from './espaceAthlete';
 import { objectifEcrit, retirerDeNolio, zonesDeLaFicheVersNolio, zonesVersNolio } from './ecriture';
-import { coachConnecte } from './nolio';
+import { athletesNolio, coachConnecte } from './nolio';
 import { lireAllure } from './allureCoach';
 import { clientService } from './supabase';
 
@@ -24,6 +24,32 @@ export async function changerProgrammation(athleteId: string, programmation: 'au
   const { error } = await clientService().from('athletes_coaches').update({ programmation }).eq('id', athleteId).eq('coach_id', coach.compteId);
   if (error) console.error(`Programmation de ${athleteId} :`, error.message);
   revalidatePath('/app', 'layout');
+}
+
+// « Créer sa fiche » (décision coach du 22/10/2026) : un athlète de son équipe Nolio sans fiche ici, sa fiche créée d'un
+// clic, déjà reliée à Nolio, sans objectif ; ses dimanches partent au passage de 18 h 30 et son objectif se crée ensuite
+// depuis sa fiche (« Son entrée », sa course Nolio déjà remplie).
+export async function creerFicheDepuisNolio(nolioId: string): Promise<void> {
+  const coach = await coachConnecte();
+  if (!coach || !/^usr_[A-Za-z0-9]+$/.test(nolioId)) return;
+  const service = clientService();
+  const { data: deja } = await service.from('athletes_coaches').select('id').eq('coach_id', coach.compteId)
+    .eq('nolio_athlete_id', nolioId).maybeSingle();
+  let id = deja?.id as string | undefined;
+  if (!id) {
+    // Son nom tel que Nolio le donne, et seulement un athlète de son équipe.
+    const membre = (await athletesNolio()).find((x) => x.id === nolioId && !x.name.endsWith('(toi)'));
+    if (!membre) return;
+    const { data, error } = await service.from('athletes_coaches')
+      .insert({ coach_id: coach.compteId, nom: membre.name, nolio_athlete_id: nolioId }).select('id').single();
+    if (error || !data) {
+      console.error('Fiche depuis Nolio :', error?.message);
+      return;
+    }
+    id = data.id as string;
+  }
+  revalidatePath('/app/coach');
+  redirect(`/app/coach/athlete/${id}`);
 }
 
 export async function associerNolio(athleteId: string, form: FormData): Promise<void> {
