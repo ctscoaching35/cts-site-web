@@ -2,6 +2,7 @@ import Link from 'next/link';
 import clsx from 'clsx';
 import { notFound } from 'next/navigation';
 import CadreCoach from '@/components/app/CadreCoach';
+import CarteEntree from '@/components/app/CarteEntree';
 import FormulaireValeurs from '@/components/app/FormulaireValeurs';
 import InvitationApp from '@/components/app/InvitationApp';
 import ProfilAthlete from '@/components/app/ProfilAthlete';
@@ -13,6 +14,7 @@ import { adresseDuCompte } from '@/lib/app/espaceAthlete';
 import { ficheAthlete } from '@/lib/app/coaching';
 import { initiales } from '@/lib/app/contexte';
 import { demandesDuCoach } from '@/lib/app/demandes';
+import { entreeDe } from '@/lib/app/entree';
 import { athletesNolio, ErreurNolio, exigerCoach, nolioConfigure, type AthleteNolio } from '@/lib/app/nolio';
 import { dateLongue } from '@/lib/app/plan';
 import { textes } from '@/lib/plan';
@@ -73,6 +75,14 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
   const jour = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
   const prochain = a.objectifs.find((o) => o.course_date >= jour)?.plan_id ?? null;
   const nomNolio = liste.find((x) => x.id === a.nolio_athlete_id)?.name ?? null;
+  // Son entrée (décision coach du 22/10/2026), sur son prochain objectif.
+  const pp = prochain ? etat.get(prochain) : undefined;
+  const entree = entreeDe({
+    athleteId: a.id, nolio: Boolean(a.nolio_athlete_id), accord: Boolean(accord), programmation: a.programmation,
+    objectif: prochain ? { plan_id: prochain, ecrit: Boolean(pp?.parametres), demarre: Boolean(pp?.demarre_le),
+      prevu: (pp?.depart_prevu as string | null) ?? null } : null,
+    dimanchesJusqua: a.questionnaires?.jusqua ?? null, aujourdhui: jour,
+  });
   const pastilles: [string, boolean][] = [
     [a.nolio_athlete_id ? 'Nolio relié' : 'Nolio à associer', Boolean(a.nolio_athlete_id)],
     [accord ? 'Accord de lecture reçu' : 'Sans accord de lecture', Boolean(accord)],
@@ -93,6 +103,8 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
           </div>
         </div>
       </div>
+
+      {!entree.complete && <CarteEntree entree={entree} />}
 
       <div className="flex flex-wrap gap-5 items-start">
         <div className="flex-[1_1_380px] min-w-0 space-y-5">
@@ -230,7 +242,7 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
             </Carte>
           )}
 
-          <Carte className="!p-5 space-y-3">
+          <Carte id="son-nolio" className="!p-5 space-y-3 scroll-mt-6">
             <Surtitre>Son compte Nolio</Surtitre>
             {!relie ? (
               <p className="text-sm text-[#4A4866]">La clé de l’API Nolio manque dans Vercel (NOLIO_API_KEY).</p>

@@ -11,6 +11,7 @@
  */
 import { athletesCoaches, type FicheAthlete } from './coaching';
 import { demandesDuCoach, estRetrait, type Demande } from './demandes';
+import { entreeDe } from './entree';
 import { plansALaMain, type LigneTrame, type Realise } from './ecriture';
 import { ajouterJours, jourMois, joursEntre, type Semaine } from './plan';
 import { clientService } from './supabase';
@@ -21,6 +22,8 @@ export type LigneAthlete = {
   objectif: { plan_id: string; course_nom: string; course_date: string; demarre: boolean; prevu: string | null;
     semaine: number | null; total: number | null; verdict: Verdict | null; ecrit: boolean } | null;
   ensuite: { texte: string; ton: 'rien' | 'action' | 'alerte'; href: string };
+  // Son entrée, tant qu'elle n'est pas complète (décision coach du 22/10/2026) : « Entrée 3/5 » sur sa ligne.
+  entree: { faites: number; total: number } | null;
 };
 type DemandeAthlete = Demande & { nom: string };
 export type Niveau = 'bloque' | 'sante' | 'moteur' | 'arrive';
@@ -181,12 +184,17 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
           texte: `son test du ${jourTest ?? ''} de sa semaine ${num(sem)} ${TEST[String(t.statut)] ?? 'n’a pas pu être lu'}.` });
       }
     }
+    const entree = entreeDe({
+      athleteId: a.id, nolio: Boolean(a.nolio_athlete_id), accord: Boolean(a.nolio_athlete_id && avecAccord.has(a.nolio_athlete_id)),
+      programmation: a.programmation, dimanchesJusqua: a.questionnaires?.jusqua ?? null, aujourdhui: jour,
+      objectif: o && avenir ? { plan_id: o.plan_id, ecrit, demarre, prevu: (p?.depart_prevu as string | null) ?? null } : null,
+    });
     return {
       id: a.id, nom: a.nom, usr: a.nolio_athlete_id, nolio: Boolean(a.nolio_athlete_id), accord: Boolean(a.nolio_athlete_id && avecAccord.has(a.nolio_athlete_id)),
       app: Boolean(a.compte_id),
       objectif: o ? { plan_id: o.plan_id, course_nom: o.course_nom, course_date: o.course_date, demarre, prevu: (p?.depart_prevu as string | null) ?? null,
         semaine: jauge?.semaine ?? null, total: trame?.length ?? null, verdict: jauge?.verdict ?? null, ecrit } : null,
-      ensuite,
+      ensuite, entree: entree.complete ? null : { faites: entree.faites, total: entree.total },
     };
   });
   const rang = (n: Niveau) => NIVEAUX.findIndex((x) => x.cle === n);

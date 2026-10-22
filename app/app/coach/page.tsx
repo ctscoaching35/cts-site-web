@@ -107,7 +107,14 @@ export default async function Coach() {
                 return (
                   <Link key={a.id} href={`/app/coach/athlete/${a.id}`}
                     className="grid grid-cols-[1.3fr_1.6fr_0.8fr_1.3fr_0.9fr_1.3fr] gap-x-3 items-center min-h-14 text-[0.84rem] border-b last:border-b-0 border-indigo/[0.06] hover:bg-sand/50">
-                    <span className="font-bold">{a.nom}</span>
+                    <span className="font-bold">
+                      {a.nom}
+                      {a.entree && (
+                        <span className="ml-2 text-[0.72rem] font-bold px-2 py-0.5 rounded-lg bg-[#F6ECD8] text-[#7A520D] whitespace-nowrap">
+                          Entrée {a.entree.faites}/{a.entree.total}
+                        </span>
+                      )}
+                    </span>
                     <span className={o ? '' : 'text-[#5E5C78]'}>{o ? `${o.course_nom} · ${dateLongue(o.course_date, true)}` : 'Aucun objectif'}</span>
                     <span className={o && o.course_date >= jour ? '' : 'text-[#5E5C78]'}>{o && o.course_date >= jour ? jMoins(jour, o.course_date) : '—'}</span>
                     <span className="inline-flex items-center gap-2">

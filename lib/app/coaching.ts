@@ -22,7 +22,7 @@ export type FicheAthlete = {
   // Son compte dans l'app, quand le coach l'y a invité (T6).
   compte_id: string | null;
   // Sa série du dimanche dans Nolio et le dernier mot écrit à la question ouverte (dimanchesCoaches, 21/10/2026).
-  questionnaires?: { mot_le?: string | null } | null;
+  questionnaires?: { mot_le?: string | null; jusqua?: string | null } | null;
   // Son profil (PO1), sa D′ (AP4), la date et la source de chaque repère : null ou vides tant que la migration du
   // 19/10/2026 n'est pas passée.
   profil: Record<string, string | string[]> | null; d_prime_m: number | null;
