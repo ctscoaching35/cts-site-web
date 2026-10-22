@@ -45,10 +45,14 @@ lien, et seulement aux membres de l'organisation). D'où Brevo, prévu au cadrag
 - Supabase, **Authentication › Emails › SMTP Settings** : *Enable Custom SMTP*, l'expéditeur,
   le nom « CTS Coaching », le serveur, le port, l'identifiant et la clé de Brevo.
 
-Expéditeur des essais : ctscoaching35@gmail.com, **non authentifié** (Brevo ne peut pas
-authentifier une adresse Gmail) : le code peut finir en indésirables. Avant le lancement :
-authentifier le domaine cts-coaching.com dans Brevo (enregistrements DNS) et envoyer depuis une
-adresse du site.
+Expéditeur : **contact@cts-coaching.com**, depuis le 22/10/2026. Le domaine cts-coaching.com est
+authentifié dans Brevo (DNS chez Wix : le TXT « brevo-code », les CNAME brevo1._domainkey et
+brevo2._domainkey, le TXT _dmarc) ; l'adresse est déclarée dans Brevo › Expéditeurs (vérifiée par le
+domaine), dans Supabase › SMTP Settings et dans Vercel (`CTS_EMAIL_EXPEDITEUR`). Le domaine n'a pas de
+boîte mail (aucun MX) : les réponses vont à ctscoaching35@gmail.com (`REPONSE`, lib/app/emailBienvenue.ts).
+Chez Wix, ne jamais cliquer « Réessayer » sur l'alerte « domaine configuré pour pointer en dehors de
+Wix » : le site est chez Vercel. Avant le 22/10, l'expéditeur des essais était la Gmail, non
+authentifiée.
 
 ## 4. Les clés
 
