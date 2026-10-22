@@ -20,8 +20,9 @@ export type ConfigPlan = {
   freq_max_par_niveau: Record<string, number>;
   temps_max_par_format: Record<string, number>;
   reperes_km_effort_h: Record<string, [number, number, number]>;
-  bandes_temps_cible?: { bornes_h: number[]; libelles: string[]; phrases_bornes: string[]; marge_min: number };
   sortie_longue_min?: { h: number; message: string };
+  // Les bornes du temps cible : elles règlent les durées possibles, plus aucune phrase à la saisie (22/10/2026).
+  bandes_temps_cible?: { bornes_h: number[]; libelles: string[]; phrases_bornes: string[]; marge_min: number };
   semaines_par_formule: Record<string, number>;
   // Les durées que le temps visé admet, bande par bande (moteur : mois_par_temps_cible) ; absentes d'une API d'avant.
   mois_par_bande?: number[][];
@@ -298,22 +299,9 @@ export function alerteSortieLongue(c: Champs, config: ConfigPlan): string | null
   return h < plancher.h - 1e-9 ? plancher.message : null;
 }
 
-/**
- * Bande du temps cible (CONTRAT_API_CTS.md §4 ; audit du questionnaire du 01/10/2026, F1) : à
- * moins de `marge_min` minutes d'une borne, ce qui change de l'autre côté. Bornes et phrases lues
- * dans /v1/config. L'annonce « Ton plan sera construit pour une course de… » est retirée (décision
- * coach du 07/10/2026 : elle n'apprend rien à l'athlète).
- */
-export function bandeTempsCible(c: Champs, config: ConfigPlan): { alerte: string | null } | null {
-  const bandes = config.bandes_temps_cible;
-  const h = lireTemps(c.temps_cible);
-  if (!bandes || h === null || !(h > 0)) return null;
-  const j = bandes.bornes_h.findIndex((b) => Math.abs(h - b) * 60 < bandes.marge_min);
-  return {
-    alerte: j < 0 ? null
-      : `Tu es à moins de ${bandes.marge_min} min de ${bandes.bornes_h[j]}h, une frontière du plan. ${bandes.phrases_bornes[j]} Mets le temps que tu crois le plus probable.`,
-  };
-}
+// La bande du temps cible n'est plus dite à la saisie (décision coach du 22/10/2026 : « une estimation est une estimation
+// que l'athlète pense juste, il n'a pas besoin de savoir que c'est une frontière ») ; l'annonce « Ton plan sera construit
+// pour une course de… » l'était déjà (07/10/2026).
 
 /**
  * Plancher de séances par semaine (CONTRAT_API_CTS.md §5) : celui du format, et au moins

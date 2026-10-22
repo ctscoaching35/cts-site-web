@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { compterEtape } from '@/lib/mesure';
 import clsx from 'clsx';
-import { alerteSortieLongue, API_URL, avertissements, bandeTempsCible, type Champs, champsVides, type ConfigPlan, dureeConseillee, dureesPossibles, formatDepuisDistance, formatOuvert, intakePourApi, noteFormat, plancherSeances, reperesChrono, textes } from '@/lib/plan';
+import { alerteSortieLongue, API_URL, avertissements, type Champs, champsVides, type ConfigPlan, dureeConseillee, dureesPossibles, formatDepuisDistance, formatOuvert, intakePourApi, noteFormat, plancherSeances, reperesChrono, textes } from '@/lib/plan';
 
 const NOMS_JOURS: Record<string, string> = {
   lundi: 'Lundi', mardi: 'Mardi', mercredi: 'Mercredi', jeudi: 'Jeudi',
@@ -188,7 +188,6 @@ export default function Questionnaire({
   const freqMin = plancher?.min ?? 3;
   const freqMax = plancher?.max ?? 7;
   const reperes = config ? reperesChrono(c, config, coach) : null;
-  const bande = config ? bandeTempsCible(c, config) : null;
   const alerteSl = config ? alerteSortieLongue(c, config) : null;
   const alertes = useMemo(() => (config ? avertissements(c, config) : []), [c, config]);
 
@@ -572,9 +571,6 @@ export default function Questionnaire({
           <label className={labelCls} htmlFor="temps">Temps cible</label>
           <input id="temps" className={inputCls} required placeholder="ex. 5h30" value={c.temps_cible} onChange={(e) => maj('temps_cible')(e.target.value)} />
           {reperes && <p className="text-sm text-teal mt-2 leading-relaxed">{reperes}</p>}
-          {bande?.alerte && (
-            <p role="status" className="bg-sand rounded-r-xl border-l-4 border-teal px-4 py-3 mt-2 text-[0.8125rem] text-indigo leading-relaxed">{bande.alerte}</p>
-          )}
           <p className={aideCls}>
             {textes.tempsCible}
             {c.format && ` Sur ce format, le temps cible ne peut pas dépasser ${config.temps_max_par_format[c.format]}h.`}
