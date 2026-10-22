@@ -7,7 +7,7 @@
  * date de l'avertissement est gardée avec le compte (app_metadata), rien d'autre. Côté serveur seulement.
  */
 import { site } from '@/lib/content';
-import { EXPEDITEUR } from './emailBienvenue';
+import { EXPEDITEUR, REPONSE } from './emailBienvenue';
 import { effacerCompte } from './effacement';
 import { gestesDuJour, type CompteAge } from './inactifs';
 import { coachs } from './nolio';
@@ -40,7 +40,7 @@ async function envoyerAvertissement(email: string, suppressionLe: string, cle: s
   const r = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: { 'api-key': cle, 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ sender: EXPEDITEUR, replyTo: EXPEDITEUR, to: [{ email }], subject: sujet, textContent: texte, htmlContent: html }),
+    body: JSON.stringify({ sender: EXPEDITEUR, replyTo: REPONSE, to: [{ email }], subject: sujet, textContent: texte, htmlContent: html }),
     cache: 'no-store',
   });
   if (!r.ok) throw new Error(`Brevo ${r.status}`);

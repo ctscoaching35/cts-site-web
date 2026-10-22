@@ -6,7 +6,7 @@
  * BROUILLON, à valider par le coach.
  */
 import { site } from '@/lib/content';
-import { EXPEDITEUR } from './emailBienvenue';
+import { EXPEDITEUR, REPONSE } from './emailBienvenue';
 import { coachs } from './nolio';
 import { clientService } from './supabase';
 
@@ -66,7 +66,7 @@ ${p(echapper(paragraphes[1]))}
     method: 'POST',
     headers: { 'api-key': cle, 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({
-      sender: EXPEDITEUR, replyTo: EXPEDITEUR, to: [{ email, name: nom }], subject: 'Ton espace CTS est ouvert',
+      sender: EXPEDITEUR, replyTo: REPONSE, to: [{ email, name: nom }], subject: 'Ton espace CTS est ouvert',
       textContent: [`Bonjour ${prenom},`, paragraphes[0], `Ouvrir mon espace : ${lienApp}`, paragraphes[1], signature].join('\n\n'),
       htmlContent: html,
     }),

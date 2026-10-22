@@ -13,12 +13,14 @@
  */
 import type { Plan } from './plan';
 
-// L'adresse d'envoi des essais (non authentifiée) ; une adresse du domaine cts-coaching.com,
-// authentifié dans Brevo, avant l'ouverture (supabase/README.md).
+// L'adresse d'envoi : une adresse du domaine cts-coaching.com, authentifié dans Brevo (CTS_EMAIL_EXPEDITEUR dans
+// Vercel ; supabase/README.md), sinon celle des essais, non authentifiée.
 export const EXPEDITEUR = {
   name: 'CTS Coaching',
   email: process.env.CTS_EMAIL_EXPEDITEUR?.trim() || 'ctscoaching35@gmail.com',
 };
+// Les réponses vont à la boîte du coach : le domaine n'a pas de boîte mail (aucun enregistrement MX, 22/10/2026).
+export const REPONSE = { name: 'CTS Coaching', email: 'ctscoaching35@gmail.com' };
 
 const sansBalises = (texte: string) => texte.replace(/<[^>]+>/g, '');
 const echapper = (texte: string) =>
@@ -97,7 +99,7 @@ export async function envoyerBienvenue(
     headers: { 'api-key': cle, 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({
       sender: EXPEDITEUR,
-      replyTo: EXPEDITEUR,
+      replyTo: REPONSE,
       to: [{ email, name: plan.athlete.nom.trim() }],
       subject: sujet,
       textContent: texte,
@@ -145,7 +147,7 @@ export async function envoyerRelanceInvitation(email: string, nom: string, lienA
     method: 'POST',
     headers: { 'api-key': cle, 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({
-      sender: EXPEDITEUR, replyTo: EXPEDITEUR, to: [{ email, name: nom.trim() || email }],
+      sender: EXPEDITEUR, replyTo: REPONSE, to: [{ email, name: nom.trim() || email }],
       subject: sujet, textContent: texte, htmlContent: html,
     }),
     cache: 'no-store',

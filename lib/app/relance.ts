@@ -6,7 +6,7 @@
  * Côté serveur seulement.
  */
 import { site } from '@/lib/content';
-import { EXPEDITEUR } from './emailBienvenue';
+import { EXPEDITEUR, REPONSE } from './emailBienvenue';
 import { clientService } from './supabase';
 
 export const emailValide = (email: string) => email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -48,7 +48,7 @@ async function envoyer(email: string, cle: string) {
   const r = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: { 'api-key': cle, 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ sender: EXPEDITEUR, replyTo: EXPEDITEUR, to: [{ email }], subject: sujet, textContent: texte, htmlContent: html }),
+    body: JSON.stringify({ sender: EXPEDITEUR, replyTo: REPONSE, to: [{ email }], subject: sujet, textContent: texte, htmlContent: html }),
     cache: 'no-store',
   });
   if (!r.ok) throw new Error(`Brevo ${r.status}`);
