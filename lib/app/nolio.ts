@@ -31,11 +31,12 @@ function cle(): string {
 // Les coachs : les e-mails de la variable CTS_COACHS (séparés par des virgules), saisie par le coach dans Vercel.
 export const coachs = () => (process.env.CTS_COACHS ?? '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
 
-// Les pages coach : sans session, la connexion ; connecté sans être coach, une page introuvable.
+// Les pages coach : sans session, la connexion, qui ramène à l'espace coach (l'app « CTS Coach ») ; connecté sans être
+// coach, une page introuvable.
 export async function exigerCoach(): Promise<{ compteId: string; email: string }> {
   const supabase = await clientServeur();
   const { data } = await supabase.auth.getClaims();
-  if (!data?.claims?.sub) redirect('/app/connexion');
+  if (!data?.claims?.sub) redirect('/app/connexion?suite=/app/coach');
   const coach = await coachConnecte();
   if (!coach) notFound();
   return coach;
