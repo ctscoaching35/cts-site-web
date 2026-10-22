@@ -161,8 +161,11 @@ const SEMAINE = 'semaine';
 const RENFO = ':renfo';
 export async function seancesDuMoteur(plan: Plan, planId: string, semaine: Semaine, profil: Record<string, number>, niveau: string,
   avecTrame = true) {
-  // La place de la semaine dans son bloc : la dose du renfo monte à partir de la troisième.
-  const rang = plan.semaines.filter((s) => s.bloc === semaine.bloc).findIndex((s) => s.numero === semaine.numero) + 1;
+  // La place de la semaine dans son bloc : la dose du renfo monte à partir de la troisième. Et parmi ses semaines de
+  // charge : les deux séances de renfo du bloc alternent sans se répéter après une assimilation (RF5).
+  const duBloc = plan.semaines.filter((s) => s.bloc === semaine.bloc);
+  const rang = duBloc.findIndex((s) => s.numero === semaine.numero) + 1;
+  const rangCharge = duBloc.slice(0, rang).filter((s) => s.type === 'Charge').length;
   // Le calendrier du plan, pour les fiches au bon moment (F1) et la fiche de course (F2).
   const lundiDu = (bloc: string) => plan.semaines.find((s) => s.bloc === bloc)?.lundi ?? null;
   const calendrier = {
@@ -173,7 +176,8 @@ export async function seancesDuMoteur(plan: Plan, planId: string, semaine: Semai
     method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
     body: JSON.stringify({ jours: semaine.jours, profil, niveau, calendrier,
       // Sa place et les qualités de son bloc : la description du bandeau (décision coach du 21/10/2026).
-      semaine: { type: semaine.type, bloc: semaine.bloc, lundi: semaine.lundi, rang_bloc: rang || 1, numero: semaine.numero,
+      semaine: { type: semaine.type, bloc: semaine.bloc, lundi: semaine.lundi, rang_bloc: rang || 1,
+        rang_charge: rangCharge || null, numero: semaine.numero,
         total: plan.semaines.length, ...qualitesDuBloc(plan, semaine.bloc) } }),
   });
   if (!r.ok) throw new Error(`Moteur /v1/nolio/seances : ${r.status}`);
