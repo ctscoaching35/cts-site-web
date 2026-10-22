@@ -77,8 +77,11 @@ export function Montagne({ score, ton }: { score: number | null; ton: keyof type
 // objectif à l'autre), « Ton objectif » pour un acheteur.
 // jauge : null pour un coaché que son coach programme à la main (décision coach du 20/10/2026) : ni montagne ni verdict,
 // qui suivent la trame du moteur ; le compte à rebours et sa course.
-export function CarteObjectif({ plan, restants, jauge, etape, href, surtitre = 'Ton objectif' }: {
+// coache : pour un coaché, ni le début calendaire du plan ni la semaine rejointe (décision coach du 22/10/2026 : ses
+// objectifs s'enchaînent).
+export function CarteObjectif({ plan, restants, jauge, etape, href, surtitre = 'Ton objectif', coache = false }: {
   plan: Plan; restants: number; jauge: Jauge | null; etape: 'avant' | 'pendant' | 'apres'; href: string; surtitre?: string;
+  coache?: boolean;
 }) {
   return (
     <CarteSombre className="space-y-3.5">
@@ -97,7 +100,7 @@ export function CarteObjectif({ plan, restants, jauge, etape, href, surtitre = '
       {jauge && <Montagne score={jauge.score} ton={jauge.verdict?.ton ?? null} />}
       {!jauge ? (etape === 'apres' && <p className="text-[0.9375rem] font-bold">Ta course est derrière toi : bravo pour le chemin.</p>)
       : etape === 'avant' ? (
-        <p className="text-[0.9375rem] font-bold">{plan.couverture.debut}</p>
+        <p className="text-[0.9375rem] font-bold">{coache ? 'Tes séances arrivent chaque dimanche dans Nolio.' : plan.couverture.debut}</p>
       ) : etape === 'apres' ? (
         <p className="text-[0.9375rem] font-bold">Ta course est derrière toi : bravo pour le chemin.</p>
       ) : (

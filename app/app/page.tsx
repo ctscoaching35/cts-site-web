@@ -131,7 +131,8 @@ export default async function Accueil({ searchParams }: { searchParams: Recherch
           <PourBienDemarrer acheteur={!ctx.coache} nolio={d.nolio} accord={d.accord} questionnaire={d.ecrit && !ctx.aLaMain} installer={installer} />
         )}
         <CarteObjectif plan={plan} restants={restants} jauge={ctx.aLaMain ? null : jauge} etape={etape} href={lien('/app/plan', ctx)}
-          surtitre={!ctx.coache ? 'Ton objectif' : etape === 'apres' ? 'Ton dernier objectif majeur' : 'Ton prochain objectif majeur'} />
+          surtitre={!ctx.coache ? 'Ton objectif' : etape === 'apres' ? 'Ton dernier objectif majeur' : 'Ton prochain objectif majeur'}
+          coache={Boolean(ctx.coache)} />
         {etape !== 'apres' && (!demarrage || d.nolio === 'sorti') && <CarteNolio etat={d.nolio} />}
         <CarteNouveauBadge badges={nouveaux} href={`${lien('/app/profil', ctx)}#badges`} />
 
