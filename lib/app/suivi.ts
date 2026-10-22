@@ -40,7 +40,7 @@ export async function lireSuivi(usr: string, moi: boolean, s: Seuils, aujourdhui
   const hooper = await indiceHooper();
   const [prevues, realisees, valeurs] = await Promise.all([
     // Les prévues d'une semaine de plus : le RPE prévu d'une séance faite un autre jour que prévu.
-    listeNolio<Prevue>(`planned/trainings/?date_from=${ajouterJours(debut, -7)}&date_to=${aujourdhui}&fields=id,name,date_start,rpe${qui}`),
+    listeNolio<Prevue>(`planned/trainings/?date_from=${ajouterJours(debut, -7)}&date_to=${aujourdhui}&fields=id,name,date_start,rpe,sport${qui}`),
     listeNolio<Realisee>(`real/trainings/?date_from=${debut}&date_to=${aujourdhui}&fields=id,name,date_start,planned,debrief${qui}`),
     hooper
       ? listeNolio<ValeurHooper>(`metrics/values/?item=${hooper}&date_from=${ajouterJours(debut, -(7 * s.hooper_semaines + 3))}&date_to=${aujourdhui}${qui}`)

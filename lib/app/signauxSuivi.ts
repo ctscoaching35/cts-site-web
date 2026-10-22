@@ -10,7 +10,11 @@ export type Seuils = { jours: number; rpe_au_dessus: number; rpe_au_dessus_sl?: 
 // Une sortie longue, d'après son nom dans Nolio (« SL plaisir », « Back-to-back — Jour 1/2 (sortie longue) ») : son RPE
 // se juge à prévu + 3 (décision coach du 21/10/2026, comme la règle R2 du moteur).
 const SORTIE_LONGUE = /^SL\b|back-to-back|sortie longue/i;
-export type Prevue = { id: string; name: string; date_start: string; rpe?: number | null };
+// Le renfo, souvent fait sans le lecteur de Nolio (décision coach du 22/10/2026 : « pas forcément besoin de me dire
+// manqué ») : jamais « séance manquée », hors du compte des séances faites. « Renforcement musculaire » dans Nolio, le
+// sport des séances du moteur (cts_renfo.SPORT_RENFO) comme de celles du coach.
+const SPORT_RENFO = 'spt_l5JdauYgoPxMr3b';
+export type Prevue = { id: string; name: string; date_start: string; rpe?: number | null; sport?: string | null };
 export type Realisee = {
   id: string; name: string; date_start: string; planned?: string | null;
   debrief?: { rpe?: number | null; feeling?: number | null; comment?: string | null } | null;
@@ -33,7 +37,7 @@ export const aujourdhuiParis = () =>
 export function signaux(prevues: Prevue[], realisees: Realisee[], hooper: ValeurHooper[], s: Seuils, aujourdhui: string): Suivi {
   const debut = ajouterJours(aujourdhui, -(s.jours - 1));
   const dans = (jour: string) => jour >= debut && jour <= aujourdhui;
-  const fenetre = prevues.filter((p) => dans(p.date_start));
+  const fenetre = prevues.filter((p) => dans(p.date_start) && p.sport !== SPORT_RENFO);
   const rattachees = new Set(realisees.map((r) => r.planned).filter(Boolean));
   const prevueDe = new Map(prevues.map((p) => [p.id, p]));
   const liste: Signal[] = [];
