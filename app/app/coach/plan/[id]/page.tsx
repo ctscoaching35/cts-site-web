@@ -70,6 +70,10 @@ export default async function ObjectifCoache({ params, searchParams }: {
   const trame = ecriture?.parametres ? await trameDuPlan(id).catch(() => null) : null;
   // PC1 : avant le départ, la date où l'écriture commencera si le coach a déjà posé des séances.
   const annonce = ecriture?.parametres && !ecriture.demarre_le && !ecriture.depart_prevu && nolio ? await annonceDepart(id) : null;
+  // Un objectif lointain (décision coach du 22/10/2026) : sa préparation commence plus tard, le départ s'y programme.
+  const debutPrepa = o.plan.semaines.find((s) => s.lundi && ajouterJours(s.lundi, 6) >= jour)?.lundi ?? null;
+  const lointain = Boolean(ecriture?.parametres && !ecriture.demarre_le && !ecriture.depart_prevu && debutPrepa
+    && debutPrepa > ajouterJours(jour, 1) && (!annonce || annonce.lundi <= debutPrepa));
   const realises = (ecrites ?? []).map((w) => w.realise as Realise | null).filter((r): r is Realise => Boolean(r))
     .sort((a, b) => Number(a.numero.slice(1)) - Number(b.numero.slice(1)));
   const jauge = trame ? jaugeDuPlan(trame.semaines, realises, jour) : null;
@@ -135,7 +139,13 @@ export default async function ObjectifCoache({ params, searchParams }: {
                     Au départ partent le bandeau de chaque semaine, ses questionnaires du dimanche et sa première semaine ;
                     ensuite, chaque dimanche, la semaine suivante s’écrit d’après la précédente.
                   </p>
-                  {annonce && (
+                  {lointain && debutPrepa && (
+                    <p className="p-3.5 rounded-xl bg-[#E1EFEA] text-[0.8125rem] leading-relaxed text-[#0B4A40]">
+                      Sa préparation commence le {dateLongue(debutPrepa, true)} : sa première semaine partira la veille au soir,
+                      calée sur ce qu’il court alors. D’ici là, rien ne s’écrit pour cet objectif.
+                    </p>
+                  )}
+                  {annonce && !lointain && (
                     <p className="p-3.5 rounded-xl bg-[#E1EFEA] text-[0.8125rem] leading-relaxed text-[#0B4A40]">
                       Tu as déjà posé ses séances jusqu’au {dateLongue(annonce.derniere, true)} : l’écriture commence le{' '}
                       {dateLongue(annonce.lundi, true)}, sa première semaine part la veille au soir. Rien n’est écrasé.

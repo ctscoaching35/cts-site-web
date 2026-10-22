@@ -15,7 +15,7 @@ import { cache } from 'react';
 import { site } from '@/lib/content';
 import { API_URL } from '@/lib/plan';
 import {
-  creer, destinataire, envoyerSemaineCible, garderEnvoi, mettreAJourSemaineCible, profilDe, seancesDuMoteur,
+  chargeDepuisNolio, creer, destinataire, envoyerSemaineCible, garderEnvoi, mettreAJourSemaineCible, profilDe, seancesDuMoteur,
   type Cible, type Envoi, type SeanceEnvoyee,
 } from './coaching';
 import { envoyerRelanceInvitation, EXPEDITEUR } from './emailBienvenue';
@@ -462,7 +462,7 @@ const dimancheSuivant = (iso: string) => ajouterJours(iso, (7 - ((new Date(`${is
 // première), et pour un acheteur sa place dans le groupe « Plans CTS » et sa sortie programmée (P2, P3).
 // prevu : le départ programmé, après la récupération d'un autre objectif (OM4) ou après les séances que le coach a déjà
 // posées à la main (PC1) ; apres : la course, ou la date de la dernière de ces séances.
-export type Depart = { numero: string } | { prevu: string; apres: string; raison: 'recuperation' | 'seances' };
+export type Depart = { numero: string } | { prevu: string; apres: string; raison: 'recuperation' | 'seances' | 'preparation' };
 
 // PC1 (décision coach du 19/10/2026) : un coaché à qui le coach a déjà posé des séances à la main ; rien n'est écrasé,
 // l'écriture commence le lundi qui suit la dernière d'entre elles. null : rien de posé d'ici la course (hors ce que
@@ -522,7 +522,10 @@ export async function demarrerObjectif(planId: string, { prevenir = true, lundi 
   const prevu = apres && apres.lundi > aujourdhui && (!posees || apres.lundi >= posees.lundi)
     ? { prevu: apres.lundi, apres: apres.q.course_nom, raison: 'recuperation' as const }
     : posees && posees.lundi > premierJour ? { prevu: posees.lundi, apres: posees.derniere, raison: 'seances' as const }
-      : lundi && lundi > aujourdhui ? { prevu: lundi, apres: aujourdhui, raison: 'seances' as const } : null;
+      // UN OBJECTIF LOINTAIN (décision coach du 22/10/2026) : sa préparation commence plus tard ; rien ne se pose
+      // d'avance, le départ se programme au premier lundi de sa préparation (la veille au soir, comme les autres).
+      : debut.lundi > ajouterJours(aujourdhui, 1) ? { prevu: debut.lundi, apres: debut.lundi, raison: 'preparation' as const }
+        : lundi && lundi > aujourdhui ? { prevu: lundi, apres: aujourdhui, raison: 'seances' as const } : null;
   // UN DÉPART AU LUNDI QUI VIENT PART LA VEILLE (défaut vu le 22/10/2026 : programmé au lundi, il partait au passage
   // quotidien du lundi soir, la séance du jour arrivait trop tard) : sa première semaine part dès maintenant, le
   // dimanche soir, comme celles des autres ; plus loin, le départ se programme.
@@ -546,6 +549,10 @@ export async function demarrerObjectif(planId: string, { prevenir = true, lundi 
   try {
     // Juste après la course d'un autre objectif : calé sur ce que l'athlète y a vraiment couru.
     if (reprise && apres && !o.envois.length) await recalerSurLePrecedent(o, apres.q.id, premier);
+    // Une charge déclarée il y a plus de 4 semaines (un objectif lointain) : relue dans Nolio au départ réel.
+    else if (o.coache && !o.envois.length && String(o.parametres.declaree_le ?? '') < ajouterJours(premier, -28)) {
+      await recalerSurNolio(o, premier).catch((e) => console.error(`Recalage de ${planId} :`, e instanceof Error ? e.message : e));
+    }
     await envoyerTrame(o, depart);
     await programmerQuestionnaires(o, dimancheSuivant(premier));
     // OM3 : l'objectif et ses courses de préparation, en compétitions dans Nolio.
@@ -576,6 +583,23 @@ export async function demarrerObjectif(planId: string, { prevenir = true, lundi 
 // l'athlète y a vraiment couru — le volume moyen de ses 4 dernières semaines faites, sa plus longue sortie (hors course :
 // la semaine de la course ne s'écrit pas) —, comme un plan rejoint ce jour-là, et non des chiffres saisis à sa création.
 // Sans historique, ou refusés par le moteur, ces chiffres restent.
+// LA CHARGE RECALÉE AU DÉPART RÉEL (décision coach du 22/10/2026, « recalée au départ réel ») : un objectif lointain part
+// sur ce que l'athlète court au moment où sa préparation commence, ses 4 dernières semaines dans Nolio (avec son accord
+// de lecture, chargeDepuisNolio) ; sans accord ou sans course lue, la charge saisie à la création reste.
+async function recalerSurNolio(o: Objectif, lundi: string) {
+  const charge = await chargeDepuisNolio(o.coachId, o.nolioAthlete);
+  if (!charge?.volume_hebdo_actuel) return;
+  const champs = { ...((o.parametres.champs ?? {}) as Record<string, unknown>), ...charge };
+  const parametres = { ...o.parametres, champs, declaree_le: lundi };
+  try {
+    await moteur('/v1/trame', { parametres });
+  } catch {
+    return;
+  }
+  await clientService().from('plans').update({ parametres, trame: null }).eq('id', o.planId);
+  o.parametres = parametres;
+}
+
 async function recalerSurLePrecedent(o: Objectif, precedentId: string, lundi: string) {
   const service = clientService();
   const { data } = await service.from('plans').select('etat_ecriture').eq('id', precedentId).maybeSingle();

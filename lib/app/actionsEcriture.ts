@@ -32,6 +32,9 @@ export async function demarrerDansNolio(planId: string, _e: EtatGeste): Promise<
     revalidatePath(`/app/coach/plan/${planId}`);
     if ('prevu' in depart) {
       const le = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('fr-FR');
+      if (depart.raison === 'preparation') {
+        return { ok: true, message: `Programmé : sa préparation commence le lundi ${le(depart.prevu)}. Sa première semaine partira toute seule la veille, le dimanche soir, calée sur ce qu’il court alors ; d’ici là, rien ne s’écrit pour cet objectif.` };
+      }
       return { ok: true, message: depart.raison === 'seances'
         ? `Programmé : tes séances déjà posées vont jusqu’au ${le(depart.apres)}. Sa première semaine partira toute seule la veille du lundi ${le(depart.prevu)}, le dimanche soir ; rien n’est écrasé.`
         : `Programmé : un objectif à la fois. Il démarrera tout seul le ${le(depart.prevu)}, après la récupération de ${depart.apres}.` };
