@@ -251,7 +251,8 @@ export async function enregistrerProfil(athleteId: string, _e: EtatCoach, form: 
     .eq('id', athleteId).eq('coach_id', coach.compteId);
   if (error) return { ok: false, message: 'L’enregistrement n’a pas abouti : la migration du 19/10/2026 est-elle passée ?' };
   revalidatePath(`/app/coach/athlete/${athleteId}`);
-  return { ok: true, message: 'C’est enregistré. Son prochain objectif partira de ce profil ; sa préparation en cours garde le sien.' };
+  // Sa préparation en cours le reprend par « Modifier l'objectif » (décision coach du 23/10/2026).
+  return { ok: true, message: 'C’est enregistré. Ses prochains objectifs partent de ce profil ; « Modifier » sur son objectif en cours le lui donne aussi.' };
 }
 
 // Le test de vitesse critique d'un coaché, saisi par son coach (décision coach du 19/10/2026 : quand l'athlète ne le

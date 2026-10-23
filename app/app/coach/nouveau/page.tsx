@@ -34,6 +34,9 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
       .eq('compte_id', coach.compteId).not('parametres', 'is', null).maybeSingle()).data
     : null;
   const pm = (aModifier?.parametres ?? null) as Record<string, unknown> | null;
+  // Son profil de coureur, modifiable ici (décision coach du 23/10/2026) ; « Modifier l'objectif » le donne à sa
+  // préparation en cours, dès la semaine suivante.
+  const profilFiche = suite ? await profilDeLaFiche(suite.athlete.id) : {};
   const traceDonnee = Boolean(pm?.plage_dominante || pm?.bande_majeure);
   // Une course de Nolio, depuis sa fiche (« Créer l'objectif », décision coach du 22/10/2026) : la course déjà remplie.
   const usr = suite?.athlete.nolio_athlete_id;
@@ -91,17 +94,21 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
             )}
           </div>
         )}
-        {suite && court && !aModifier && (
+        {suite && court && (
           <div className="mb-6 mx-2 bg-white rounded-2xl border border-indigo/[0.08] px-4 py-3">
             <div className="text-[0.6875rem] font-bold tracking-[0.12em] uppercase text-teal">Son profil de coureur</div>
             <dl className="pt-1">
-              {lignesDuProfil(await profilDeLaFiche(suite.athlete.id), true).map(([cle, valeur]) => (
+              {lignesDuProfil(profilFiche, true).map(([cle, valeur]) => (
                 <div key={cle} className="grid grid-cols-[112px_1fr] gap-x-3 py-2 border-b last:border-b-0 border-indigo/[0.06] text-[0.84rem] text-indigo">
                   <dt className="font-semibold text-[#5E5C78]">{cle}</dt><dd>{valeur}</dd>
                 </div>
               ))}
             </dl>
-            <Link href={`/app/coach/athlete/${suite.athlete.id}`} className="inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">Le modifier sur sa fiche ›</Link>
+            {aModifier && <p className="pt-1 text-[0.72rem] leading-relaxed text-[#5E5C78]">À l’enregistrement de l’objectif, sa préparation reprend ce profil dès la semaine suivante.</p>}
+            <details className="pt-1">
+              <summary className="cursor-pointer min-h-11 flex items-center text-[0.8125rem] font-bold text-teal">Modifier son profil</summary>
+              <div className="pt-2 pb-2"><ProfilAthlete athleteId={suite.athlete.id} profil={profilFiche} rafraichir /></div>
+            </details>
           </div>
         )}
         {suite && !court && !aModifier ? (
@@ -109,10 +116,10 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
             <ProfilAthlete athleteId={suite.athlete.id} rafraichir
               profil={demande ? Object.fromEntries(Object.entries(demande.champs).filter(([k]) => ['terrain', 'jours_disponibles', 'jour_sl', 'freq_hebdo'].includes(k))) as Record<string, string | string[]> : {}} />
           </div>
-        ) : <Questionnaire coach court={court && !aModifier} emailCoach={coach.email} athleteId={suite?.athlete.id} demandeId={demande?.id}
+        ) : <Questionnaire key={JSON.stringify(suite?.profil ?? {})} coach court={court} emailCoach={coach.email} athleteId={suite?.athlete.id} demandeId={demande?.id}
           modification={aModifier ? { planId: String(aModifier.id), trace: traceDonnee } : undefined}
           vcMs={suite?.athlete.vc_ms ?? null} discipline={discipline}
-          initial={aModifier ? { ...reponsesDe(aModifier.intake), ...reponsesDe(pm?.champs), nom: suite?.athlete.nom ?? '' }
+          initial={aModifier ? { ...reponsesDe(aModifier.intake), ...reponsesDe(pm?.champs), ...suite?.profil, nom: suite?.athlete.nom ?? '' }
             : demande ? { ...demande.champs, ...suite?.profil, nom: suite?.athlete.nom ?? '' }
               : deNolio ? { ...suite?.initial, ...deNolio, ...(routeNolio ? { format: routeNolio } : {}) } : suite?.initial} />}
       </div>
