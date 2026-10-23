@@ -145,8 +145,8 @@ export default async function ObjectifCoache({ params, searchParams }: {
                   {/* Coaching individualisé, les objectifs s'enchaînent (décision coach du 22/10/2026) : ni le début
                       calendaire du plan ni la semaine rejointe, seulement ce qui part et quand. */}
                   <p className="text-[0.8125rem] text-[#4A4866] leading-relaxed">
-                    Au départ partent le bandeau de chaque semaine, ses questionnaires du dimanche et sa première semaine ;
-                    ensuite, chaque dimanche, la semaine suivante s’écrit d’après la précédente.
+                    Au départ partent ses courses et sa première semaine, avec son bandeau ; ensuite, chaque dimanche, la
+                    semaine suivante s’écrit d’après la précédente. Une semaine à la fois : rien d’autre n’est posé d’avance.
                   </p>
                   {lointain && debutPrepa && (
                     <p className="p-3.5 rounded-xl bg-[#E1EFEA] text-[0.8125rem] leading-relaxed text-[#0B4A40]">
