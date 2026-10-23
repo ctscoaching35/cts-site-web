@@ -117,13 +117,17 @@ export async function questionnairePrerempli(coachId: string, athleteId: string)
   // Une fiche sans objectif (son dernier retiré) garde son athlète : le questionnaire part de son profil s'il est connu.
   const dernier = athlete.objectifs[athlete.objectifs.length - 1];
   const { data } = dernier ? await clientService().from('plans').select('intake').eq('id', dernier.plan_id).single() : { data: null };
-  const charge = await chargeDepuisNolio(coachId, athlete.nolio_athlete_id).catch(() => null);
+  const charge = await chargeDepuisNolio(coachId, athlete.nolio_athlete_id).catch((e) => {
+    const quoi = e instanceof Error ? e.message : String(e);
+    console.error(`Charge de ${athleteId} non lue dans Nolio :`, quoi);
+    return { champs: {}, lu: false, detail: `Nolio n’a pas répondu à la lecture de ses séances (${quoi}) : les chiffres ci-dessus sont ses réponses précédentes, à vérifier.` };
+  });
   // PO1 : le profil de sa fiche, s'il a été modifié depuis, l'emporte sur les réponses du dernier objectif ; profilConnu :
   // le questionnaire court suffit, et sans lui le profil se remplit d'abord (décision coach du 23/10/2026).
   const profil = profilPourLeQuestionnaire(athlete.profil);
   // noteCharge : ce que Nolio dit de sa charge, la période et le détail (décision coach du 23/10/2026), sous les champs.
   return { athlete, profil, initial: { ...reponsesSansLaCourse(data?.intake), ...profil, nom: athlete.nom, ...(charge?.champs ?? {}) },
-    nolio: Boolean(charge), noteCharge: charge?.detail ?? null, profilConnu: Boolean(dernier || athlete.profil) };
+    nolio: Boolean(charge?.lu), noteCharge: charge?.detail ?? null, profilConnu: Boolean(dernier || athlete.profil) };
 }
 
 // QD4 (décision coach du 19/10/2026) : la charge du moment d'un coaché, lue dans ses séances Nolio avec son accord du
@@ -132,10 +136,14 @@ export async function questionnairePrerempli(coachId: string, athleteId: string)
 // derniers mois. null sans accord ; sans course ces 4 semaines, seul l'arrêt est rempli (le questionnaire demande alors
 // la dernière sortie régulière).
 const enHeuresMinutes = (min: number) => `${Math.floor(min / 60)}h${String(Math.round(min % 60)).padStart(2, '0')}`;
-export async function chargeDepuisNolio(coachId: string, usr: string | null): Promise<{ champs: Record<string, string>; detail: string } | null> {
+// lu : la charge vient de Nolio ; sinon, detail dit pourquoi, et les champs gardent ses réponses précédentes (décision coach
+// du 23/10/2026 : « relis à chaque fois dans Nolio », et dis-le quand ce n'est pas possible). Une erreur de Nolio remonte.
+export async function chargeDepuisNolio(coachId: string, usr: string | null): Promise<{ champs: Record<string, string>; detail: string; lu: boolean } | null> {
   if (!usr || !nolioConfigure()) return null;
   const { data: accord } = await clientService().from('nolio_accords').select('accord_le').eq('coach_id', coachId).eq('nolio_athlete_id', usr).maybeSingle();
-  if (!accord) return null;
+  if (!accord) {
+    return { champs: {}, lu: false, detail: 'Pas d’accord de lecture : rien lu dans Nolio ; les chiffres ci-dessus sont ses réponses précédentes, à vérifier.' };
+  }
   const aujourdhui = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
   const du = ajouterJours(aujourdhui, -56);
   const q = (await moiNolio()).id === usr ? '' : `&athlete=${usr}`;
@@ -162,7 +170,7 @@ export async function chargeDepuisNolio(coachId: string, usr: string | null): Pr
   const periode = `du ${jm(debut)} au ${jm(ajouterJours(fin, -1))}`;
   const pourquoi = recul ? ` Sa course du ${jm(recul)} date de moins de 2 semaines : ce sont les 4 semaines d’avant son affûtage.` : '';
   if (!recentes.length) {
-    return { champs: charge, detail: `Rien en course, trail ou tapis dans Nolio ${periode} : les champs gardent ses dernières réponses, à corriger.${pourquoi}` };
+    return { champs: charge, lu: true, detail: `Rien en course, trail ou tapis dans Nolio ${periode} : les champs gardent ses dernières réponses, à corriger.${pourquoi}` };
   }
   charge.volume_hebdo_actuel = enHeuresMinutes(recentes.reduce((a, r) => a + r.min, 0) / 4);
   const longue = recentes.reduce((a, r) => (r.min > a.min ? r : a));
@@ -170,7 +178,7 @@ export async function chargeDepuisNolio(coachId: string, usr: string | null): Pr
   const semaines = [0, 1, 2, 3].map((i) => `semaine du ${jm(ajouterJours(debut, 7 * i))} ${enHeuresMinutes(recentes
     .filter((r) => r.date >= ajouterJours(debut, 7 * i) && r.date < ajouterJours(debut, 7 * (i + 1))).reduce((a, r) => a + r.min, 0))}`);
   const sansCourse = competitions.some((c) => c >= debut && c < fin) ? ', sans le jour de course' : '';
-  return { champs: charge, detail: `Lu dans Nolio ${periode}, course, trail et tapis seulement (sans renfo ni autres sports${sansCourse}) : `
+  return { champs: charge, lu: true, detail: `Lu dans Nolio ${periode}, course, trail et tapis seulement (sans renfo ni autres sports${sansCourse}) : `
     + `${semaines.join(' · ')}, soit ${charge.volume_hebdo_actuel} en moyenne ; plus longue sortie ${charge.sortie_longue_actuelle} le ${jm(longue.date)}.${pourquoi}` };
 }
 
