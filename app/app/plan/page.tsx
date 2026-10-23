@@ -30,7 +30,8 @@ async function mesObjectifs() {
   const fiche = await ficheDuCompte(compteId);
   return {
     liste: liste.map((p: PlanDuCompte) => ({ ...p, preparations: prep.get(p.id) ?? [] })),
-    enCours: liste.find((p) => p.course_date >= aujourdhui)?.id ?? null,
+    // Son coaching d'abord (décision coach du 23/10/2026).
+    enCours: (liste.find((p) => p.coache && p.course_date >= aujourdhui) ?? liste.find((p) => p.course_date >= aujourdhui))?.id ?? null,
     demandes: fiche ? await demandesDeLAthlete(fiche.id) : [],
   };
 }

@@ -58,7 +58,10 @@ export async function objectifAVenir(): Promise<boolean> {
   const id = data?.claims?.sub;
   if (!id) return false;
   const aujourdhui = aujourdhuiIso();
-  return (await plansDuCompte(String(id))).some((p) => p.course_date >= aujourdhui);
+  // Son coaching d'abord (décision coach du 23/10/2026) : un plan à lui ne compte pas.
+  const plans = await plansDuCompte(String(id));
+  const siens = plans.some((p) => p.coache) ? plans.filter((p) => p.coache) : plans;
+  return siens.some((p) => p.course_date >= aujourdhui);
 }
 export type Recherche = Promise<Record<string, string | string[] | undefined>>;
 
@@ -100,12 +103,18 @@ export async function contexte(recherche: Recherche, options: { sansObjectif?: b
   const aujourdhui = aujourdhuiIso();
   const plans = await plansDuCompte(session.claims.sub as string);
   const [voulu, choisiLe] = ((await cookies()).get(COOKIE_PLAN)?.value ?? '').split('@');
-  const prochain = plans.find((p) => p.course_date >= aujourdhui);
+  // Un coaché, son coaching d'abord (décision coach du 23/10/2026) : ses objectifs de coaching ; ses plans à lui (un
+  // achat, un ancien test de la bêta) restent dans « Tes plans ».
+  const coaching = plans.some((p) => p.coache);
+  const parDefaut = coaching ? plans.filter((p) => p.coache) : plans;
+  const prochain = parDefaut.find((p) => p.course_date >= aujourdhui);
   // Un coaché (décision coach du 20/10/2026, « toujours le prochain ») : un objectif choisi reste affiché jusqu'à sa
   // course ; passé, seulement le jour où il l'a choisi pour le regarder ; ensuite, l'app revient d'elle-même au prochain.
+  // Un plan à lui, choisi dans « Tes plans », seulement le jour où il l'a choisi.
   const epingle = plans.find((p) => p.id === voulu);
-  const tenu = epingle && (!epingle.coache || !prochain || epingle.course_date >= aujourdhui || choisiLe === aujourdhui) ? epingle : undefined;
-  const choisi = tenu ?? prochain ?? plans[plans.length - 1];
+  const tenu = epingle && (!coaching || !prochain || choisiLe === aujourdhui || (epingle.coache && epingle.course_date >= aujourdhui))
+    ? epingle : undefined;
+  const choisi = tenu ?? prochain ?? parDefaut[parDefaut.length - 1];
   if (!choisi) return sansObjectif(String(session.claims.sub), options, process.env.NODE_ENV !== 'production' && jourDemande ? jourDemande : aujourdhui);
   // Un objectif coaché est rangé dans le compte du coach : lu avec la clé de service, une fois vérifié qu'il est à lui.
   const lecteur = choisi.coache ? clientService() : supabase;
