@@ -2,9 +2,10 @@
  * L'écriture semaine par semaine, côté site (CTS_NOLIO_CADRAGE.md dans le dépôt du moteur, dernière section ; décisions
  * coach des 18-19/10/2026 ; moteur 8.326, cts_semaine et cts_ajustements). Un plan qui porte des paramètres ne part plus
  * en entier dans Nolio :
- * - au départ (l'acheteur a rejoint l'équipe, ou le coach a associé l'athlète d'un nouvel objectif), la TRAME part dans
- *   son calendrier — le bandeau de chaque semaine et les fiches au bon moment —, avec le questionnaire du dimanche
- *   (Hooper et « Ta semaine prochaine », récurrents jusqu'à la course), puis la semaine en cours ;
+ * - au départ (l'acheteur a rejoint l'équipe, ou le coach a associé l'athlète d'un nouvel objectif), ses courses et le
+ *   questionnaire du dimanche (Hooper et « Ta semaine prochaine »), puis la semaine en cours ; une semaine à la fois
+ *   (décision coach du 23/10/2026) : chaque semaine écrite porte son bandeau et sa fiche de course, plus de TRAME posée
+ *   jusqu'à la course ;
  * - chaque dimanche soir, le site lit dans Nolio la semaine écoulée (séances faites, et avec l'accord de l'athlète son RPE,
  *   son ressenti, son Hooper ; T5) et les réponses au questionnaire, le moteur écrit la semaine suivante, le site l'envoie ;
  * - chaque jour, la fatigue franche (R3) remplace la séance dure qui vient par une EF ; l'athlète peut garder sa séance
@@ -20,6 +21,7 @@ import {
 } from './coaching';
 import { envoyerRelanceInvitation, EXPEDITEUR } from './emailBienvenue';
 import { lienFicheCourse } from './ficheCourse';
+import { dateDe } from './trameNolio';
 import { appelNolio, coachs, listeNolio, refusNolio, SPORTS_COURSE } from './nolio';
 import { ajouterJours, joursEntre, type Plan, type Semaine } from './plan';
 import { clientService } from './supabase';
@@ -125,7 +127,8 @@ export async function objectifEcrit(planId: string): Promise<Objectif | null> {
   const niveau = String((p.intake as Record<string, unknown> | null)?.niveau ?? 'intermediaire');
   const base = {
     planId, compteId: p.compte_id as string, plan: p.donnees as Plan, parametres: p.parametres as Record<string, unknown>,
-    etat: (p.etat_ecriture ?? null) as Etat | null, niveau, envois: (envois ?? []) as Envoi[], avecTrame: false,
+    // Une semaine à la fois (décision coach du 23/10/2026) : la semaine écrite porte son bandeau et sa fiche de course.
+    etat: (p.etat_ecriture ?? null) as Etat | null, niveau, envois: (envois ?? []) as Envoi[], avecTrame: true,
     tempsH: heures((p.intake as Record<string, unknown> | null)?.temps_cible),
   };
   const { data: c } = await service.from('coaching').select('athlete_id, coach_id').eq('plan_id', planId).maybeSingle();
@@ -399,27 +402,46 @@ async function envoyerEtRanger(o: Objectif, numero: string, sortie: SortieMoteur
   return sortie;
 }
 
-// La trame dans Nolio, une fois : le bandeau de chaque semaine et les fiches au bon moment, sur tout le plan (T3).
-async function envoyerTrame(o: Objectif, depuis: string) {
-  if (o.envois.some((e) => e.semaine === TRAME)) return;
-  const d = await destinataire(o.nolioAthlete);
-  const crees: SeanceEnvoyee[] = [];
-  for (const s of o.plan.semaines) {
-    if (!s.lundi || ajouterJours(s.lundi, 6) < depuis) continue;
-    const { cycle, renfo } = await seancesDuMoteur(o.plan, o.planId, { ...s, jours: [] }, o.profil, o.niveau, true, o.coache);
-    if (cycle) {
-      const c = await creer(d, `${TRAME}:${s.numero}`, cycle, 'cycle');
-      if (c.erreur) throw new Error(c.erreur);
-      if (!c.deja) crees.push(c);
-    }
-    for (const f of renfo) {
-      if (!f.note) continue;
-      const n = await creer(d, f.id, f.note, 'note');
-      if (n.erreur) throw new Error(n.erreur);
-      crees.push(n);
+// La trame posée d'avance par un départ d'avant le 24/10/2026 (le bandeau de chaque semaine jusqu'à la course) : ce
+// qui tombe après la semaine qui vient part de Nolio, une fois (décision coach du 23/10/2026, « une semaine à la
+// fois ») ; le passé, la semaine en cours et la semaine qui vient restent. Le reste arrive avec chaque semaine écrite.
+export async function retirerLaTrameAuDela(): Promise<Compte[]> {
+  const service = clientService();
+  const { data: trames } = await service.from('nolio_envois').select('plan_id, seances').eq('semaine', TRAME);
+  const aujourdhui = aujourdhuiParis();
+  const limite = ajouterJours(aujourdhui, 13 - ((new Date(`${aujourdhui}T12:00:00Z`).getUTCDay() + 6) % 7));
+  const comptes: Compte[] = [];
+  for (const t of trames ?? []) {
+    const poses = (t.seances ?? []) as SeanceEnvoyee[];
+    if (!poses.some((x) => dateDe(x).slice(0, 10) > limite)) continue;
+    const o = await objectifEcrit(String(t.plan_id));
+    if (!o?.nolioAthlete || o.plan.course.date < aujourdhui) continue;
+    try {
+      const d = await destinataire(o.nolioAthlete);
+      const qui = d.moi ? '' : `?athlete=${d.usr}`;
+      const restent: SeanceEnvoyee[] = [];
+      const soucis: string[] = [];
+      let retires = 0;
+      for (const x of poses) {
+        if (!(dateDe(x).slice(0, 10) > limite) || !x.nolio_id) {
+          restent.push(x);
+          continue;
+        }
+        const r = await appelNolio('DELETE', `planned/${x.genre === 'cycle' ? 'cycles' : 'notes'}/${x.nolio_id}/${qui}`).catch(() => null);
+        if (r && (r.statut === 204 || r.statut === 200 || r.statut === 404)) retires += 1;
+        else {
+          restent.push(x);
+          soucis.push(r ? refusNolio(r, `le bandeau du ${dateDe(x)}`) : `le bandeau du ${dateDe(x)} : Nolio injoignable`);
+        }
+      }
+      await garderEnvoi(o.coachId, o.planId, TRAME, restent);
+      comptes.push({ plan: o.planId, quoi: `${retires} bandeau${retires > 1 ? 'x' : ''} ou note${retires > 1 ? 's' : ''} d’avance retiré${retires > 1 ? 's' : ''}`,
+        ...(soucis.length ? { erreur: soucis.join(' ; ') } : {}) });
+    } catch (e) {
+      comptes.push({ plan: String(t.plan_id), quoi: 'trame d’avance gardée', erreur: e instanceof Error ? e.message : String(e) });
     }
   }
-  await garderEnvoi(o.coachId, o.planId, TRAME, crees);
+  return comptes;
 }
 
 // Les questionnaires du dimanche, récurrents jusqu'à la course : « Ta semaine prochaine » pour tous, le Hooper avec
@@ -590,7 +612,6 @@ export async function demarrerObjectif(planId: string, { prevenir = true, lundi,
     if (o.coache && !o.envois.length) {
       await ancrerAuDepart(o, premier).catch((e) => console.error(`Ancrage de ${planId} :`, e instanceof Error ? e.message : e));
     }
-    await envoyerTrame(o, depart);
     await programmerQuestionnaires(o, dimancheSuivant(premier));
     // OM3 : l'objectif et ses courses de préparation, en compétitions dans Nolio.
     const { course } = o.plan;

@@ -223,8 +223,8 @@ export async function seancesDuMoteur(plan: Plan, planId: string, semaine: Semai
     id: f.id, nolio: null,
     note: { ...f.note, description: String(f.note.description ?? '').replace('{lien_fiche_course}', lienFicheCourse(planId)) },
   }));
-  // Écriture semaine par semaine (T3) : le bandeau et les fiches de tout le plan partent au départ, avec la trame ;
-  // chaque semaine n'envoie plus que ses jours et son renfo.
+  // avecTrame : la semaine porte son bandeau et sa fiche de course (une semaine à la fois, décision coach du 23/10/2026) ;
+  // sans, ses jours et son renfo seulement.
   if (!avecTrame) return { jours, cycle: null, renfo };
   return { jours, cycle: (corps.cycle ?? null) as Record<string, unknown> | null, renfo: [...renfo, ...fiches] };
 }
@@ -434,12 +434,15 @@ export async function realignerTrame(c: Cible, cle: string, aujourdhui: string):
   if (!envoi || !c.nolioAthlete) return { changes: 0, gardees: 0 };
   const d = await destinataire(c.nolioAthlete);
   const voulus = new Map<string, Voulu>();
+  // Une semaine à la fois (décision coach du 23/10/2026) : seulement ce que la trame d'avant a encore posé, réaligné ;
+  // rien de nouveau n'est posé d'avance, le reste arrive avec chaque semaine écrite.
+  const poses = new Set((envoi.seances as SeanceEnvoyee[]).map((x) => x.jour_id));
   for (const s of c.plan.semaines.filter((x) => x.lundi && x.lundi > aujourdhui)) {
     const { cycle, renfo } = await seancesDuMoteur(c.plan, c.planId, { ...s, jours: [] }, c.profil, c.niveau, true, Boolean(c.coache));
-    if (cycle) voulus.set(`${cle}:${s.numero}`, { genre: 'cycle', corps: cycle });
+    if (cycle && poses.has(`${cle}:${s.numero}`)) voulus.set(`${cle}:${s.numero}`, { genre: 'cycle', corps: cycle });
     for (const f of renfo) {
       const note = f.note as Record<string, unknown> | null;
-      if (note && String(note.date_start ?? '') > aujourdhui) voulus.set(f.id, { genre: 'note', corps: note });
+      if (note && String(note.date_start ?? '') > aujourdhui && poses.has(f.id)) voulus.set(f.id, { genre: 'note', corps: note });
     }
   }
   const actions = actionsTrame(envoi.seances, voulus, await versions(d, aujourdhui, ajouterJours(c.plan.course.date, 1)), aujourdhui);
