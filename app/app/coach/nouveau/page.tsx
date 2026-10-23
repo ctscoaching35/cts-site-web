@@ -59,7 +59,7 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
             {aModifier ? '' : demande
               ? `Sa demande du ${new Date(demande.cree_le).toLocaleDateString('fr-FR')} : relis ses réponses, corrige si besoin, et lance l’objectif.${demande.gpx_chemin ? ' Sa trace part avec la demande.' : ''}`
               : court && suite?.nolio
-              ? 'Son profil est déjà rempli : seules sa charge du moment et la course sont demandées. Sa charge est préremplie depuis Nolio, sur ses 4 dernières semaines : relis et corrige si besoin.'
+              ? 'Son profil est déjà rempli : seules sa charge du moment et la course sont demandées. Sa charge est préremplie depuis Nolio, sur ses 4 dernières semaines (après une course, les 4 d’avant son affûtage, sans la course) : relis et corrige si besoin.'
               : court
               ? 'Son profil est déjà rempli : seules sa charge du moment et la course sont demandées.'
               : suite

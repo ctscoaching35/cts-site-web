@@ -627,12 +627,22 @@ async function ancrerAuDepart(o: Objectif, lundi: string) {
   o.parametres = parametres;
 }
 
+// Ses 4 semaines d'entraînement avant l'affûtage de l'objectif d'avant, ni la course ni l'affûtage (décision coach du
+// 23/10/2026) : leurs volumes vraiment courus, et ses sorties longues vraiment courues.
+export function avantAffutage(semaines: Pick<Semaine, 'numero_int' | 'bloc'>[],
+  etat: { volumes_reels?: Record<string, number>; sl_reelles?: Record<string, number> } | null) {
+  const i = semaines.findIndex((s) => s.bloc === 'Affûtage');
+  const numeros = (i >= 0 ? semaines.slice(0, i) : semaines.slice(0, -2)).slice(-4).map((s) => String(s.numero_int));
+  const volumes = numeros.filter((n) => etat?.volumes_reels?.[n] !== undefined).map((n) => Number(etat?.volumes_reels?.[n]));
+  const sl = numeros.map((n) => Number(etat?.sl_reelles?.[n] ?? 0)).filter((v) => v > 0);
+  return { volumes, sl };
+}
+
 async function recalerSurLePrecedent(o: Objectif, precedentId: string, lundi: string) {
   const service = clientService();
-  const { data } = await service.from('plans').select('etat_ecriture').eq('id', precedentId).maybeSingle();
+  const { data } = await service.from('plans').select('etat_ecriture, donnees').eq('id', precedentId).maybeSingle();
   const etat = (data?.etat_ecriture ?? null) as { volumes_reels?: Record<string, number>; sl_reelles?: Record<string, number> } | null;
-  const volumes = Object.entries(etat?.volumes_reels ?? {}).sort((a, b) => Number(a[0]) - Number(b[0])).map(([, v]) => v).slice(-4);
-  const sl = Object.values(etat?.sl_reelles ?? {}).filter((v) => v > 0);
+  const { volumes, sl } = avantAffutage(((data?.donnees ?? null) as Plan | null)?.semaines ?? [], etat);
   if (!volumes.some((v) => v > 0)) return;
   // « 4h05 », comme le moteur les écrit (cts_semaine._duree_texte).
   const duree = (min: number) => { const m = Math.round(min); return `${Math.floor(m / 60)}h${String(m % 60).padStart(2, '0')}`; };

@@ -121,8 +121,9 @@ export async function questionnairePrerempli(coachId: string, athleteId: string)
 
 // QD4 (décision coach du 19/10/2026) : la charge du moment d'un coaché, lue dans ses séances Nolio avec son accord du
 // Suivi, pour préremplir son questionnaire (relue et corrigible) : le volume moyen et la plus longue sortie de course
-// des 4 dernières semaines, et un arrêt de plus de 4 semaines sur les 2 derniers mois. null sans accord ; sans course
-// ces 4 semaines, seul l'arrêt est rempli (le questionnaire demande alors la dernière sortie régulière).
+// des 4 dernières semaines (après une course, des 4 d'avant son affûtage), et un arrêt de plus de 4 semaines sur les 2
+// derniers mois. null sans accord ; sans course ces 4 semaines, seul l'arrêt est rempli (le questionnaire demande alors
+// la dernière sortie régulière).
 const enHeuresMinutes = (min: number) => `${Math.floor(min / 60)}h${String(Math.round(min % 60)).padStart(2, '0')}`;
 export async function chargeDepuisNolio(coachId: string, usr: string | null): Promise<Record<string, string> | null> {
   if (!usr || !nolioConfigure()) return null;
@@ -131,11 +132,20 @@ export async function chargeDepuisNolio(coachId: string, usr: string | null): Pr
   const aujourdhui = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
   const du = ajouterJours(aujourdhui, -56);
   const q = (await moiNolio()).id === usr ? '' : `&athlete=${usr}`;
+  // APRÈS UNE COURSE (décision coach du 23/10/2026) : ni la course ni son affûtage ne comptent ; une compétition de son
+  // calendrier Nolio dans les 4 dernières semaines recule le calcul aux 4 semaines d'avant ses 2 semaines d'affûtage,
+  // et les jours de compétition n'y comptent pas.
+  const competitions = (await listeNolio<{ id: string; date_start: string }>(
+    `planned/competitions/?date_from=${ajouterJours(aujourdhui, -70)}&date_to=${ajouterJours(aujourdhui, -1)}&fields=id,date_start${q}`)
+    .catch(() => [])).map((c) => c.date_start.slice(0, 10));
+  const { debut, fin } = fenetreDeCharge(aujourdhui, competitions);
   const reels = await listeNolio<{ id: string; date_start: string; duration?: { value: number } | null; sport?: string | null }>(
-    `real/trainings/?date_from=${du}&date_to=${ajouterJours(aujourdhui, -1)}&fields=id,date_start,duration,sport${q}`);
-  const course = reels.filter((r) => SPORTS_COURSE.includes(String(r.sport)) && r.duration?.value)
+    `real/trainings/?date_from=${debut < du ? debut : du}&date_to=${ajouterJours(aujourdhui, -1)}&fields=id,date_start,duration,sport${q}`);
+  const jours = new Set(competitions);
+  const toutes = reels.filter((r) => SPORTS_COURSE.includes(String(r.sport)) && r.duration?.value)
     .map((r) => ({ date: r.date_start.slice(0, 10), min: (r.duration as { value: number }).value / 60 }));
-  const recentes = course.filter((r) => r.date >= ajouterJours(aujourdhui, -28));
+  const recentes = toutes.filter((r) => r.date >= debut && r.date < fin && !jours.has(r.date));
+  const course = toutes.filter((r) => r.date >= du);
   const dates = [du, ...course.map((r) => r.date).sort(), aujourdhui];
   const ecarts = dates.slice(1).map((d, i) => (new Date(`${d}T12:00:00Z`).getTime() - new Date(`${dates[i]}T12:00:00Z`).getTime()) / 86_400_000);
   const charge: Record<string, string> = { coupure: ecarts.some((e) => e > 28) ? 'oui' : 'non' };
@@ -144,6 +154,14 @@ export async function chargeDepuisNolio(coachId: string, usr: string | null): Pr
     charge.sortie_longue_actuelle = enHeuresMinutes(Math.max(...recentes.map((r) => r.min)));
   }
   return charge;
+}
+
+// Les 4 semaines sur lesquelles se lit sa charge, fin exclue : les 4 dernières ; après une compétition de moins de 4
+// semaines, les 4 d'avant ses 2 semaines d'affûtage (décision coach du 23/10/2026).
+export function fenetreDeCharge(aujourdhui: string, competitions: string[]): { debut: string; fin: string } {
+  const derniere = competitions.filter((d) => d >= ajouterJours(aujourdhui, -28) && d < aujourdhui).sort().pop();
+  const fin = derniere ? ajouterJours(derniere, -14) : aujourdhui;
+  return { debut: ajouterJours(fin, -28), fin };
 }
 
 // Les réponses d'un objectif, sans celles de sa course : le point de départ du suivant (N9, OM1).
