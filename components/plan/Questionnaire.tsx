@@ -190,7 +190,7 @@ export default function Questionnaire({
   // Le format se déduit de la distance (F4) : un format que le niveau n'ouvre pas ne propose
   // aucune durée, et la note sous la distance dit pourquoi.
   // Seulement les durées que sa course admet, celle qui colle à sa date cochée d'office (décision coach du 20/10/2026).
-  const durees = config && formatOuvert(c, config) ? dureesPossibles(c, config) : [];
+  const durees = config && formatOuvert(c, config, coach) ? dureesPossibles(c, config) : [];
   const conseillee = config ? dureeConseillee(c, config, durees) : null;
   const notePourFormat = config ? noteFormat(c, config, coach) : null;
   const blocDistance = (
@@ -222,7 +222,7 @@ export default function Questionnaire({
       }
       // Une durée que la course n'admet plus laisse la place à celle qui colle à sa date ; sans choix, celle-ci d'office.
       if (!coach) {
-        const possibles = formatOuvert(n, config) ? dureesPossibles(n, config) : [];
+        const possibles = formatOuvert(n, config, coach) ? dureesPossibles(n, config) : [];
         if (!n.duree_mois || !possibles.map(String).includes(n.duree_mois)) {
           const d = dureeConseillee(n, config, possibles);
           n.duree_mois = d === null ? '' : String(d);
@@ -657,7 +657,7 @@ export default function Questionnaire({
           ) : (
             <p className="text-sm text-indigo/70 leading-relaxed">
               {!c.format ? 'Indique d’abord la distance de ta course, plus haut.'
-                : !formatOuvert(c, config) ? 'Aucune durée : ce format n’est pas ouvert à ton niveau.'
+                : !formatOuvert(c, config, coach) ? 'Aucune durée : ce format n’est pas ouvert à ton niveau.'
                   : 'Aucune durée ne prépare une course visée en ce temps : vérifie ton temps visé.'}
             </p>
           )}

@@ -265,8 +265,10 @@ export function dureeConseillee(c: Champs, config: ConfigPlan, durees: number[],
   return triees[triees.length - 1];
 }
 
-export function formatOuvert(c: Champs, config: ConfigPlan): boolean {
-  return !!c.format && (!c.niveau || (config.formats_par_niveau[c.niveau] ?? []).includes(c.format));
+// coach : en coaching individualisé, tout format s'ouvre à tout niveau (décision coach du 23/10/2026, « lever la
+// porte », comme le moteur : cts_intake.valider_champs).
+export function formatOuvert(c: Champs, config: ConfigPlan, coach = false): boolean {
+  return !!c.format && (coach || !c.niveau || (config.formats_par_niveau[c.niveau] ?? []).includes(c.format));
 }
 
 /**
@@ -279,7 +281,7 @@ export function noteFormat(c: Champs, config: ConfigPlan, coach = false): string
     const f = config.formats.find((x) => x.code === code);
     return f ? `${f.nom} (${f.bornes})` : code;
   };
-  if (formatOuvert(c, config)) return `Ta course est un ${nom(c.format)}.`;
+  if (formatOuvert(c, config, coach)) return `Ta course est un ${nom(c.format)}.`;
   const ouverts = config.formats_par_niveau[c.niveau] ?? [];
   const debut = `Une course de ${c.distance_km.replace('.', ',')} km est un ${nom(c.format)} : ce format n’est pas ouvert à ton niveau. Choisis une course ${ouverts.map((f) => `de ${nom(f)}`).join(' ou ')}`;
   return coach ? `${debut}. ${HORS_DU_MOTEUR}` : `${debut}, ou oriente-toi vers un coaching individualisé.`;
