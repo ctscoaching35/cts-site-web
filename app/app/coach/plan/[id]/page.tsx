@@ -5,7 +5,7 @@ import BanniereSemaine from '@/components/app/BanniereSemaine';
 import CadreCoach from '@/components/app/CadreCoach';
 import EnvoiPlan from '@/components/app/EnvoiPlan';
 import EnvoiSemaine from '@/components/app/EnvoiSemaine';
-import { AjouterCourse, AnnulerSemaine, DemarrerNolio, RetirerCourse } from '@/components/app/GestesEcriture';
+import { AjouterCourse, AnnulerSemaine, DemarrerNolio, ModifierCourse, RetirerCourse } from '@/components/app/GestesEcriture';
 import { Montagne } from '@/components/app/TableauDeBord';
 import { Carte, CarteSombre, PastilleDate, Surtitre } from '@/components/app/Ui';
 import { garderObjectif, retirerObjectif } from '@/lib/app/actionsCoaching';
@@ -297,7 +297,7 @@ export default async function ObjectifCoache({ params, searchParams }: {
                       <a href={`${lienFicheCourse(id)}?course=${c.date}`} target="_blank" rel="noopener" className="shrink-0 inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">Fiche ›</a>
                     )}
                   </div>
-                  {c.date > jour && <div className="pl-14 -mt-1"><RetirerCourse planId={id} date={c.date} nom={c.nom} /></div>}
+                  {c.date > jour && <div className="pl-14 -mt-1 flex flex-wrap gap-x-5"><ModifierCourse planId={id} course={c} /><RetirerCourse planId={id} date={c.date} nom={c.nom} /></div>}
                 </div>
               ))}
               {course.date >= jour && (

@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import clsx from 'clsx';
 import EnTeteApp from '@/components/app/EnTeteApp';
-import { AjouterCourse, RetirerCourse } from '@/components/app/GestesEcriture';
+import { AjouterCourse, ModifierCourse, RetirerCourse } from '@/components/app/GestesEcriture';
 import { Carte, PastilleDate, Surtitre } from '@/components/app/Ui';
 import { choisirPlan } from '@/lib/app/actionsPlan';
 import { contexte, lien, plansDuCompte, type PlanDuCompte, type Recherche } from '@/lib/app/contexte';
@@ -153,7 +153,7 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
                     <Link href={lien('/app/plan/course', ctx, { course: c.date })} className="shrink-0 inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">Sa fiche ›</Link>
                   )}
                 </div>
-                {c.date > jour && <div className="pl-14 -mt-1"><RetirerCourse planId={ctx.cle} date={c.date} nom={c.nom} /></div>}
+                {c.date > jour && <div className="pl-14 -mt-1 flex flex-wrap gap-x-5"><ModifierCourse planId={ctx.cle} course={c} /><RetirerCourse planId={ctx.cle} date={c.date} nom={c.nom} /></div>}
               </div>
             ))}
             {courseAVenir && (

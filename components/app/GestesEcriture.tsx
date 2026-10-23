@@ -2,7 +2,10 @@
 
 import { useActionState, useState } from 'react';
 import { formatRouteDe } from '@/lib/app/route';
-import { ajouterCourse, annulerSemaine, demarrerDansNolio, donnerMonAccord, reessayerLaSemaine, retirerCourse, retirerMonAccord, type EtatGeste } from '@/lib/app/actionsEcriture';
+import {
+  ajouterCourse, annulerSemaine, demarrerDansNolio, donnerMonAccord, modifierCourse, reessayerLaSemaine, retirerCourse, retirerMonAccord,
+  type EtatGeste,
+} from '@/lib/app/actionsEcriture';
 
 // Les gestes de l'écriture semaine par semaine (lib/app/actionsEcriture.ts) : démarrer un objectif dans Nolio, annuler
 // les ajustements d'une semaine, ajouter une course secondaire.
@@ -50,7 +53,7 @@ export function RetirerCourse({ planId, date, nom }: { planId: string; date: str
   const [etat, action, enCours] = useActionState<EtatGeste, FormData>(retirerCourse.bind(null, planId, date), null);
   if (etat?.ok) return <Message etat={etat} />;
   return (
-    <details className="text-xs">
+    <details className="text-xs min-w-0 open:basis-full">
       <summary className="cursor-pointer inline-flex items-center min-h-11 font-semibold text-[#5E5C78] underline underline-offset-2">Retirer</summary>
       <form action={action} className="mt-1 space-y-2">
         <p className="text-[#4A4866] leading-relaxed">{nom} quitte ta préparation ; dans Nolio, sa course et le rappel de sa fiche partent.</p>
@@ -63,13 +66,30 @@ export function RetirerCourse({ planId, date, nom }: { planId: string; date: str
   );
 }
 
-// initial : une course B de Nolio (lib/app/coursesNolio.ts), à relire avant d'ajouter.
-export function AjouterCourse({ planId, initial }: {
-  planId: string; initial?: { nom: string; date: string; distance_km: number | null; dplus_m: number | null; chrono: string | null } | null;
+// Modifier une course de préparation à venir (décision coach du 23/10/2026, « tout modifiable ») : le formulaire de
+// l'ajout, prérempli.
+export function ModifierCourse({ planId, course }: {
+  planId: string; course: { nom: string; date: string; distance_km: number; dplus_m: number; chrono?: string | null; discipline?: 'trail' | 'route' };
 }) {
-  const [etat, action, enCours] = useActionState<EtatGeste, FormData>(ajouterCourse.bind(null, planId), null);
+  return (
+    <details className="text-xs min-w-0 open:basis-full">
+      <summary className="cursor-pointer inline-flex items-center min-h-11 font-semibold text-[#5E5C78] underline underline-offset-2">Modifier</summary>
+      <div className="mt-1 pb-2"><AjouterCourse planId={planId} ancienne={course.date} initial={{ ...course, chrono: course.chrono ?? null }} /></div>
+    </details>
+  );
+}
+
+// initial : une course B de Nolio (lib/app/coursesNolio.ts), à relire avant d'ajouter ; ou la course à modifier
+// (ancienne : sa date d'avant).
+export function AjouterCourse({ planId, initial, ancienne }: {
+  planId: string; ancienne?: string;
+  initial?: { nom: string; date: string; distance_km: number | null; dplus_m: number | null; chrono: string | null; discipline?: 'trail' | 'route' } | null;
+}) {
+  const [etat, action, enCours] = useActionState<EtatGeste, FormData>(
+    ancienne ? modifierCourse.bind(null, planId, ancienne) : ajouterCourse.bind(null, planId), null);
   // Trail ou route (décision coach du 23/10/2026) ; une course de Nolio qui ressemble à la route s'ouvre en route.
-  const [route, setRoute] = useState(Boolean(initial && formatRouteDe(initial.distance_km, initial.dplus_m)));
+  const [route, setRoute] = useState(initial?.discipline ? initial.discipline === 'route'
+    : Boolean(initial && formatRouteDe(initial.distance_km, initial.dplus_m)));
   const champ = 'mt-1.5 w-full min-h-11 rounded-[10px] border border-indigo/20 px-3 text-sm font-normal text-indigo bg-white';
   return (
     <form action={action} className="space-y-3">
@@ -101,13 +121,15 @@ export function AjouterCourse({ planId, initial }: {
           <input name="chrono" required placeholder={route ? '0h45' : '2h15'} className={champ} defaultValue={initial?.chrono ?? undefined} />
         </label>
       </div>
-      {!route && <label className="flex flex-col gap-1.5 text-xs font-semibold text-indigo">Trace GPX — facultative
-        <input name="gpx" type="file" accept=".gpx" className="block text-sm font-normal text-indigo file:mr-3 file:min-h-10 file:px-3 file:rounded-[10px] file:border-0 file:bg-[#E1EFEA] file:text-teal-dark file:font-bold" />
-        <span className="font-normal text-[#5E5C78]">Avec elle, sa fiche de course montre son profil et ses tronçons.</span>
+      {!route && <label className="flex flex-col gap-1.5 text-xs font-semibold text-indigo">{ancienne ? 'Nouvelle trace GPX — facultative' : 'Trace GPX — facultative'}
+        <input name="gpx" type="file" accept=".gpx" className="block w-full max-w-full text-sm font-normal text-indigo file:mr-3 file:min-h-10 file:px-3 file:rounded-[10px] file:border-0 file:bg-[#E1EFEA] file:text-teal-dark file:font-bold" />
+        <span className="font-normal text-[#5E5C78]">{ancienne
+          ? 'Sans elle, sa trace d’avant est gardée.'
+          : 'Avec elle, sa fiche de course montre son profil et ses tronçons.'}</span>
       </label>}
       <button type="submit" disabled={enCours}
         className="w-full min-h-12 rounded-xl bg-teal text-white text-sm font-bold disabled:opacity-50">
-        {enCours ? 'Vérification…' : 'Ajouter la course'}
+        {enCours ? 'Vérification…' : ancienne ? 'Enregistrer la course' : 'Ajouter la course'}
       </button>
       <Message etat={etat} />
     </form>

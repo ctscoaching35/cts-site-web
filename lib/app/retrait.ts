@@ -12,6 +12,11 @@ export async function supprimerPlans(coachId: string, planIds: string[]) {
   for (const id of planIds) {
     const { data } = await service.from('plans').select('pdf_chemin').eq('id', id).eq('compte_id', coachId).maybeSingle();
     if (data?.pdf_chemin) await service.storage.from('plans-pdf').remove([data.pdf_chemin]);
+    // Les traces de ses courses de préparation, gardées pour les modifier (23/10/2026).
+    if (data) {
+      const { data: traces } = await service.storage.from('plans-pdf').list(`preparations/${id}`);
+      if (traces?.length) await service.storage.from('plans-pdf').remove(traces.map((f) => `preparations/${id}/${f.name}`));
+    }
     await service.from('plans').delete().eq('id', id).eq('compte_id', coachId);
   }
 }

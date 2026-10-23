@@ -8,7 +8,7 @@ import { revalidatePath } from 'next/cache';
 import { API_URL } from '@/lib/plan';
 import {
   annulerAjustements, demarrerObjectif, donnerAccordLecture, objectifEcrit, plansALaMain, poserCourse, poserFichePreparation, rattraperLaSemaine,
-  retirerAccordLecture, retirerCourseDeNolio,
+  retirerAccordLecture, retirerCourseDeNolio, type Course,
 } from './ecriture';
 import { coachConnecte } from './nolio';
 import { clientServeur, clientService } from './supabase';
@@ -70,15 +70,35 @@ export async function annulerSemaine(planId: string, numero: string, _e: EtatGes
 // plus longue que lui ; plus longue que la plus longue sortie récente, signalée). Elle compte dans les semaines écrites
 // à partir du dimanche qui vient.
 export async function ajouterCourse(planId: string, _e: EtatGeste, form: FormData): Promise<EtatGeste> {
+  return enregistrerCourse(planId, form, null);
+}
+
+// Modifier une course de préparation à venir (décision coach du 23/10/2026, « tout modifiable ») : comme un retrait puis
+// un ajout, vérifiée par le moteur sans elle ; dans Nolio, sa course et le rappel de sa fiche se reposent. Sans nouvelle
+// trace, celle d'avant est gardée (gardée depuis le 23/10/2026 ; plus ancienne, elle est à redonner). Sa date peut
+// rester dans la semaine en cours si elle ne change pas.
+export async function modifierCourse(planId: string, ancienne: string, _e: EtatGeste, form: FormData): Promise<EtatGeste> {
+  return enregistrerCourse(planId, form, ancienne);
+}
+
+// La trace d'une course de préparation, gardée pour la modifier ensuite.
+const cheminTrace = (planId: string, date: string) => `preparations/${planId}/${date}.gpx`;
+
+async function enregistrerCourse(planId: string, form: FormData, ancienne: string | null): Promise<EtatGeste> {
   const { compteId, coachId } = await qui();
   const o = await objectifEcrit(planId);
   if (!o || !compteId || (o.compteId !== compteId && o.compteAthlete !== compteId && o.coachId !== coachId)) {
     return { ok: false, message: 'Plan introuvable.' };
   }
+  const toutes = ((o.parametres.courses_secondaires as Course[] | undefined) ?? []);
+  const aujourdhui = new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris' }).format(new Date());
+  if (ancienne !== null && (!toutes.some((c) => c.date === ancienne) || ancienne <= aujourdhui)) {
+    return { ok: false, message: 'Cette course n’est plus à venir.' };
+  }
   const date = String(form.get('date') ?? '');
   const lundiProchain = new Date();
   lundiProchain.setUTCDate(lundiProchain.getUTCDate() + ((8 - lundiProchain.getUTCDay()) % 7 || 7));
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < lundiProchain.toISOString().slice(0, 10)) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || (date < lundiProchain.toISOString().slice(0, 10) && date !== ancienne)) {
     return { ok: false, message: 'Ta course doit tomber à partir de lundi prochain : la semaine en cours est déjà écrite.' };
   }
   // PO3 : le chrono visé (« 2h15 », « 2:15 », « 135 min ») ; il règle les jours autour de la course et sa fiche.
@@ -96,48 +116,72 @@ export async function ajouterCourse(planId: string, _e: EtatGeste, form: FormDat
     return { ok: false, message: 'La distance ou le dénivelé ne se lisent pas.' };
   }
   if (temps_h === null || temps_h < 0.25 || temps_h > 48) return { ok: false, message: 'Le chrono visé ne se lit pas : par exemple 2h15.' };
+  // Modifiée, elle se vérifie sans elle-même (la règle d'une course toutes les 4 semaines).
+  const autres = toutes.filter((c) => c.date !== ancienne);
+  const parametres = { ...o.parametres, courses_secondaires: autres };
   const reelles = Object.values(((o.etat ?? {}) as { sl_reelles?: Record<string, number> }).sl_reelles ?? {});
   const r = await fetch(`${API_URL}/v1/course-secondaire`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
-    body: JSON.stringify({ parametres: o.parametres, course, sl_30j_min: reelles.length ? Math.max(...reelles.slice(-4)) : null }),
+    body: JSON.stringify({ parametres, course, sl_30j_min: reelles.length ? Math.max(...reelles.slice(-4)) : null }),
   });
   const verdict = await r.json().catch(() => null) as { ok?: boolean; message?: string | null } | null;
   if (!r.ok || !verdict) return { ok: false, message: verdict?.message ?? 'Le moteur ne répond pas : réessaie dans un moment.' };
   if (!verdict.ok) return { ok: false, message: verdict.message ?? 'Cette course ne peut pas s’ajouter au plan.' };
-  const courses = [...((o.parametres.courses_secondaires as unknown[]) ?? []), course];
+  // Modifiée : l'ancienne quitte Nolio (sa course et le rappel de sa fiche, encore à venir).
+  const soucis = ancienne === null ? [] : await retirerCourseDeNolio(o, ancienne).catch((e) => [e instanceof Error ? e.message : String(e)]);
+  if (soucis.length) console.error(`Course du ${ancienne} (${planId}) : restée dans Nolio — ${soucis.join(' ; ')}`);
   const service = clientService();
-  await service.from('plans').update({ parametres: { ...o.parametres, courses_secondaires: courses } }).eq('id', planId);
-  // PO3 : sa fiche de course, sans plan, avec sa trace si elle est donnée ; gardée par sa date (après la migration du
-  // 19/10/2026 : sans elle, la course s'ajoute sans fiche).
+  await service.from('plans').update({ parametres: { ...o.parametres, courses_secondaires: [...autres, course] } }).eq('id', planId);
+  // PO3 : sa fiche de course, sans plan, avec sa trace si elle est donnée, ou celle d'avant ; gardée par sa date (après
+  // la migration du 19/10/2026 : sans elle, la course s'ajoute sans fiche).
   const gpx = form.get('gpx');
-  const traceDonnee = gpx instanceof File && gpx.size > 0;
+  const traceDonnee = !route && gpx instanceof File && gpx.size > 0 && gpx.size < 15_000_000;
+  const gardee = !route && !traceDonnee && ancienne !== null
+    ? (await service.storage.from('plans-pdf').download(cheminTrace(planId, ancienne))).data : null;
+  const trace = traceDonnee ? gpx : gardee;
   const envoi = new FormData();
   envoi.set('corps', JSON.stringify({ parametres: o.parametres, course }));
-  if (traceDonnee) envoi.set('gpx', gpx);
+  if (trace) envoi.set('gpx', new File([trace], 'trace.gpx', { type: 'application/gpx+xml' }));
   const rf = await fetch(`${API_URL}/v1/fiche-course`, { method: 'POST', body: envoi, cache: 'no-store' }).catch(() => null);
   const fiche = rf?.ok ? await rf.json().catch(() => null) as { trace?: boolean } | null : null;
   let ficheGardee = false;
-  if (fiche) {
-    const { data: fp, error } = await service.from('plans').select('fiches_preparation').eq('id', planId).maybeSingle();
-    if (!error) {
-      const avant = ((fp as { fiches_preparation?: Record<string, unknown> } | null)?.fiches_preparation ?? {});
-      ficheGardee = !(await service.from('plans').update({ fiches_preparation: { ...avant, [date]: fiche } }).eq('id', planId)).error;
-    }
+  let traceAvant = false;
+  const { data: fp, error } = await service.from('plans').select('fiches_preparation').eq('id', planId).maybeSingle();
+  if (!error) {
+    const avant = { ...((fp as { fiches_preparation?: Record<string, { trace?: boolean }> } | null)?.fiches_preparation ?? {}) };
+    traceAvant = ancienne !== null && Boolean(avant[ancienne]?.trace);
+    if (ancienne !== null) delete avant[ancienne];
+    if (fiche) ficheGardee = !(await service.from('plans').update({ fiches_preparation: { ...avant, [date]: fiche } }).eq('id', planId)).error;
+    else if (ancienne !== null) await service.from('plans').update({ fiches_preparation: avant }).eq('id', planId);
   }
-  // OM3 : la course dans le calendrier Nolio, si l'objectif y est déjà ; sinon elle part au démarrage.
+  // Sa trace, gardée à sa date ; celle d'une autre date, ou d'une course passée sur route, s'en va.
+  if (trace && fiche?.trace) {
+    await service.storage.from('plans-pdf').upload(cheminTrace(planId, date), trace, { contentType: 'application/gpx+xml', upsert: true })
+      .catch(() => null);
+  }
+  if (ancienne !== null && (ancienne !== date || route)) await service.storage.from('plans-pdf').remove([cheminTrace(planId, ancienne)]).catch(() => null);
+  // OM3 : la course dans le calendrier Nolio, si l'objectif y est déjà ; sinon elle part au démarrage. Relu après le
+  // retrait de l'ancienne, pour que sa course et sa fiche se reposent.
   const { data: depart } = await clientService().from('plans').select('demarre_le').eq('id', planId).maybeSingle();
   // Un athlète programmé à la main (décision coach du 20/10/2026) : rien ne s'écrit dans son Nolio.
   if (depart?.demarre_le && !(await plansALaMain()).has(planId)) {
-    await poserCourse(o, course, false).catch((e) => console.error(`Course de ${planId} non posée dans Nolio :`, e instanceof Error ? e.message : e));
+    const relu = (ancienne === null ? o : await objectifEcrit(planId)) ?? o;
+    await poserCourse(relu, course, false).catch((e) => console.error(`Course de ${planId} non posée dans Nolio :`, e instanceof Error ? e.message : e));
     // PO4 : sa fiche en note Nolio une semaine avant, avec son lien privé.
-    if (ficheGardee) await poserFichePreparation(o, course).catch((e) => console.error(`Fiche de ${planId} non posée dans Nolio :`, e instanceof Error ? e.message : e));
+    if (ficheGardee) await poserFichePreparation(relu, course).catch((e) => console.error(`Fiche de ${planId} non posée dans Nolio :`, e instanceof Error ? e.message : e));
   }
   revalidatePath('/app/plan');
   revalidatePath(`/app/coach/plan/${planId}`);
   const surLaFiche = !ficheGardee ? '' : traceDonnee && !fiche?.trace
     ? ' Sa fiche de course est prête, mais sa trace ne s’est pas lue : le profil reste schématique.'
+    : !trace && traceAvant
+    ? ' Sa fiche de course est refaite, mais sa trace d’avant n’était pas gardée : redonne-la pour retrouver son profil.'
+    : ancienne !== null ? ' Sa fiche de course est refaite, ici et une semaine avant dans Nolio.'
     : ' Sa fiche de course est prête, ici et une semaine avant dans Nolio.';
-  return { ok: true, message: `Course ajoutée : les jours autour d’elle s’ajustent dans tes semaines.${verdict.message ? ` ${verdict.message}` : ''}${surLaFiche}` };
+  const nolio = soucis.length ? ' Dans Nolio, l’ancienne n’a pas pu partir : retire-la à la main.' : '';
+  return { ok: true, message: ancienne !== null
+    ? `Course modifiée : les jours autour d’elle s’ajustent dans tes prochaines semaines.${verdict.message ? ` ${verdict.message}` : ''}${surLaFiche}${nolio}`
+    : `Course ajoutée : les jours autour d’elle s’ajustent dans tes semaines.${verdict.message ? ` ${verdict.message}` : ''}${surLaFiche}` };
 }
 
 // Retirer une course de préparation à venir (décision coach du 20/10/2026 : l'athlète la retire seul, comme il l'ajoute ;
@@ -162,6 +206,7 @@ export async function retirerCourse(planId: string, date: string, _e: EtatGeste)
     delete fiches[date];
     await service.from('plans').update({ fiches_preparation: fiches }).eq('id', planId);
   }
+  await service.storage.from('plans-pdf').remove([cheminTrace(planId, date)]).catch(() => null);
   revalidatePath('/app/plan');
   revalidatePath(`/app/coach/plan/${planId}`);
   return { ok: true, message: soucis.length
