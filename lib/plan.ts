@@ -211,6 +211,9 @@ export function reperesChrono(c: Champs, config: ConfigPlan, coach = false): str
  * /v1/config (formats_par_distance : code, borne haute en km ou null, borne incluse) ; '' tant
  * que la distance n'est pas lisible ou que l'API ne fournit pas les bornes.
  */
+// La route (moteur 8.349) : le format d'un 10 km sur route, que seul le questionnaire du coach propose.
+export const ROUTE_10KM = 'R10';
+
 export function formatDepuisDistance(distance: string, config: ConfigPlan): string {
   const km = parseFloat(distance.replace(',', '.'));
   if (!(km > 0) || !config.formats_par_distance) return '';

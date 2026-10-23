@@ -119,7 +119,7 @@ export default async function ObjectifCoache({ params, searchParams }: {
           <Surtitre as="div">Objectif · {statut}</Surtitre>
           <h1 className="mt-1.5 text-[1.75rem] font-extrabold tracking-tight">{course.nom}</h1>
           <p className="mt-1.5 text-sm text-[#5E5C78]">
-            {dateLongue(course.date, true)} · {Math.round(course.distance_km)} km · {course.dplus_m.toLocaleString('fr-FR')} m D+
+            {dateLongue(course.date, true)} · {Math.round(course.distance_km)} km{course.dplus_m ? ` · ${course.dplus_m.toLocaleString('fr-FR')} m D+` : ' sur route'}
             {course.temps_cible ? ` · chrono visé ${course.temps_cible}` : ''}{course.date >= jour ? ` · ${jMoins(jour, course.date)}` : ''}
           </p>
           <p className="mt-1 text-[0.8125rem] text-[#5E5C78]">

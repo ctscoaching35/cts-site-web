@@ -10,6 +10,7 @@
  * que la page lit déjà et les courses A de Nolio, lues une fois par heure : les signaux de chaque séance restent dans
  * « Suivi des 7 jours ». Côté serveur seulement.
  */
+import { alerteChronoRoute } from './route';
 import { athletesCoaches, type FicheAthlete } from './coaching';
 import { demandesDuCoach, estRetrait, type Demande } from './demandes';
 import { coursesGardees, pasEncoreIci, type CourseNolio } from './coursesNolio';
@@ -173,6 +174,13 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
         && semaines.some((l) => String((l.donnees as Semaine | null)?.lundi ?? '') < lundi)) {
       aRegarder.push({ niveau: 'bloque', genre: 'semaine', athlete: a.nom, action: 'Réessayer ›', href: hrefPlan, planId: o.plan_id,
         texte: `sa semaine du ${jourMois(lundi)} n’est pas partie dans Nolio.` });
+    }
+    // La route (décision 5 du 10 km, 23/10/2026) : un chrono visé totalement incohérent avec sa VC, à en parler avec lui.
+    const champsPlan = ((p?.parametres as { champs?: Record<string, unknown> } | null)?.champs) ?? {};
+    const chronoRoute = o && avenir ? alerteChronoRoute(champsPlan.format, champsPlan.temps_cible, a.vc_ms) : null;
+    if (chronoRoute) {
+      aRegarder.push({ niveau: 'arrive', genre: 'chrono_route', athlete: a.nom, action: 'Lui écrire ›', href: NOLIO, externe: true,
+        texte: `${o!.course_nom} : ${chronoRoute}` });
     }
     // Ce qui arrive : une course A posée dans Nolio sans objectif ici, à créer d'un clic.
     const dejaIci = new Set([...a.objectifs.map((x) => x.course_date), ...((((p?.parametres as { courses_secondaires?: { date?: string }[] } | null)

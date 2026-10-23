@@ -60,7 +60,7 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
           <Surtitre as="div">Objectif principal</Surtitre>
           <h1 className="mt-1.5 text-[1.75rem] font-extrabold text-indigo tracking-tight leading-tight">{course.nom}</h1>
           <p className="mt-1.5 text-[0.8125rem] text-[#5E5C78]">
-            {dateLongue(course.date)} · {course.format_clair} · {Math.round(course.distance_km)} km · {course.dplus_m.toLocaleString('fr-FR')} m D+
+            {dateLongue(course.date)} · {course.format_clair}{course.dplus_m ? ` · ${Math.round(course.distance_km)} km · ${course.dplus_m.toLocaleString('fr-FR')} m D+` : ' sur route'}
           </p>
         </div>
 
