@@ -491,12 +491,13 @@ export type Depart = { numero: string } | { prevu: string; apres: string; raison
 // PC1 (décision coach du 19/10/2026) : un coaché à qui le coach a déjà posé des séances à la main ; rien n'est écrasé,
 // l'écriture commence le lundi qui suit la dernière d'entre elles. null : rien de posé d'ici la course (hors ce que
 // l'app a posé elle-même).
-export async function seancesDejaPosees(o: Objectif, aujourdhui: string): Promise<{ derniere: string; lundi: string } | null> {
+// jusqua : la fin de la recherche, la course par défaut (une semaine de récupération : son dimanche).
+export async function seancesDejaPosees(o: Objectif, aujourdhui: string, jusqua = o.plan.course.date): Promise<{ derniere: string; lundi: string } | null> {
   if (!o.coache || !o.nolioAthlete) return null;
   const d = await destinataire(o.nolioAthlete);
   const poses = new Set(o.envois.flatMap((e) => e.seances as SeanceEnvoyee[]).map((x) => String(x.nolio_id ?? '')));
   const seances = await listeNolio<{ id: string; date_start: string; sport?: string | null }>(
-    `planned/trainings/?date_from=${aujourdhui}&date_to=${o.plan.course.date}${d.moi ? '' : `&athlete=${d.usr}`}`);
+    `planned/trainings/?date_from=${aujourdhui}&date_to=${jusqua}${d.moi ? '' : `&athlete=${d.usr}`}`);
   // Course et trail seulement (décision coach du 21/10/2026, comme « Nolio fait foi ») : la renfo, le vélo ou une série
   // d'un autre sport vivent à côté des séances du moteur, sans repousser le départ.
   const derniere = seances.filter((x) => !poses.has(x.id) && SPORTS_COURSE.includes(String(x.sport)))
@@ -821,6 +822,11 @@ export async function passageDuDimanche(budgetMs = 240_000): Promise<Compte[]> {
       const recuperation = s ? null : semaineDeRecuperation(o, lundi);
       const numero = s?.numero ?? recuperation?.numero;
       if (!numero || o.envois.some((e) => e.semaine === numero)) continue;
+      // PC1 pour la récupération : une séance de course que le coach a posée cette semaine-là, et elle reste la sienne.
+      if (recuperation && await seancesDejaPosees(o, lundi, ajouterJours(lundi, 6))) {
+        comptes.push({ plan: planId, quoi: `${numero} : récupération laissée, séances du coach gardées`, coache: true });
+        continue;
+      }
       const { data: prise } = await service.from('nolio_envois')
         .upsert({ plan_id: planId, semaine: numero, coach_id: o.coachId, seances: [] }, { onConflict: 'plan_id,semaine', ignoreDuplicates: true })
         .select('plan_id');
