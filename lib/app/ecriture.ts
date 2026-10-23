@@ -608,7 +608,7 @@ export async function demarrerObjectif(planId: string, { prevenir = true, lundi,
 // sur ce que l'athlète court au moment où sa préparation commence, ses 4 dernières semaines dans Nolio (avec son accord
 // de lecture, chargeDepuisNolio) ; sans accord ou sans course lue, la charge saisie à la création reste.
 async function recalerSurNolio(o: Objectif, lundi: string) {
-  const charge = await chargeDepuisNolio(o.coachId, o.nolioAthlete);
+  const charge = (await chargeDepuisNolio(o.coachId, o.nolioAthlete))?.champs;
   if (!charge?.volume_hebdo_actuel) return;
   const champs = { ...((o.parametres.champs ?? {}) as Record<string, unknown>), ...charge };
   const parametres = { ...o.parametres, champs, declaree_le: lundi };

@@ -75,8 +75,10 @@ function Choix({
 // la course se demandent.
 export default function Questionnaire({
   coach = false, emailCoach = '', athleteId, initial, demande = false, demandeId, court = false, modification, vcMs = null,
-  discipline,
+  discipline, noteCharge = null,
 }: {
+  // Ce que Nolio dit de sa charge du moment : la période, le détail par semaine (décision coach du 23/10/2026).
+  noteCharge?: string | null;
   coach?: boolean; emailCoach?: string; athleteId?: string; initial?: Record<string, string | string[]>; demande?: boolean;
   demandeId?: string; court?: boolean;
   // « Modifier l'objectif » (décision coach du 22/10/2026) : l'objectif refait à sa place ; trace : il en a déjà une.
@@ -538,6 +540,9 @@ export default function Questionnaire({
             </div>
           </div>
           <p className={aideCls}>{textes.charge.note}</p>
+          {noteCharge && (
+            <p role="status" className="bg-sand rounded-r-xl border-l-4 border-teal px-4 py-3 mt-2 text-[0.8125rem] text-indigo leading-relaxed">{noteCharge}</p>
+          )}
           {alerteSl && (
             <p role="status" className="bg-sand rounded-r-xl border-l-4 border-teal px-4 py-3 mt-2 text-[0.8125rem] text-indigo leading-relaxed">{alerteSl}</p>
           )}

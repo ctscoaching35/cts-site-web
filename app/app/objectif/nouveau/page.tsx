@@ -33,12 +33,14 @@ export default async function NouvelObjectif({ searchParams }: { searchParams: P
   }
   let initial: Record<string, string | string[]>;
   let depuisNolio = false;
+  let noteCharge: string | null = null;
   // PO1 : un coaché qui a déjà un objectif garde son profil ; seules sa charge du moment et sa course se demandent.
   let court = false;
   if (fiche) {
     const suite = await questionnairePrerempli(fiche.coach_id, fiche.id);
     initial = suite?.initial ?? { nom: fiche.nom };
     depuisNolio = Boolean(suite?.nolio);
+    noteCharge = suite?.noteCharge ?? null;
     court = Boolean(suite?.profilConnu);
   } else {
     const dernier = (await plansDuCompte(compteId)).filter((p) => !p.coache).pop();
@@ -93,7 +95,7 @@ export default async function NouvelObjectif({ searchParams }: { searchParams: P
             <ProfilAthlete profil={await profilDeLaFiche(fiche.id)} pourMoi rafraichir />
           </div>
         ) : fiche
-          ? <Questionnaire coach demande court={court} athleteId={fiche.id} initial={initial} discipline={route ? 'route' : 'trail'} />
+          ? <Questionnaire coach demande court={court} athleteId={fiche.id} initial={initial} discipline={route ? 'route' : 'trail'} noteCharge={noteCharge} />
           : <Questionnaire initial={initial} />}
       </main>
     </div>

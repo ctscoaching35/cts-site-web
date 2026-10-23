@@ -121,8 +121,9 @@ export async function questionnairePrerempli(coachId: string, athleteId: string)
   // PO1 : le profil de sa fiche, s'il a été modifié depuis, l'emporte sur les réponses du dernier objectif ; profilConnu :
   // le questionnaire court suffit, et sans lui le profil se remplit d'abord (décision coach du 23/10/2026).
   const profil = profilPourLeQuestionnaire(athlete.profil);
-  return { athlete, profil, initial: { ...reponsesSansLaCourse(data?.intake), ...profil, nom: athlete.nom, ...(charge ?? {}) },
-    nolio: Boolean(charge), profilConnu: Boolean(dernier || athlete.profil) };
+  // noteCharge : ce que Nolio dit de sa charge, la période et le détail (décision coach du 23/10/2026), sous les champs.
+  return { athlete, profil, initial: { ...reponsesSansLaCourse(data?.intake), ...profil, nom: athlete.nom, ...(charge?.champs ?? {}) },
+    nolio: Boolean(charge), noteCharge: charge?.detail ?? null, profilConnu: Boolean(dernier || athlete.profil) };
 }
 
 // QD4 (décision coach du 19/10/2026) : la charge du moment d'un coaché, lue dans ses séances Nolio avec son accord du
@@ -131,7 +132,7 @@ export async function questionnairePrerempli(coachId: string, athleteId: string)
 // derniers mois. null sans accord ; sans course ces 4 semaines, seul l'arrêt est rempli (le questionnaire demande alors
 // la dernière sortie régulière).
 const enHeuresMinutes = (min: number) => `${Math.floor(min / 60)}h${String(Math.round(min % 60)).padStart(2, '0')}`;
-export async function chargeDepuisNolio(coachId: string, usr: string | null): Promise<Record<string, string> | null> {
+export async function chargeDepuisNolio(coachId: string, usr: string | null): Promise<{ champs: Record<string, string>; detail: string } | null> {
   if (!usr || !nolioConfigure()) return null;
   const { data: accord } = await clientService().from('nolio_accords').select('accord_le').eq('coach_id', coachId).eq('nolio_athlete_id', usr).maybeSingle();
   if (!accord) return null;
@@ -144,7 +145,7 @@ export async function chargeDepuisNolio(coachId: string, usr: string | null): Pr
   const competitions = (await listeNolio<{ id: string; date_start: string }>(
     `planned/competitions/?date_from=${ajouterJours(aujourdhui, -70)}&date_to=${ajouterJours(aujourdhui, -1)}&fields=id,date_start${q}`)
     .catch(() => [])).map((c) => c.date_start.slice(0, 10));
-  const { debut, fin } = fenetreDeCharge(aujourdhui, competitions);
+  const { debut, fin, recul } = fenetreDeCharge(aujourdhui, competitions);
   const reels = await listeNolio<{ id: string; date_start: string; duration?: { value: number } | null; sport?: string | null }>(
     `real/trainings/?date_from=${debut < du ? debut : du}&date_to=${ajouterJours(aujourdhui, -1)}&fields=id,date_start,duration,sport${q}`);
   const jours = new Set(competitions);
@@ -155,19 +156,34 @@ export async function chargeDepuisNolio(coachId: string, usr: string | null): Pr
   const dates = [du, ...course.map((r) => r.date).sort(), aujourdhui];
   const ecarts = dates.slice(1).map((d, i) => (new Date(`${d}T12:00:00Z`).getTime() - new Date(`${dates[i]}T12:00:00Z`).getTime()) / 86_400_000);
   const charge: Record<string, string> = { coupure: ecarts.some((e) => e > 28) ? 'oui' : 'non' };
-  if (recentes.length) {
-    charge.volume_hebdo_actuel = enHeuresMinutes(recentes.reduce((a, r) => a + r.min, 0) / 4);
-    charge.sortie_longue_actuelle = enHeuresMinutes(Math.max(...recentes.map((r) => r.min)));
+  // Le détail, sous les champs (décision coach du 23/10/2026, « les chiffres ne collent pas ») : la période, le temps
+  // de course semaine par semaine, la plus longue sortie et sa date, et pourquoi la période recule.
+  const jm = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+  const periode = `du ${jm(debut)} au ${jm(ajouterJours(fin, -1))}`;
+  const pourquoi = recul ? ` Sa course du ${jm(recul)} date de moins de 2 semaines : ce sont les 4 semaines d’avant son affûtage.` : '';
+  if (!recentes.length) {
+    return { champs: charge, detail: `Rien en course ou trail dans Nolio ${periode} : les champs gardent ses dernières réponses, à corriger.${pourquoi}` };
   }
-  return charge;
+  charge.volume_hebdo_actuel = enHeuresMinutes(recentes.reduce((a, r) => a + r.min, 0) / 4);
+  const longue = recentes.reduce((a, r) => (r.min > a.min ? r : a));
+  charge.sortie_longue_actuelle = enHeuresMinutes(longue.min);
+  const semaines = [0, 1, 2, 3].map((i) => `semaine du ${jm(ajouterJours(debut, 7 * i))} ${enHeuresMinutes(recentes
+    .filter((r) => r.date >= ajouterJours(debut, 7 * i) && r.date < ajouterJours(debut, 7 * (i + 1))).reduce((a, r) => a + r.min, 0))}`);
+  const sansCourse = competitions.some((c) => c >= debut && c < fin) ? ', sans le jour de course' : '';
+  return { champs: charge, detail: `Lu dans Nolio ${periode}, course et trail seulement (sans renfo ni autres sports${sansCourse}) : `
+    + `${semaines.join(' · ')}, soit ${charge.volume_hebdo_actuel} en moyenne ; plus longue sortie ${charge.sortie_longue_actuelle} le ${jm(longue.date)}.${pourquoi}` };
 }
 
 // Les 4 semaines sur lesquelles se lit sa charge, fin exclue : les 4 dernières ; après une compétition de moins de 4
 // semaines, les 4 d'avant ses 2 semaines d'affûtage (décision coach du 23/10/2026).
-export function fenetreDeCharge(aujourdhui: string, competitions: string[]): { debut: string; fin: string } {
-  const derniere = competitions.filter((d) => d >= ajouterJours(aujourdhui, -28) && d < aujourdhui).sort().pop();
-  const fin = derniere ? ajouterJours(derniere, -14) : aujourdhui;
-  return { debut: ajouterJours(fin, -28), fin };
+// Les 4 dernières semaines complètes, du lundi au dimanche, comme les lignes du calendrier Nolio (décision coach du
+// 23/10/2026) ; une course il y a moins de 2 semaines, encore en récupération (« il ne faut pas remonter aussi loin ») :
+// les 4 semaines d'avant son affûtage. Le jour d'une course n'y compte jamais.
+export function fenetreDeCharge(aujourdhui: string, competitions: string[]): { debut: string; fin: string; recul: string | null } {
+  const derniere = competitions.filter((d) => d >= ajouterJours(aujourdhui, -14) && d < aujourdhui).sort().pop() ?? null;
+  const borne = derniere ? ajouterJours(derniere, -14) : aujourdhui;
+  const fin = ajouterJours(borne, -((new Date(`${borne}T12:00:00Z`).getUTCDay() + 6) % 7));
+  return { debut: ajouterJours(fin, -28), fin, recul: derniere };
 }
 
 // Les réponses d'un objectif, sans celles de sa course : le point de départ du suivant (N9, OM1).

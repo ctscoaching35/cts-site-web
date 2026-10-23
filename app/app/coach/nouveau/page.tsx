@@ -120,7 +120,7 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
           </div>
         ) : <Questionnaire key={JSON.stringify(suite?.profil ?? {})} coach court={court} emailCoach={coach.email} athleteId={suite?.athlete.id} demandeId={demande?.id}
           modification={aModifier ? { planId: String(aModifier.id), trace: traceDonnee } : undefined}
-          vcMs={suite?.athlete.vc_ms ?? null} discipline={discipline}
+          vcMs={suite?.athlete.vc_ms ?? null} discipline={discipline} noteCharge={aModifier ? null : suite?.noteCharge ?? null}
           initial={aModifier ? { ...reponsesDe(aModifier.intake), ...reponsesDe(pm?.champs), ...suite?.profil, nom: suite?.athlete.nom ?? '' }
             : demande ? { ...demande.champs, ...suite?.profil, nom: suite?.athlete.nom ?? '' }
               : deNolio ? { ...suite?.initial, ...deNolio, ...(routeNolio ? { format: routeNolio } : {}) } : suite?.initial} />}
