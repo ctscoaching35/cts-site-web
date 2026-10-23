@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
+import ProfilAthlete from '@/components/app/ProfilAthlete';
 import Questionnaire from '@/components/plan/Questionnaire';
 import { questionnairePrerempli, reponsesSansLaCourse } from '@/lib/app/coaching';
 import { plansDuCompte } from '@/lib/app/contexte';
@@ -56,7 +57,7 @@ export default async function NouvelObjectif({ searchParams }: { searchParams: P
             {fiche
               ? court
                 ? `Ton profil d’entraînement part avec ta demande (ci-dessous) : seules ta charge du moment${depuisNolio ? ' (lue dans tes séances Nolio : relis-la)' : ''} et ta course sont demandées. Ton coach relit ta demande et lance ta préparation.`
-                : 'Remplis tes réponses et saisis ta course. Ton coach relit ta demande et lance ta préparation.'
+                : 'D’abord ton profil de coureur, une seule fois ; ta course ensuite. Ton coach relit ta demande et lance ta préparation.'
               : 'Tes réponses du dernier plan sont reprises : mets à jour ce que tu cours en ce moment et saisis ta course.'}
           </p>
           {/* OM4 : un objectif majeur à la fois ; une course avant l'objectif en cours est une course de préparation. */}
@@ -80,7 +81,18 @@ export default async function NouvelObjectif({ searchParams }: { searchParams: P
             <Link href="/app/profil#profil-entrainement" className="inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">Le modifier dans ton onglet Profil ›</Link>
           </div>
         )}
-        {fiche
+        {/* Le profil d'abord (décision coach du 23/10/2026) : sans lui, son formulaire ; une fois enregistré, la page se
+            recharge sur le questionnaire court. */}
+        {fiche && !court ? (
+          <div className="mx-2 bg-white rounded-2xl border border-indigo/[0.08] p-5 space-y-3">
+            <div className="text-[0.6875rem] font-bold tracking-[0.12em] uppercase text-teal">Ton profil de coureur, d’abord</div>
+            <p className="text-sm text-[#4A4866] leading-relaxed">
+              Une seule fois : ton niveau et ta semaine habituelle. Tes prochains objectifs ne demanderont plus que ta
+              course et ta charge du moment. Tu le retrouves dans ton onglet Profil.
+            </p>
+            <ProfilAthlete profil={await profilDeLaFiche(fiche.id)} pourMoi rafraichir />
+          </div>
+        ) : fiche
           ? <Questionnaire coach demande court={court} athleteId={fiche.id} initial={initial} discipline={route ? 'route' : 'trail'} />
           : <Questionnaire initial={initial} />}
       </main>

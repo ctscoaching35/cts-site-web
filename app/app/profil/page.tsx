@@ -96,18 +96,28 @@ export default async function MonProfil({ searchParams }: { searchParams: Recher
         {entrainement && (
           <Carte id="profil-entrainement" className="space-y-1 scroll-mt-20">
             <Surtitre>Ton profil d’entraînement</Surtitre>
-            <dl className="pt-1">
-              {lignesDuProfil(entrainement).map(([cle, valeur]) => (
-                <div key={cle} className="grid grid-cols-[112px_1fr] gap-x-3 py-2.5 border-b last:border-b-0 border-indigo/[0.06] text-[0.84rem] text-indigo">
-                  <dt className="font-semibold text-[#5E5C78]">{cle}</dt><dd>{valeur}</dd>
-                </div>
-              ))}
-            </dl>
-            <p className="pt-1 text-[0.72rem] leading-relaxed text-[#5E5C78]">
-              Il sert à tes prochains objectifs. Ta semaine, elle, s’ajuste chaque dimanche avec ton questionnaire.
-            </p>
-            <details className="pt-2">
-              <summary className="cursor-pointer min-h-10 flex items-center text-[0.8125rem] font-bold text-teal">Modifier mon profil</summary>
+            {/* Rempli d'abord, avant le premier objectif (décision coach du 23/10/2026) : vide, son formulaire ouvert. */}
+            {Object.keys(entrainement).length === 0 ? (
+              <p className="pt-1 text-[0.8125rem] leading-relaxed text-[#4A4866]">
+                À remplir une fois, avant ta première course : ton niveau et ta semaine habituelle. Tes objectifs ne
+                demanderont ensuite que ta course et ta charge du moment.
+              </p>
+            ) : (
+              <>
+                <dl className="pt-1">
+                  {lignesDuProfil(entrainement).map(([cle, valeur]) => (
+                    <div key={cle} className="grid grid-cols-[112px_1fr] gap-x-3 py-2.5 border-b last:border-b-0 border-indigo/[0.06] text-[0.84rem] text-indigo">
+                      <dt className="font-semibold text-[#5E5C78]">{cle}</dt><dd>{valeur}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <p className="pt-1 text-[0.72rem] leading-relaxed text-[#5E5C78]">
+                  Il sert à tes prochains objectifs. Ta semaine, elle, s’ajuste chaque dimanche avec ton questionnaire.
+                </p>
+              </>
+            )}
+            <details className="pt-2" open={Object.keys(entrainement).length === 0}>
+              <summary className="cursor-pointer min-h-10 flex items-center text-[0.8125rem] font-bold text-teal">{Object.keys(entrainement).length === 0 ? 'Remplir mon profil' : 'Modifier mon profil'}</summary>
               <div className="pt-2"><ProfilAthlete profil={entrainement} pourMoi /></div>
             </details>
           </Carte>

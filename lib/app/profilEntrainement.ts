@@ -1,14 +1,17 @@
 /**
  * Le profil d'entraînement d'un coaché (PO1, décisions coach des 19 et 20/10/2026) : niveau, terrain, jours disponibles,
- * jour de la sortie longue, séances par semaine. Celui de sa fiche s'il a été modifié (par lui ou son coach), sinon celui
+ * jour de la sortie longue, séances par semaine. Rempli d'abord, à part des objectifs (décision coach du 23/10/2026) ;
+ * son niveau tiré de deux faits (lib/app/niveau.ts), ou choisi par le coach (niveau_coach), qui l'emporte. Celui de sa fiche s'il a été modifié (par lui ou son coach), sinon celui
  * de son dernier objectif. Il ne sert qu'à ses prochains objectifs ; sa semaine s'ajuste chaque dimanche par son
  * questionnaire. Une seule règle de lecture et de vérification, pour le coach et pour l'athlète. Côté serveur seulement.
  */
 import { textes } from '@/lib/plan';
+import { niveauDesFaits, texteDesFaits } from './niveau';
 import { ficheDuCompte } from './demandes';
 import { clientServeur, clientService } from './supabase';
 
 export type ProfilEntrainement = Record<string, string | string[]>;
+// Les réponses qui partent au questionnaire d'un objectif ; les deux faits du niveau et le choix du coach restent ici.
 const CLES = ['niveau', 'terrain', 'jours_disponibles', 'jour_sl', 'freq_hebdo'];
 const JOURS_SEMAINE = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
 
@@ -24,33 +27,63 @@ export async function profilDeLaFiche(athleteId: string): Promise<ProfilEntraine
   return Object.fromEntries(CLES.filter((k) => intake[k] !== undefined).map((k) => [k, intake[k]]));
 }
 
-// Le profil en clair : « Niveau », « Terrain », « Disponibilités ».
-export function lignesDuProfil(profil: ProfilEntrainement): [string, string][] {
+// Le profil tel que le questionnaire d'un objectif le reprend.
+export function profilPourLeQuestionnaire(profil: ProfilEntrainement | null | undefined): ProfilEntrainement {
+  return Object.fromEntries(CLES.filter((k) => profil?.[k] !== undefined).map((k) => [k, (profil as ProfilEntrainement)[k]]));
+}
+
+const titreNiveau = (n: unknown) => textes.niveau.options.find((o) => o.valeur === n)?.titre;
+
+// Le profil en clair : « Niveau », « Terrain », « Semaine habituelle ». pourCoach : le niveau qu'il a choisi, à côté
+// de celui des faits.
+export function lignesDuProfil(profil: ProfilEntrainement, pourCoach = false): [string, string][] {
   const jours = Array.isArray(profil.jours_disponibles) ? profil.jours_disponibles : [];
+  const faits = texteDesFaits(profil.anciennete, profil.entrainement);
+  const desFaits = titreNiveau(niveauDesFaits(profil.anciennete, profil.entrainement));
+  const niveau = titreNiveau(profil.niveau) ?? '—';
   return [
-    ['Niveau', textes.niveau.options.find((o) => o.valeur === profil.niveau)?.titre ?? '—'],
+    ['Niveau', profil.niveau_coach && pourCoach
+      ? `${niveau}, choisi par toi${desFaits ? ` · d’après ses réponses : ${desFaits.toLowerCase()} (${faits})` : ''}`
+      : profil.niveau_coach ? `${niveau}, choisi par ton coach`
+      : faits && pourCoach ? `${niveau}, proposé d’après ses réponses (${faits})`
+      : faits ? `${niveau} · ${faits}` : niveau],
     ['Terrain', textes.terrain.options.find((o) => o.valeur === profil.terrain)?.titre ?? '—'],
-    ['Disponibilités', profil.freq_hebdo
+    ['Semaine habituelle', profil.freq_hebdo
       ? `${profil.freq_hebdo} séances · ${jours.map((j) => j.slice(0, 3)).join(', ')} · sortie longue le ${String(profil.jour_sl ?? '—')}`
       : '—'],
   ];
 }
 
-// Le profil d'un formulaire, vérifié : le profil, ou la phrase de ce qui manque. pour : « son » (le coach), « ton »
-// (l'athlète).
-export function lireProfil(form: FormData, pour: 'son' | 'ton'): { profil: ProfilEntrainement } | { erreur: string } {
-  const niveau = String(form.get('niveau') ?? '');
+// Le profil d'un formulaire, vérifié : le profil, ou la phrase de ce qui manque. pour : « son » (le coach, qui peut
+// choisir le niveau : niveau_coach, vide pour celui des faits), « ton » (l'athlète, qui garde le choix de son coach,
+// pris dans ancien).
+export function lireProfil(form: FormData, pour: 'son' | 'ton', ancien?: ProfilEntrainement | null): { profil: ProfilEntrainement } | { erreur: string } {
+  const anciennete = String(form.get('anciennete') ?? '');
+  const entrainement = String(form.get('entrainement') ?? '');
+  const choix = pour === 'son' ? String(form.get('niveau_coach') ?? '') : String(ancien?.niveau_coach ?? '');
+  const niveauCoach = textes.niveau.options.some((o) => o.valeur === choix) ? choix : '';
+  const faits = niveauDesFaits(anciennete, entrainement);
+  const niveau = niveauCoach || faits || '';
   const terrain = String(form.get('terrain') ?? '');
   const jours = form.getAll('jours_disponibles').map(String).filter((j) => JOURS_SEMAINE.includes(j));
   const jourSl = String(form.get('jour_sl') ?? '');
   const freq = Number(form.get('freq_hebdo'));
   const ses = pour === 'son' ? 'ses' : 'tes';
-  if (!textes.niveau.options.some((o) => o.valeur === niveau) || !textes.terrain.options.some((o) => o.valeur === terrain))
-    return { erreur: `Choisis ${pour} niveau et ${pour} terrain.` };
+  if (!niveau) return { erreur: pour === 'son'
+    ? 'Réponds aux deux questions de son niveau, ou choisis-le.'
+    : 'Réponds aux deux questions de ton niveau.' };
+  if (!textes.terrain.options.some((o) => o.valeur === terrain)) return { erreur: `Choisis ${pour} terrain.` };
   if (!jours.length || !jours.includes(jourSl)) return { erreur: `Coche ${ses} jours disponibles, dont celui de ${pour === 'son' ? 'sa' : 'ta'} sortie longue.` };
   if (!Number.isInteger(freq) || freq < 1 || freq > Math.min(7, jours.length))
     return { erreur: `Le nombre de séances doit tenir dans ${ses} jours disponibles.` };
-  return { profil: { niveau, terrain, jours_disponibles: jours, jour_sl: jourSl, freq_hebdo: String(freq) } };
+  // Le plafond du débutant (second audit, D4 : 4 séances au plus), que le moteur refuserait à l'objectif.
+  if (niveau === 'debutant' && freq > 4) return { erreur: pour === 'son'
+    ? 'Au niveau débutant, 4 séances par semaine au plus : choisis-en 4, ou change son niveau.'
+    : 'Au niveau débutant, 4 séances par semaine au plus : choisis-en 4. Ton coach peut revoir ton niveau.' };
+  return { profil: {
+    niveau, ...(faits ? { anciennete, entrainement } : {}), ...(niveauCoach ? { niveau_coach: niveauCoach } : {}),
+    terrain, jours_disponibles: jours, jour_sl: jourSl, freq_hebdo: String(freq),
+  } };
 }
 
 // Le profil d'entraînement du coaché connecté (son onglet Profil, le questionnaire d'un nouvel objectif) ; null sans fiche.
@@ -63,5 +96,5 @@ export async function monProfilDEntrainement(): Promise<ProfilEntrainement | nul
 }
 
 export const PROFIL_DE_DEMONSTRATION: ProfilEntrainement = {
-  niveau: 'confirme', terrain: 'tres_pentu', jours_disponibles: ['mardi', 'mercredi', 'jeudi', 'samedi', 'dimanche'], jour_sl: 'samedi', freq_hebdo: '5',
+  niveau: 'confirme', anciennete: 'plus_5', entrainement: 'structure', terrain: 'tres_pentu', jours_disponibles: ['mardi', 'mercredi', 'jeudi', 'samedi', 'dimanche'], jour_sl: 'samedi', freq_hebdo: '5',
 };

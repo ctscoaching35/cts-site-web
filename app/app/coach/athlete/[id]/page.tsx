@@ -60,7 +60,8 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
   const deLIntake = (intake?.intake ?? {}) as Record<string, string | string[]>;
   const profil: Record<string, string | string[]> = a.profil ?? Object.fromEntries(
     ['niveau', 'terrain', 'jours_disponibles', 'jour_sl', 'freq_hebdo'].filter((k) => deLIntake[k] !== undefined).map((k) => [k, deLIntake[k]]));
-  const lignesProfil = lignesDuProfil(profil);
+  const lignesProfil = lignesDuProfil(profil, true);
+  const profilVide = Object.keys(profil).length === 0;
   const source = (cle: 'fc_seuil1' | 'vc_ms' | 'fc_seuil2') => {
     const x = a.reperes_sources[cle];
     return !x ? null : x.source === 'test' ? `test lu dans Nolio le ${dateLongue(x.le, true)}`
@@ -264,23 +265,31 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
             </details>
           </Carte>
 
-          {Object.keys(profil).length > 0 && (
-            <Carte className="!p-5 space-y-1">
-              <Surtitre>Son profil</Surtitre>
-              <dl className="pt-1.5">
-                {lignesProfil.map(([cle, valeur]) => (
-                  <div key={cle} className="grid grid-cols-[112px_1fr] gap-x-3 py-2.5 border-b last:border-b-0 border-indigo/[0.06] text-[0.84rem]">
-                    <dt className="font-semibold text-[#5E5C78]">{cle}</dt><dd>{valeur}</dd>
-                  </div>
-                ))}
-              </dl>
-              <p className="pt-1 text-[0.72rem] leading-relaxed text-[#5E5C78]">Rempli une fois. Les disponibilités de chaque semaine viennent ensuite de son questionnaire du dimanche.</p>
-              <details className="pt-2">
-                <summary className="cursor-pointer min-h-10 flex items-center text-[0.8125rem] font-bold text-teal">Modifier son profil</summary>
-                <div className="pt-2"><ProfilAthlete athleteId={a.id} profil={profil} /></div>
-              </details>
-            </Carte>
-          )}
+          {/* Son profil de coureur, rempli d'abord, avant son premier objectif (décision coach du 23/10/2026). */}
+          <Carte id="son-profil" className="!p-5 space-y-1 scroll-mt-6">
+            <Surtitre>Son profil de coureur</Surtitre>
+            {profilVide ? (
+              <p className="pt-1 text-[0.8125rem] leading-relaxed text-[#4A4866]">
+                À remplir avant son premier objectif : son niveau et sa semaine habituelle. Ses objectifs ne demanderont
+                ensuite que sa course et sa charge du moment. Invité dans l’app, il peut aussi le remplir lui-même.
+              </p>
+            ) : (
+              <>
+                <dl className="pt-1.5">
+                  {lignesProfil.map(([cle, valeur]) => (
+                    <div key={cle} className="grid grid-cols-[112px_1fr] gap-x-3 py-2.5 border-b last:border-b-0 border-indigo/[0.06] text-[0.84rem]">
+                      <dt className="font-semibold text-[#5E5C78]">{cle}</dt><dd>{valeur}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <p className="pt-1 text-[0.72rem] leading-relaxed text-[#5E5C78]">Rempli une fois. Les disponibilités de chaque semaine viennent ensuite de son questionnaire du dimanche.</p>
+              </>
+            )}
+            <details className="pt-2" open={profilVide}>
+              <summary className="cursor-pointer min-h-10 flex items-center text-[0.8125rem] font-bold text-teal">{profilVide ? 'Remplir son profil' : 'Modifier son profil'}</summary>
+              <div className="pt-2"><ProfilAthlete athleteId={a.id} profil={profil} /></div>
+            </details>
+          </Carte>
 
           <Carte id="son-nolio" className="!p-5 space-y-3 scroll-mt-6">
             <Surtitre>Son compte Nolio</Surtitre>

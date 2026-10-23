@@ -12,6 +12,7 @@ import { ajouterJours, jMoins, type Plan, type Semaine } from './plan';
 import { qualitesDuBloc } from './tableau';
 import { appelNolio, convertirIdsV1, listeNolio, moiNolio, nolioConfigure, refusNolio, SPORTS_COURSE } from './nolio';
 import { ficheDuCompte } from './demandes';
+import { profilPourLeQuestionnaire } from './profilEntrainement';
 import { clientServeur, clientService } from './supabase';
 
 export type Objectif = { plan_id: string; course_nom: string; course_date: string };
@@ -114,8 +115,9 @@ export async function questionnairePrerempli(coachId: string, athleteId: string)
   const { data } = dernier ? await clientService().from('plans').select('intake').eq('id', dernier.plan_id).single() : { data: null };
   const charge = await chargeDepuisNolio(coachId, athlete.nolio_athlete_id).catch(() => null);
   // PO1 : le profil de sa fiche, s'il a été modifié depuis, l'emporte sur les réponses du dernier objectif ; profilConnu :
-  // le questionnaire court suffit.
-  return { athlete, initial: { ...reponsesSansLaCourse(data?.intake), ...(athlete.profil ?? {}), nom: athlete.nom, ...(charge ?? {}) },
+  // le questionnaire court suffit, et sans lui le profil se remplit d'abord (décision coach du 23/10/2026).
+  const profil = profilPourLeQuestionnaire(athlete.profil);
+  return { athlete, profil, initial: { ...reponsesSansLaCourse(data?.intake), ...profil, nom: athlete.nom, ...(charge ?? {}) },
     nolio: Boolean(charge), profilConnu: Boolean(dernier || athlete.profil) };
 }
 

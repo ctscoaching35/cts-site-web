@@ -1,11 +1,13 @@
 import Link from 'next/link';
 import { formatRouteDe } from '@/lib/app/route';
 import CadreCoach from '@/components/app/CadreCoach';
+import ProfilAthlete from '@/components/app/ProfilAthlete';
 import Questionnaire from '@/components/plan/Questionnaire';
 import { exigerCoach } from '@/lib/app/nolio';
 import { questionnairePrerempli, reponsesDe } from '@/lib/app/coaching';
 import { demandeDuCoach } from '@/lib/app/demandes';
 import { courseNolio } from '@/lib/app/coursesNolio';
+import { lignesDuProfil, profilDeLaFiche } from '@/lib/app/profilEntrainement';
 import { clientService } from '@/lib/app/supabase';
 import type { Recherche } from '@/lib/app/contexte';
 
@@ -22,7 +24,9 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
   const suite = typeof r.athlete === 'string' ? await questionnairePrerempli(coach.compteId, r.athlete) : null;
   // OM1 : l'objectif demandé par le coaché, ses réponses à relire ; sa trace part avec la demande.
   const demande = suite && typeof r.demande === 'string' ? await demandeDuCoach(coach.compteId, r.demande) : null;
-  const court = Boolean(suite?.profilConnu && !demande);
+  // Le questionnaire court pour tout athlète connu, sa demande comprise ; sans profil, son profil d'abord (décision coach
+  // du 23/10/2026), prérempli de sa demande s'il en a fait une.
+  const court = Boolean(suite?.profilConnu);
   // « Modifier l'objectif » (décision coach du 22/10/2026) : ses réponses à lui, sa course comprise ; celles que le moteur
   // tient à jour (parametres.champs : sa charge relue au départ) l'emportent sur celles de la création.
   const aModifier = suite && !demande && typeof r.modifier === 'string' && suite.athlete.objectifs.some((o) => o.plan_id === r.modifier)
@@ -65,17 +69,17 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
               : ''}
             {!aModifier && deNolio ? `${c?.nom} vient de Nolio : la course est remplie, relis ${routeNolio ? 'sa date et le chrono visé' : 'sa distance, son dénivelé et le temps visé'}. ` : ''}
             {aModifier ? '' : demande
-              ? `Sa demande du ${new Date(demande.cree_le).toLocaleDateString('fr-FR')} : relis ses réponses, corrige si besoin, et lance l’objectif.${demande.gpx_chemin ? ' Sa trace part avec la demande.' : ''}`
+              ? `Sa demande du ${new Date(demande.cree_le).toLocaleDateString('fr-FR')} : ${court ? 'relis ses réponses, corrige si besoin, et lance l’objectif' : 'son profil de coureur d’abord, prérempli de sa demande ; sa course ensuite'}.${demande.gpx_chemin ? ' Sa trace part avec la demande.' : ''}`
               : court && suite?.nolio
               ? 'Son profil est déjà rempli : seules sa charge du moment et la course sont demandées. Sa charge est préremplie depuis Nolio, sur ses 4 dernières semaines (après une course, les 4 d’avant son affûtage, sans la course) : relis et corrige si besoin.'
               : court
               ? 'Son profil est déjà rempli : seules sa charge du moment et la course sont demandées.'
               : suite
-              ? 'Son profil n’est pas encore connu : remplis le questionnaire avec ses réponses. L’objectif rejoint sa fiche.'
+              ? 'Son profil de coureur d’abord, une seule fois : son niveau et sa semaine habituelle. Sa course ensuite.'
               : 'Remplis le questionnaire avec ses réponses. L’objectif se crée sans paiement et rejoint ton espace coach.'}
           </p>
         </div>
-        {court && !aModifier && (
+        {court && !aModifier && !demande && (
           <div role="group" aria-label="Genre d’objectif" className="inline-flex mb-6 p-1 rounded-xl bg-sand-dark gap-1">
             <span aria-current="true" className="inline-flex items-center min-h-11 px-4 rounded-[9px] bg-white text-indigo text-sm font-bold shadow-sm">Objectif principal</span>
             {enCours ? (
@@ -87,12 +91,30 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
             )}
           </div>
         )}
-        <Questionnaire coach court={court && !aModifier} emailCoach={coach.email} athleteId={suite?.athlete.id} demandeId={demande?.id}
+        {suite && court && !aModifier && (
+          <div className="mb-6 mx-2 bg-white rounded-2xl border border-indigo/[0.08] px-4 py-3">
+            <div className="text-[0.6875rem] font-bold tracking-[0.12em] uppercase text-teal">Son profil de coureur</div>
+            <dl className="pt-1">
+              {lignesDuProfil(await profilDeLaFiche(suite.athlete.id), true).map(([cle, valeur]) => (
+                <div key={cle} className="grid grid-cols-[112px_1fr] gap-x-3 py-2 border-b last:border-b-0 border-indigo/[0.06] text-[0.84rem] text-indigo">
+                  <dt className="font-semibold text-[#5E5C78]">{cle}</dt><dd>{valeur}</dd>
+                </div>
+              ))}
+            </dl>
+            <Link href={`/app/coach/athlete/${suite.athlete.id}`} className="inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">Le modifier sur sa fiche ›</Link>
+          </div>
+        )}
+        {suite && !court && !aModifier ? (
+          <div className="mx-2 bg-white rounded-2xl border border-indigo/[0.08] p-5">
+            <ProfilAthlete athleteId={suite.athlete.id} rafraichir
+              profil={demande ? Object.fromEntries(Object.entries(demande.champs).filter(([k]) => ['terrain', 'jours_disponibles', 'jour_sl', 'freq_hebdo'].includes(k))) as Record<string, string | string[]> : {}} />
+          </div>
+        ) : <Questionnaire coach court={court && !aModifier} emailCoach={coach.email} athleteId={suite?.athlete.id} demandeId={demande?.id}
           modification={aModifier ? { planId: String(aModifier.id), trace: traceDonnee } : undefined}
           vcMs={suite?.athlete.vc_ms ?? null} discipline={discipline}
           initial={aModifier ? { ...reponsesDe(aModifier.intake), ...reponsesDe(pm?.champs), nom: suite?.athlete.nom ?? '' }
-            : demande ? { ...demande.champs, nom: suite?.athlete.nom ?? '' }
-              : deNolio ? { ...suite?.initial, ...deNolio, ...(routeNolio ? { format: routeNolio } : {}) } : suite?.initial} />
+            : demande ? { ...demande.champs, ...suite?.profil, nom: suite?.athlete.nom ?? '' }
+              : deNolio ? { ...suite?.initial, ...deNolio, ...(routeNolio ? { format: routeNolio } : {}) } : suite?.initial} />}
       </div>
     </CadreCoach>
   );

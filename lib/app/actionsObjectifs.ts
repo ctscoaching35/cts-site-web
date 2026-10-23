@@ -50,8 +50,9 @@ export async function demanderRetrait(planId: string): Promise<void> {
 export async function modifierMonProfil(_e: { ok: boolean; message: string } | null, form: FormData): Promise<{ ok: boolean; message: string }> {
   const fiche = await maFiche();
   if (!fiche) return { ok: false, message: 'Ta session a expiré : reconnecte-toi.' };
-  const { lireProfil } = await import('./profilEntrainement');
-  const lu = lireProfil(form, 'ton');
+  const { lireProfil, profilDeLaFiche } = await import('./profilEntrainement');
+  // Le niveau choisi par son coach reste le sien (décision coach du 23/10/2026).
+  const lu = lireProfil(form, 'ton', await profilDeLaFiche(fiche.id));
   if ('erreur' in lu) return { ok: false, message: lu.erreur };
   const { error } = await clientService().from('athletes_coaches').update({ profil: lu.profil }).eq('id', fiche.id);
   if (error) return { ok: false, message: 'L’enregistrement n’a pas abouti : réessaie dans un moment.' };

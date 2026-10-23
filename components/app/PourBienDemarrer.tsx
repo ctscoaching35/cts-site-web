@@ -8,7 +8,8 @@ import { Carte, Surtitre } from './Ui';
 
 // « Pour bien démarrer » (décision coach du 21/10/2026 : « expliquer à l'athlète le cheminement à mettre en place pour
 // avoir l'app + Nolio ») : en haut de l'accueil, ce qui fait quoi, puis les étapes et leur état, cochées d'elles-mêmes
-// quand le site le sait (l'équipe CTS rejointe, l'accord de lecture donné, l'app installée sur cet appareil). Une
+// quand le site le sait (l'équipe CTS rejointe, l'accord de lecture donné, le profil de coureur d'un coaché rempli,
+// décision coach du 23/10/2026, l'app installée sur cet appareil). Une
 // version acheteur, une version coaché. Une fois tout en place, elle se masque sur cet appareil (un cookie), comme
 // d'un appui sur « Masquer ».
 const APP_STORE = 'https://apps.apple.com/app/nolio/id1615773607';
@@ -18,8 +19,8 @@ const MONTRE = 'https://help.nolio.io/fr/collections/19748649-connecter-un-appar
 
 type Etape = { fait: boolean; titre: string; texte?: React.ReactNode };
 
-export default function PourBienDemarrer({ acheteur, nolio, accord, questionnaire, installer }: {
-  acheteur: boolean; nolio: EtatNolio; accord: boolean; questionnaire: boolean; installer: string;
+export default function PourBienDemarrer({ acheteur, nolio, accord, questionnaire, installer, profil = true, lienProfil = '' }: {
+  acheteur: boolean; nolio: EtatNolio; accord: boolean; questionnaire: boolean; installer: string; profil?: boolean; lienProfil?: string;
 }) {
   const [installee, setInstallee] = useState(false);
   const [masquee, setMasquee] = useState(false);
@@ -28,7 +29,7 @@ export default function PourBienDemarrer({ acheteur, nolio, accord, questionnair
       || (navigator as Navigator & { standalone?: boolean }).standalone === true);
   }, []);
   const dansNolio = acheteur ? nolio === 'actif' : accord;
-  const enPlace = dansNolio && installee;
+  const enPlace = dansNolio && installee && (acheteur || profil);
   useEffect(() => {
     if (enPlace) masquerDemarrage().catch(() => {});
   }, [enPlace]);
@@ -50,6 +51,12 @@ export default function PourBienDemarrer({ acheteur, nolio, accord, questionnair
     ) },
   ] : [
     { fait: true, titre: 'Ton espace CTS est ouvert' },
+    profil
+      ? { fait: true, titre: 'Ton profil de coureur est rempli' }
+      : { fait: false, titre: 'Remplis ton profil de coureur', texte: (
+        <>Ton niveau et ta semaine habituelle, une seule fois : tes objectifs partent de lui.{' '}
+          <Link href={lienProfil} className="font-bold text-teal whitespace-nowrap">Le remplir ›</Link></>
+      ) },
     accord
       ? { fait: true, titre: 'Ton accord de lecture est donné' }
       : { fait: false, titre: 'Donne ton accord à ton coach',
