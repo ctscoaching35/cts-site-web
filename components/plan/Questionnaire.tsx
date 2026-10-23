@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { compterEtape } from '@/lib/mesure';
 import clsx from 'clsx';
+import { estimerChrono } from '@/lib/app/route';
 import { alerteSortieLongue, API_URL, avertissements, type Champs, champsVides, type ConfigPlan, dureeConseillee, dureesPossibles, formatDepuisDistance, formatOuvert, intakePourApi, noteFormat, plancherSeances, reperesChrono, FORMATS_ROUTE, textes } from '@/lib/plan';
 
 const NOMS_JOURS: Record<string, string> = {
@@ -73,12 +74,14 @@ function Choix({
 // un athlète déjà connu, son profil rempli une fois (repris d'initial) ; seules sa charge du moment (PO2, préremplie) et
 // la course se demandent.
 export default function Questionnaire({
-  coach = false, emailCoach = '', athleteId, initial, demande = false, demandeId, court = false, modification,
+  coach = false, emailCoach = '', athleteId, initial, demande = false, demandeId, court = false, modification, vcMs = null,
 }: {
   coach?: boolean; emailCoach?: string; athleteId?: string; initial?: Record<string, string | string[]>; demande?: boolean;
   demandeId?: string; court?: boolean;
   // « Modifier l'objectif » (décision coach du 22/10/2026) : l'objectif refait à sa place ; trace : il en a déjà une.
   modification?: { planId: string; trace: boolean };
+  // La vitesse critique de l'athlète (m/s, sa fiche) : sur route, sans chrono visé, le chrono s'estime d'après elle.
+  vcMs?: number | null;
 } = {}) {
   const [config, setConfig] = useState<ConfigPlan | null>(null);
   const [erreurConfig, setErreurConfig] = useState('');
@@ -95,6 +98,7 @@ export default function Questionnaire({
     coach && !demande && FORMATS_ROUTE.some((f) => f.code === initial?.format) ? String(initial?.format) : null);
   const route = routeFmt !== null;
   const infoRoute = FORMATS_ROUTE.find((f) => f.code === routeFmt) ?? null;
+  const chronoEstime = infoRoute ? estimerChrono(infoRoute.code, vcMs) : null;
   // Trace vérifiée dès son choix, sans rien bloquer (audit du 27/09/2026, T3 ; décision coach
   // du 28/09/2026) : l'athlète apprenait après avoir payé qu'elle était illisible.
   const [avisTrace, setAvisTrace] = useState('');
@@ -245,10 +249,13 @@ export default function Questionnaire({
     // ses réponses pour découvrir ensuite qu'elles ne permettent pas de plan.
     try {
       // Le questionnaire du coaching (?coach=1) : sa durée « auto » et ses refus sans renvoi au coaching (QD1, QD6).
+      // Sur route, sans chrono visé : l'estimation d'après sa VC, gardée pour la suite.
+      const champs = infoRoute && !c.temps_cible.trim() && chronoEstime ? { ...c, temps_cible: chronoEstime } : c;
+      if (champs !== c) setC(champs);
       const r = await fetch(`${API_URL}/v1/verification${coach ? '?coach=1' : ''}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(intakePourApi(c)),
+        body: JSON.stringify(intakePourApi(champs)),
       });
       if (!r.ok) {
         const corps = await r.json().catch(() => null);
@@ -611,10 +618,11 @@ export default function Questionnaire({
         </>}
         <div>
           <label className={labelCls} htmlFor="temps">{route ? 'Chrono visé' : 'Temps cible'}</label>
-          <input id="temps" className={inputCls} required placeholder={infoRoute ? `ex. ${infoRoute.exemple}` : 'ex. 5h30'} value={c.temps_cible} onChange={(e) => maj('temps_cible')(e.target.value)} />
+          <input id="temps" className={inputCls} required={!chronoEstime}
+            placeholder={chronoEstime ? `estimé : ${chronoEstime}` : infoRoute ? `ex. ${infoRoute.exemple}` : 'ex. 5h30'} value={c.temps_cible} onChange={(e) => maj('temps_cible')(e.target.value)} />
           {reperes && !route && <p className="text-sm text-teal mt-2 leading-relaxed">{reperes}</p>}
           <p className={aideCls}>
-            {infoRoute ? `Son chrono visé sur ${infoRoute.court} : il fixe l’allure de ses séances spécifiques. Écris-le en heures et minutes (${infoRoute.exemple}).`
+            {infoRoute ? `Son chrono visé sur ${infoRoute.court} : il fixe l’allure de ses séances spécifiques. Écris-le en heures et minutes (${infoRoute.exemple}).${chronoEstime ? ` Laissé vide, l’estimation d’après sa vitesse critique (${chronoEstime}) le remplace.` : ''}`
               : <>
                 {textes.tempsCible}
                 {c.format && config.temps_max_par_format[c.format] !== undefined && ` Sur ce format, le temps cible ne peut pas dépasser ${config.temps_max_par_format[c.format]}h.`}

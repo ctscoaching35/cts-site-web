@@ -41,6 +41,28 @@ export function prerequisMarathon(champs: Record<string, unknown>, semainesDePre
   return manques.length ? `${manques.join(', ')} : à regarder avec lui avant de lancer le marathon.` : null;
 }
 
+// SANS CHRONO VISÉ (le coach, 23/10/2026 : « s'il n'y en a pas, une estimation de chrono par rapport à la VC ») : la
+// part de la VC tenable selon la durée de course (CTS_ROUTE_RECHERCHE.md, §2.2) — 10 km 98 % (Corrêa 2020 : 96-100 %
+// pour 40-55 min) ; semi de 97 % à 1h25 (Olaya-Cuartero 2023) vers 90 % à 2h15 (extrapolé) ; marathon de 93 % à 2h30
+// à 79 % vers 6 h (Smyth et Muniz-Pumares 2020). Une estimation, que le coach peut remplacer.
+function partVc(format: string, heures: number): number {
+  const lin = (h1: number, p1: number, h2: number, p2: number) =>
+    Math.min(Math.max(p1 + ((heures - h1) * (p2 - p1)) / (h2 - h1), Math.min(p1, p2)), Math.max(p1, p2));
+  if (format === 'R21') return lin(85 / 60, 0.97, 2.25, 0.9);
+  if (format === 'R42') return lin(2.5, 0.93, 6, 0.79);
+  return 0.98;
+}
+
+// Le chrono estimé d'après la VC (« 0h47 », « 3h52 »), ou null sans VC ou hors route.
+export function estimerChrono(format: unknown, vcMs: number | null | undefined): string | null {
+  const b = BORNES_CHRONO_ROUTE[String(format ?? '')];
+  if (!b || !vcMs) return null;
+  let heures = (b.km * 1000) / (vcMs * 0.9) / 3600;
+  for (let i = 0; i < 30; i += 1) heures = (b.km * 1000) / (vcMs * partVc(String(format), heures)) / 3600;
+  const min = Math.round(heures * 60);
+  return `${Math.floor(min / 60)}h${String(min % 60).padStart(2, '0')}`;
+}
+
 const allure = (sKm: number) => `${Math.floor(sKm / 60)}:${String(Math.round(sKm % 60)).padStart(2, '0')}/km`;
 
 // La phrase de l'alerte, ou null : format hors route, chrono illisible, VC inconnue, ou allure dans les bornes.

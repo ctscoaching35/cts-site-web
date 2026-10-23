@@ -81,6 +81,7 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
         )}
         <Questionnaire coach court={court && !aModifier} emailCoach={coach.email} athleteId={suite?.athlete.id} demandeId={demande?.id}
           modification={aModifier ? { planId: String(aModifier.id), trace: traceDonnee } : undefined}
+          vcMs={suite?.athlete.vc_ms ?? null}
           initial={aModifier ? { ...reponsesDe(aModifier.intake), ...reponsesDe(pm?.champs), nom: suite?.athlete.nom ?? '' }
             : demande ? { ...demande.champs, nom: suite?.athlete.nom ?? '' } : deNolio ? { ...suite?.initial, ...deNolio } : suite?.initial} />
       </div>
