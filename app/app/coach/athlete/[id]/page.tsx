@@ -67,7 +67,8 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
     const x = a.reperes_sources[cle];
     return !x ? null : x.source === 'test' ? `test lu dans Nolio le ${dateLongue(x.le, true)}`
       : x.source === 'test_coach' ? `test du ${dateLongue(x.le, true)}, saisi par toi`
-      : x.source === 'athlete' ? `test saisi par l’athlète le ${dateLongue(x.le, true)}` : `saisi par toi le ${dateLongue(x.le, true)}`;
+      : x.source === 'athlete' ? `test saisi par l’athlète le ${dateLongue(x.le, true)}`
+      : x.source === 'nolio' ? `repris de Nolio, valeur du ${dateLongue(x.le, true)}` : `saisi par toi le ${dateLongue(x.le, true)}`;
   };
   const reperes: [string, string | null, string | null][] = [
     ['FC au seuil 1', a.fc_seuil1 ? `${a.fc_seuil1} bpm` : null, source('fc_seuil1')],

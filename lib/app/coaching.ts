@@ -29,7 +29,8 @@ export type FicheAthlete = {
   profil: Record<string, string | string[]> | null; d_prime_m: number | null;
   // source : « test » lu dans Nolio, « test_coach » un test saisi par le coach, « coach » une valeur saisie, « athlete » un
   // test saisi par l'athlète dans l'app.
-  reperes_sources: Record<string, { le: string; source: 'test' | 'test_coach' | 'coach' | 'athlete' }>;
+  // nolio : repris des métriques de Nolio, la date de leur valeur (décision coach du 24/10/2026).
+  reperes_sources: Record<string, { le: string; source: 'test' | 'test_coach' | 'coach' | 'athlete' | 'nolio' }>;
   // Son mode (décision coach du 23/10/2026) : coaching, ou plan (sa fiche reste, rien ne s'y écrit) ; mode_le, son dernier
   // changement. « coaching » avant la migration du 23/10/2026.
   mode: 'coaching' | 'plan'; mode_le: string | null;
