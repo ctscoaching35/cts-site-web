@@ -147,7 +147,7 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
                   <PastilleDate iso={c.date} />
                   <span className="flex-1 min-w-0">
                     <span className="block text-sm font-bold text-indigo">{c.nom}</span>
-                    <span className="block text-xs text-[#5E5C78]">{c.distance_km} km{c.dplus_m ? ` · ${c.dplus_m} m D+` : ''}{c.chrono ? ` · objectif ${c.chrono}` : ''}</span>
+                    <span className="block text-xs text-[#5E5C78]">{c.distance_km} km{c.discipline === 'route' ? ' sur route' : c.dplus_m ? ` · ${c.dplus_m} m D+` : ''}{c.chrono ? ` · objectif ${c.chrono}` : ''}</span>
                   </span>
                   {fichesPrepa.has(c.date) && (
                     <Link href={lien('/app/plan/course', ctx, { course: c.date })} className="shrink-0 inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">Sa fiche ›</Link>

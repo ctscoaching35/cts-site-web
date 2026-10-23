@@ -1,6 +1,7 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useState } from 'react';
+import { formatRouteDe } from '@/lib/app/route';
 import { ajouterCourse, annulerSemaine, demarrerDansNolio, donnerMonAccord, reessayerLaSemaine, retirerCourse, retirerMonAccord, type EtatGeste } from '@/lib/app/actionsEcriture';
 
 // Les gestes de l'écriture semaine par semaine (lib/app/actionsEcriture.ts) : démarrer un objectif dans Nolio, annuler
@@ -67,11 +68,22 @@ export function AjouterCourse({ planId, initial }: {
   planId: string; initial?: { nom: string; date: string; distance_km: number | null; dplus_m: number | null; chrono: string | null } | null;
 }) {
   const [etat, action, enCours] = useActionState<EtatGeste, FormData>(ajouterCourse.bind(null, planId), null);
+  // Trail ou route (décision coach du 23/10/2026) ; une course de Nolio qui ressemble à la route s'ouvre en route.
+  const [route, setRoute] = useState(Boolean(initial && formatRouteDe(initial.distance_km, initial.dplus_m)));
   const champ = 'mt-1.5 w-full min-h-11 rounded-[10px] border border-indigo/20 px-3 text-sm font-normal text-indigo bg-white';
   return (
     <form action={action} className="space-y-3">
+      <input type="hidden" name="discipline" value={route ? 'route' : 'trail'} />
+      <div role="group" aria-label="Discipline" className="inline-flex p-1 rounded-xl bg-[#F2EFE8] gap-1">
+        {([[false, 'Trail'], [true, 'Route']] as const).map(([r, nom]) => (
+          <button key={nom} type="button" aria-pressed={route === r} onClick={() => setRoute(r)}
+            className={`min-h-10 px-4 rounded-[9px] text-sm ${route === r ? 'bg-white text-indigo font-bold shadow-sm' : 'text-[#4A4866] font-semibold'}`}>
+            {nom}
+          </button>
+        ))}
+      </div>
       <label className="block text-xs font-semibold text-indigo">Nom de la course
-        <input name="nom" className={champ} maxLength={80} placeholder="Trail de…" defaultValue={initial?.nom} />
+        <input name="nom" className={champ} maxLength={80} placeholder={route ? '10 km de…' : 'Trail de…'} defaultValue={initial?.nom} />
       </label>
       <div className="grid grid-cols-2 gap-2.5">
         <label className="block text-xs font-semibold text-indigo">Date
@@ -80,17 +92,19 @@ export function AjouterCourse({ planId, initial }: {
         <label className="block text-xs font-semibold text-indigo">Distance (km)
           <input name="distance_km" inputMode="decimal" required className={champ} defaultValue={initial?.distance_km ?? undefined} />
         </label>
-        <label className="block text-xs font-semibold text-indigo">D+ (m)
-          <input name="dplus_m" inputMode="numeric" className={champ} defaultValue={initial?.dplus_m ?? undefined} />
-        </label>
+        {!route && (
+          <label className="block text-xs font-semibold text-indigo">D+ (m)
+            <input name="dplus_m" inputMode="numeric" className={champ} defaultValue={initial?.dplus_m ?? undefined} />
+          </label>
+        )}
         <label className="block text-xs font-semibold text-indigo">Chrono visé
-          <input name="chrono" required placeholder="2h15" className={champ} defaultValue={initial?.chrono ?? undefined} />
+          <input name="chrono" required placeholder={route ? '0h45' : '2h15'} className={champ} defaultValue={initial?.chrono ?? undefined} />
         </label>
       </div>
-      <label className="flex flex-col gap-1.5 text-xs font-semibold text-indigo">Trace GPX — facultative
+      {!route && <label className="flex flex-col gap-1.5 text-xs font-semibold text-indigo">Trace GPX — facultative
         <input name="gpx" type="file" accept=".gpx" className="block text-sm font-normal text-indigo file:mr-3 file:min-h-10 file:px-3 file:rounded-[10px] file:border-0 file:bg-[#E1EFEA] file:text-teal-dark file:font-bold" />
         <span className="font-normal text-[#5E5C78]">Avec elle, sa fiche de course montre son profil et ses tronçons.</span>
-      </label>
+      </label>}
       <button type="submit" disabled={enCours}
         className="w-full min-h-12 rounded-xl bg-teal text-white text-sm font-bold disabled:opacity-50">
         {enCours ? 'Vérification…' : 'Ajouter la course'}

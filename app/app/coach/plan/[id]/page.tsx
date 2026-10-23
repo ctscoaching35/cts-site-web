@@ -290,7 +290,7 @@ export default async function ObjectifCoache({ params, searchParams }: {
                     <PastilleDate iso={c.date} />
                     <span className="flex-1 min-w-0"><span className="block text-sm font-bold">{c.nom}</span>
                       <span className="block text-xs text-[#5E5C78]">
-                        {c.distance_km} km{c.dplus_m ? ` · ${c.dplus_m} m D+` : ''}{c.chrono ? ` · ${c.chrono}` : ''}
+                        {c.distance_km} km{c.discipline === 'route' ? ' sur route' : c.dplus_m ? ` · ${c.dplus_m} m D+` : ''}{c.chrono ? ` · ${c.chrono}` : ''}
                         {fichesPrepa.has(c.date) ? ` · fiche de course le ${dateLongue(ajouterJours(c.date, -7) > jour ? ajouterJours(c.date, -7) : jour, true)}` : ''}
                       </span></span>
                     {fichesPrepa.has(c.date) && (

@@ -83,10 +83,13 @@ export async function ajouterCourse(planId: string, _e: EtatGeste, form: FormDat
   }
   // PO3 : le chrono visé (« 2h15 », « 2:15 », « 135 min ») ; il règle les jours autour de la course et sa fiche.
   const temps_h = heuresDuChrono(String(form.get('chrono') ?? ''));
+  // Trail ou route (décision coach du 23/10/2026) : sur route, ni dénivelé ni trace.
+  const route = form.get('discipline') === 'route';
   const course = {
     nom: String(form.get('nom') ?? '').trim().slice(0, 80) || 'Course de préparation', date,
     distance_km: Number(String(form.get('distance_km') ?? '').replace(',', '.')),
-    dplus_m: Number(String(form.get('dplus_m') ?? '0').replace(',', '.')) || 0,
+    dplus_m: route ? 0 : Number(String(form.get('dplus_m') ?? '0').replace(',', '.')) || 0,
+    discipline: route ? 'route' as const : 'trail' as const,
     ...(temps_h !== null ? { temps_h, chrono: `${Math.floor(temps_h)}h${String(Math.round((temps_h % 1) * 60)).padStart(2, '0')}` } : {}),
   };
   if (!(course.distance_km > 0 && course.distance_km <= 200) || course.dplus_m < 0 || course.dplus_m > 15000) {

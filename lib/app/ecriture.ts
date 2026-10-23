@@ -1037,9 +1037,12 @@ export async function retirerDeNolio(planId: string): Promise<string[]> {
 
 // ─── Les courses dans Nolio (OM3, décision coach du 19/10/2026) ─────────────
 
-// Le « Trail » du catalogue de Nolio (cts_nolio.SPORT_TRAIL, GET /api/v2/sports/).
+// Le « Trail » et la « Course à pied » du catalogue de Nolio (cts_nolio.SPORT_TRAIL et SPORT_COURSE, GET /api/v2/sports/).
 const SPORT_TRAIL = 'spt_YprHS7jgV5vdsz0';
-export type Course = { nom: string; date: string; distance_km: number; dplus_m: number; chrono?: string | null; temps_h?: number | null };
+const SPORT_COURSE_A_PIED = 'spt_kNYHjuEzDJRiYCX';
+// discipline : « route » pour une course sur route (décision coach du 23/10/2026), le trail sinon.
+export type Course = { nom: string; date: string; distance_km: number; dplus_m: number; chrono?: string | null; temps_h?: number | null;
+  discipline?: 'trail' | 'route' };
 
 // PO4 (décision coach du 19/10/2026) : la fiche de course d'une course de préparation, en note Nolio une semaine avant
 // (dès aujourd'hui si la course est plus proche), avec son lien privé, comme la fiche de course de l'objectif ; en ocre,
@@ -1093,8 +1096,11 @@ export async function poserCourse(o: Objectif, c: Course, principale: boolean) {
   const deja = await listeNolio<{ id: string; date_start: string }>(
     `planned/competitions/?date_from=${c.date}&date_to=${c.date}${d.moi ? '' : `&athlete=${d.usr}`}`).catch(() => []);
   if (deja.length) return;
+  // Sur route (décision coach du 23/10/2026) : l'objectif d'un 10 km, d'un semi ou d'un marathon, ou une course de
+  // préparation dite sur route, en « Course à pied ».
+  const route = c.discipline === 'route' || (principale && formatDe(o).startsWith('R'));
   const corps = {
-    name: c.nom, event: c.nom, date_start: c.date, sport: SPORT_TRAIL, goal_type: principale ? 'a' : 'b',
+    name: c.nom, event: c.nom, date_start: c.date, sport: route ? SPORT_COURSE_A_PIED : SPORT_TRAIL, goal_type: principale ? 'a' : 'b',
     distance: { value: c.distance_km, unit: 'km' }, elevation_gain: { value: c.dplus_m, unit: 'm' },
   };
   const r = await appelNolio('POST', 'planned/competitions/', d.moi ? corps : { ...corps, athletes: [d.usr] });
