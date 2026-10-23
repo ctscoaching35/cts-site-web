@@ -10,7 +10,7 @@
  * que la page lit déjà et les courses A de Nolio, lues une fois par heure : les signaux de chaque séance restent dans
  * « Suivi des 7 jours ». Côté serveur seulement.
  */
-import { alerteChronoRoute } from './route';
+import { alerteChronoRoute, prerequisMarathon } from './route';
 import { athletesCoaches, type FicheAthlete } from './coaching';
 import { demandesDuCoach, estRetrait, type Demande } from './demandes';
 import { coursesGardees, pasEncoreIci, type CourseNolio } from './coursesNolio';
@@ -181,6 +181,12 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     if (chronoRoute) {
       aRegarder.push({ niveau: 'arrive', genre: 'chrono_route', athlete: a.nom, action: 'Lui écrire ›', href: NOLIO, externe: true,
         texte: `${o!.course_nom} : ${chronoRoute}` });
+    }
+    // Les prérequis du marathon (décision 5 du marathon) : la préparation qu'il lui reste, du lundi qui vient à la course.
+    const prerequis = o && avenir ? prerequisMarathon(champsPlan, Math.floor(joursEntre(jour, o.course_date) / 7)) : null;
+    if (prerequis) {
+      aRegarder.push({ niveau: 'arrive', genre: 'prerequis', athlete: a.nom, action: 'Voir ›', href: hrefPlan,
+        texte: `${o!.course_nom} : ${prerequis}` });
     }
     // Ce qui arrive : une course A posée dans Nolio sans objectif ici, à créer d'un clic.
     const dejaIci = new Set([...a.objectifs.map((x) => x.course_date), ...((((p?.parametres as { courses_secondaires?: { date?: string }[] } | null)

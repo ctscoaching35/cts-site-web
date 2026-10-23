@@ -57,13 +57,15 @@ export type Champs = {
   // Section 2 : l'arrêt récent part avec le plan, comme la charge actuelle (second audit
   // du moteur, D16) : il fait démarrer le plan par deux semaines sans séance dure.
   coupure: string;
+  // « oui » : un premier marathon (route, signalé au coach sous 20 semaines de préparation).
+  premier_marathon: string;
 };
 
 export const champsVides: Champs = {
   nom: '', email: '', niveau: '', volume_hebdo_actuel: '', sortie_longue_actuelle: '',
   format: '', duree_mois: '', course_nom: '', date_course: '',
   distance_km: '', dplus_m: '', dmoins_m: '', temps_cible: '', terrain: '',
-  jours_disponibles: [], jour_sl: '', freq_hebdo: '', blessure: '', coupure: '',
+  jours_disponibles: [], jour_sl: '', freq_hebdo: '', blessure: '', coupure: '', premier_marathon: '',
 };
 
 export const textes = {
@@ -211,8 +213,14 @@ export function reperesChrono(c: Champs, config: ConfigPlan, coach = false): str
  * /v1/config (formats_par_distance : code, borne haute en km ou null, borne incluse) ; '' tant
  * que la distance n'est pas lisible ou que l'API ne fournit pas les bornes.
  */
-// La route (moteur 8.349) : le format d'un 10 km sur route, que seul le questionnaire du coach propose.
+// La route (moteur 8.349, CTS_ROUTE_CADRAGE.md) : les formats que seul le questionnaire du coach propose ; semaines : la
+// plus longue trame.
 export const ROUTE_10KM = 'R10';
+export const FORMATS_ROUTE: { code: string; nom: string; court: string; km: string; exemple: string; semaines: number }[] = [
+  { code: 'R10', nom: '10 km sur route', court: '10 km', km: '10', exemple: '0h46', semaines: 16 },
+  { code: 'R21', nom: 'Semi-marathon', court: 'semi', km: '21.1', exemple: '1h45', semaines: 16 },
+  { code: 'R42', nom: 'Marathon', court: 'marathon', km: '42.195', exemple: '3h45', semaines: 24 },
+];
 
 export function formatDepuisDistance(distance: string, config: ConfigPlan): string {
   const km = parseFloat(distance.replace(',', '.'));

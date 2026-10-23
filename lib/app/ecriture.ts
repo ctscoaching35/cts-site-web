@@ -354,10 +354,10 @@ export async function ecrireEtEnvoyer(o: Objectif, numero: string, retours: Reto
 // et son lundi de reprise (debutApres : un jour sans séance dure par heure de course, deux au moins, jusqu'au lundi
 // qui suit), numérotées à la suite du plan ; le moteur les écrit (repos les 2 jours d'après la course, puis une EF
 // courte un jour disponible sur deux) et elles partent dans Nolio comme les autres. null hors de cette fenêtre.
-export function semaineDeRecuperation(o: Pick<Objectif, 'coache' | 'plan' | 'tempsH'>, lundi: string): { numero: string; jusqua: string } | null {
+export function semaineDeRecuperation(o: Pick<Objectif, 'coache' | 'plan' | 'tempsH' | 'parametres'>, lundi: string): { numero: string; jusqua: string } | null {
   const derniere = [...o.plan.semaines].reverse().find((s) => s.lundi);
   if (!o.coache || !derniere?.lundi || lundi <= derniere.lundi) return null;
-  const jusqua = debutApres({ course_date: o.plan.course.date, temps_h: o.tempsH });
+  const jusqua = debutApres({ course_date: o.plan.course.date, temps_h: o.tempsH, format: formatDe(o) });
   if (lundi >= jusqua) return null;
   return { numero: `S${o.plan.semaines.length + Math.round(joursEntre(derniere.lundi, lundi) / 7)}`, jusqua };
 }
@@ -534,7 +534,7 @@ export async function demarrerObjectif(planId: string, { prevenir = true, lundi,
   // 2027, bloquait Menestrail, couru en décembre 2026). Un objectif dont la course vient avant : celui-ci démarre le
   // lundi après sa récupération.
   const autres = await autresObjectifs(o);
-  const fini = ajouterJours(debutApres({ course_date: o.plan.course.date, temps_h: o.tempsH }), 7);
+  const fini = ajouterJours(debutApres({ course_date: o.plan.course.date, temps_h: o.tempsH, format: formatDe(o) }), 7);
   const enRoute = autres.find((q) => q.demarre && q.course_date >= aujourdhui && q.course_date > o.plan.course.date
     && !(q.debut && q.debut > fini));
   if (enRoute) {
@@ -687,7 +687,8 @@ async function recalerSurLePrecedent(o: Objectif, precedentId: string, lundi: st
 }
 
 // Les autres objectifs écrits semaine par semaine du même athlète (sa fiche de coaché, ou son compte d'acheteur).
-type Voisin = { id: string; course_nom: string; course_date: string; temps_h: number; demarre: boolean; debut: string | null };
+type Voisin = { id: string; course_nom: string; course_date: string; temps_h: number; demarre: boolean; debut: string | null;
+  format: string };
 async function autresObjectifs(o: Objectif): Promise<Voisin[]> {
   const service = clientService();
   const { data: coaching } = await service.from('coaching').select('plan_id, athlete_id');
@@ -707,7 +708,7 @@ async function autresObjectifs(o: Objectif): Promise<Voisin[]> {
   return (data ?? []).map((p) => ({
     id: p.id as string, course_nom: p.course_nom as string, course_date: p.course_date as string,
     temps_h: heures((p.intake as Record<string, unknown> | null)?.temps_cible), demarre: Boolean(p.demarre_le),
-    debut: (p.debut ?? null) as string | null,
+    debut: (p.debut ?? null) as string | null, format: String((p.intake as Record<string, unknown> | null)?.format ?? ''),
   }));
 }
 
@@ -718,8 +719,16 @@ function heures(brut: unknown): number {
 }
 
 // Le lundi qui suit la récupération d'une course (O3 : un jour sans séance dure par heure de course, 2 au moins).
-function debutApres(q: Pick<Voisin, 'course_date' | 'temps_h'>): string {
-  const fin = ajouterJours(q.course_date, Math.max(2, Math.ceil(q.temps_h)));
+// Le format d'un objectif (« R42 » pour un marathon sur route), tel que ses paramètres le gardent.
+function formatDe(o: Pick<Objectif, 'parametres'>): string {
+  return String(((o.parametres.champs ?? {}) as Record<string, unknown>).format ?? '');
+}
+
+// LA RÉCUPÉRATION APRÈS UN MARATHON (décision 7 du marathon, 23/10/2026) : deux semaines, puis la reprise ; ailleurs,
+// un jour sans séance dure par heure de course, deux au moins (décision du 21/10), jusqu'au lundi qui suit.
+const RECUPERATION_MARATHON_J = 14;
+function debutApres(q: Pick<Voisin, 'course_date' | 'temps_h'> & { format?: string }): string {
+  const fin = ajouterJours(q.course_date, q.format === 'R42' ? RECUPERATION_MARATHON_J : Math.max(2, Math.ceil(q.temps_h)));
   const rang = (new Date(`${fin}T12:00:00Z`).getUTCDay() + 6) % 7;
   return ajouterJours(fin, 7 - rang);
 }

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { compterEtape } from '@/lib/mesure';
 import clsx from 'clsx';
-import { alerteSortieLongue, API_URL, avertissements, type Champs, champsVides, type ConfigPlan, dureeConseillee, dureesPossibles, formatDepuisDistance, formatOuvert, intakePourApi, noteFormat, plancherSeances, reperesChrono, ROUTE_10KM, textes } from '@/lib/plan';
+import { alerteSortieLongue, API_URL, avertissements, type Champs, champsVides, type ConfigPlan, dureeConseillee, dureesPossibles, formatDepuisDistance, formatOuvert, intakePourApi, noteFormat, plancherSeances, reperesChrono, FORMATS_ROUTE, textes } from '@/lib/plan';
 
 const NOMS_JOURS: Record<string, string> = {
   lundi: 'Lundi', mardi: 'Mardi', mercredi: 'Mercredi', jeudi: 'Jeudi',
@@ -89,9 +89,12 @@ export default function Questionnaire({
   const [c, setC] = useState<Champs>(coach ? { ...champsVides, ...(initial as Partial<Champs>), email: emailCoach, duree_mois: 'auto' }
     : { ...champsVides, ...((initial ?? {}) as Partial<Champs>) });
   const [gpx, setGpx] = useState<File | null>(null);
-  // LA ROUTE (moteur 8.349, CTS_ROUTE_CADRAGE.md) : pour le coach seulement, un 10 km sur route ; ni dénivelé, ni
-  // trace, ni terrain ; le chrono visé fixe l'allure des séances spécifiques.
-  const [route, setRoute] = useState(coach && !demande && initial?.format === ROUTE_10KM);
+  // LA ROUTE (moteur 8.349, CTS_ROUTE_CADRAGE.md) : pour le coach seulement, un 10 km, un semi ou un marathon ; ni
+  // dénivelé, ni trace, ni terrain ; le chrono visé fixe l'allure des séances spécifiques.
+  const [routeFmt, setRouteFmt] = useState<string | null>(
+    coach && !demande && FORMATS_ROUTE.some((f) => f.code === initial?.format) ? String(initial?.format) : null);
+  const route = routeFmt !== null;
+  const infoRoute = FORMATS_ROUTE.find((f) => f.code === routeFmt) ?? null;
   // Trace vérifiée dès son choix, sans rien bloquer (audit du 27/09/2026, T3 ; décision coach
   // du 28/09/2026) : l'athlète apprenait après avoir payé qu'elle était illisible.
   const [avisTrace, setAvisTrace] = useState('');
@@ -202,8 +205,9 @@ export default function Questionnaire({
     setC((p) => {
       const n = { ...p };
       // Le format suit la distance (audit du questionnaire du 01/10/2026, F4) ; sur route, 10 km sans dénivelé.
-      if (route) {
-        Object.assign(n, { format: ROUTE_10KM, distance_km: '10', dplus_m: '0', dmoins_m: '0', terrain: n.terrain || 'vallonne' });
+      if (infoRoute) {
+        Object.assign(n, { format: infoRoute.code, distance_km: infoRoute.km, dplus_m: '0', dmoins_m: '0', terrain: n.terrain || 'vallonne' });
+        if (infoRoute.code !== 'R42') n.premier_marathon = '';
       } else {
         n.format = formatDepuisDistance(n.distance_km, config);
       }
@@ -221,7 +225,7 @@ export default function Questionnaire({
       if (n.freq_hebdo && Number(n.freq_hebdo) > (config.freq_max_par_niveau?.[n.niveau] ?? 7)) n.freq_hebdo = '';
       return JSON.stringify(n) === JSON.stringify(p) ? p : n;
     });
-  }, [config, route, c.niveau, c.format, c.distance_km, c.jours_disponibles, c.jour_sl, c.duree_mois, c.temps_cible, c.date_course]);
+  }, [config, routeFmt, c.niveau, c.format, c.distance_km, c.jours_disponibles, c.jour_sl, c.duree_mois, c.temps_cible, c.date_course]);
 
   function basculerJour(j: string) {
     setC((p) => ({
@@ -331,7 +335,7 @@ export default function Questionnaire({
   }
 
   const prix = c.duree_mois ? config.prix_eur_par_mois[c.duree_mois] : undefined;
-  const nomFormat = route ? '10 km sur route' : config.formats.find((f) => f.code === c.format)?.nom ?? '';
+  const nomFormat = infoRoute ? infoRoute.nom : config.formats.find((f) => f.code === c.format)?.nom ?? '';
   const nomNiveau = textes.niveau.options.find((o) => o.valeur === c.niveau)?.titre ?? '';
   const nomTerrain = textes.terrain.options.find((o) => o.valeur === c.terrain)?.titre ?? '';
 
@@ -341,7 +345,7 @@ export default function Questionnaire({
       ['En ce moment', `${c.volume_hebdo_actuel} de course par semaine · plus longue sortie ${c.sortie_longue_actuelle}`],
       ['Formule', coach ? `${nomFormat} — jusqu’à la course` : `${nomFormat} — ${c.duree_mois} mois`],
       ['Course', `${c.course_nom}, le ${new Date(`${c.date_course}T00:00:00`).toLocaleDateString('fr-FR')}`],
-      ['Parcours', route ? '10 km sur route' : `${nombreFr(c.distance_km)} km, ${nombreFr(c.dplus_m)} m D+${c.dmoins_m ? `, ${nombreFr(c.dmoins_m)} m D−` : ''}${gpx ? ` · trace ${gpx.name}` : modification?.trace ? ' · sa trace déjà donnée' : ' · sans trace GPX'}`],
+      ['Parcours', infoRoute ? `${infoRoute.nom}${c.premier_marathon === 'oui' ? ' · son premier' : ''}` : `${nombreFr(c.distance_km)} km, ${nombreFr(c.dplus_m)} m D+${c.dmoins_m ? `, ${nombreFr(c.dmoins_m)} m D−` : ''}${gpx ? ` · trace ${gpx.name}` : modification?.trace ? ' · sa trace déjà donnée' : ' · sans trace GPX'}`],
       ...(route ? [['Chrono visé', c.temps_cible] as [string, string]] : [['Temps cible', c.temps_cible] as [string, string], ['Terrain', nomTerrain] as [string, string]]),
       ['Disponibilité', `${c.freq_hebdo} séances par semaine · ${joursCoches.map((j) => NOMS_JOURS[j]).join(', ')} · sortie longue le ${c.jour_sl}`],
     ];
@@ -545,19 +549,28 @@ export default function Questionnaire({
       <Section numero={court ? 2 : 3} titre={court && !demande ? 'Sa course' : 'Ta course'}>
         {coach && !demande && (
           <div role="group" aria-label="Discipline" className="inline-flex p-1 rounded-xl bg-sand-dark gap-1">
-            {([[false, 'Trail'], [true, 'Route · 10 km']] as const).map(([r, nom]) => (
-              <button key={nom} type="button" aria-pressed={route === r} onClick={() => setRoute(r)}
-                className={clsx('min-h-11 px-4 rounded-[9px] text-sm', route === r ? 'bg-white text-indigo font-bold shadow-sm' : 'text-[#4A4866] font-semibold')}>
+            {([[null, 'Trail'], ...FORMATS_ROUTE.map((f) => [f.code, f.code === 'R10' ? 'Route · 10 km' : f.nom])] as [string | null, string][]).map(([code, nom]) => (
+              <button key={nom} type="button" aria-pressed={routeFmt === code} onClick={() => setRouteFmt(code)}
+                className={clsx('min-h-11 px-4 rounded-[9px] text-sm', routeFmt === code ? 'bg-white text-indigo font-bold shadow-sm' : 'text-[#4A4866] font-semibold')}>
                 {nom}
               </button>
             ))}
           </div>
         )}
-        {route ? (
-          <p className="text-sm text-indigo/75 leading-relaxed">
-            Un 10 km sur route : la préparation va jusqu’à la course, 16 semaines au plus, prise en route si la course est
-            plus proche. Ni dénivelé ni trace à donner.
-          </p>
+        {infoRoute ? (
+          <>
+            <p className="text-sm text-indigo/75 leading-relaxed">
+              Sur route : la préparation va jusqu’à la course, {infoRoute.semaines} semaines au plus, prise en route si la
+              course est plus proche. Ni dénivelé ni trace à donner.
+            </p>
+            {infoRoute.code === 'R42' && (
+              <label className="flex gap-3 items-start cursor-pointer text-sm text-indigo">
+                <input type="checkbox" className="mt-1 accent-teal" checked={c.premier_marathon === 'oui'}
+                  onChange={(e) => maj('premier_marathon')(e.target.checked ? 'oui' : 'non')} />
+                <span>C’est son premier marathon <span className="text-indigo/60">— 24 semaines de préparation sont conseillées ; en dessous de 20, tu en seras prévenu.</span></span>
+              </label>
+            )}
+          </>
         ) : blocDistance}
         {coach && !route && (
           <p className="text-sm text-indigo/75 leading-relaxed">
@@ -598,10 +611,10 @@ export default function Questionnaire({
         </>}
         <div>
           <label className={labelCls} htmlFor="temps">{route ? 'Chrono visé' : 'Temps cible'}</label>
-          <input id="temps" className={inputCls} required placeholder={route ? 'ex. 0h46' : 'ex. 5h30'} value={c.temps_cible} onChange={(e) => maj('temps_cible')(e.target.value)} />
+          <input id="temps" className={inputCls} required placeholder={infoRoute ? `ex. ${infoRoute.exemple}` : 'ex. 5h30'} value={c.temps_cible} onChange={(e) => maj('temps_cible')(e.target.value)} />
           {reperes && !route && <p className="text-sm text-teal mt-2 leading-relaxed">{reperes}</p>}
           <p className={aideCls}>
-            {route ? 'Son chrono visé sur 10 km : il fixe l’allure de ses séances spécifiques. Écris-le en heures et minutes (0h46).'
+            {infoRoute ? `Son chrono visé sur ${infoRoute.court} : il fixe l’allure de ses séances spécifiques. Écris-le en heures et minutes (${infoRoute.exemple}).`
               : <>
                 {textes.tempsCible}
                 {c.format && config.temps_max_par_format[c.format] !== undefined && ` Sur ce format, le temps cible ne peut pas dépasser ${config.temps_max_par_format[c.format]}h.`}
