@@ -63,6 +63,17 @@ export function estimerChrono(format: unknown, vcMs: number | null | undefined):
   return `${Math.floor(min / 60)}h${String(min % 60).padStart(2, '0')}`;
 }
 
+// Une course de ton calendrier Nolio qui ressemble à la route (décision coach du 23/10/2026, « deux entrées ») : 10, 21
+// ou 42 km à peu près, moins de 15 m de D+ par km. Son format, ou null.
+export function formatRouteDe(distanceKm: number | null | undefined, dplusM: number | null | undefined): string | null {
+  const d = Number(distanceKm ?? 0);
+  if (!(d > 0) || Number(dplusM ?? 0) / d > 15) return null;
+  if (Math.abs(d - 10) <= 0.6) return 'R10';
+  if (Math.abs(d - 21.1) <= 1) return 'R21';
+  if (Math.abs(d - 42.2) <= 1.5) return 'R42';
+  return null;
+}
+
 const allure = (sKm: number) => `${Math.floor(sKm / 60)}:${String(Math.round(sKm % 60)).padStart(2, '0')}/km`;
 
 // La phrase de l'alerte, ou null : format hors route, chrono illisible, VC inconnue, ou allure dans les bornes.

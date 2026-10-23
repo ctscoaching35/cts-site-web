@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { formatRouteDe } from '@/lib/app/route';
 import CadreCoach from '@/components/app/CadreCoach';
 import Questionnaire from '@/components/plan/Questionnaire';
 import { exigerCoach } from '@/lib/app/nolio';
@@ -38,6 +39,13 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
     ...(c.dplus_m ? { dplus_m: String(c.dplus_m) } : {}), ...(c.dmoins_m ? { dmoins_m: String(c.dmoins_m) } : {}),
     ...(c.chrono ? { temps_cible: c.chrono } : {}),
   } : null;
+  // La discipline (décision coach du 23/10/2026, « deux entrées ») : demandée (?discipline=route), ou celle de l'objectif
+  // modifié, de la demande, de la course de Nolio (10, 21 ou 42 km presque sans dénivelé).
+  const formatConnu = String((aModifier ? { ...(aModifier.intake as Record<string, unknown>), ...((pm?.champs as Record<string, unknown>) ?? {}) }
+    : demande?.champs ?? {})?.format ?? '');
+  const routeNolio = c ? formatRouteDe(c.distance_km, c.dplus_m) : null;
+  const route = r.discipline === 'route' || formatConnu.startsWith('R') || Boolean(routeNolio);
+  const discipline: 'trail' | 'route' = route ? 'route' : 'trail';
   const jour = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
   const enCours = suite?.athlete.objectifs.find((o) => o.course_date >= jour) ?? null;
   return (
@@ -48,14 +56,14 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
         </Link>
         <div className="my-6 px-2">
           <div className="eyebrow text-teal mb-3">Athlète coaché</div>
-          <h1 className="text-3xl sm:text-4xl text-indigo leading-tight">{aModifier ? `Modifier ${aModifier.course_nom}` : suite ? `Nouvel objectif pour ${suite.athlete.nom}` : 'Ajouter un athlète'}</h1>
+          <h1 className="text-3xl sm:text-4xl text-indigo leading-tight">{aModifier ? `Modifier ${aModifier.course_nom}` : suite ? `Nouvel objectif ${route ? 'route' : 'trail'} pour ${suite.athlete.nom}` : 'Ajouter un athlète'}</h1>
           <p className="text-indigo/70 mt-2">
             {aModifier
               ? `${aModifier.demarre_le
                 ? 'Il est en route : les semaines déjà écrites restent, les suivantes suivront tes réponses. Sa date, sa distance et son format ne changent plus. Sa charge est celle de son départ : corrige-la seulement si elle était fausse, la suite s’ajuste déjà chaque dimanche sur ce qu’il fait.'
                 : 'Tout se modifie. Un départ déjà programmé s’annule : tu redémarreras l’objectif après.'}${traceDonnee ? ' Sa trace est gardée si tu n’en donnes pas d’autre.' : ''}`
               : ''}
-            {!aModifier && deNolio ? `${c?.nom} vient de Nolio : la course est remplie, relis sa distance, son dénivelé et le temps visé. ` : ''}
+            {!aModifier && deNolio ? `${c?.nom} vient de Nolio : la course est remplie, relis ${routeNolio ? 'sa date et le chrono visé' : 'sa distance, son dénivelé et le temps visé'}. ` : ''}
             {aModifier ? '' : demande
               ? `Sa demande du ${new Date(demande.cree_le).toLocaleDateString('fr-FR')} : relis ses réponses, corrige si besoin, et lance l’objectif.${demande.gpx_chemin ? ' Sa trace part avec la demande.' : ''}`
               : court && suite?.nolio
@@ -81,9 +89,10 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
         )}
         <Questionnaire coach court={court && !aModifier} emailCoach={coach.email} athleteId={suite?.athlete.id} demandeId={demande?.id}
           modification={aModifier ? { planId: String(aModifier.id), trace: traceDonnee } : undefined}
-          vcMs={suite?.athlete.vc_ms ?? null}
+          vcMs={suite?.athlete.vc_ms ?? null} discipline={discipline}
           initial={aModifier ? { ...reponsesDe(aModifier.intake), ...reponsesDe(pm?.champs), nom: suite?.athlete.nom ?? '' }
-            : demande ? { ...demande.champs, nom: suite?.athlete.nom ?? '' } : deNolio ? { ...suite?.initial, ...deNolio } : suite?.initial} />
+            : demande ? { ...demande.champs, nom: suite?.athlete.nom ?? '' }
+              : deNolio ? { ...suite?.initial, ...deNolio, ...(routeNolio ? { format: routeNolio } : {}) } : suite?.initial} />
       </div>
     </CadreCoach>
   );

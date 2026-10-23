@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 // « Nouvel objectif » dans l'app (CTS_NOLIO_CADRAGE.md, OM1, décision coach du 19/10/2026) : le questionnaire,
 // prérempli des dernières réponses, la course à remplir. Un acheteur paie sa nouvelle préparation ; un coaché envoie sa
 // demande à son coach, qui la relit et lance l'objectif.
-export default async function NouvelObjectif({ searchParams }: { searchParams: Promise<{ majeur?: string }> }) {
+export default async function NouvelObjectif({ searchParams }: { searchParams: Promise<{ majeur?: string; discipline?: string }> }) {
   if (!supabaseConfigure()) notFound();
   const supabase = await clientServeur();
   const { data } = await supabase.auth.getClaims();
@@ -22,7 +22,10 @@ export default async function NouvelObjectif({ searchParams }: { searchParams: P
   // D'abord l'aiguillage, objectif majeur ou course de préparation ; le questionnaire ensuite (?majeur=1). Un coaché
   // (décision coach du 20/10/2026 : « parle bien d'objectifs majeurs »), et un acheteur, pour qu'il n'achète pas une
   // préparation pour une course qui s'ajoute gratuitement à la sienne (décision coach du 20/10/2026, les nuances des plans).
-  if ((await searchParams).majeur !== '1') {
+  const recherche = await searchParams;
+  // Un coaché choisit d'emblée trail ou route (décision coach du 23/10/2026, « deux entrées ») ; un acheteur, le trail.
+  const route = Boolean(fiche) && recherche.discipline === 'route';
+  if (recherche.majeur !== '1') {
     const aujourdhui = new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris' }).format(new Date());
     const enCours = (await plansDuCompte(compteId)).some((p) => p.course_date >= aujourdhui);
     return <Aiguillage enCours={enCours} coache={Boolean(fiche)} />;
@@ -47,7 +50,7 @@ export default async function NouvelObjectif({ searchParams }: { searchParams: P
       <main className="mx-auto max-w-3xl px-4 sm:px-6 py-8 sm:py-12">
         <Link href="/app/plan" className="inline-flex items-center min-h-11 text-teal font-bold text-sm">‹ Ton objectif</Link>
         <div className="my-6 px-2">
-          <div className="eyebrow text-teal mb-3">Nouvel objectif majeur</div>
+          <div className="eyebrow text-teal mb-3">Nouvel objectif majeur{route ? ' · route' : fiche ? ' · trail' : ''}</div>
           <h1 className="text-3xl sm:text-4xl text-indigo leading-tight">Ta prochaine course</h1>
           <p className="text-indigo/70 mt-2">
             {fiche
@@ -78,7 +81,7 @@ export default async function NouvelObjectif({ searchParams }: { searchParams: P
           </div>
         )}
         {fiche
-          ? <Questionnaire coach demande court={court} athleteId={fiche.id} initial={initial} />
+          ? <Questionnaire coach demande court={court} athleteId={fiche.id} initial={initial} discipline={route ? 'route' : 'trail'} />
           : <Questionnaire initial={initial} />}
       </main>
     </div>
@@ -103,7 +106,15 @@ function Aiguillage({ enCours, coache }: { enCours: boolean; coache: boolean }) 
           </p>
         </div>
         <div className="space-y-2.5 px-2">
-          <Link href="/app/objectif/nouveau?majeur=1" className={`${bouton} bg-teal text-white`}>C’est mon objectif majeur</Link>
+          {coache ? (
+            <div className="grid grid-cols-2 gap-2.5">
+              <Link href="/app/objectif/nouveau?majeur=1" className={`${bouton} bg-teal text-white`}>Un trail</Link>
+              <Link href="/app/objectif/nouveau?majeur=1&discipline=route" className={`${bouton} bg-teal text-white`}>Une course sur route</Link>
+            </div>
+          ) : (
+            <Link href="/app/objectif/nouveau?majeur=1" className={`${bouton} bg-teal text-white`}>C’est mon objectif majeur</Link>
+          )}
+          {coache && <p className="text-[0.8125rem] text-indigo/60 text-center">C’est mon objectif majeur : un trail, ou un 10 km, un semi ou un marathon.</p>}
           {!coache && <p className="text-[0.8125rem] text-indigo/60 text-center">Une nouvelle préparation, construite pour cette course.</p>}
           {enCours ? (
             <>

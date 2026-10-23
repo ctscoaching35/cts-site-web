@@ -75,6 +75,7 @@ function Choix({
 // la course se demandent.
 export default function Questionnaire({
   coach = false, emailCoach = '', athleteId, initial, demande = false, demandeId, court = false, modification, vcMs = null,
+  discipline,
 }: {
   coach?: boolean; emailCoach?: string; athleteId?: string; initial?: Record<string, string | string[]>; demande?: boolean;
   demandeId?: string; court?: boolean;
@@ -82,6 +83,9 @@ export default function Questionnaire({
   modification?: { planId: string; trace: boolean };
   // La vitesse critique de l'athlète (m/s, sa fiche) : sur route, sans chrono visé, le chrono s'estime d'après elle.
   vcMs?: number | null;
+  // La discipline choisie à l'entrée (décision coach du 23/10/2026, « deux entrées : trail ou route ») : « route »
+  // demande 10 km, semi ou marathon ; « trail », le questionnaire du trail ; absente, le choix dans la course (coach).
+  discipline?: 'trail' | 'route';
 } = {}) {
   const [config, setConfig] = useState<ConfigPlan | null>(null);
   const [erreurConfig, setErreurConfig] = useState('');
@@ -94,8 +98,9 @@ export default function Questionnaire({
   const [gpx, setGpx] = useState<File | null>(null);
   // LA ROUTE (moteur 8.349, CTS_ROUTE_CADRAGE.md) : pour le coach seulement, un 10 km, un semi ou un marathon ; ni
   // dénivelé, ni trace, ni terrain ; le chrono visé fixe l'allure des séances spécifiques.
+  const formatInitial = FORMATS_ROUTE.some((f) => f.code === initial?.format) ? String(initial?.format) : null;
   const [routeFmt, setRouteFmt] = useState<string | null>(
-    coach && !demande && FORMATS_ROUTE.some((f) => f.code === initial?.format) ? String(initial?.format) : null);
+    discipline === 'route' ? formatInitial ?? 'R10' : discipline === 'trail' ? null : coach && !demande ? formatInitial : null);
   const route = routeFmt !== null;
   const infoRoute = FORMATS_ROUTE.find((f) => f.code === routeFmt) ?? null;
   const chronoEstime = infoRoute ? estimerChrono(infoRoute.code, vcMs) : null;
@@ -554,9 +559,9 @@ export default function Questionnaire({
       {/* La course d'abord, sa distance comprise (décision coach du 20/10/2026), puis la formule, qui n'offre que les
           durées que cette course admet. Le coaching individualisé n'a pas de formule à choisir (19/10/2026). */}
       <Section numero={court ? 2 : 3} titre={court && !demande ? 'Sa course' : 'Ta course'}>
-        {coach && !demande && (
-          <div role="group" aria-label="Discipline" className="inline-flex p-1 rounded-xl bg-sand-dark gap-1">
-            {([[null, 'Trail'], ...FORMATS_ROUTE.map((f) => [f.code, f.code === 'R10' ? 'Route · 10 km' : f.nom])] as [string | null, string][]).map(([code, nom]) => (
+        {(discipline === 'route' || (!discipline && coach && !demande)) && (
+          <div role="group" aria-label={discipline === 'route' ? 'Distance' : 'Discipline'} className="inline-flex flex-wrap p-1 rounded-xl bg-sand-dark gap-1">
+            {([...(discipline === 'route' ? [] : [[null, 'Trail']]), ...FORMATS_ROUTE.map((f) => [f.code, discipline === 'route' ? (f.code === 'R10' ? '10 km' : f.nom) : f.code === 'R10' ? 'Route · 10 km' : f.nom])] as [string | null, string][]).map(([code, nom]) => (
               <button key={nom} type="button" aria-pressed={routeFmt === code} onClick={() => setRouteFmt(code)}
                 className={clsx('min-h-11 px-4 rounded-[9px] text-sm', routeFmt === code ? 'bg-white text-indigo font-bold shadow-sm' : 'text-[#4A4866] font-semibold')}>
                 {nom}

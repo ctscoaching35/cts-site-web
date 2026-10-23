@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { formatRouteDe } from '@/lib/app/route';
 import clsx from 'clsx';
 import { notFound } from 'next/navigation';
 import CadreCoach from '@/components/app/CadreCoach';
@@ -120,8 +121,12 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
           <Carte className="!p-5 space-y-3">
             <div className="flex justify-between items-center gap-3">
               <Surtitre>Ses objectifs</Surtitre>
+              {/* Deux entrées (décision coach du 23/10/2026) : le trail ou la route (10 km, semi, marathon). */}
+              <Link href={`/app/coach/nouveau?athlete=${a.id}&discipline=route`} className="inline-flex items-center min-h-10 px-3.5 rounded-[10px] border border-teal text-teal text-[0.8125rem] font-bold">
+                + Objectif route
+              </Link>
               <Link href={`/app/coach/nouveau?athlete=${a.id}`} className="inline-flex items-center min-h-10 px-3.5 rounded-[10px] bg-teal text-white text-[0.8125rem] font-bold">
-                + Nouvel objectif
+                + Objectif trail
               </Link>
             </div>
             {a.objectifs.length === 0 && <p className="text-sm text-[#4A4866]">Aucun pour l’instant.</p>}
@@ -183,7 +188,7 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
                           c.distance_km ? `${c.distance_km} km` : 'distance à saisir', c.dplus_m ? `${c.dplus_m} m D+` : null].filter(Boolean).join(' · ')}
                       </span>
                     </span>
-                    <Link href={preparation ? `/app/coach/plan/${prochain}?course=${c.id}#ajouter-course` : `/app/coach/nouveau?athlete=${a.id}&course=${c.id}`}
+                    <Link href={preparation ? `/app/coach/plan/${prochain}?course=${c.id}#ajouter-course` : `/app/coach/nouveau?athlete=${a.id}&course=${c.id}${formatRouteDe(c.distance_km, c.dplus_m) ? '&discipline=route' : ''}`}
                       className="inline-flex items-center min-h-10 px-3 rounded-[10px] border border-teal text-teal text-[0.8125rem] font-bold whitespace-nowrap">
                       {preparation ? 'En préparation ›' : 'Créer l’objectif ›'}
                     </Link>
