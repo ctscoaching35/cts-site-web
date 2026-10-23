@@ -15,6 +15,7 @@ import { athletesCoaches, type FicheAthlete } from './coaching';
 import { demandesDuCoach, estRetrait, type Demande } from './demandes';
 import { coursesGardees, pasEncoreIci, type CourseNolio } from './coursesNolio';
 import { entreeDe } from './entree';
+import { achatsEnAttente } from './modes';
 import { plansALaMain, type LigneTrame, type Realise } from './ecriture';
 import { ajouterJours, dateLongue, jourMois, joursEntre, type Semaine } from './plan';
 import { clientService } from './supabase';
@@ -92,7 +93,20 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     .filter((a) => a.nolio_athlete_id && (!membres || membres.has(a.nolio_athlete_id)))
     .map(async (a) => [a.id, (await coursesGardees(a.nolio_athlete_id as string).catch(() => [] as CourseNolio[]))
       .filter((c) => c.type === 'a')] as [string, CourseNolio[]])));
+  // Les plans achetés pendant son coaching, qui attendent « Passer en plan » (décision coach du 23/10/2026).
+  const enAttente = await achatsEnAttente(fiches).catch(() => new Map<string, string[]>());
   const athletes: LigneAthlete[] = fiches.map((a) => {
+    // En mode plan (décision coach du 23/10/2026) : sa ligne le dit, rien n'est à regarder pour lui ici.
+    if (a.mode === 'plan') {
+      return { id: a.id, nom: a.nom, usr: a.nolio_athlete_id, nolio: Boolean(a.nolio_athlete_id),
+        accord: Boolean(a.nolio_athlete_id && avecAccord.has(a.nolio_athlete_id)), app: Boolean(a.compte_id), objectif: null,
+        ensuite: { texte: 'Mode plan', ton: 'rien', href: `/app/coach/athlete/${a.id}#mode` }, entree: null };
+    }
+    const achats = enAttente.get(a.id);
+    if (achats) {
+      aRegarder.push({ niveau: 'bloque', genre: 'achat', athlete: a.nom, action: 'Son mode ›', href: `/app/coach/athlete/${a.id}#mode`,
+        texte: `a acheté ${achats.map((c) => `« ${c} »`).join(', ')} pendant son coaching : passe-le en plan pour que son plan démarre.` });
+    }
     const o = prochain(a);
     const p = o ? parPlan.get(o.plan_id) : undefined;
     const semaines = (lignes ?? []).filter((l) => l.plan_id === o?.plan_id);

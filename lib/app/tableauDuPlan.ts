@@ -14,7 +14,9 @@ import { trameDesDonnees, type CourseDuGraphique, type Fiche } from './tableau';
 
 // Où en est l'athlète dans Nolio (P1 à P4) ; « coache » : un objectif de son coach ; null : un plan d'avant le
 // 19/10/2026, sans Nolio.
-export type EtatNolio = 'a_inviter' | 'en_cours' | 'invite' | 'actif' | 'refuse' | 'sorti' | 'coache' | null;
+// coache : un objectif de coaching ; coaching : un plan acheté qui ne s'écrit pas, l'athlète étant en coaching
+// (décision coach du 23/10/2026).
+export type EtatNolio = 'a_inviter' | 'en_cours' | 'invite' | 'actif' | 'refuse' | 'sorti' | 'coache' | 'coaching' | null;
 export type DonneesTableau = {
   trame: LigneTrame[]; realises: Realise[]; fiches: Fiche[]; nolio: EtatNolio; accord: boolean; ecrit: boolean;
   // Les courses secondaires ajoutées (O2).

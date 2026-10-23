@@ -42,7 +42,10 @@ export async function plansDuCompte(compteId: string): Promise<PlanDuCompte[]> {
   const exclus = new Set((coaches ?? []).map((c) => c.plan_id));
   const propres = (tous ?? []).filter((p) => !exclus.has(p.id)).map((p) => ({ ...p, coache: false }));
   const service = clientService();
-  const { data: fiches } = await service.from('athletes_coaches').select('id').eq('compte_id', compteId);
+  // Ses fiches en mode coaching seulement (décision coach du 23/10/2026) : en mode plan, ses objectifs de coaching
+  // restent à son coach.
+  const { data: toutes } = await service.from('athletes_coaches').select('*').eq('compte_id', compteId);
+  const fiches = (toutes ?? []).filter((f) => f.mode !== 'plan');
   const { data: lignes } = fiches?.length
     ? await service.from('coaching').select('plan_id, plans(course_nom, course_date)').in('athlete_id', fiches.map((f) => f.id))
     : { data: [] };

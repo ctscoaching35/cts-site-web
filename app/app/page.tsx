@@ -132,9 +132,9 @@ export default async function Accueil({ searchParams }: { searchParams: Recherch
         </div>
 
         {/* Sa liste dit où en est l'invitation Nolio ; masquée, la carte Nolio le redit. */}
-        {etape !== 'apres' && demarrage && d.nolio !== 'sorti' && (
+        {etape !== 'apres' && demarrage && d.nolio !== 'sorti' && d.nolio !== 'coaching' && (
           <PourBienDemarrer acheteur={!ctx.coache} nolio={d.nolio} accord={d.accord} questionnaire={d.ecrit && !ctx.aLaMain} installer={installer}
-            profil={profil} lienProfil={lienProfil} />
+            profil={profil} lienProfil={lienProfil} seanceFaite={d.realises.some((r) => r.seances_faites > 0)} />
         )}
         <CarteObjectif plan={plan} restants={restants} jauge={ctx.aLaMain ? null : jauge} etape={etape} href={lien('/app/plan', ctx)}
           surtitre={!ctx.coache ? 'Ton objectif' : etape === 'apres' ? 'Ton dernier objectif majeur' : 'Ton prochain objectif majeur'}

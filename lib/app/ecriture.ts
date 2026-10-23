@@ -742,9 +742,11 @@ async function departsDuJour(budgetMs = 120_000): Promise<Compte[]> {
   const aujourdhui = aujourdhuiParis();
   // Un départ au lundi qui vient part la veille (défaut vu le 22/10/2026) : demarrerObjectif l'écrit dès ce soir.
   const demain = ajouterJours(aujourdhui, 1);
-  const { data } = await clientService().from('plans').select('id, depart_prevu').is('demarre_le', null)
+  const { data: tous } = await clientService().from('plans').select('id, depart_prevu, nolio_statut').is('demarre_le', null)
     .not('parametres', 'is', null).gte('course_date', aujourdhui)
     .or(`depart_prevu.lte.${demain},and(depart_prevu.is.null,nolio_statut.eq.actif)`);
+  // Un plan acheté par un athlète en coaching attend le bouton de son coach (décision coach du 23/10/2026).
+  const data = (tous ?? []).filter((x) => x.nolio_statut !== 'coaching');
   const comptes: Compte[] = [];
   const aLaMain = await plansALaMain();
   for (const p of (data ?? []).filter((x) => !aLaMain.has(x.id as string))) {
@@ -766,12 +768,14 @@ async function departsDuJour(budgetMs = 120_000): Promise<Compte[]> {
 
 // Les plans écrits semaine par semaine dont l'athlète est dans Nolio et la course à venir.
 // Les objectifs des athlètes que le coach programme à la main (décision coach du 20/10/2026, « tableau de bord
-// complet ») : le moteur n'y écrit rien, ni semaine, ni trame, ni questionnaire ; l'app reste leur tableau de bord. Vide
-// avant la migration du 20/10/2026 (la colonne n'existe pas encore).
+// complet ») : le moteur n'y écrit rien, ni semaine, ni trame, ni questionnaire ; l'app reste leur tableau de bord. Et
+// ceux des athlètes passés en mode plan (décision coach du 23/10/2026) : rien ne s'y écrit non plus. Les colonnes lues
+// après coup : sans la migration, rien n'est retenu.
 export async function plansALaMain(): Promise<Set<string>> {
   const service = clientService();
-  const { data: fiches, error } = await service.from('athletes_coaches').select('id').eq('programmation', 'main');
-  if (error || !fiches?.length) return new Set();
+  const { data: toutes, error } = await service.from('athletes_coaches').select('*');
+  const fiches = (toutes ?? []).filter((f) => f.programmation === 'main' || f.mode === 'plan');
+  if (error || !fiches.length) return new Set();
   const { data } = await service.from('coaching').select('plan_id').in('athlete_id', fiches.map((f) => f.id));
   return new Set((data ?? []).map((c) => c.plan_id as string));
 }
@@ -989,13 +993,17 @@ export async function retirerAccordLecture(planId: string): Promise<void> {
 // est encore à venir (à partir de demain) en part — bandeaux, notes, séances, compétitions, et la suite de ses
 // séries de questionnaires ; le passé reste (les séances faites, les questionnaires remplis). Seuls les éléments que
 // l'objectif a lui-même posés (nolio_envois) sont touchés. Rend ce qui n'a pas pu partir, [] si tout va.
-export async function retirerDeNolio(planId: string): Promise<string[]> {
+// depuis : à partir de quel jour les séances, notes, bandeaux et courses partent (demain par défaut ; le lundi qui
+// vient quand l'athlète change de mode, décision coach du 23/10/2026 : sa semaine en cours reste) ; les questionnaires
+// partent toujours dès demain.
+export async function retirerDeNolio(planId: string, { depuis }: { depuis?: string } = {}): Promise<string[]> {
   const o = await objectifEcrit(planId);
   if (!o?.nolioAthlete || !o.envois.length) return [];
   const d = await destinataire(o.nolioAthlete);
   const qui = d.moi ? '' : `athlete=${d.usr}`;
   // Demain et après : une séance du jour a pu être faite, elle reste reliée à ce qui a été couru.
   const demain = ajouterJours(aujourdhuiParis(), 1);
+  const debut = depuis && depuis > demain ? depuis : demain;
   const au = ajouterJours(o.plan.course.date, 1);
   const poses = new Set(o.envois.flatMap((e) => e.seances as SeanceEnvoyee[]).map((s) => String(s.nolio_id ?? '')).filter(Boolean));
   const soucis: string[] = [];
@@ -1004,8 +1012,8 @@ export async function retirerDeNolio(planId: string): Promise<string[]> {
     if (!r || (r.statut !== 204 && r.statut !== 200 && r.statut !== 404)) soucis.push(r ? refusNolio(r, quoi) : `${quoi} : Nolio injoignable`);
   };
   for (const [genre, quoi] of [['trainings', 'une séance'], ['notes', 'une note'], ['cycles', 'un bandeau'], ['competitions', 'une course']]) {
-    const avenir = await listeNolio<{ id: string; date_start: string }>(`planned/${genre}/?date_from=${demain}&date_to=${au}${qui ? `&${qui}` : ''}`);
-    for (const x of avenir) if (poses.has(x.id) && x.date_start.slice(0, 10) >= demain) await retirer(`planned/${genre}/${x.id}/`, quoi);
+    const avenir = await listeNolio<{ id: string; date_start: string }>(`planned/${genre}/?date_from=${debut}&date_to=${au}${qui ? `&${qui}` : ''}`);
+    for (const x of avenir) if (poses.has(x.id) && x.date_start.slice(0, 10) >= debut) await retirer(`planned/${genre}/${x.id}/`, quoi);
   }
   // Les questionnaires : une série part à partir de sa première occurrence à venir (`following`), un questionnaire seul
   // (le soir d'un test de la parole) part s'il est à venir.
@@ -1318,7 +1326,7 @@ export async function lireLesTests(planId: string): Promise<TestLu[]> {
 // ─── L'acheteur dans l'équipe Nolio (P1 à P4) ─────────────────────────────
 
 let equipe: Promise<string | null> | null = null;
-function equipeDuCoach(): Promise<string | null> {
+export function equipeDuCoach(): Promise<string | null> {
   equipe ??= listeNolio<{ id: string; is_manager?: boolean; role?: string }>('team/teams/')
     .then((t) => (t.find((x) => x.is_manager) ?? t[0])?.id ?? null)
     .catch(() => {
@@ -1366,6 +1374,25 @@ export async function inviterAcheteur(planId: string, emailAchat: string): Promi
     .eq('id', planId).eq('nolio_statut', 'a_inviter').select('nolio_email, course_nom, compte_id');
   const p = pris?.[0];
   if (!p) return 'deja';
+  // Un athlète qui a une fiche de coaché (décision coach du 23/10/2026) est déjà dans l'équipe : son compte Nolio est
+  // celui de sa fiche. En mode coaching, son plan attend le bouton de son coach (« Passer en plan »), qui est prévenu ;
+  // en mode plan, il démarre.
+  const { data: fiches } = await service.from('athletes_coaches').select('*').eq('compte_id', p.compte_id)
+    .not('nolio_athlete_id', 'is', null).limit(1);
+  const fiche = fiches?.[0];
+  if (fiche) {
+    const enCoaching = fiche.mode !== 'plan';
+    await service.from('plans').update({ nolio_athlete_id: fiche.nolio_athlete_id, nolio_statut: enCoaching ? 'coaching' : 'actif', nolio_email: null })
+      .eq('id', planId);
+    if (enCoaching) {
+      await prevenirCoach(`Plan CTS : ${fiche.nom} a acheté un plan pendant son coaching`,
+        `${fiche.nom} a acheté le plan « ${p.course_nom ?? ''} » alors qu'il est en mode coaching. Son plan attend : `
+        + 'sur sa fiche, « Passer en plan » arrête son coaching après la semaine en cours et démarre son plan le lundi qui suit.');
+      return 'coaching';
+    }
+    await demarrerObjectif(planId);
+    return 'actif';
+  }
   // Un acheteur déjà dans l'équipe (un plan précédent, OM1) : pas de nouvelle invitation, son objectif démarre (OM4 le
   // programme après la course en cours) ; sa sortie de l'équipe suit la nouvelle course (P3).
   const { data: membre } = await service.from('plans').select('nolio_athlete_id').eq('compte_id', p.compte_id)

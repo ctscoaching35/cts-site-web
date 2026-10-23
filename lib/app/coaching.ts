@@ -30,6 +30,9 @@ export type FicheAthlete = {
   // source : « test » lu dans Nolio, « test_coach » un test saisi par le coach, « coach » une valeur saisie, « athlete » un
   // test saisi par l'athlète dans l'app.
   reperes_sources: Record<string, { le: string; source: 'test' | 'test_coach' | 'coach' | 'athlete' }>;
+  // Son mode (décision coach du 23/10/2026) : coaching, ou plan (sa fiche reste, rien ne s'y écrit) ; mode_le, son dernier
+  // changement. « coaching » avant la migration du 23/10/2026.
+  mode: 'coaching' | 'plan'; mode_le: string | null;
   // auto : le moteur écrit ses semaines chaque dimanche ; main : le coach les écrit dans Nolio (décision coach du
   // 20/10/2026, « tableau de bord complet ») ; auto avant la migration du 20/10/2026.
   programmation: 'auto' | 'main';
@@ -66,6 +69,7 @@ export async function athletesCoaches(coachId: string): Promise<FicheAthlete[]> 
     profil: (a.profil ?? null) as FicheAthlete['profil'], d_prime_m: a.d_prime_m ?? null,
     reperes_sources: (a.reperes_sources ?? {}) as FicheAthlete['reperes_sources'],
     programmation: a.programmation === 'main' ? 'main' : 'auto',
+    mode: a.mode === 'plan' ? 'plan' : 'coaching', mode_le: a.mode_le ?? null,
     objectifs: ((lignes ?? []) as LigneCoaching[]).filter((l) => l.athlete_id === a.id).map(objectif)
       .sort((x, y) => x.course_date.localeCompare(y.course_date)),
   }));

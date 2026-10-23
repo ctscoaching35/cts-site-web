@@ -24,7 +24,7 @@ const ARRIVE = 'Nolio t’écrit dans quelques minutes : une invitation à rejoi
   + 'Nolio, sinon les identifiants de ton nouveau compte. Tes séances s’y installent aussitôt.';
 export function CarteNolio({ etat }: { etat: EtatNolio }) {
   if (!etat || etat === 'actif' || etat === 'coache') return null;
-  const textes: Record<'a_inviter' | 'en_cours' | 'invite' | 'refuse' | 'sorti', { titre: string; texte: string; bouton: boolean }> = {
+  const textes: Record<'a_inviter' | 'en_cours' | 'invite' | 'refuse' | 'sorti' | 'coaching', { titre: string; texte: string; bouton: boolean }> = {
     a_inviter: { titre: 'Ton accès Nolio arrive', bouton: false, texte: ARRIVE },
     en_cours: { titre: 'Ton accès Nolio arrive', bouton: false, texte: ARRIVE },
     invite: { titre: 'Accepte ton invitation Nolio', bouton: false,
@@ -32,6 +32,9 @@ export function CarteNolio({ etat }: { etat: EtatNolio }) {
     refuse: { titre: 'Ton invitation Nolio n’a pas abouti', bouton: false,
       texte: 'Réponds simplement à ton e-mail de bienvenue : nous t’en renvoyons une.' },
     sorti: { titre: 'Ta préparation est terminée dans Nolio', bouton: true, texte: 'Ton compte Nolio et tes séances restent à toi.' },
+    // Un plan acheté, l'athlète en coaching (décision coach du 23/10/2026).
+    coaching: { titre: 'Ce plan ne s’écrit pas dans Nolio', bouton: false,
+      texte: 'Tu es en coaching : ton coach écrit ta préparation. Ce plan reste lisible ici ; s’il doit reprendre, ton coach le relance.' },
   };
   const t = textes[etat];
   return (

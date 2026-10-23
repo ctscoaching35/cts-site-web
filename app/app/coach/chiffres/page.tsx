@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import CadreCoach from '@/components/app/CadreCoach';
+import { PasserEnCoaching } from '@/components/app/GestesMode';
 import { chiffresParSemaine } from '@/lib/app/mesure';
 import { acheteursDesPlans } from '@/lib/app/acheteurs';
 import { exigerCoach } from '@/lib/app/nolio';
@@ -20,6 +21,7 @@ const date = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('f
 const STATUT_NOLIO: Record<string, string> = {
   a_inviter: 'Invitation en préparation', en_cours: 'Invitation en préparation', invite: 'Invité dans Nolio',
   actif: 'Dans l’équipe Nolio', refuse: 'Invitation sans suite', sorti: 'Sorti de Nolio',
+  coaching: 'son plan ne s’écrit pas',
 };
 
 export default async function Chiffres() {
@@ -27,6 +29,7 @@ export default async function Chiffres() {
   await exigerCoach();
   const semaines = await chiffresParSemaine();
   const acheteurs = await acheteursDesPlans().catch(() => []);
+  const jour = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
   return (
     <>
       <CadreCoach actif="chiffres">
@@ -75,9 +78,14 @@ export default async function Chiffres() {
                 <li key={a.id} className="flex flex-wrap justify-between gap-x-3 gap-y-1 py-2 text-sm">
                   <span className="text-indigo"><strong>{a.nom}</strong> · {a.course}{a.date ? `, le ${date(a.date)}` : ''}</span>
                   <span className="text-indigo/70">
+                    {a.statut === 'coaching' ? 'Mode : Coaching' : 'Mode : Plan'}{' · '}
                     {STATUT_NOLIO[a.statut ?? ''] ?? 'Nolio'}{a.statut === 'actif' ? (a.demarre ? `, démarré le ${date(a.demarre)}` : ', pas encore démarré') : ''}
                     {' · '}{a.accord ? 'accord donné' : 'sans accord'}
                   </span>
+                  {/* Passer en coaching (décision coach du 23/10/2026) : une fois dans l'équipe. */}
+                  {a.usr && a.statut !== 'coaching' && a.date >= jour && (
+                    <span className="basis-full"><PasserEnCoaching planId={a.id} nom={a.nom.split(' ')[0]} /></span>
+                  )}
                 </li>
               ))}
             </ul>

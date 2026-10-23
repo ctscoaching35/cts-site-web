@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import { Deconnexion } from '@/components/app/BoutonsCompte';
 import { redirect } from 'next/navigation';
+import { ficheDuCompte } from '@/lib/app/demandes';
 import { coachConnecte } from '@/lib/app/nolio';
-import { clientServeur, clientService, supabaseConfigure } from '@/lib/app/supabase';
+import { clientServeur, supabaseConfigure } from '@/lib/app/supabase';
 
 // La session se lit à chaque visite : jamais figée à la compilation.
 export const dynamic = 'force-dynamic';
@@ -17,9 +18,9 @@ export default async function SansPlan() {
   if (!data?.claims?.sub) redirect('/app/connexion');
   if (await coachConnecte()) redirect('/app/coach');
   const email = String(data.claims.email ?? '');
-  const { data: fiche } = await clientService().from('athletes_coaches').select('id').eq('compte_id', data.claims.sub).limit(1);
-  // Un coaché sans objectif : son tableau de bord (décision coach du 20/10/2026, « tableau de bord complet »).
-  if (fiche?.length) redirect('/app');
+  // Un coaché sans objectif : son tableau de bord (décision coach du 20/10/2026, « tableau de bord complet ») ; en mode
+  // plan, il est ici comme un acheteur (décision coach du 23/10/2026).
+  if (await ficheDuCompte(String(data.claims.sub))) redirect('/app');
   return (
     <main className="mx-auto max-w-sm px-4 py-12 space-y-6 text-center">
       <h1 className="text-2xl text-indigo">Tu n’as pas encore de plan</h1>

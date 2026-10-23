@@ -7,6 +7,7 @@ import CarteEntree from '@/components/app/CarteEntree';
 import FormulaireValeurs from '@/components/app/FormulaireValeurs';
 import InvitationApp from '@/components/app/InvitationApp';
 import ProfilAthlete from '@/components/app/ProfilAthlete';
+import { PasserEnCoaching, PasserEnPlan } from '@/components/app/GestesMode';
 import { lignesDuProfil } from '@/lib/app/profilEntrainement';
 import TestVcCoach from '@/components/app/TestVcCoach';
 import { Carte, PastilleDate, Surtitre } from '@/components/app/Ui';
@@ -95,6 +96,8 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
   const lundiProchain = ajouterJours(jour, 7 - ((new Date(`${jour}T12:00:00Z`).getUTCDay() + 6) % 7));
   const dateProchain = a.objectifs.find((o) => o.plan_id === prochain)?.course_date ?? '';
   const pastilles: [string, boolean][] = [
+    // Son mode (décision coach du 23/10/2026), en premier.
+    [a.mode === 'plan' ? 'Mode : Plan' : 'Mode : Coaching', a.mode !== 'plan'],
     [a.nolio_athlete_id ? 'Nolio relié' : 'Nolio à associer', Boolean(a.nolio_athlete_id)],
     [accord ? 'Accord de lecture reçu' : 'Sans accord de lecture', Boolean(accord)],
     [a.compte_id ? 'App : ouverte' : 'App : à inviter', Boolean(a.compte_id)],
@@ -198,6 +201,17 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
               })}
             </Carte>
           )}
+
+          {/* Son mode, coaching ou plan (décision coach du 23/10/2026, « le vérifier avec un bouton »). */}
+          <Carte id="mode" className="!p-5 space-y-2 scroll-mt-6">
+            <Surtitre>Son mode</Surtitre>
+            <p className="text-sm leading-relaxed text-[#4A4866]">
+              {a.mode === 'plan'
+                ? `Plan${a.mode_le ? ` depuis le ${new Date(a.mode_le).toLocaleDateString('fr-FR')}` : ''} : rien ne s’écrit pour lui ici, sa fiche reste pour l’historique. Son app est celle d’un acheteur : ses plans achetés, leurs séances dans Nolio.`
+                : 'Coaching : ses objectifs s’écrivent ici, son app est celle d’un coaché. S’il arrête le coaching pour un plan acheté, passe-le en plan.'}
+            </p>
+            {a.mode === 'plan' ? <PasserEnCoaching athleteId={a.id} nom={a.nom.split(' ')[0]} /> : <PasserEnPlan athleteId={a.id} nom={a.nom.split(' ')[0]} />}
+          </Carte>
 
           <Carte className="!p-5 space-y-3">
             <Surtitre>Sa programmation</Surtitre>

@@ -14,10 +14,12 @@ export type Demande = {
 };
 export const estRetrait = (d: Pick<Demande, 'plan_id'>) => Boolean(d.plan_id);
 
-// La fiche coaché d'un compte invité dans l'app (T6), ou null.
+// La fiche coaché d'un compte invité dans l'app (T6), ou null ; null aussi en mode plan (décision coach du 23/10/2026) :
+// son app est alors celle d'un acheteur.
 export async function ficheDuCompte(compteId: string): Promise<{ id: string; coach_id: string; nom: string } | null> {
-  const { data } = await clientService().from('athletes_coaches').select('id, coach_id, nom').eq('compte_id', compteId).limit(1);
-  return (data?.[0] ?? null) as { id: string; coach_id: string; nom: string } | null;
+  const { data } = await clientService().from('athletes_coaches').select('*').eq('compte_id', compteId);
+  const f = (data ?? []).find((x) => x.mode !== 'plan');
+  return f ? { id: String(f.id), coach_id: String(f.coach_id), nom: String(f.nom) } : null;
 }
 
 export async function demandesDuCoach(coachId: string): Promise<(Demande & { nom: string })[]> {

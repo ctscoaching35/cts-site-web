@@ -19,8 +19,11 @@ const MONTRE = 'https://help.nolio.io/fr/collections/19748649-connecter-un-appar
 
 type Etape = { fait: boolean; titre: string; texte?: React.ReactNode };
 
-export default function PourBienDemarrer({ acheteur, nolio, accord, questionnaire, installer, profil = true, lienProfil = '' }: {
+// seanceFaite : une séance faite remontée de Nolio (avec son accord de lecture) ; elle coche l'appli Nolio et la montre
+// (décision coach du 23/10/2026).
+export default function PourBienDemarrer({ acheteur, nolio, accord, questionnaire, installer, profil = true, lienProfil = '', seanceFaite = false }: {
   acheteur: boolean; nolio: EtatNolio; accord: boolean; questionnaire: boolean; installer: string; profil?: boolean; lienProfil?: string;
+  seanceFaite?: boolean;
 }) {
   const [installee, setInstallee] = useState(false);
   const [masquee, setMasquee] = useState(false);
@@ -46,9 +49,11 @@ export default function PourBienDemarrer({ acheteur, nolio, accord, questionnair
         ? 'Ton invitation n’a pas abouti : réponds simplement à ton e-mail de bienvenue, nous t’en renvoyons une.'
         : 'Nolio t’écrit à l’adresse de ton achat (ou de ton compte Nolio) : accepte l’invitation, ou connecte-toi avec les '
           + 'identifiants reçus. Regarde aussi dans tes indésirables.' },
-    { fait: false, titre: 'Installe l’appli Nolio et relie ta montre', texte: (
-      <>{lienExterne(APP_STORE, 'App Store')} · {lienExterne(GOOGLE_PLAY, 'Google Play')} · {lienExterne(MONTRE, 'Relier ta montre ›')}</>
-    ) },
+    seanceFaite
+      ? { fait: true, titre: 'L’appli Nolio et ta montre sont reliées' }
+      : { fait: false, titre: 'Installe l’appli Nolio et relie ta montre', texte: (
+        <>{lienExterne(APP_STORE, 'App Store')} · {lienExterne(GOOGLE_PLAY, 'Google Play')} · {lienExterne(MONTRE, 'Relier ta montre ›')}</>
+      ) },
   ] : [
     { fait: true, titre: 'Ton espace CTS est ouvert' },
     profil

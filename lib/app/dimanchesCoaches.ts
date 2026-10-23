@@ -31,10 +31,11 @@ const questionnaireCoache = () => ({
 // Chaque jour : la série de chaque coaché relié à Nolio, posée s'il n'en a pas, renouvelée quatre semaines avant sa fin.
 export async function programmerLesDimanches(): Promise<Compte[]> {
   const service = clientService();
-  const { data: fiches, error } = await service.from('athletes_coaches').select('id, nolio_athlete_id, questionnaires')
-    .not('nolio_athlete_id', 'is', null);
+  const { data: toutes, error } = await service.from('athletes_coaches').select('*').not('nolio_athlete_id', 'is', null);
   // Avant la migration du 21/10/2026, la colonne n'existe pas : rien à faire.
-  if (error) return [];
+  if (error || toutes?.some((f) => !('questionnaires' in f))) return [];
+  // Un athlète en mode plan (décision coach du 23/10/2026) n'a plus sa série : celle de son plan acheté la remplace.
+  const fiches = (toutes ?? []).filter((f) => f.mode !== 'plan');
   const aujourdhui = aujourdhuiParis();
   const comptes: Compte[] = [];
   let hooper: string | null | undefined;
@@ -87,4 +88,36 @@ export async function noterLeMot(ficheIds: string[], qui: string): Promise<void>
     if (serie.mot_le && serie.mot_le >= mot) continue;
     await service.from('athletes_coaches').update({ questionnaires: { ...serie, mot_le: mot, mot_note: new Date().toISOString() } }).eq('id', f.id);
   }
+}
+
+// Sa série retirée de Nolio, à partir de son prochain dimanche (décision coach du 23/10/2026 : passé en mode plan, il a
+// celle de son plan acheté) ; la fiche l'oublie, le passage quotidien la repose s'il revient en coaching. Ce qui n'a pas
+// pu partir, en phrases.
+export async function retirerLesDimanches(ficheId: string): Promise<string[]> {
+  const service = clientService();
+  const { data: f } = await service.from('athletes_coaches').select('*').eq('id', ficheId).maybeSingle();
+  const serie = (f?.questionnaires ?? null) as DimanchesCoache | null;
+  const usr = String(f?.nolio_athlete_id ?? '');
+  if (!f || !serie || !/^usr_/.test(usr)) return [];
+  const d = await destinataire(usr);
+  const qui = d.moi ? '' : `athlete=${d.usr}`;
+  const series = new Set<string>();
+  for (const id of [serie.semaine, serie.hooper].filter((x): x is string => Boolean(x))) {
+    const r = await appelNolio('GET', `planned/quizzes/${id}/${qui ? `?${qui}` : ''}`).catch(() => null);
+    const rec = r?.statut === 200 ? (r.corps?.recurrence as { id?: string } | null | undefined)?.id : undefined;
+    if (rec) series.add(rec);
+  }
+  const demain = ajouterJours(aujourdhuiParis(), 1);
+  type Quiz = { id: string; date_start: string; recurrence?: { id?: string } | null };
+  const avenir = (await listeNolio<Quiz>(`planned/quizzes/?date_from=${demain}&date_to=${serie.jusqua ?? ajouterJours(demain, 7 * SEMAINES)}${qui ? `&${qui}` : ''}`)
+    .catch(() => [] as Quiz[])).filter((q) => q.date_start.slice(0, 10) >= demain).sort((a, b) => a.date_start.localeCompare(b.date_start));
+  const soucis: string[] = [];
+  for (const rec of series) {
+    const premier = avenir.find((q) => q.recurrence?.id === rec);
+    if (!premier) continue;
+    const r = await appelNolio('DELETE', `planned/quizzes/${premier.id}/?recurrence_action=following${qui ? `&${qui}` : ''}`).catch(() => null);
+    if (!r || (r.statut !== 204 && r.statut !== 200 && r.statut !== 404)) soucis.push(r ? refusNolio(r, 'ses questionnaires du dimanche') : 'ses questionnaires du dimanche : Nolio injoignable');
+  }
+  if (!soucis.length) await service.from('athletes_coaches').update({ questionnaires: null }).eq('id', ficheId);
+  return soucis;
 }
