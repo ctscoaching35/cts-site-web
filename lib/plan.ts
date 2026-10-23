@@ -175,36 +175,63 @@ export function avertissements(c: Champs, config: ConfigPlan, aujourdhui = new D
 // renvoyer au coaching qu'il est en train de faire.
 const HORS_DU_MOTEUR = 'Le moteur ne construit pas ce cas : à préparer toi-même, hors du parcours automatique.';
 
+// LES REPÈRES DE CHRONO EN CINQ BANDES (décisions coach du 23/10/2026 ; CTS_CHRONO_RECHERCHE.md dans le dépôt du moteur) :
+// la vitesse médiane des finishers selon la taille de la course en km-effort (presque plate jusqu'à 190, puis la
+// deuxième nuit), et cinq bandes de finishers coupées à 10, 30, 60 et 85 % : élite au-dessus de 1,35 fois la médiane,
+// rapide de 1,12 à 1,35, intermédiaire de 0,96 à 1,12, prudent de 0,86 à 0,96, proche des barrières en dessous.
+export function vitesseMediane(ke: number): number {
+  return ke <= 190 ? 8.9 * (ke / 60) ** -0.07 : 8.2 * (ke / 190) ** -0.58;
+}
+const COUPURES = [1.35, 1.12, 0.96, 0.86];
+const NOMS_BANDES = ['élite', 'rapide', 'intermédiaire', 'prudent', 'proche des barrières'];
+const heuresMinutes = (h: number) => {
+  const t = Math.round(h * 12) * 5;
+  return `${Math.floor(t / 60)}h${String(t % 60).padStart(2, '0')}`;
+};
+const kmEffort = (km: string, dplus: string) => {
+  const k = parseFloat(km.replace(',', '.'));
+  return k > 0 ? k + (parseFloat(dplus.replace(',', '.')) || 0) / 100 : 0;
+};
+
 export function reperesChrono(c: Champs, config: ConfigPlan, coach = false): string | null {
-  const vitesses = config.reperes_km_effort_h[c.format];
-  const km = parseFloat(c.distance_km.replace(',', '.'));
-  const dp = parseFloat(c.dplus_m.replace(',', '.')) || 0;
-  if (!vitesses || !(km > 0)) return null;
-  const ke = km + dp / 100;
-  const fmt = (h: number) => {
-    const t = Math.round(h * 12) * 5;
-    return `${Math.floor(t / 60)}h${String(t % 60).padStart(2, '0')}`;
-  };
-  // Un repère au-delà du plafond du format le dit, au lieu de proposer un chrono que le
-  // formulaire refusera ensuite (audit du 27/09/2026, C21 ; décision coach du 28/09/2026 :
-  // « dire la vérité au bon endroit »). UTMB : allure prudente 54h10, plafond 45h.
+  const ke = kmEffort(c.distance_km, c.dplus_m);
+  if (!c.format || !(ke > 0)) return null;
+  // Un repère au-delà du plafond du format le dit, au lieu de proposer un chrono que le formulaire refusera ensuite
+  // (audit du 27/09/2026, C21 ; décision coach du 28/09/2026 : « dire la vérité au bon endroit »).
   const plafond = config.temps_max_par_format[c.format];
-  const heures = vitesses.map((v) => ke / v);
-  const depasse = plafond !== undefined && heures.some((h) => h > plafond);
-  // Des fourchettes plutôt que des chronos figés (décision coach du 20/10/2026) : trois fourchettes qui se suivent,
-  // coupées à mi-chemin entre deux vitesses repères et prolongées d'une demi-marche aux deux bouts. Au-delà du plafond
-  // du format, la fourchette s'y arrête.
-  const [vr, vm, vp] = vitesses;
-  const bornes = [vr + (vr - vm) / 2, (vr + vm) / 2, (vm + vp) / 2, vp - (vm - vp) / 2].map((v) => ke / v);
-  const fourchette = (de: number, a: number) =>
-    plafond !== undefined && de > plafond ? `plus de ${plafond}h`
-      : `${fmt(de)} à ${plafond !== undefined && a > plafond ? `${plafond}h` : fmt(a)}`;
-  const [rapide, moyenne, prudente] = [0, 1, 2].map((i) => fourchette(bornes[i], bornes[i + 1]));
+  const [p10, p30, p60, p85] = COUPURES.map((k) => ke / (k * vitesseMediane(ke)));
+  const borne = (h: number) => (plafond !== undefined && h > plafond ? `${plafond}h` : heuresMinutes(h));
+  const de = (h1: number, h2: number) => (plafond !== undefined && h1 > plafond ? `plus de ${plafond}h` : `${heuresMinutes(h1)} à ${borne(h2)}`);
+  const bandes = [`élite moins de ${borne(p10)}`, `rapide ${de(p10, p30)}`, `intermédiaire ${de(p30, p60)}`, `prudent ${de(p60, p85)}`,
+    `proche des barrières plus de ${borne(p85)}`];
+  const depasse = plafond !== undefined && p85 > plafond;
   const fin = depasse
     ? (coach ? ` Au-delà de ${plafond}h, c’est hors du plafond de ce plan. ${HORS_DU_MOTEUR}`
       : ` Au-delà de ${plafond}h, c’est hors du plafond de ce plan : un coaching individualisé est plus adapté.`)
-    : ' Choisis d’après ta propre expérience de course.';
-  return `Ta course fait ${Math.round(ke)} km-effort (km + D+/100). Repères de chrono sur ce format : allure rapide ${rapide}, allure moyenne ${moyenne}, allure prudente ${prudente}.${fin}`;
+    : coach ? '' : ' Choisis d’après ta propre expérience de course.';
+  return `Ta course fait ${Math.round(ke)} km-effort (km + D+/100). Repères de chrono, d’après les finishers de courses de cette taille : `
+    + `${bandes.join(' · ')}. Course technique, chaude ou de nuit : vise plutôt la bande d’en dessous ; très roulante : celle d’au-dessus.${fin}`;
+}
+
+// LA COURSE DE RÉFÉRENCE (décision coach du 23/10/2026, facultative) : une course récente, ramenée à la course visée par
+// la pente des vainqueurs (temps en km-effort à la puissance 1,2, la plus juste pour un même coureur) ; sa bande et un
+// chrono estimé à 6 % près. Réserve quand les deux courses sont très différentes, ou au-delà d'une nuit.
+export type CourseReference = { km: string; dplus: string; temps: string };
+export function placementReference(c: Champs, ref: CourseReference): string | null {
+  const ke = kmEffort(c.distance_km, c.dplus_m);
+  const keRef = kmEffort(ref.km, ref.dplus);
+  const tRef = lireTemps(ref.temps);
+  if (!(ke > 0 && keRef > 0 && tRef && tRef > 0)) return null;
+  const t = tRef * (ke / keRef) ** 1.2;
+  const r = ke / t / vitesseMediane(ke);
+  const bande = NOMS_BANDES[COUPURES.findIndex((k) => r > k)] ?? NOMS_BANDES[4];
+  const ecart = ke / keRef;
+  const reserves = [
+    ecart > 2 || ecart < 0.5 ? `les deux courses sont très différentes (${Math.round(keRef)} contre ${Math.round(ke)} km-effort)` : '',
+    t > 30 && tRef < 24 ? 'au-delà d’une nuit, la fatigue pèse davantage : vise plutôt la bande d’en dessous' : '',
+  ].filter(Boolean);
+  return `Cette course de référence (${Math.round(keRef)} km-effort en ${heuresMinutes(tRef)}) place en bande ${bande} : environ `
+    + `${heuresMinutes(t)} ici (${heuresMinutes(t * 0.94)} à ${heuresMinutes(t * 1.06)}).${reserves.length ? ` À prendre avec prudence : ${reserves.join(' ; ')}.` : ''}`;
 }
 
 /**

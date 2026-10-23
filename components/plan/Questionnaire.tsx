@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { compterEtape } from '@/lib/mesure';
 import clsx from 'clsx';
 import { estimerChrono } from '@/lib/app/route';
-import { alerteSortieLongue, API_URL, avertissements, type Champs, champsVides, type ConfigPlan, dureeConseillee, dureesPossibles, formatDepuisDistance, formatOuvert, intakePourApi, noteFormat, plancherSeances, reperesChrono, FORMATS_ROUTE, textes } from '@/lib/plan';
+import { alerteSortieLongue, API_URL, avertissements, type Champs, champsVides, type ConfigPlan, dureeConseillee, dureesPossibles, formatDepuisDistance, formatOuvert, intakePourApi, noteFormat, placementReference, plancherSeances, reperesChrono, FORMATS_ROUTE, textes, type CourseReference } from '@/lib/plan';
 
 const NOMS_JOURS: Record<string, string> = {
   lundi: 'Lundi', mardi: 'Mardi', mercredi: 'Mercredi', jeudi: 'Jeudi',
@@ -207,6 +207,9 @@ export default function Questionnaire({
   const freqMin = plancher?.min ?? 3;
   const freqMax = plancher?.max ?? 7;
   const reperes = config ? reperesChrono(c, config, coach) : null;
+  // La course de référence, facultative (décision coach du 23/10/2026) : elle place dans une bande ; elle n'est pas gardée.
+  const [reference, setReference] = useState<CourseReference>({ km: '', dplus: '', temps: '' });
+  const placement = placementReference(c, reference);
   const alerteSl = config ? alerteSortieLongue(c, config) : null;
   const alertes = useMemo(() => (config ? avertissements(c, config) : []), [c, config]);
 
@@ -631,6 +634,23 @@ export default function Questionnaire({
           <input id="temps" className={inputCls} required={!chronoEstime}
             placeholder={chronoEstime ? `estimé : ${chronoEstime}` : infoRoute ? `ex. ${infoRoute.exemple}` : 'ex. 5h30'} value={c.temps_cible} onChange={(e) => maj('temps_cible')(e.target.value)} />
           {reperes && !route && <p className="text-sm text-teal mt-2 leading-relaxed">{reperes}</p>}
+          {!route && (
+            <details className="mt-3" open={Boolean(reference.km || reference.temps)}>
+              <summary className="cursor-pointer inline-flex items-center min-h-11 text-sm font-semibold text-teal">Une course récente de référence, facultative</summary>
+              <div className="mt-1 grid grid-cols-3 gap-2">
+                {([['km', 'Distance (km)', 'ex. 42'], ['dplus', 'D+ (m)', 'ex. 2000'], ['temps', 'Temps', 'ex. 6h10']] as const).map(([cle, nom, ex]) => (
+                  <label key={cle} className="block text-xs font-semibold text-indigo">{nom}
+                    <input className={`${inputCls} mt-1`} inputMode={cle === 'temps' ? 'text' : 'decimal'} placeholder={ex} value={reference[cle]}
+                      onChange={(e) => setReference((r) => ({ ...r, [cle]: e.target.value }))} />
+                  </label>
+                ))}
+              </div>
+              <p className={aideCls}>Elle situe le coureur dans une bande, ramenée à la taille de cette course ; elle n’est pas gardée.</p>
+            </details>
+          )}
+          {placement && !route && (
+            <p role="status" className="bg-sand rounded-r-xl border-l-4 border-teal px-4 py-3 mt-2 text-[0.8125rem] text-indigo leading-relaxed">{placement}</p>
+          )}
           <p className={aideCls}>
             {infoRoute ? `Son chrono visé sur ${infoRoute.court} : il fixe l’allure de ses séances spécifiques. Écris-le en heures et minutes (${infoRoute.exemple}).${chronoEstime ? ` Laissé vide, l’estimation d’après sa vitesse critique (${chronoEstime}) le remplace.` : ''}`
               : <>
