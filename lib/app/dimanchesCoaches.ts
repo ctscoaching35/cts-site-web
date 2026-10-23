@@ -28,7 +28,47 @@ const questionnaireCoache = () => ({
   items: [...QUESTIONNAIRE_SEMAINE.items, { question: QUESTION_OUVERTE, type: 'long_text', is_mandatory: false }],
 });
 
-// Chaque jour : la série de chaque coaché relié à Nolio, posée s'il n'en a pas, renouvelée quatre semaines avant sa fin.
+// Les séries du dimanche en double (vu le 23/10/2026 : celles posées le 22, encore là, et celles reposées le 23, décision
+// coach du 23/10/2026, « le site les retire ») : chez un coaché, toute autre série « Ta semaine prochaine » ou Hooper qui
+// tombe les mêmes dimanches que la sienne part, à partir de sa prochaine date. Sa série, celle qui la suit (son
+// renouvellement) et un questionnaire seul restent ; sans sa série retrouvée dans Nolio, rien ne part. Le nombre de
+// séries retirées, et ce qui n'a pas pu partir.
+type QuizPrevu = { id: string; name?: string; quiz_type?: string; date_start: string; recurrence?: { id?: string } | null };
+const genreDu = (q: QuizPrevu) => (q.name === QUESTIONNAIRE_SEMAINE.name ? 'semaine'
+  : q.quiz_type === 'hooper' || /hooper/i.test(q.name ?? '') ? 'hooper' : null);
+
+export async function retirerLesDoubles(usr: string, serie: DimanchesCoache): Promise<{ retirees: number; soucis: string[] }> {
+  const d = await destinataire(usr);
+  const qui = d.moi ? '' : `athlete=${d.usr}`;
+  const demain = ajouterJours(aujourdhuiParis(), 1);
+  const avenir = (await listeNolio<QuizPrevu>(`planned/quizzes/?date_from=${demain}&date_to=${ajouterJours(demain, 7 * SEMAINES)}${qui ? `&${qui}` : ''}`))
+    .filter((q) => q.recurrence?.id && q.date_start.slice(0, 10) >= demain)
+    .sort((a, b) => a.date_start.localeCompare(b.date_start));
+  let retirees = 0;
+  const soucis: string[] = [];
+  for (const [genre, id] of [['semaine', serie.semaine], ['hooper', serie.hooper]] as const) {
+    if (!id) continue;
+    const r = await appelNolio('GET', `planned/quizzes/${id}/${qui ? `?${qui}` : ''}`).catch(() => null);
+    const sienne = r?.statut === 200 ? (r.corps?.recurrence as { id?: string } | null | undefined)?.id : undefined;
+    const ses = new Set(avenir.filter((q) => sienne && q.recurrence?.id === sienne).map((q) => q.date_start.slice(0, 10)));
+    if (!ses.size) continue;
+    const autres = new Map<string, QuizPrevu[]>();
+    for (const q of avenir) {
+      const rec = String(q.recurrence?.id);
+      if (rec !== sienne && genreDu(q) === genre) autres.set(rec, [...(autres.get(rec) ?? []), q]);
+    }
+    for (const occurrences of autres.values()) {
+      if (!occurrences.some((q) => ses.has(q.date_start.slice(0, 10)))) continue;
+      const x = await appelNolio('DELETE', `planned/quizzes/${occurrences[0].id}/?recurrence_action=following${qui ? `&${qui}` : ''}`).catch(() => null);
+      if (x && (x.statut === 204 || x.statut === 200 || x.statut === 404)) retirees += 1;
+      else soucis.push(x ? refusNolio(x, 'une série du dimanche en double') : 'une série du dimanche en double : Nolio injoignable');
+    }
+  }
+  return { retirees, soucis };
+}
+
+// Chaque jour : la série de chaque coaché relié à Nolio, posée s'il n'en a pas, renouvelée quatre semaines avant sa fin ;
+// puis ses doubles retirés.
 export async function programmerLesDimanches(): Promise<Compte[]> {
   const service = clientService();
   const { data: toutes, error } = await service.from('athletes_coaches').select('*').not('nolio_athlete_id', 'is', null);
@@ -41,9 +81,9 @@ export async function programmerLesDimanches(): Promise<Compte[]> {
   let hooper: string | null | undefined;
   for (const f of fiches ?? []) {
     const usr = String(f.nolio_athlete_id ?? '');
-    const serie = (f.questionnaires ?? null) as DimanchesCoache | null;
-    if (!/^usr_/.test(usr) || (serie?.jusqua && serie.jusqua > ajouterJours(aujourdhui, MARGE_J))) continue;
-    try {
+    let serie = (f.questionnaires ?? null) as DimanchesCoache | null;
+    if (!/^usr_/.test(usr)) continue;
+    if (!(serie?.jusqua && serie.jusqua > ajouterJours(aujourdhui, MARGE_J))) try {
       const d = await destinataire(usr);
       const premier = dimancheApres(serie?.jusqua && serie.jusqua > aujourdhui ? serie.jusqua : aujourdhui);
       const recurrence = { frequency: 'weekly', weekdays: [7], period_count: SEMAINES };
@@ -63,8 +103,18 @@ export async function programmerLesDimanches(): Promise<Compte[]> {
       };
       await service.from('athletes_coaches').update({ questionnaires: suite }).eq('id', f.id);
       comptes.push({ plan: '', quoi: `dimanches posés jusqu’au ${suite.jusqua}${suite.hooper ? '' : ' (sans Hooper)'}` });
+      serie = suite;
     } catch (e) {
       comptes.push({ plan: '', quoi: 'dimanches non posés', erreur: e instanceof Error ? e.message : String(e) });
+      continue;
+    }
+    if (!serie?.semaine) continue;
+    try {
+      const { retirees, soucis } = await retirerLesDoubles(usr, serie);
+      if (retirees) comptes.push({ plan: '', quoi: `${retirees} série${retirees > 1 ? 's' : ''} du dimanche en double retirée${retirees > 1 ? 's' : ''}` });
+      if (soucis.length) comptes.push({ plan: '', quoi: 'doubles du dimanche restés', erreur: soucis.join(' ; ') });
+    } catch (e) {
+      comptes.push({ plan: '', quoi: 'doubles du dimanche non vérifiés', erreur: e instanceof Error ? e.message : String(e) });
     }
   }
   return comptes;
