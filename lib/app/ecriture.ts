@@ -394,6 +394,7 @@ async function envoyerEtRanger(o: Objectif, numero: string, sortie: SortieMoteur
     sans_ajustement: Boolean(options.sansAjustement), etat_avant: o.etat, ecrite_le: new Date().toISOString(),
   });
   await programmerParole(o, semaine);
+  if (semaine.lundi) await fichesDesPreparations(o, ajouterJours(semaine.lundi, 6));
   if (sortie.realise) {
     await service.from('semaines_ecrites').update({ realise: sortie.realise }).eq('plan_id', o.planId).eq('numero', sortie.realise.numero);
   }
@@ -444,46 +445,15 @@ export async function retirerLaTrameAuDela(): Promise<Compte[]> {
   return comptes;
 }
 
-// Les questionnaires du dimanche, récurrents jusqu'à la course : « Ta semaine prochaine » pour tous, le Hooper avec
-// l'accord de lecture (T5, Hooper chaque dimanche matin, question 12).
-async function programmerQuestionnaires(o: Objectif, premierDimanche: string) {
-  // Un coaché a sa série à lui, sur sa fiche (dimanchesCoaches, décision coach du 21/10/2026) : acheteurs seulement ici.
-  if (o.coache || o.envois.some((e) => e.semaine === QUESTIONNAIRES)) return;
-  const d = await destinataire(o.nolioAthlete);
-  const jusqua = ajouterJours(o.plan.course.date, -1);
-  if (premierDimanche > jusqua) return;
-  const recurrence = { frequency: 'weekly', weekdays: [7], until: jusqua };
-  const pour = (corps: Record<string, unknown>) => (d.moi ? corps : { ...corps, athletes: [d.usr] });
-  const crees: SeanceEnvoyee[] = [];
-  const semaine = await appelNolio('POST', 'planned/quizzes/', pour({ ...QUESTIONNAIRE_SEMAINE, date_start: premierDimanche,
-    hour_start: '08:00', recurrence }));
-  if (semaine.statut !== 201 && semaine.statut !== 200) throw new Error(refusNolio(semaine, 'le questionnaire du dimanche'));
-  crees.push({ jour_id: 'questionnaire:semaine', nolio_id: String(semaine.corps?.id ?? ''), genre: 'note' });
-  // Noté aussitôt : un départ repris ne le pose pas deux fois.
-  await garderEnvoi(o.coachId, o.planId, QUESTIONNAIRES, crees);
-  // Le Hooper pour les acheteurs, avec leur accord ; les coachés remplissent déjà celui que leur coach programme.
-  if (o.accordLecture && !o.coache) {
-    const h = await programmerHooper(o, premierDimanche);
-    if (h) crees.push(h);
-  }
-  await garderEnvoi(o.coachId, o.planId, QUESTIONNAIRES, crees);
-}
-
-// Le Hooper du dimanche, récurrent jusqu'à la veille de la course ; null s'il n'a pas pu être posé. Il ne bloque jamais
-// le départ (défaut vu le 20/10/2026 sur l'achat test : un paramètre que Nolio refusait arrêtait tout, avant la première
-// semaine).
-async function programmerHooper(o: Objectif, premierDimanche: string): Promise<SeanceEnvoyee | null> {
-  const jusqua = ajouterJours(o.plan.course.date, -1);
-  if (!o.nolioAthlete || premierDimanche > jusqua) return null;
-  const d = await destinataire(o.nolioAthlete);
-  const cadres = await listeNolio<{ id: string; scope?: string; quiz_type?: string }>('library/quiz_frames/?quiz_type=hooper')
-    .catch(() => []);
-  const hooper = cadres.find((c) => c.scope === 'nolio') ?? cadres[0];
-  if (!hooper) return null;
-  const corps = { quiz_frame: hooper.id, date_start: premierDimanche, hour_start: '08:00',
-    recurrence: { frequency: 'weekly', weekdays: [7], until: jusqua } };
-  const h = await appelNolio('POST', 'planned/quizzes/', d.moi ? corps : { ...corps, athletes: [d.usr] }).catch(() => null);
-  return h && (h.statut === 201 || h.statut === 200) ? { jour_id: 'questionnaire:hooper', nolio_id: String(h.corps?.id ?? ''), genre: 'note' } : null;
+// Le dimanche qui vient d'un acheteur (une semaine à la fois, décision coach du 23/10/2026 ; dimanchesCoaches) : son
+// questionnaire, et le Hooper avec son accord de lecture. Un coaché a le sien sur sa fiche.
+async function dimancheDeLAcheteur(o: Objectif) {
+  if (o.coache || !o.nolioAthlete) return;
+  const { dimancheDuPlan } = await import('./dimanchesCoaches');
+  const { data: p } = await clientService().from('plans').select('accord_lecture_le').eq('id', o.planId).maybeSingle();
+  const c = await dimancheDuPlan({ id: o.planId, coach_id: o.coachId, nolio_athlete_id: o.nolioAthlete,
+    accord_lecture_le: (p?.accord_lecture_le as string | null) ?? null });
+  if (c.erreur) console.error(`Dimanche de ${o.planId} :`, c.erreur);
 }
 
 // L'accord de lecture donné après l'achat, dans l'onglet Compte (décision coach du 21/10/2026) : noté, et, la préparation
@@ -493,16 +463,11 @@ export async function donnerAccordLecture(planId: string): Promise<void> {
   const o = await objectifEcrit(planId);
   if (!o || o.coache) throw new Error('Plan introuvable');
   await clientService().from('plans').update({ accord_lecture_le: new Date().toISOString() }).eq('id', planId);
-  const questionnaires = o.envois.find((e) => e.semaine === QUESTIONNAIRES);
-  if (!questionnaires) return;
-  const h = await programmerHooper(o, dimancheSuivant(ajouterJours(aujourdhuiParis(), 1)));
-  if (!h) return;
-  const gardes = (questionnaires.seances as SeanceEnvoyee[]).filter((s) => s.jour_id !== 'questionnaire:hooper');
-  await garderEnvoi(o.coachId, o.planId, QUESTIONNAIRES, [...gardes, h]);
+  // Sa préparation partie dans Nolio : le Hooper rejoint son dimanche qui vient.
+  if (o.envois.some((e) => e.semaine === QUESTIONNAIRES)) await dimancheDeLAcheteur(o);
 }
 
 const aujourdhuiParis = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
-const dimancheSuivant = (iso: string) => ajouterJours(iso, (7 - ((new Date(`${iso}T12:00:00Z`).getUTCDay() + 6) % 7) - 1 + 7) % 7);
 
 // Le départ d'un objectif écrit semaine par semaine : la trame, les questionnaires, la semaine en cours (ou la
 // première), et pour un acheteur sa place dans le groupe « Plans CTS » et sa sortie programmée (P2, P3).
@@ -612,15 +577,13 @@ export async function demarrerObjectif(planId: string, { prevenir = true, lundi,
     if (o.coache && !o.envois.length) {
       await ancrerAuDepart(o, premier).catch((e) => console.error(`Ancrage de ${planId} :`, e instanceof Error ? e.message : e));
     }
-    await programmerQuestionnaires(o, dimancheSuivant(premier));
+    await dimancheDeLAcheteur(o);
     // OM3 : l'objectif et ses courses de préparation, en compétitions dans Nolio.
     const { course } = o.plan;
     await poserCourse(o, { nom: course.nom, date: course.date, distance_km: course.distance_km, dplus_m: course.dplus_m }, true);
     for (const c of ((o.parametres.courses_secondaires ?? []) as Course[])) if (c.date >= aujourdhui) await poserCourse(o, c, false);
-    // PO4 : la fiche de chaque course de préparation à venir (après la migration du 19/10/2026).
-    const { data: fp } = await service.from('plans').select('fiches_preparation').eq('id', planId).maybeSingle();
-    const fiches = ((fp as { fiches_preparation?: Record<string, unknown> } | null)?.fiches_preparation ?? {});
-    for (const c of ((o.parametres.courses_secondaires ?? []) as Course[])) if (c.date >= aujourdhui && fiches[c.date]) await poserFichePreparation(o, c);
+    // PO4 : la fiche d'une course de préparation qui tombe dans sa première semaine ; les suivantes partent avec la leur.
+    await fichesDesPreparations(o, ajouterJours(premiere.lundi, 6));
     const deja = o.envois.some((e) => e.semaine === premiere.numero);
     if (!deja) await ecrireEtEnvoyer(o, premiere.numero, null, { depuis: depart > premiere.lundi ? depart : undefined, reprise });
     if (!o.coache) await rangerAcheteur(o);
@@ -1003,8 +966,12 @@ export async function retirerAccordLecture(planId: string): Promise<void> {
     const d = await destinataire(o.nolioAthlete);
     for (const [q, recurrence] of [...(hooper ? [[hooper, 'all'] as const] : []), ...paroles.map((p) => [p, 'one'] as const)]) {
       if (!q.nolio_id) continue;
-      const r = await appelNolio('DELETE', `planned/quizzes/${q.nolio_id}/?recurrence_action=${recurrence}${d.moi ? '' : `&athlete=${d.usr}`}`)
+      let r = await appelNolio('DELETE', `planned/quizzes/${q.nolio_id}/?recurrence_action=${recurrence}${d.moi ? '' : `&athlete=${d.usr}`}`)
         .catch(() => null);
+      // Un Hooper seul (une semaine à la fois, depuis le 23/10/2026) : sans série, il part seul.
+      if (r && r.statut === 400 && recurrence === 'all') {
+        r = await appelNolio('DELETE', `planned/quizzes/${q.nolio_id}/?recurrence_action=one${d.moi ? '' : `&athlete=${d.usr}`}`).catch(() => null);
+      }
       if (r && r.statut !== 204 && r.statut !== 200 && r.statut !== 404) console.error(`Questionnaire de ${planId} non retiré de Nolio : ${r.statut}`);
     }
   }
@@ -1072,6 +1039,25 @@ const SPORT_COURSE_A_PIED = 'spt_kNYHjuEzDJRiYCX';
 // discipline : « route » pour une course sur route (décision coach du 23/10/2026), le trail sinon.
 export type Course = { nom: string; date: string; distance_km: number; dplus_m: number; chrono?: string | null; temps_h?: number | null;
   discipline?: 'trail' | 'route' };
+
+// La fiche de course d'une course de préparation part avec la semaine où elle tombe (une semaine avant la course, ou
+// tout de suite si la course est plus proche ; décision coach du 23/10/2026, une semaine à la fois) : celles qui tombent
+// jusqu'au jusqua, par défaut la fin de la dernière semaine déjà envoyée.
+export async function fichesDesPreparations(o: Objectif, jusqua?: string) {
+  const aujourdhui = aujourdhuiParis();
+  const courses = ((o.parametres.courses_secondaires ?? []) as Course[]).filter((c) => c.date >= aujourdhui);
+  if (!courses.length) return;
+  const lundis = new Map(o.plan.semaines.map((s) => [s.numero, s.lundi]));
+  const fin = jusqua ?? o.envois.filter((e) => /^S\d+$/.test(e.semaine)).map((e) => lundis.get(e.semaine))
+    .filter((l): l is string => Boolean(l)).map((l) => ajouterJours(l, 6)).sort().pop() ?? aujourdhui;
+  const { data: fp } = await clientService().from('plans').select('fiches_preparation').eq('id', o.planId).maybeSingle();
+  const fiches = ((fp as { fiches_preparation?: Record<string, unknown> } | null)?.fiches_preparation ?? {});
+  for (const c of courses) {
+    if (fiches[c.date] && ajouterJours(c.date, -7) <= fin) {
+      await poserFichePreparation(o, c).catch((e) => console.error(`Fiche de ${o.planId} non posée dans Nolio :`, e instanceof Error ? e.message : e));
+    }
+  }
+}
 
 // PO4 (décision coach du 19/10/2026) : la fiche de course d'une course de préparation, en note Nolio une semaine avant
 // (dès aujourd'hui si la course est plus proche), avec son lien privé, comme la fiche de course de l'objectif ; en ocre,

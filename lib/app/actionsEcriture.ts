@@ -7,7 +7,7 @@
 import { revalidatePath } from 'next/cache';
 import { API_URL } from '@/lib/plan';
 import {
-  annulerAjustements, demarrerObjectif, donnerAccordLecture, objectifEcrit, plansALaMain, poserCourse, poserFichePreparation, rattraperLaSemaine,
+  annulerAjustements, demarrerObjectif, donnerAccordLecture, fichesDesPreparations, objectifEcrit, plansALaMain, poserCourse, rattraperLaSemaine,
   retirerAccordLecture, retirerCourseDeNolio, type Course,
 } from './ecriture';
 import { coachConnecte } from './nolio';
@@ -167,8 +167,9 @@ async function enregistrerCourse(planId: string, form: FormData, ancienne: strin
   if (depart?.demarre_le && !(await plansALaMain()).has(planId)) {
     const relu = (ancienne === null ? o : await objectifEcrit(planId)) ?? o;
     await poserCourse(relu, course, false).catch((e) => console.error(`Course de ${planId} non posée dans Nolio :`, e instanceof Error ? e.message : e));
-    // PO4 : sa fiche en note Nolio une semaine avant, avec son lien privé.
-    if (ficheGardee) await poserFichePreparation(relu, course).catch((e) => console.error(`Fiche de ${planId} non posée dans Nolio :`, e instanceof Error ? e.message : e));
+    // PO4 : sa fiche en note Nolio une semaine avant, avec son lien privé, si cette semaine est déjà dans Nolio ; sinon
+    // elle part avec sa semaine (une semaine à la fois, décision coach du 23/10/2026).
+    if (ficheGardee) await fichesDesPreparations(relu);
   }
   revalidatePath('/app/plan');
   revalidatePath(`/app/coach/plan/${planId}`);

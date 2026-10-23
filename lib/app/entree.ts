@@ -36,7 +36,7 @@ export function entreeDe(x: {
           ? { texte: 'Créer l’objectif ›', href: `/app/coach/nouveau?athlete=${x.athleteId}&course=${x.courseA.id}` }
           : { texte: '+ Nouvel objectif', href: `/app/coach/nouveau?athlete=${x.athleteId}` } },
     { cle: 'dimanches', titre: 'Ses dimanches dans Nolio', fait: dimanches,
-      detail: dimanches ? `Questionnaire et Hooper, posés jusqu’au ${dateLongue(x.dimanchesJusqua as string, true)}.`
+      detail: dimanches ? `Questionnaire et Hooper du ${dateLongue(x.dimanchesJusqua as string, true)} en place ; chaque soir, le site prépare le dimanche qui vient.`
         : nolio ? 'Questionnaire et Hooper : ils partent au passage de 18 h 30, rien à faire.'
           : 'Questionnaire et Hooper : ils partiront une fois Nolio relié.' },
     main
