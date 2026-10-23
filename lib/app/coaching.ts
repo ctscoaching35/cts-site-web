@@ -162,7 +162,7 @@ export async function chargeDepuisNolio(coachId: string, usr: string | null): Pr
   const periode = `du ${jm(debut)} au ${jm(ajouterJours(fin, -1))}`;
   const pourquoi = recul ? ` Sa course du ${jm(recul)} date de moins de 2 semaines : ce sont les 4 semaines d’avant son affûtage.` : '';
   if (!recentes.length) {
-    return { champs: charge, detail: `Rien en course ou trail dans Nolio ${periode} : les champs gardent ses dernières réponses, à corriger.${pourquoi}` };
+    return { champs: charge, detail: `Rien en course, trail ou tapis dans Nolio ${periode} : les champs gardent ses dernières réponses, à corriger.${pourquoi}` };
   }
   charge.volume_hebdo_actuel = enHeuresMinutes(recentes.reduce((a, r) => a + r.min, 0) / 4);
   const longue = recentes.reduce((a, r) => (r.min > a.min ? r : a));
@@ -170,7 +170,7 @@ export async function chargeDepuisNolio(coachId: string, usr: string | null): Pr
   const semaines = [0, 1, 2, 3].map((i) => `semaine du ${jm(ajouterJours(debut, 7 * i))} ${enHeuresMinutes(recentes
     .filter((r) => r.date >= ajouterJours(debut, 7 * i) && r.date < ajouterJours(debut, 7 * (i + 1))).reduce((a, r) => a + r.min, 0))}`);
   const sansCourse = competitions.some((c) => c >= debut && c < fin) ? ', sans le jour de course' : '';
-  return { champs: charge, detail: `Lu dans Nolio ${periode}, course et trail seulement (sans renfo ni autres sports${sansCourse}) : `
+  return { champs: charge, detail: `Lu dans Nolio ${periode}, course, trail et tapis seulement (sans renfo ni autres sports${sansCourse}) : `
     + `${semaines.join(' · ')}, soit ${charge.volume_hebdo_actuel} en moyenne ; plus longue sortie ${charge.sortie_longue_actuelle} le ${jm(longue.date)}.${pourquoi}` };
 }
 

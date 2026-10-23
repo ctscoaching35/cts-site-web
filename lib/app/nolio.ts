@@ -10,8 +10,9 @@ import { clientServeur } from './supabase';
 const NOLIO = 'https://www.nolio.io/api/v2';
 
 export const nolioConfigure = () => Boolean(process.env.NOLIO_API_KEY?.trim());
-// « Course à pied » et « Trail » dans le catalogue de Nolio (cts_nolio.SPORT_COURSE, SPORT_TRAIL).
-export const SPORTS_COURSE = ['spt_kNYHjuEzDJRiYCX', 'spt_YprHS7jgV5vdsz0'];
+// « Course à pied » et « Trail » dans le catalogue de Nolio (cts_nolio.SPORT_COURSE, SPORT_TRAIL), et « Course à pied -
+// Tapis » (décision coach du 23/10/2026 : le tapis compte comme de la course).
+export const SPORTS_COURSE = ['spt_kNYHjuEzDJRiYCX', 'spt_YprHS7jgV5vdsz0', 'spt_MN7QZspJBLkSzwy'];
 
 // Une erreur de Nolio dite au coach : sa phrase est faite pour lui et ne contient jamais la clé. Toute autre erreur
 // reste dans les journaux du serveur (elle pourrait la contenir : un en-tête refusé est cité en entier).
