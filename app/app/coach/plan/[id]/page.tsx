@@ -3,7 +3,6 @@ import clsx from 'clsx';
 import { notFound } from 'next/navigation';
 import BanniereSemaine from '@/components/app/BanniereSemaine';
 import CadreCoach from '@/components/app/CadreCoach';
-import EnvoiPlan from '@/components/app/EnvoiPlan';
 import EnvoiSemaine from '@/components/app/EnvoiSemaine';
 import { AjouterCourse, AnnulerSemaine, DemarrerNolio, ModifierCourse, RetirerCourse } from '@/components/app/GestesEcriture';
 import { Montagne } from '@/components/app/TableauDeBord';
@@ -128,7 +127,7 @@ export default async function ObjectifCoache({ params, searchParams }: {
         </div>
         <div className="flex flex-wrap gap-2.5">
           {/* « Modifier l'objectif » (décision coach du 22/10/2026) : tout avant le départ ; en route, sauf sa date et sa distance. */}
-          {ecriture?.parametres && course.date >= jour && (
+          {ecriture && course.date >= jour && (
             <Link href={`/app/coach/nouveau?athlete=${o.athlete.id}&modifier=${id}`} className="inline-flex items-center min-h-11 px-4 rounded-xl border border-indigo/[0.18] bg-white text-[0.8125rem] font-bold">Modifier</Link>
           )}
           <a href={lienFicheCourse(id)} target="_blank" rel="noopener" className="inline-flex items-center min-h-11 px-4 rounded-xl border border-indigo/[0.18] bg-white text-[0.8125rem] font-bold">Fiche de course</a>
@@ -228,9 +227,13 @@ export default async function ObjectifCoache({ params, searchParams }: {
 
           {!ecriture?.parametres && (
             <Carte className="!p-5 space-y-4">
-              <EnvoiPlan planId={id} actif={Boolean(nolio)} semaines={o.plan.semaines
-                .filter((s) => s.lundi && ajouterJours(s.lundi, 6) >= jour && !envois.some((e) => e.semaine === s.numero))
-                .map((s) => s.numero)} />
+              {/* L'ancien format ne s'envoie plus en entier (décision coach du 23/10/2026, « que tout se modifie ») :
+                  « Modifier » le passe au format semaine par semaine. */}
+              <p className="text-sm leading-relaxed text-[#4A4866]">
+                <strong className="text-indigo">Ancien format, envoyé en entier :</strong> ses semaines ne s’écrivent pas le
+                dimanche et ne s’ajustent pas. <Link href={`/app/coach/nouveau?athlete=${o.athlete.id}&modifier=${id}`} className="font-bold text-teal underline">Modifier</Link>{' '}
+                le passe au format semaine par semaine (ses semaines déjà dans Nolio restent), puis tu le démarres dans Nolio.
+              </p>
               {o.plan.semaines.map((s) => {
                 const e = envois.find((x) => x.semaine === s.numero);
                 return (

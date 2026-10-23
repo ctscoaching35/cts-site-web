@@ -31,7 +31,7 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
   // tient à jour (parametres.champs : sa charge relue au départ) l'emportent sur celles de la création.
   const aModifier = suite && !demande && typeof r.modifier === 'string' && suite.athlete.objectifs.some((o) => o.plan_id === r.modifier)
     ? (await clientService().from('plans').select('id, intake, parametres, demarre_le, course_nom').eq('id', r.modifier)
-      .eq('compte_id', coach.compteId).not('parametres', 'is', null).maybeSingle()).data
+      .eq('compte_id', coach.compteId).maybeSingle()).data
     : null;
   const pm = (aModifier?.parametres ?? null) as Record<string, unknown> | null;
   // Son profil de coureur, modifiable ici (décision coach du 23/10/2026) ; « Modifier l'objectif » le donne à sa
@@ -66,7 +66,9 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
           <h1 className="text-3xl sm:text-4xl text-indigo leading-tight">{aModifier ? `Modifier ${aModifier.course_nom}` : suite ? `Nouvel objectif ${route ? 'route' : 'trail'} pour ${suite.athlete.nom}` : 'Ajouter un athlète'}</h1>
           <p className="text-indigo/70 mt-2">
             {aModifier
-              ? `${aModifier.demarre_le
+              ? !aModifier.parametres
+                ? 'Ancien format, envoyé en entier : à l’enregistrement, il passe au format semaine par semaine, et tout se modifie comme pour les autres. Ses semaines déjà dans Nolio restent ; démarre-le ensuite dans Nolio.'
+              : `${aModifier.demarre_le
                 ? 'Il est en route : les semaines déjà écrites restent, les suivantes suivront tes réponses. Sa date, sa distance et son format ne changent plus. Sa charge est celle de son départ : corrige-la seulement si elle était fausse, la suite s’ajuste déjà chaque dimanche sur ce qu’il fait.'
                 : 'Tout se modifie. Un départ déjà programmé s’annule : tu redémarreras l’objectif après.'}${traceDonnee ? ' Sa trace est gardée si tu n’en donnes pas d’autre.' : ''}`
               : ''}

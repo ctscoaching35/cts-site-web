@@ -28,8 +28,10 @@ export async function POST(request: NextRequest) {
   const planModifie = String(formulaire.get('plan_id') ?? '');
   formulaire.delete('plan_id');
   const { data: ancien } = planModifie
+    // Un objectif à l'ancien format, envoyé en entier (avant le 19/10/2026), passe au format semaine par semaine (décision
+    // coach du 23/10/2026, « que tout se modifie ») : ses semaines déjà dans Nolio restent, gardées dans nolio_envois.
     ? await service0.from('plans').select('id, parametres, demarre_le').eq('id', planModifie).eq('compte_id', coach.compteId)
-      .not('parametres', 'is', null).maybeSingle()
+      .maybeSingle()
     : { data: null };
   if (planModifie && !ancien) return NextResponse.json({ message: 'Cet objectif ne se modifie pas.' }, { status: 404 });
   const anciensParametres = (ancien?.parametres ?? {}) as Record<string, unknown>;
@@ -88,6 +90,7 @@ export async function POST(request: NextRequest) {
     const { error } = await service.from('plans').update({
       course_nom: donnees.course.nom, course_date: donnees.course.date, debut_plan: donnees.course.date_debut_plan,
       schema: donnees.schema, version_moteur: donnees.version_moteur, donnees, intake: c2.intake ?? {}, parametres, trame: null,
+      coach_id: coach.compteId,
       ...(ancien.demarre_le ? {} : { depart_prevu: null }),
     }).eq('id', ancien.id);
     if (error) {
