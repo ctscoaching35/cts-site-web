@@ -53,7 +53,7 @@ export default async function ObjectifCoache({ params, searchParams }: {
   const service = clientService();
   const { data: ecriture } = await service.from('plans').select('parametres, demarre_le, depart_prevu').eq('id', id).single();
   const { data: ecrites } = ecriture?.parametres
-    ? await service.from('semaines_ecrites').select('numero, journal, bilan, sans_ajustement, ecrite_le, realise').eq('plan_id', id)
+    ? await service.from('semaines_ecrites').select('numero, journal, bilan, sans_ajustement, ecrite_le, realise, lundi:donnees->>lundi').eq('plan_id', id)
     : { data: null };
   const { data: tests } = ecriture?.parametres
     ? await service.from('tests_lus').select('jour_id, cle, statut, resultat, lu_le').eq('plan_id', id).order('lu_le', { ascending: false })
@@ -191,7 +191,8 @@ export default async function ObjectifCoache({ params, searchParams }: {
                     return (
                       <div key={w.numero} className={clsx('flex gap-3.5 p-3.5 rounded-xl', ajuste ? 'bg-[#FBF3F5] border border-[#EBC9D3]' : 'bg-sand')}>
                         <span className={clsx('w-12 text-[0.8125rem] font-extrabold', ajuste ? 'text-[#8A2E4A]' : 'text-teal')}>
-                          {lundiDe.get(String(w.numero)) ? jourMois(lundiDe.get(String(w.numero)) as string) : w.numero}
+                          {/* Une semaine de récupération, après la course, n'est pas dans la trame : son lundi est le sien. */}
+                          {lundiDe.get(String(w.numero)) ?? w.lundi ? jourMois((lundiDe.get(String(w.numero)) ?? w.lundi) as string) : w.numero}
                         </span>
                         <div className="flex-1 min-w-0 space-y-2">
                           <div className="flex flex-wrap items-center gap-2">

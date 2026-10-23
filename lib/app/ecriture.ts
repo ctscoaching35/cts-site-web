@@ -347,6 +347,30 @@ export async function ecrireEtEnvoyer(o: Objectif, numero: string, retours: Reto
     parametres: o.parametres, numero, etat: o.etat, retours, sans_ajustement: Boolean(options.sansAjustement),
     valeurs: valeursConnues(o, o.plan.semaines.find((x) => x.numero === numero)?.lundi), reprise: Boolean(options.reprise),
   });
+  return envoyerEtRanger(o, numero, sortie, options);
+}
+
+// LA RÉCUPÉRATION APRÈS LA COURSE (décision coach du 23/10/2026) : pour un coaché, les semaines entre celle de sa course
+// et son lundi de reprise (debutApres : un jour sans séance dure par heure de course, deux au moins, jusqu'au lundi
+// qui suit), numérotées à la suite du plan ; le moteur les écrit (repos les 2 jours d'après la course, puis une EF
+// courte un jour disponible sur deux) et elles partent dans Nolio comme les autres. null hors de cette fenêtre.
+export function semaineDeRecuperation(o: Pick<Objectif, 'coache' | 'plan' | 'tempsH'>, lundi: string): { numero: string; jusqua: string } | null {
+  const derniere = [...o.plan.semaines].reverse().find((s) => s.lundi);
+  if (!o.coache || !derniere?.lundi || lundi <= derniere.lundi) return null;
+  const jusqua = debutApres({ course_date: o.plan.course.date, temps_h: o.tempsH });
+  if (lundi >= jusqua) return null;
+  return { numero: `S${o.plan.semaines.length + Math.round(joursEntre(derniere.lundi, lundi) / 7)}`, jusqua };
+}
+
+async function ecrireLaRecuperation(o: Objectif, numero: string, jusqua: string, retours: Retours | null): Promise<SortieMoteur> {
+  const sortie = await moteur<SortieMoteur>('/v1/recuperation', { parametres: o.parametres, numero, jusqua, etat: o.etat, retours });
+  return envoyerEtRanger(o, numero, sortie);
+}
+
+// La semaine écrite par le moteur : dans Nolio, avec sa note du dimanche, puis rangée (journal, résumé, état).
+async function envoyerEtRanger(o: Objectif, numero: string, sortie: SortieMoteur, options: {
+  sansAjustement?: boolean; depuis?: string;
+} = {}): Promise<SortieMoteur> {
   const service = clientService();
   if (sortie.parametres) {
     await service.from('plans').update({ parametres: sortie.parametres, trame: null }).eq('id', o.planId);
@@ -755,6 +779,20 @@ async function plansActifs(): Promise<string[]> {
     .map((p) => p.id as string);
 }
 
+// Les objectifs de coachés dont la course est passée depuis moins de 6 semaines, démarrés, en programmation automatique :
+// leurs semaines de récupération s'écrivent le dimanche (semaineDeRecuperation, décision coach du 23/10/2026).
+async function plansEnRecuperation(): Promise<string[]> {
+  const service = clientService();
+  const aujourdhui = aujourdhuiParis();
+  const { data } = await service.from('plans').select('id').not('parametres', 'is', null).not('demarre_le', 'is', null)
+    .lt('course_date', aujourdhui).gte('course_date', ajouterJours(aujourdhui, -42));
+  if (!data?.length) return [];
+  const { data: coaches } = await service.from('coaching').select('plan_id');
+  const coachesIds = new Set((coaches ?? []).map((c) => c.plan_id as string));
+  const aLaMain = await plansALaMain();
+  return data.map((p) => p.id as string).filter((id) => coachesIds.has(id) && !aLaMain.has(id));
+}
+
 export type Compte = { plan: string; quoi: string; erreur?: string; coache?: boolean; journal?: Record<string, unknown>[] };
 
 // Chaque dimanche soir : la semaine suivante de chaque plan actif, écrite d'après la semaine écoulée. Un budget de temps
@@ -770,7 +808,7 @@ export async function passageDuDimanche(budgetMs = 240_000): Promise<Compte[]> {
   // Les départs du lundi d'abord (leur première semaine part avec eux), dans une partie du temps du passage.
   const comptes: Compte[] = await departsDuJour(budgetMs * 0.75);
   const service = clientService();
-  for (const planId of await plansActifs()) {
+  for (const planId of [...await plansActifs(), ...await plansEnRecuperation()]) {
     if (Date.now() - debut > budgetMs) {
       comptes.push({ plan: planId, quoi: REMIS });
       continue;
@@ -780,15 +818,19 @@ export async function passageDuDimanche(budgetMs = 240_000): Promise<Compte[]> {
       const o = await objectifEcrit(planId);
       if (!o?.nolioAthlete) continue;
       const s = semaineDu(o.plan, lundi);
-      if (!s || o.envois.some((e) => e.semaine === s.numero)) continue;
+      const recuperation = s ? null : semaineDeRecuperation(o, lundi);
+      const numero = s?.numero ?? recuperation?.numero;
+      if (!numero || o.envois.some((e) => e.semaine === numero)) continue;
       const { data: prise } = await service.from('nolio_envois')
-        .upsert({ plan_id: planId, semaine: s.numero, coach_id: o.coachId, seances: [] }, { onConflict: 'plan_id,semaine', ignoreDuplicates: true })
+        .upsert({ plan_id: planId, semaine: numero, coach_id: o.coachId, seances: [] }, { onConflict: 'plan_id,semaine', ignoreDuplicates: true })
         .select('plan_id');
       if (!prise?.length) continue;
-      reservee = s.numero;
+      reservee = numero;
       const retours = await lireRetours(o, ajouterJours(lundi, -35), aujourdhui);
-      const sortie = await ecrireEtEnvoyer(o, s.numero, retours);
-      comptes.push({ plan: planId, quoi: `${s.numero} écrite`, coache: o.coache, journal: sortie.journal });
+      const sortie = recuperation
+        ? await ecrireLaRecuperation(o, numero, recuperation.jusqua, retours)
+        : await ecrireEtEnvoyer(o, numero, retours);
+      comptes.push({ plan: planId, quoi: `${numero} écrite${recuperation ? ' (récupération)' : ''}`, coache: o.coache, journal: sortie.journal });
     } catch (e) {
       if (reservee) {
         // Rien de créé dans Nolio : la semaine se libère pour la reprise. Sinon, ce qui est créé reste noté (pas de doublon).
