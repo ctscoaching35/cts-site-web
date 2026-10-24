@@ -171,7 +171,7 @@ export function CoursesPreparation({ courses, ajout }: { courses: CourseSecondai
   );
 }
 
-// ─── Cette semaine ────────────────────────────────────────────────────────
+// ─── Ta semaine ───────────────────────────────────────────────────────────
 
 const jourCourt = (iso: string | null, jour: string) => {
   if (!iso) return jour.slice(0, 3);
@@ -208,7 +208,7 @@ export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null, arri
   return (
     <Carte className="space-y-1">
       <div className="flex justify-between items-baseline gap-3 mb-2">
-        <Surtitre>Cette semaine</Surtitre>
+        <Surtitre>Ta semaine</Surtitre>
         {ligne && <span className="text-xs font-semibold" style={{ color: BANNIERE[ligne.type] ?? '#4F6F69' }}>{ligne.type}</span>}
       </div>
       {nolio ? (
