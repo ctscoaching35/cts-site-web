@@ -95,7 +95,7 @@ export default async function ObjectifCoache({ params, searchParams }: {
   const statut = !ecriture?.parametres ? 'envoyé en entier' : ecriture.demarre_le ? 'en route dans Nolio'
     : ecriture.depart_prevu ? `démarre le ${dateLongue(String(ecriture.depart_prevu), true)}` : 'pas encore démarré';
   return (
-    <CadreCoach actif="athletes">
+    <CadreCoach actif="tableau">
       <Link href={`/app/coach/athlete/${o.athlete.id}`} className="inline-flex items-center min-h-9 text-[0.8125rem] font-bold text-teal">‹ {o.athlete.nom}</Link>
       {retrait && (
         <Carte id="retrait" className="!p-5 space-y-3 border-[1.5px] border-[#C9A25A] scroll-mt-6">

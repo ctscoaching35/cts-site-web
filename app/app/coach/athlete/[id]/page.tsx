@@ -104,8 +104,8 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
     [a.compte_id ? 'App : ouverte' : 'App : à inviter', Boolean(a.compte_id)],
   ];
   return (
-    <CadreCoach actif="athletes">
-      <Link href="/app/coach" className="inline-flex items-center min-h-9 text-[0.8125rem] font-bold text-teal">‹ Tes athlètes</Link>
+    <CadreCoach actif="tableau">
+      <Link href="/app/coach" className="inline-flex items-center min-h-9 text-[0.8125rem] font-bold text-teal">‹ Tableau de bord</Link>
       <div className="flex flex-wrap items-center gap-4 !mt-2">
         <span className="w-14 h-14 rounded-full bg-[#E1EFEA] text-teal-dark flex items-center justify-center text-lg font-extrabold">{initiales(a.nom)}</span>
         <div className="flex-[1_1_240px]">

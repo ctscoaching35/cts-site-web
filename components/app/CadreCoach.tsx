@@ -3,23 +3,21 @@ import Link from 'next/link';
 import clsx from 'clsx';
 import { Deconnexion } from './BoutonsCompte';
 
-// Le cadre de l'espace coach (maquettes validées par le coach le 19/10/2026) : un menu à gauche sur ordinateur, au-dessus
-// du contenu sur téléphone (Tes athlètes, Suivi des 7 jours, À regarder, Chiffres de la vente ; plus de
-// Bibliothèque, décision coach du 20/10/2026 : « ça ne m'apporte rien »),
-// le coach. Plus de lien « Voir l'app d'un athlète » (décision coach du 20/10/2026) : il ouvrait l'app du compte coach ;
+// Le cadre de l'espace coach (maquettes validées par le coach le 19/10/2026, puis le 24/10/2026) : un menu à gauche sur
+// ordinateur, au-dessus du contenu sur téléphone (Tableau de bord, À regarder, sa propre page, Suivi des 7 jours,
+// Chiffres ; plus de Bibliothèque, décision coach du 20/10/2026 : « ça ne m'apporte rien »), le coach. Plus de lien « Voir l'app d'un athlète » (décision coach du 20/10/2026) : il ouvrait l'app du compte coach ;
 // chaque version se voit par son propre compte (coach, coaché, acheteur).
-export type RubriqueCoach = 'athletes' | 'suivi' | 'regarder' | 'chiffres';
+export type RubriqueCoach = 'tableau' | 'regarder' | 'suivi' | 'chiffres';
 
-// aRegarder : le nombre de lignes de « À regarder », que l'accueil de l'espace coach connaît (décision coach du
-// 22/10/2026 : l'onglet « Objectifs demandés » ouvrait « À regarder », il en prend le nom).
+// aRegarder : le nombre de lignes de « À regarder », que le tableau de bord et « À regarder » connaissent.
 export default function CadreCoach({ actif, aRegarder = 0, coach, children }: {
   actif: RubriqueCoach; aRegarder?: number; coach?: string; children: React.ReactNode;
 }) {
   const liens: [RubriqueCoach, string, string][] = [
-    ['athletes', 'Tes athlètes', '/app/coach'],
+    ['tableau', 'Tableau de bord', '/app/coach'],
+    ['regarder', 'À regarder', '/app/coach/a-regarder'],
     ['suivi', 'Suivi des 7 jours', '/app/coach/suivi'],
-    ['regarder', 'À regarder', '/app/coach#demandes'],
-    ['chiffres', 'Chiffres de la vente', '/app/coach/chiffres'],
+    ['chiffres', 'Chiffres', '/app/coach/chiffres'],
   ];
   return (
     <div className="min-h-screen flex flex-wrap bg-sand text-indigo">
