@@ -150,6 +150,39 @@ async function sansObjectif(compteId: string, options: { sansObjectif?: boolean 
   };
 }
 
+// « Voir son app » (maquette validée par le coach le 24/10/2026) : le contexte d'un coaché tel que son app le choisit
+// (son prochain objectif, sinon le dernier couru, sinon sans objectif), lu avec la clé de service. L'appelant vérifie
+// d'abord que la fiche est à son coach.
+export async function contexteDeLaFiche(ficheId: string): Promise<Contexte> {
+  const service = clientService();
+  const { data: a } = await service.from('athletes_coaches').select('*').eq('id', ficheId).maybeSingle();
+  if (!a) throw new Error(`Fiche ${ficheId} introuvable`);
+  const jour = aujourdhuiIso();
+  const { data: lignes } = await service.from('coaching').select('plan_id, plans(course_nom, course_date)').eq('athlete_id', ficheId);
+  const objectifs = (lignes ?? []).map((l) => {
+    const p = (Array.isArray(l.plans) ? l.plans[0] : l.plans) as { course_date: string } | null;
+    return { id: l.plan_id as string, course_date: p?.course_date ?? '' };
+  }).sort((x, y) => x.course_date.localeCompare(y.course_date));
+  const choisi = objectifs.find((o) => o.course_date >= jour) ?? objectifs[objectifs.length - 1];
+  if (!choisi) {
+    const nolio = (a.nolio_athlete_id ?? null) as string | null;
+    const { data: accord } = nolio
+      ? await service.from('nolio_accords').select('accord_le').eq('coach_id', a.coach_id).eq('nolio_athlete_id', nolio).maybeSingle()
+      : { data: null };
+    return {
+      cle: '', plan: planSansObjectif(String(a.nom), await reperesDeBase()), jour, demonstration: false, profil: profilDeLaFiche(a),
+      exemple: false, coache: true, aLaMain: true, sansObjectif: true,
+      fiche: { id: a.id, coach_id: a.coach_id, nolio, accord: Boolean(accord) },
+    };
+  }
+  const { data: ligne, error } = await service.from('plans').select('donnees').eq('id', choisi.id).single();
+  if (error || !ligne) throw new Error(`Plan ${choisi.id} illisible : ${error?.message ?? 'introuvable'}`);
+  return {
+    cle: choisi.id, plan: verifierSchema(ligne.donnees as Plan), jour, demonstration: false, profil: profilDeLaFiche(a), exemple: false,
+    coache: true, aLaMain: a.programmation === 'main', sansObjectif: false, fiche: null,
+  };
+}
+
 // Un objectif coaché dont la fiche est programmée à la main ; non avant la migration du 20/10/2026.
 async function programmeALaMain(planId: string): Promise<boolean> {
   const service = clientService();
