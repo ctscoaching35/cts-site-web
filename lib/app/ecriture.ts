@@ -159,7 +159,7 @@ export const objectifAffiche = cache(objectifEcrit);
 
 // ─── Le moteur ────────────────────────────────────────────────────────────
 
-async function moteur<T>(chemin: string, corps: unknown): Promise<T> {
+export async function moteur<T>(chemin: string, corps: unknown): Promise<T> {
   const r = await fetch(`${API_URL}${chemin}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corps), cache: 'no-store',
   });
@@ -334,6 +334,8 @@ async function garderNote(o: Objectif, cle: string, dateIso: string, titre: stri
 // de son test de vitesse critique par la règle de l'app (coefficient de Riegel sous 0,90), porté par les paramètres du
 // plan, que le moteur lit pour son développement ; sans test, aucun. Remis à jour à chaque semaine écrite.
 async function suivreLeProfil(o: Objectif) {
+  // En fond, le profil se lit au début de la saison (lib/app/fond.ts) : l'ordre de ses blocs en dépend.
+  if ((o.parametres as { fond?: unknown }).fond) return;
   const vc = (o.profil as { vc_ms?: number }).vc_ms;
   const profil = vc && o.dPrime ? (coefficientRiegel(vc, o.dPrime) < 0.9 ? 'rapide' : 'endurant') : null;
   if ((o.parametres.profil_coureur ?? null) === profil) return;
@@ -483,7 +485,15 @@ export type Depart = { numero: string } | { prevu: string; apres: string; raison
 export async function seancesDejaPosees(o: Objectif, aujourdhui: string, jusqua = o.plan.course.date): Promise<{ derniere: string; lundi: string } | null> {
   if (!o.coache || !o.nolioAthlete) return null;
   const d = await destinataire(o.nolioAthlete);
-  const poses = new Set(o.envois.flatMap((e) => e.seances as SeanceEnvoyee[]).map((x) => String(x.nolio_id ?? '')));
+  // Celles du coach : aucune que le moteur a envoyée, pour cet objectif ou un autre de ce coaché (sa saison de fond,
+  // décision coach du 24/10/2026 : ses séances ne repoussent pas le départ d'une préparation).
+  const service = clientService();
+  const { data: lien } = await service.from('coaching').select('athlete_id').eq('plan_id', o.planId).maybeSingle();
+  const { data: freres } = lien ? await service.from('coaching').select('plan_id').eq('athlete_id', lien.athlete_id) : { data: [] };
+  const autres = (freres ?? []).map((x) => x.plan_id as string).filter((id) => id !== o.planId);
+  const { data: leurs } = autres.length ? await service.from('nolio_envois').select('seances').in('plan_id', autres) : { data: [] };
+  const poses = new Set([...o.envois.flatMap((e) => e.seances as SeanceEnvoyee[]),
+    ...(leurs ?? []).flatMap((e) => (e.seances ?? []) as SeanceEnvoyee[])].map((x) => String(x.nolio_id ?? '')));
   const seances = await listeNolio<{ id: string; date_start: string; sport?: string | null }>(
     `planned/trainings/?date_from=${aujourdhui}&date_to=${jusqua}${d.moi ? '' : `&athlete=${d.usr}`}`);
   // Course et trail seulement (décision coach du 21/10/2026, comme « Nolio fait foi ») : la renfo, le vélo ou une série
@@ -569,6 +579,15 @@ export async function demarrerObjectif(planId: string, { prevenir = true, lundi,
     .eq('id', planId).is('demarre_le', null).select('id');
   if (!pris?.length) return { numero: premiere.numero };
   try {
+    // La saison de fond (décisions coach du 24/10/2026) : la préparation prend la suite, la saison s'arrête la veille de
+    // sa première semaine et ses séances à venir quittent Nolio.
+    if (o.coache) {
+      const { arreterLaSaison } = await import('./fond');
+      const { data: lien } = await service.from('coaching').select('athlete_id').eq('plan_id', planId).maybeSingle();
+      for (const saison of lien ? await arreterLaSaison(String(lien.athlete_id), premiere.lundi) : []) {
+        await retirerDeNolio(saison, { depuis: premier });
+      }
+    }
     // Juste après la course d'un autre objectif : calé sur ce que l'athlète y a vraiment couru.
     if (reprise && apres && !o.envois.length) await recalerSurLePrecedent(o, apres.q.id, premier);
     // Une charge déclarée il y a plus de 4 semaines (un objectif lointain) : relue dans Nolio au départ réel.
@@ -712,7 +731,7 @@ function formatDe(o: Pick<Objectif, 'parametres'>): string {
 // LA RÉCUPÉRATION APRÈS UN MARATHON (décision 7 du marathon, 23/10/2026) : deux semaines, puis la reprise ; ailleurs,
 // un jour sans séance dure par heure de course, deux au moins (décision du 21/10), jusqu'au lundi qui suit.
 const RECUPERATION_MARATHON_J = 14;
-function debutApres(q: Pick<Voisin, 'course_date' | 'temps_h'> & { format?: string }): string {
+export function debutApres(q: Pick<Voisin, 'course_date' | 'temps_h'> & { format?: string }): string {
   const fin = ajouterJours(q.course_date, q.format === 'R42' ? RECUPERATION_MARATHON_J : Math.max(2, Math.ceil(q.temps_h)));
   const rang = (new Date(`${fin}T12:00:00Z`).getUTCDay() + 6) % 7;
   return ajouterJours(fin, 7 - rang);
@@ -783,9 +802,11 @@ async function plansActifs(): Promise<string[]> {
 async function plansEnRecuperation(): Promise<string[]> {
   const service = clientService();
   const aujourdhui = aujourdhuiParis();
-  const { data } = await service.from('plans').select('id').not('parametres', 'is', null).not('demarre_le', 'is', null)
+  const { data: tous } = await service.from('plans').select('id, parametres').not('parametres', 'is', null).not('demarre_le', 'is', null)
     .lt('course_date', aujourdhui).gte('course_date', ajouterJours(aujourdhui, -42));
-  if (!data?.length) return [];
+  // Une saison de fond n'a pas de course : rien à récupérer (décisions coach du 24/10/2026).
+  const data = (tous ?? []).filter((p) => !(p.parametres as { fond?: unknown } | null)?.fond);
+  if (!data.length) return [];
   const { data: coaches } = await service.from('coaching').select('plan_id');
   const coachesIds = new Set((coaches ?? []).map((c) => c.plan_id as string));
   const aLaMain = await plansALaMain();
@@ -825,12 +846,29 @@ export async function passageDuDimanche(budgetMs = 240_000): Promise<Compte[]> {
         comptes.push({ plan: planId, quoi: `${numero} : récupération laissée, séances du coach gardées`, coache: true });
         continue;
       }
+      // LA SAISON DE FOND (décisions coach du 24/10/2026) : une préparation qui a pris cette semaine arrête la saison ;
+      // des séances que le coach a déjà posées cette semaine restent, rien ne s'y écrit (comme la récupération) ; sa
+      // première semaine s'écrit sans les retours, comme un départ (sans semaine écrite avant, le moteur lirait un arrêt).
+      const fond = Boolean((o.parametres as { fond?: unknown }).fond);
+      if (fond) {
+        const { arreterLaSaison, semainePriseParUnObjectif } = await import('./fond');
+        const athlete = await semainePriseParUnObjectif(planId, lundi);
+        if (athlete) {
+          await arreterLaSaison(athlete, lundi);
+          comptes.push({ plan: planId, quoi: `${numero} : saison de fond arrêtée, une préparation prend la suite`, coache: true });
+          continue;
+        }
+        if (await seancesDejaPosees(o, lundi, ajouterJours(lundi, 6))) {
+          comptes.push({ plan: planId, quoi: `${numero} : saison de fond laissée, séances du coach gardées`, coache: true });
+          continue;
+        }
+      }
       const { data: prise } = await service.from('nolio_envois')
         .upsert({ plan_id: planId, semaine: numero, coach_id: o.coachId, seances: [] }, { onConflict: 'plan_id,semaine', ignoreDuplicates: true })
         .select('plan_id');
       if (!prise?.length) continue;
       reservee = numero;
-      const retours = await lireRetours(o, ajouterJours(lundi, -35), aujourdhui);
+      const retours = fond && !o.envois.some((e) => /^S\d+$/.test(e.semaine)) ? null : await lireRetours(o, ajouterJours(lundi, -35), aujourdhui);
       const sortie = recuperation
         ? await ecrireLaRecuperation(o, numero, recuperation.jusqua, retours)
         : await ecrireEtEnvoyer(o, numero, retours);

@@ -8,7 +8,7 @@
 import { API_URL } from '@/lib/plan';
 import { actionsTrame, dateDe, empreinte, type Voulu } from './trameNolio';
 import { lienFicheCourse } from './ficheCourse';
-import { ajouterJours, jMoins, type Plan, type Semaine } from './plan';
+import { ajouterJours, jMoins, joursEntre, type Plan, type Semaine } from './plan';
 import { qualitesDuBloc } from './tableau';
 import { appelNolio, convertirIdsV1, listeNolio, moiNolio, nolioConfigure, refusNolio, SPORTS_COURSE } from './nolio';
 import { ficheDuCompte } from './demandes';
@@ -233,8 +233,17 @@ export async function seancesDuMoteur(plan: Plan, planId: string, semaine: Semai
       semaine: { type: semaine.type, bloc: semaine.bloc, lundi: semaine.lundi, rang_bloc: rang || 1,
         rang_charge: rangCharge || null, numero: semaine.numero,
         // Un coaché : le compte à rebours de l'app dans son bandeau (décision coach du 22/10/2026).
-        compte_a_rebours: coache && semaine.lundi ? jMoins(semaine.lundi, plan.course.date) : null,
-        total: plan.semaines.length, ...qualitesDuBloc(plan, semaine.bloc) } }),
+        compte_a_rebours: coache && semaine.lundi && !plan.fond ? jMoins(semaine.lundi, plan.course.date) : null,
+        total: plan.semaines.length, ...qualitesDuBloc(plan, semaine.bloc),
+        // La saison de fond (décisions coach du 24/10/2026) : son bandeau (« Bloc Vitesse », « tes tests dans 5
+        // semaines ») et ses deux séances de renfo ; le rang parmi les semaines de charge de toute la saison.
+        ...(plan.fond ? {
+          fond: true, theme: semaine.theme ?? null, tests: semaine.lundi === plan.fond.tests_le
+            || (semaine.numero === plan.semaines[0]?.numero && semaine.type === 'Assimilation'),
+          tests_dans: semaine.lundi ? Math.round(joursEntre(semaine.lundi, plan.fond.tests_le) / 7) : null,
+          rang_charge: plan.semaines.slice(0, plan.semaines.findIndex((s) => s.numero === semaine.numero) + 1)
+            .filter((s) => s.type === 'Charge').length || null,
+        } : {}) } }),
   });
   if (!r.ok) throw new Error(`Moteur /v1/nolio/seances : ${r.status}`);
   const corps = await r.json();

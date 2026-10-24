@@ -131,6 +131,8 @@ export type Semaine = {
   numero_int: number;
   type: string;
   bloc: string;
+  // La saison de fond (moteur 8.353) : le thème du bloc, « Vitesse » ou « Seuil ».
+  theme?: string;
   volume: string;
   seances: string;
   dates: string;
@@ -147,6 +149,8 @@ export type Plan = {
   schema: number;
   version_moteur: string | null;
   athlete: { nom: string };
+  // Une saison de fond (lib/app/fond.ts, décisions coach du 24/10/2026) : sa place, ses thèmes, ses dates.
+  fond?: { saison: number; themes: string[]; debut: string; fin: string; tests_le: string };
   course: {
     nom: string;
     date: string;

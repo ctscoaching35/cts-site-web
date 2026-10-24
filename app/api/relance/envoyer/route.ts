@@ -1,5 +1,6 @@
 import { passerComptesInactifs } from '@/lib/app/comptesInactifs';
 import { programmerLesDimanches } from '@/lib/app/dimanchesCoaches';
+import { saisonsDuJour } from '@/lib/app/fond';
 import { passageQuotidien, retirerLaTrameAuDela } from '@/lib/app/ecriture';
 import { envoyerRelancesDues } from '@/lib/app/relance';
 import { supabaseConfigure } from '@/lib/app/supabase';
@@ -20,10 +21,13 @@ export async function GET(request: Request) {
   const comptesInactifs = await passerComptesInactifs();
   // Le dimanche de chaque coaché (décision coach du 21/10/2026) : sa série posée ou renouvelée.
   const dimanches = await programmerLesDimanches().catch((e) => [{ plan: '', quoi: 'dimanches en échec', erreur: e instanceof Error ? e.message : String(e) }]);
+  // La saison de fond (décisions coach du 24/10/2026) : celle de chaque coaché sans objectif à préparer, pour le lundi qui
+  // vient ; le passage du dimanche l'écrit.
+  const saisons = await saisonsDuJour().catch((e) => [{ plan: '', quoi: 'saisons de fond en échec', erreur: e instanceof Error ? e.message : String(e) }]);
   // Une semaine à la fois (décision coach du 23/10/2026) : les bandeaux posés d'avance, au-delà de la semaine qui vient.
   const trames = await retirerLaTrameAuDela().catch((e) => [{ plan: '', quoi: 'trames en échec', erreur: e instanceof Error ? e.message : String(e) }]);
   // L'écriture semaine par semaine : la fatigue du jour, les invitations à refaire, le résumé au coach.
   const ecriture = await passageQuotidien().catch((e) => [{ plan: '', quoi: 'passage en échec', erreur: e instanceof Error ? e.message : String(e) }]);
   return Response.json({ envoyees, comptes_inactifs: comptesInactifs,
-    ecriture: [...dimanches, ...trames, ...ecriture].map(({ plan, quoi, erreur }) => ({ plan, quoi, erreur: erreur ?? null })) });
+    ecriture: [...dimanches, ...saisons, ...trames, ...ecriture].map(({ plan, quoi, erreur }) => ({ plan, quoi, erreur: erreur ?? null })) });
 }
