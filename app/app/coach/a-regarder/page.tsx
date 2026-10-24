@@ -6,6 +6,7 @@ import { ReessayerSemaine } from '@/components/app/GestesEcriture';
 import { equipeNolio, NIVEAUX, vueDuCoach } from '@/lib/app/espaceCoach';
 import { clientService, supabaseConfigure } from '@/lib/app/supabase';
 import { exigerCoach } from '@/lib/app/nolio';
+import { marquerRegle } from '@/lib/app/actionsCoaching';
 
 // Toujours calculée à la visite : la page lit la session du coach.
 export const dynamic = 'force-dynamic';
@@ -21,7 +22,8 @@ const AIDE = {
 } as const;
 
 // « À regarder » (maquette validée par le coach le 24/10/2026) : sa propre page, seulement ce qui attend un geste du
-// coach, du plus urgent au moins urgent ; une ligne disparaît dès que c'est réglé.
+// coach, du plus urgent au moins urgent ; une ligne disparaît dès que c'est réglé, ou d'un clic sur « Réglé » (décision
+// coach du 24/10/2026 : ce point-là ne revient jamais, un nouveau point du même genre s'affiche).
 export default async function ARegarderPage() {
   if (!supabaseConfigure()) notFound();
   const coach = await exigerCoach();
@@ -34,7 +36,8 @@ export default async function ARegarderPage() {
       <div>
         <h1 className="text-[1.75rem] font-extrabold tracking-tight">À regarder</h1>
         <p className="mt-1.5 text-sm text-[#5E5C78] leading-relaxed">
-          Seulement ce qui attend un geste de toi, du plus urgent au moins urgent. Une ligne disparaît dès que c’est réglé.
+          Seulement ce qui attend un geste de toi, du plus urgent au moins urgent. Une ligne disparaît dès que c’est réglé,
+          ou quand tu cliques « Réglé » : ce point-là ne revient pas, un nouveau s’affichera.
         </p>
       </div>
       {vue.aRegarder.length === 0 ? (
@@ -53,14 +56,19 @@ export default async function ARegarderPage() {
                 const plein = i === 0 && (n.cle === 'bloque' || n.cle === 'sante');
                 const style = plein ? `${bouton} bg-teal text-white` : `${bouton} bg-white text-indigo border border-indigo/20 hover:bg-sand`;
                 return (
-                  <li key={`${r.genre}-${r.athlete}-${i}`} className="flex flex-wrap items-center justify-between gap-3 py-3.5 border-t first:border-t-0 border-indigo/[0.07]">
+                  <li key={r.cle} className="flex flex-wrap items-center justify-between gap-3 py-3.5 border-t first:border-t-0 border-indigo/[0.07]">
                     <div className="min-w-0 flex-[1_1_380px]">
                       <div className="font-bold">{r.athlete}</div>
                       <div className="mt-0.5 text-sm text-[#4A4866] leading-snug">{r.texte}</div>
                     </div>
-                    {r.genre === 'semaine' && r.planId ? <ReessayerSemaine planId={r.planId} />
-                      : r.externe ? <a href={r.href} target="_blank" rel="noopener" className={style}>{r.action}</a>
-                        : <Link href={r.href} className={style}>{r.action}</Link>}
+                    <div className="flex items-center gap-2">
+                      {r.genre === 'semaine' && r.planId ? <ReessayerSemaine planId={r.planId} />
+                        : r.externe ? <a href={r.href} target="_blank" rel="noopener" className={style}>{r.action}</a>
+                          : <Link href={r.href} className={style}>{r.action}</Link>}
+                      <form action={marquerRegle.bind(null, r.cle)}>
+                        <button type="submit" className={`${bouton} text-[#5E5C78] hover:text-indigo hover:bg-sand`}>Réglé</button>
+                      </form>
+                    </div>
                   </li>
                 );
               })}

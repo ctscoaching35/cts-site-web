@@ -28,6 +28,16 @@ export async function changerProgrammation(athleteId: string, programmation: 'au
   revalidatePath('/app', 'layout');
 }
 
+// « Réglé » sur un point d'« À regarder » (décision coach du 24/10/2026) : ce point-là ne revient jamais ; un nouveau
+// point du même genre s'affiche (espaceCoach.ARegarder.cle).
+export async function marquerRegle(cle: string): Promise<void> {
+  const coach = await coachConnecte();
+  if (!coach || !cle) return;
+  const { error } = await clientService().from('a_regarder_regles').upsert({ coach_id: coach.compteId, cle: cle.slice(0, 500) });
+  if (error) console.error(`Point réglé ${cle} :`, error.message);
+  revalidatePath('/app/coach', 'layout');
+}
+
 // « Créer sa fiche » (décision coach du 22/10/2026) : un athlète de son équipe Nolio sans fiche ici, sa fiche créée d'un
 // clic, déjà reliée à Nolio, sans objectif ; ses dimanches partent au passage de 18 h 30 et son objectif se crée ensuite
 // depuis sa fiche (« Son entrée », sa course Nolio déjà remplie). Le coach lui-même, « (toi) » dans Nolio (décision coach

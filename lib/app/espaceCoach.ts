@@ -48,8 +48,10 @@ export const NIVEAUX: { cle: Niveau; titre: string }[] = [
   { cle: 'moteur', titre: 'Décisions du moteur' }, { cle: 'arrive', titre: 'Ce qui arrive' },
 ];
 // semaine : le geste est un bouton (Réessayer), planId le porte ; externe : le lien sort de l'app (Nolio).
+// cle : ce point-là (décision coach du 24/10/2026, « Réglé ») — son genre et ce qu'il désigne ; réglé, il ne revient
+// jamais, un nouveau point du même genre (une autre semaine, course, test, un autre mot ou chrono) a une autre clé.
 export type ARegarder = { niveau: Niveau; genre: string; athlete: string; texte: string; action: string; href: string;
-  planId?: string; externe?: boolean };
+  cle: string; planId?: string; externe?: boolean };
 export type VueCoach = { athletes: LigneAthlete[]; aRegarder: ARegarder[]; demandes: DemandeAthlete[]; enRoute: number };
 
 const aujourdhui = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
@@ -123,9 +125,9 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     const le = d.champs.date_course ? `, le ${String(d.champs.date_course).split('-').reverse().join('/')}` : '';
     // Une demande de retrait (décision coach du 20/10/2026) : le coach confirme ou refuse sur la page de l'objectif.
     return estRetrait(d)
-      ? { niveau: 'bloque', genre: 'demande', athlete: d.nom, action: 'Relire ›', href: `/app/coach/plan/${d.plan_id}#retrait`,
+      ? { niveau: 'bloque', genre: 'demande', cle: `demande:${d.id}`, athlete: d.nom, action: 'Relire ›', href: `/app/coach/plan/${d.plan_id}#retrait`,
         texte: `demande le retrait de ${String(d.champs.course_nom ?? 'son objectif')}${le}.` }
-      : { niveau: 'bloque', genre: 'demande', athlete: d.nom, action: 'Relire et lancer ›', href: `/app/coach/nouveau?athlete=${d.athlete_id}&demande=${d.id}`,
+      : { niveau: 'bloque', genre: 'demande', cle: `demande:${d.id}`, athlete: d.nom, action: 'Relire et lancer ›', href: `/app/coach/nouveau?athlete=${d.athlete_id}&demande=${d.id}`,
         texte: `demande ${String(d.champs.course_nom ?? 'un objectif')}${le}.` };
   });
   // Leurs courses A dans Nolio (décision coach du 22/10/2026, « proposer, tu valides ») : lues une fois par heure.
@@ -145,7 +147,7 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     }
     const achats = enAttente.get(a.id);
     if (achats) {
-      aRegarder.push({ niveau: 'bloque', genre: 'achat', athlete: a.nom, action: 'Son mode ›', href: `/app/coach/athlete/${a.id}#mode`,
+      aRegarder.push({ niveau: 'bloque', genre: 'achat', cle: `achat:${a.id}:${achats.join('|')}`, athlete: a.nom, action: 'Son mode ›', href: `/app/coach/athlete/${a.id}#mode`,
         texte: `a acheté ${achats.map((c) => `« ${c} »`).join(', ')} pendant son coaching : passe-le en plan pour que son plan démarre.` });
     }
     const o = prochain(a);
@@ -175,28 +177,28 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
       const arret = journal.find((j) => j.regle === 'R4');
       const moteur = [...new Set(journal.map((j) => MOTEUR[j.regle ?? '']).filter(Boolean))];
       if (arret) {
-        aRegarder.push({ niveau: 'sante', genre: 'arret', athlete: a.nom, action: 'Relire ›', href: hrefPlan,
+        aRegarder.push({ niveau: 'sante', genre: 'arret', cle: `arret:${l.plan_id}:${l.numero}`, athlete: a.nom, action: 'Relire ›', href: hrefPlan,
           texte: String(arret.effet ?? '').startsWith('course proche')
             ? `arrêt de course à l’approche de son objectif : rien ne remonte, à toi de voir son objectif avec lui.`
             : `arrêt de course : ${ARRET[arret.effet ?? ''] ?? 'reprise adaptée'} en semaine ${num(l.numero)}.` });
       } else if (journal.some((j) => j.regle === 'R3')) {
-        aRegarder.push({ niveau: 'sante', genre: 'fatigue', athlete: a.nom, action: 'Relire ›', href: hrefPlan,
+        aRegarder.push({ niveau: 'sante', genre: 'fatigue', cle: `fatigue:${l.plan_id}:${l.numero}`, athlete: a.nom, action: 'Relire ›', href: hrefPlan,
           texte: `fatigue franche : sa semaine ${num(l.numero)} est allégée.` });
       } else if (moteur.length) {
-        aRegarder.push({ niveau: 'moteur', genre: 'ajustement', athlete: a.nom, action: 'Relire l’ajustement ›', href: hrefPlan,
+        aRegarder.push({ niveau: 'moteur', genre: 'ajustement', cle: `ajustement:${l.plan_id}:${l.numero}`, athlete: a.nom, action: 'Relire l’ajustement ›', href: hrefPlan,
           texte: `semaine ${num(l.numero)} : ${moteur.join(', ')}.` });
       }
     }
     // La fatigue de la semaine en cours (R3 en cours de semaine) : la séance passée en EF.
     for (const l of semaines.filter((x) => (x.donnees as Semaine | null)?.lundi === lundi)) {
       for (const j of ((l.donnees as Semaine | null)?.jours ?? []) as (Semaine['jours'][number] & { origine?: { seance?: string } })[]) {
-        if (j.origine) aRegarder.push({ niveau: 'sante', genre: 'fatigue', athlete: a.nom, action: 'Relire ›', href: hrefPlan,
+        if (j.origine) aRegarder.push({ niveau: 'sante', genre: 'fatigue', cle: `fatigue:${l.plan_id}:${l.numero}:${j.jour}`, athlete: a.nom, action: 'Relire ›', href: hrefPlan,
           texte: `fatigue franche : sa séance ${j.origine.seance ?? ''} de ${j.jour.toLowerCase()} est passée en EF.` });
       }
     }
     // Un mot à la question ouverte du dimanche, ces 7 derniers jours (décision coach du 21/10/2026) : à lire dans Nolio.
     if ((a.questionnaires?.mot_le ?? '') >= ajouterJours(jour, -7)) {
-      aRegarder.push({ niveau: 'sante', genre: 'mot', athlete: a.nom, action: 'Lire dans Nolio ›', href: NOLIO, externe: true,
+      aRegarder.push({ niveau: 'sante', genre: 'mot', cle: `mot:${a.id}:${a.questionnaires?.mot_le}`, athlete: a.nom, action: 'Lire dans Nolio ›', href: NOLIO, externe: true,
         texte: 'a un mot pour toi dans son questionnaire du samedi.' });
     }
     // Le RPE à revoir (décision coach du 21/10/2026) : une séance clé jugée trop dure sur son RPE deux semaines de suite.
@@ -204,7 +206,7 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     if (deuxDernieres.length === 2 && Number(num(deuxDernieres[0].numero)) === Number(num(deuxDernieres[1].numero)) + 1
         && deuxDernieres.every((l) => !l.sans_ajustement && ((l.journal ?? []) as Journal).some((j) => j.regle === 'R2' && j.trop_dur))
         && String(deuxDernieres[0].ecrite_le).slice(0, 10) >= ajouterJours(jour, -8)) {
-      aRegarder.push({ niveau: 'sante', genre: 'rpe', athlete: a.nom, action: 'Lui écrire ›', href: NOLIO, externe: true,
+      aRegarder.push({ niveau: 'sante', genre: 'rpe', cle: `rpe:${deuxDernieres[0].plan_id}:${deuxDernieres[0].numero}`, athlete: a.nom, action: 'Lui écrire ›', href: NOLIO, externe: true,
         texte: 'RPE à revoir avec lui : séance clé jugée trop dure deux semaines de suite.' });
     }
     const demarre = Boolean(p?.demarre_le);
@@ -221,63 +223,63 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     else if (jauge?.verdict && jauge.verdict.ton !== 'bien') ensuite = { texte: 'Lui écrire', ton: 'alerte', href: `/app/coach/athlete/${a.id}` };
     else ensuite = { texte: 'Rien à faire', ton: 'rien', href: `/app/coach/athlete/${a.id}` };
     if (o && avenir && ecrit && !demarre && !p?.depart_prevu && a.nolio_athlete_id) {
-      aRegarder.push({ niveau: 'bloque', genre: 'demarrer', athlete: a.nom, action: 'Démarrer ›', href: `/app/coach/plan/${o.plan_id}`,
+      aRegarder.push({ niveau: 'bloque', genre: 'demarrer', cle: `demarrer:${o.plan_id}`, athlete: a.nom, action: 'Démarrer ›', href: `/app/coach/plan/${o.plan_id}`,
         texte: `${o.course_nom} n’a pas démarré dans Nolio.` });
     }
     if (o && avenir && !a.nolio_athlete_id) {
-      aRegarder.push({ niveau: 'bloque', genre: 'nolio', athlete: a.nom, action: 'Associer ›', href: `/app/coach/athlete/${a.id}`,
+      aRegarder.push({ niveau: 'bloque', genre: 'nolio', cle: `nolio:${a.id}`, athlete: a.nom, action: 'Associer ›', href: `/app/coach/athlete/${a.id}`,
         texte: 'son compte Nolio n’est pas encore associé à sa fiche.' });
     }
     if (a.nolio_athlete_id && membres && !membres.has(a.nolio_athlete_id)) {
       // Le message de Nolio perdu (la corbeille) : le retrait se fait d'ici, sur sa fiche.
-      aRegarder.push({ niveau: 'bloque', genre: 'equipe', athlete: a.nom, action: 'Retirer ›', href: `/app/coach/athlete/${a.id}#retirer`,
+      aRegarder.push({ niveau: 'bloque', genre: 'equipe', cle: `equipe:${a.id}`, athlete: a.nom, action: 'Retirer ›', href: `/app/coach/athlete/${a.id}#retirer`,
         texte: 'n’est plus dans ton équipe Nolio : retire-le de l’app.' });
     } else if (a.nolio_athlete_id && !avecAccord.has(a.nolio_athlete_id)) {
-      aRegarder.push({ niveau: 'bloque', genre: 'accord', athlete: a.nom, action: 'Accord reçu ›', href: '/app/coach/suivi#sans-accord',
+      aRegarder.push({ niveau: 'bloque', genre: 'accord', cle: `accord:${a.id}`, athlete: a.nom, action: 'Accord reçu ›', href: '/app/coach/suivi#sans-accord',
         texte: 'sans accord de lecture : envoie-lui le message d’accord dans Nolio.' });
     }
     // La semaine en cours pas partie dans Nolio (le passage du dimanche en échec, même après ses reprises).
     if (o && avenir && ecrit && demarre && !aLaMain.has(o.plan_id) && o.course_date >= lundi && semaines.length
         && !semaines.some((l) => (l.donnees as Semaine | null)?.lundi === lundi)
         && semaines.some((l) => String((l.donnees as Semaine | null)?.lundi ?? '') < lundi)) {
-      aRegarder.push({ niveau: 'bloque', genre: 'semaine', athlete: a.nom, action: 'Réessayer ›', href: hrefPlan, planId: o.plan_id,
+      aRegarder.push({ niveau: 'bloque', genre: 'semaine', cle: `semaine:${o.plan_id}:${lundi}`, athlete: a.nom, action: 'Réessayer ›', href: hrefPlan, planId: o.plan_id,
         texte: `sa semaine du ${jourMois(lundi)} n’est pas partie dans Nolio.` });
     }
     // La route (décision 5 du 10 km, 23/10/2026) : un chrono visé totalement incohérent avec sa VC, à en parler avec lui.
     const champsPlan = ((p?.parametres as { champs?: Record<string, unknown> } | null)?.champs) ?? {};
     const chronoRoute = o && avenir ? alerteChronoRoute(champsPlan.format, champsPlan.temps_cible, a.vc_ms) : null;
     if (chronoRoute) {
-      aRegarder.push({ niveau: 'arrive', genre: 'chrono_route', athlete: a.nom, action: 'Lui écrire ›', href: NOLIO, externe: true,
+      aRegarder.push({ niveau: 'arrive', genre: 'chrono_route', cle: `chrono_route:${o!.plan_id}:${champsPlan.temps_cible}:${a.vc_ms}`, athlete: a.nom, action: 'Lui écrire ›', href: NOLIO, externe: true,
         texte: `${o!.course_nom} : ${chronoRoute}` });
     }
     // Les prérequis du marathon (décision 5 du marathon) : la préparation qu'il lui reste, du lundi qui vient à la course.
     const prerequis = o && avenir ? prerequisMarathon(champsPlan, Math.floor(joursEntre(jour, o.course_date) / 7)) : null;
     if (prerequis) {
-      aRegarder.push({ niveau: 'arrive', genre: 'prerequis', athlete: a.nom, action: 'Voir ›', href: hrefPlan,
+      aRegarder.push({ niveau: 'arrive', genre: 'prerequis', cle: `prerequis:${o!.plan_id}:${o!.course_date}`, athlete: a.nom, action: 'Voir ›', href: hrefPlan,
         texte: `${o!.course_nom} : ${prerequis}` });
     }
     // Ce qui arrive : une course A posée dans Nolio sans objectif ici, à créer d'un clic.
     const dejaIci = new Set([...a.objectifs.map((x) => x.course_date), ...((((p?.parametres as { courses_secondaires?: { date?: string }[] } | null)
       ?.courses_secondaires) ?? []).map((c) => String(c.date)))]);
     for (const c of pasEncoreIci(coursesA.get(a.id) ?? [], dejaIci)) {
-      aRegarder.push({ niveau: 'arrive', genre: 'course_nolio', athlete: a.nom, action: 'Créer l’objectif ›',
+      aRegarder.push({ niveau: 'arrive', genre: 'course_nolio', cle: `course_nolio:${a.id}:${c.id}:${c.date}`, athlete: a.nom, action: 'Créer l’objectif ›',
         href: `/app/coach/nouveau?athlete=${a.id}&course=${c.id}`, texte: `${c.nom}, le ${dateLongue(c.date, true)}, est dans Nolio sans objectif ici.` });
     }
     // Ce qui arrive : une course de préparation dans les 14 jours, un objectif dans les 21 jours sans suite, un test raté.
     if (o && avenir && !infosFond) {
       for (const c of (((p?.parametres as { courses_secondaires?: { nom?: string; date?: string }[] } | null)?.courses_secondaires) ?? [])) {
         const dans = c.date ? joursEntre(jour, c.date) : -1;
-        if (dans >= 0 && dans <= 14) aRegarder.push({ niveau: 'arrive', genre: 'preparation', athlete: a.nom, action: 'Voir ›', href: hrefPlan,
+        if (dans >= 0 && dans <= 14) aRegarder.push({ niveau: 'arrive', genre: 'preparation', cle: `preparation:${o.plan_id}:${c.date}`, athlete: a.nom, action: 'Voir ›', href: hrefPlan,
           texte: `${c.nom ?? 'sa course de préparation'} dans ${dans} jour${dans > 1 ? 's' : ''} (course de préparation).` });
       }
       const dans = joursEntre(jour, o.course_date);
       if (dans <= 21 && !a.objectifs.some((x) => x.course_date > o.course_date)) {
-        aRegarder.push({ niveau: 'arrive', genre: 'suite', athlete: a.nom, action: 'Nouvel objectif ›', href: `/app/coach/nouveau?athlete=${a.id}`,
+        aRegarder.push({ niveau: 'arrive', genre: 'suite', cle: `suite:${o.plan_id}:${o.course_date}`, athlete: a.nom, action: 'Nouvel objectif ›', href: `/app/coach/nouveau?athlete=${a.id}`,
           texte: `${o.course_nom} dans ${dans} jour${dans > 1 ? 's' : ''}, rien après.` });
       }
       for (const t of (tests ?? []).filter((x) => x.plan_id === o.plan_id)) {
         const [sem, jourTest] = String(t.jour_id).split('-');
-        aRegarder.push({ niveau: 'arrive', genre: 'test', athlete: a.nom, action: 'Voir ›', href: hrefPlan,
+        aRegarder.push({ niveau: 'arrive', genre: 'test', cle: `test:${t.plan_id}:${t.jour_id}:${t.statut}`, athlete: a.nom, action: 'Voir ›', href: hrefPlan,
           texte: `son test du ${jourTest ?? ''} de sa semaine ${num(sem)} ${TEST[String(t.statut)] ?? 'n’a pas pu être lu'}.` });
       }
     }
@@ -304,15 +306,20 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
       signal: { texte: ensuite.texte, niveau: ensuite.ton === 'alerte' ? 'warn' : ensuite.ton === 'action' ? 'neutre' : 'ok' },
     };
   });
+  // Les points que le coach a réglés (décision coach du 24/10/2026) : ce point-là ne revient jamais. Sans la migration,
+  // rien n'est retenu.
+  const { data: regles } = await service.from('a_regarder_regles').select('cle').eq('coach_id', coachId);
+  const reglees = new Set((regles ?? []).map((r) => String(r.cle)));
+  const visibles = aRegarder.filter((r) => !reglees.has(r.cle));
   const rang = (n: Niveau) => NIVEAUX.findIndex((x) => x.cle === n);
-  aRegarder.sort((x, y) => rang(x.niveau) - rang(y.niveau));
+  visibles.sort((x, y) => rang(x.niveau) - rang(y.niveau));
   for (const l of athletes) {
-    const premier = aRegarder.find((r) => r.athlete === l.nom);
+    const premier = visibles.find((r) => r.athlete === l.nom);
     if (premier) l.signal = { texte: SIGNAL[premier.genre] ?? premier.texte,
       niveau: premier.niveau === 'arrive' ? 'neutre' : premier.niveau === 'moteur' ? 'warn' : 'ko' };
     else if (l.mode === 'plan') l.signal = { texte: 'Mode plan', niveau: 'neutre' };
     else if (l.signal.texte === 'Rien à faire') l.signal = { texte: 'Rien à signaler', niveau: 'ok' };
   }
-  return { athletes, aRegarder, demandes,
+  return { athletes, aRegarder: visibles, demandes,
     enRoute: athletes.filter((a) => a.objectif?.demarre && !a.objectif.fond && a.objectif.course_date >= jour).length };
 }
