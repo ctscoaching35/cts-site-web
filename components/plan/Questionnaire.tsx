@@ -75,8 +75,10 @@ function Choix({
 // la course se demandent.
 export default function Questionnaire({
   coach = false, emailCoach = '', athleteId, initial, demande = false, demandeId, court = false, modification, vcMs = null,
-  discipline, noteCharge = null,
+  discipline, noteCharge = null, simulation = false,
 }: {
+  // Le coach connecté sur le questionnaire public : il peut simuler l'achat, sans paiement (décision coach du 24/10/2026).
+  simulation?: boolean;
   // Ce que Nolio dit de sa charge du moment : la période, le détail par semaine (décision coach du 23/10/2026).
   noteCharge?: string | null;
   coach?: boolean; emailCoach?: string; athleteId?: string; initial?: Record<string, string | string[]>; demande?: boolean;
@@ -300,7 +302,7 @@ export default function Questionnaire({
       .catch(() => {});
   }
 
-  async function generer() {
+  async function generer(simuler = false) {
     setEnvoi(true);
     setRefus('');
     const donnees = new FormData();
@@ -314,7 +316,7 @@ export default function Questionnaire({
     if (!coach && confirme) donnees.append('cgv_acceptees', '1');
     if (!coach && autreNolio && nolioEmail.trim()) donnees.append('nolio_email', nolioEmail.trim());
     if (!coach && accordLecture) donnees.append('accord_lecture', '1');
-    if (!coach) compterEtape('paiement');
+    if (!coach && !simuler) compterEtape('paiement');
     if (coach) {
       try {
         const r = await fetch(demande ? '/app/objectif/demande' : '/app/coach/athletes', { method: 'POST', body: donnees });
@@ -331,10 +333,11 @@ export default function Questionnaire({
       return;
     }
     try {
-      const r = await fetch(`${API_URL}/v1/checkout`, { method: 'POST', body: donnees });
+      // La simulation du coach (décision coach du 24/10/2026) : sans paiement, vers la même page de retour.
+      const r = await fetch(simuler ? '/plan/simuler' : `${API_URL}/v1/checkout`, { method: 'POST', body: donnees });
       const corps = await r.json().catch(() => null);
-      if (r.ok && corps?.checkout_url) {
-        window.location.href = corps.checkout_url;
+      if (r.ok && (corps?.checkout_url || corps?.page)) {
+        window.location.href = corps.checkout_url ?? corps.page;
         return;
       }
       setRefus(corps?.message || 'Une erreur est survenue. Réessaie dans quelques minutes.');
@@ -458,7 +461,7 @@ export default function Questionnaire({
             <div className="eyebrow text-teal-light mb-2">{demande ? 'Ton objectif · jusqu’à la course' : coach ? `Plan de ${c.nom} · jusqu’à la course` : `Ton plan · ${c.duree_mois} mois`}</div>
             {!coach && <div className="text-4xl font-black">{prix} €</div>}
           </div>
-          <button type="button" onClick={generer} disabled={bloque || envoi} className={boutonCls}>
+          <button type="button" onClick={() => generer()} disabled={bloque || envoi} className={boutonCls}>
             {envoi
               ? (demande ? 'Envoi…' : coach ? 'Génération…' : 'Vérification…')
               : demande
@@ -472,6 +475,18 @@ export default function Questionnaire({
                   : `Payer ${prix} € →`}
           </button>
         </section>
+        {simulation && !coach && (
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-white rounded-2xl border border-dashed border-indigo/25 p-4">
+            <p className="text-[0.8125rem] text-[#4A4866] leading-relaxed flex-[1_1_260px]">
+              Coach connecté : tu peux simuler l’achat, sans paiement. Le plan se range comme après un paiement, à 0 €, hors
+              des Chiffres.
+            </p>
+            <button type="button" onClick={() => generer(true)} disabled={bloque || envoi}
+              className="min-h-11 px-4 rounded-xl border border-indigo/30 text-indigo text-sm font-bold disabled:opacity-50">
+              Simuler l’achat (sans paiement)
+            </button>
+          </div>
+        )}
       </div>
     );
   }

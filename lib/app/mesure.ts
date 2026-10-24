@@ -29,7 +29,8 @@ export async function chiffresParSemaine(): Promise<Semaine[]> {
   const depuis = new Date(Date.now() - 12 * 7 * 24 * 3600 * 1000).toISOString().slice(0, 10);
   const [{ data: mesures }, { data: achats }, { data: rappels }] = await Promise.all([
     service.from('mesures').select('jour, etape, n').gte('jour', depuis),
-    service.from('achats').select('paye_le, montant_centimes').gte('paye_le', depuis),
+    // Sans les achats simulés par le coach (décision coach du 24/10/2026).
+    service.from('achats').select('paye_le, montant_centimes').gte('paye_le', depuis).not('stripe_session', 'like', 'coach\\_%'),
     service.from('relances').select('accord_le').gte('accord_le', depuis),
   ]);
   const semaines = new Map<string, Semaine>();

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import EnTetePlan from '@/components/plan/EnTetePlan';
 import Questionnaire from '@/components/plan/Questionnaire';
+import { coachConnecte } from '@/lib/app/nolio';
 import { planOuvert } from '@/lib/planAcces';
 
 export const dynamic = 'force-dynamic';
@@ -14,6 +15,8 @@ export const metadata: Metadata = {
 
 export default async function PagePlan() {
   if (!(await planOuvert())) notFound();
+  // Le coach connecté peut simuler l'achat, sans paiement (décision coach du 24/10/2026).
+  const simulation = Boolean(await coachConnecte().catch(() => null));
   return (
     <div className="min-h-screen bg-sand">
       <EnTetePlan />
@@ -27,7 +30,7 @@ export default async function PagePlan() {
             jour J. Tes séances arrivent dans Nolio semaine après semaine, et ton app CTS te montre toute ta préparation.
           </p>
         </div>
-        <Questionnaire />
+        <Questionnaire simulation={simulation} />
       </main>
     </div>
   );

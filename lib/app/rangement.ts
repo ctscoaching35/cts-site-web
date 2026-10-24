@@ -45,10 +45,13 @@ const nomDuPdf = (reponse: Response) =>
   /filename="?([^";]+)"?/.exec(reponse.headers.get('content-disposition') ?? '')?.[1] ?? 'CTS_Plan.pdf';
 
 // origine : l'adresse du site (https://cts-coaching.com), pour le lien de l'e-mail de bienvenue.
+// Un achat simulé par le coach (« coach_… », décision coach du 24/10/2026) : relu avec le code du coach, noté à 0 €.
+const SIMULE = 'coach_';
 export async function rangerLePlan(sessionId: string, origine: string) {
+  const simule = sessionId.startsWith(SIMULE);
   const reponse = await fetch(`${API_URL}/v1/plans`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(simule && process.env.CTS_CLE_COACH ? { 'X-CTS-Coach': process.env.CTS_CLE_COACH } : {}) },
     body: JSON.stringify({ checkout_session_id: sessionId }),
     cache: 'no-store',
   });
@@ -74,7 +77,7 @@ export async function rangerLePlan(sessionId: string, origine: string) {
       // Le montant réellement payé, code promo déduit (CTS_LANCEMENT_CADRAGE.md, L6) ; le prix de la formule en mode test.
       .insert({
         compte_id: compteId, stripe_session: sessionId,
-        montant_centimes: corps.resume.montant_paye_centimes ?? Math.round(corps.resume.prix_eur * 100),
+        montant_centimes: simule ? 0 : corps.resume.montant_paye_centimes ?? Math.round(corps.resume.prix_eur * 100),
       })
       .select('id, paye_le')
       .single();

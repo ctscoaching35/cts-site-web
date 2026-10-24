@@ -12,11 +12,15 @@ export type Acheteur = {
   usr: string | null;
 };
 
+// Sans les achats simulés par le coach (décision coach du 24/10/2026) : hors des Chiffres.
 export async function acheteursDesPlans(): Promise<Acheteur[]> {
-  const { data } = await clientService().from('plans')
-    .select('id, course_nom, course_date, nolio_statut, demarre_le, accord_lecture_le, nolio_athlete_id, nom:donnees->athlete->>nom')
+  const service = clientService();
+  const { data } = await service.from('plans')
+    .select('id, achat_id, course_nom, course_date, nolio_statut, demarre_le, accord_lecture_le, nolio_athlete_id, nom:donnees->athlete->>nom')
     .not('nolio_statut', 'is', null).order('course_date');
-  return (data ?? []).map((p) => ({
+  const { data: simules } = await service.from('achats').select('id').like('stripe_session', 'coach\\_%');
+  const horsChiffres = new Set((simules ?? []).map((a) => String(a.id)));
+  return (data ?? []).filter((p) => !horsChiffres.has(String(p.achat_id))).map((p) => ({
     id: String(p.id), nom: String(p.nom ?? '').trim() || 'Acheteur', course: String(p.course_nom ?? ''),
     date: String(p.course_date ?? ''), statut: (p.nolio_statut as string | null) ?? null,
     demarre: p.demarre_le ? String(p.demarre_le).slice(0, 10) : null, accord: Boolean(p.accord_lecture_le),

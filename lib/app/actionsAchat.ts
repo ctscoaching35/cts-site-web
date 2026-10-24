@@ -7,12 +7,15 @@
 import { cookies, headers } from 'next/headers';
 import { after } from 'next/server';
 import { inviterAcheteur } from './ecriture';
+import { coachConnecte } from './nolio';
 import { COOKIE_PLAN, DUREE_COOKIE_PLAN } from './planChoisi';
 import { ErreurAchat, MESSAGE_RANGEMENT, rangerLePlan } from './rangement';
 import { clientServeur } from './supabase';
 
 export async function finaliserAchat(sessionId: string): Promise<{ destination: string } | { erreur: string }> {
   try {
+    // Un achat simulé (décision coach du 24/10/2026) ne se range que pour le coach connecté.
+    if (sessionId.startsWith('coach_') && !(await coachConnecte())) return { erreur: 'Cette simulation est réservée au coach connecté.' };
     const entetes = await headers();
     const origine = entetes.get('origin') ?? `${entetes.get('x-forwarded-proto') ?? 'http'}://${entetes.get('host')}`;
     const { planId, email, aInviter, jeton, type, sansCode } = await rangerLePlan(sessionId, origine);
