@@ -101,8 +101,8 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
                       ? 'Ton coach et l’app lisent dans Nolio tes séances faites, ton RPE, ton ressenti et ton Hooper, seulement pour ajuster ta préparation et afficher tes graphiques.'
                       : 'Sans ton accord dans Nolio, ta préparation suit sa trame, ton questionnaire et tes séances faites ou manquées.')
                     : affiche?.accord_lecture_le
-                      ? `Depuis le ${dateLongue(String(affiche.accord_lecture_le).slice(0, 10), true)}, l’app lit dans Nolio tes séances faites, ton RPE, ton ressenti et ton Hooper, et la trace de tes séances test pour en tirer tes repères, seulement pour ajuster ton plan et afficher tes graphiques. Sans cet accord, ton plan suit sa trame, ton questionnaire du dimanche et tes séances faites ou manquées, et tu donnes toi-même tes repères.`
-                      : 'Sans accord de lecture, ta préparation suit sa trame, ton questionnaire du dimanche et tes séances faites ou manquées, et tu donnes toi-même tes repères.'}
+                      ? `Depuis le ${dateLongue(String(affiche.accord_lecture_le).slice(0, 10), true)}, l’app lit dans Nolio tes séances faites, ton RPE, ton ressenti et ton Hooper, et la trace de tes séances test pour en tirer tes repères, seulement pour ajuster ton plan et afficher tes graphiques. Sans cet accord, ton plan suit sa trame, ton questionnaire du samedi et tes séances faites ou manquées, et tu donnes toi-même tes repères.`
+                      : 'Sans accord de lecture, ta préparation suit sa trame, ton questionnaire du samedi et tes séances faites ou manquées, et tu donnes toi-même tes repères.'}
                 </p>
                 {!ctx.coache && affiche?.parametres && affiche.accord_lecture_le && <RetirerAccord planId={ctx.cle} />}
                 {!ctx.coache && affiche?.parametres && !affiche.accord_lecture_le && <DonnerAccord planId={ctx.cle} />}

@@ -79,8 +79,8 @@ export default function ProfilAthlete({ athleteId, profil, pourMoi = false, rafr
         <legend className="text-[0.8125rem] font-bold text-indigo">{moi ? 'Ta semaine habituelle' : 'Sa semaine habituelle'}</legend>
         <p className="text-xs text-[#5E5C78] leading-relaxed">
           {moi
-            ? 'Ta semaine de tous les jours : ta préparation se construit dessus. Chaque dimanche, le questionnaire « Ta semaine prochaine » change la semaine qui vient.'
-            : 'Sa semaine de tous les jours : sa préparation se construit dessus. Chaque dimanche, son questionnaire « Ta semaine prochaine » change la semaine qui vient.'}
+            ? 'Ta semaine de tous les jours : ta préparation se construit dessus. Chaque samedi, le questionnaire « Ta semaine prochaine » change la semaine qui vient.'
+            : 'Sa semaine de tous les jours : sa préparation se construit dessus. Chaque samedi, son questionnaire « Ta semaine prochaine » change la semaine qui vient.'}
         </p>
         <div className="text-xs font-semibold text-indigo">Jours disponibles</div>
         <div className="flex flex-wrap gap-1.5">

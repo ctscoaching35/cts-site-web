@@ -112,7 +112,7 @@ export default async function MonProfil({ searchParams }: { searchParams: Recher
                   ))}
                 </dl>
                 <p className="pt-1 text-[0.72rem] leading-relaxed text-[#5E5C78]">
-                  Il sert à tes prochains objectifs. Ta semaine, elle, s’ajuste chaque dimanche avec ton questionnaire.
+                  Il sert à tes prochains objectifs. Ta semaine, elle, s’ajuste chaque week-end avec ton questionnaire du samedi.
                 </p>
               </>
             )}

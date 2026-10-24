@@ -306,7 +306,7 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
                     </div>
                   ))}
                 </dl>
-                <p className="pt-1 text-[0.72rem] leading-relaxed text-[#5E5C78]">Rempli une fois. Les disponibilités de chaque semaine viennent ensuite de son questionnaire du dimanche.</p>
+                <p className="pt-1 text-[0.72rem] leading-relaxed text-[#5E5C78]">Rempli une fois. Les disponibilités de chaque semaine viennent ensuite de son questionnaire du samedi.</p>
               </>
             )}
             <details className="pt-2" open={profilVide}>

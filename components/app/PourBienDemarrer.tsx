@@ -99,8 +99,8 @@ export default function PourBienDemarrer({ acheteur, nolio, accord, questionnair
       </ol>
       {questionnaire && (
         <p className="p-3 rounded-xl bg-sand text-xs text-[#4A4866] leading-relaxed">
-          Chaque dimanche à 8 h, le questionnaire « Ta semaine prochaine » t’attend dans Nolio : ta semaine suivante s’écrit
-          d’après tes réponses.
+          Chaque samedi à 8 h, le questionnaire « Ta semaine prochaine » t’attend dans Nolio : réponds d’ici dimanche 18 h, ta
+          semaine suivante s’écrit dimanche soir d’après tes réponses.
         </p>
       )}
       <div className="flex justify-end">

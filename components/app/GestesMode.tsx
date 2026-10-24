@@ -47,7 +47,7 @@ export function PasserEnPlan({ athleteId, nom }: { athleteId: string; nom: strin
       <form action={action} className="mt-1 space-y-2">
         <p className="text-[#4A4866] leading-relaxed">
           {nom} passe en mode plan : après cette semaine, ses objectifs de coaching ne s’écrivent plus et quittent Nolio, ses
-          questionnaires du dimanche aussi ; sa fiche reste pour l’historique ; son app devient celle d’un acheteur. Un plan
+          questionnaires du week-end aussi ; sa fiche reste pour l’historique ; son app devient celle d’un acheteur. Un plan
           qu’il a acheté démarre lundi.
         </p>
         <button type="submit" disabled={enCours} className={bouton}>{enCours ? 'Passage…' : `Passer ${nom} en plan`}</button>

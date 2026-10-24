@@ -79,11 +79,12 @@ const QUESTIONNAIRES = 'questionnaires';
 const COULEUR_NOTE = '#0C6E5F';
 const JOURS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
 const LIBELLES = JOURS.map((j) => j[0].toUpperCase() + j.slice(1));
-// Le questionnaire du dimanche (décision coach du 19/10/2026, question 13) : quatre questions courtes. Sans `order` :
+// Le questionnaire du samedi (décision coach du 19/10/2026, question 13 ; le samedi depuis le 24/10/2026, pour laisser
+// le week-end), lu par le passage du dimanche soir : quatre questions courtes. Sans `order` :
 // Nolio le compte à partir de 0 et le déduit de la place dans la liste (refus du 19/10/2026, essai sur « (toi) »).
 export const QUESTIONNAIRE_SEMAINE = {
   name: 'Ta semaine prochaine',
-  description: 'Une minute : tes séances de la semaine prochaine s’écrivent ce soir à partir de tes réponses.',
+  description: 'Une minute, d’ici dimanche 18 h : tes séances de la semaine prochaine s’écrivent dimanche soir à partir de tes réponses.',
   items: [
     { question: 'Quels jours peux-tu courir la semaine prochaine ?', type: 'multiple_choices', is_mandatory: true,
       choices: { choices: LIBELLES } },
@@ -211,7 +212,7 @@ export const indiceHooper = () => {
   return hooperItem;
 };
 
-// Une réponse du questionnaire du dimanche, lue dans Nolio.
+// Une réponse du questionnaire du samedi, lue dans Nolio (une réponse de la semaine, samedi ou dimanche).
 function lireQuestionnaire(items: { question: string; value: unknown }[]): Questionnaire | undefined {
   const reponse = (n: number) => items.find((i) => i.question === QUESTIONNAIRE_SEMAINE.items[n].question)?.value;
   const jours = reponse(0);
@@ -1564,7 +1565,7 @@ async function resumeAuCoach(fatigues: Compte[], tests: TestLu[] = []) {
   const { data: fichesMot } = await service.from('athletes_coaches').select('nom, questionnaires').not('questionnaires', 'is', null);
   for (const f of fichesMot ?? []) {
     const note = String((f.questionnaires as { mot_note?: string | null } | null)?.mot_note ?? '');
-    if (note && note >= debut) lignes.push(`${f.nom} a un mot pour toi dans son questionnaire du dimanche, à lire dans Nolio.`);
+    if (note && note >= debut) lignes.push(`${f.nom} a un mot pour toi dans son questionnaire du samedi, à lire dans Nolio.`);
   }
   // TN3 : les valeurs lues dans un test, posées sur la fiche du coaché ; le coach les corrige sur sa fiche.
   const valeurs = tests.map((t) => nomDe.get(t.plan) && `${nomDe.get(t.plan)} : ${t.texte.split('.')[0]}.`).filter(Boolean) as string[];

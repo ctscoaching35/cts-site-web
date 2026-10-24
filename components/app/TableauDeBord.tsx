@@ -195,14 +195,35 @@ export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null, arri
   arrivee?: keyof typeof ARRIVEE | null; depuis?: string | null; debut?: string | null;
 }) {
   const jours = (semaine?.jours ?? []).filter((j) => j.famille !== 'repos' && j.seance && !(depuis && j.date_iso && j.date_iso < depuis));
-  const dimanche = semaine?.jours.find((j) => j.jour.toLowerCase().startsWith('dim'));
+  // Le questionnaire du samedi (décision coach du 24/10/2026), à sa place parmi les séances : après celles du samedi.
+  const samedi = semaine?.jours.find((j) => j.jour.toLowerCase().startsWith('sam'));
+  const apresSamedi = (date: string | null | undefined, jour: string) =>
+    samedi?.date_iso && date ? date > samedi.date_iso : jour.toLowerCase().startsWith('dim');
   if (!nolio && !jours.length && !ligne && !debut) return null;
   const commence = debut && <p className="text-sm text-indigo">Ta préparation commence le {dateLongue(debut)}.</p>;
-  const quiz = questionnaire && dimanche && (
-    <li className="grid grid-cols-[52px_6px_1fr] gap-x-2.5 items-center min-h-11">
-      <span className="text-xs font-semibold text-[#5E5C78] whitespace-nowrap">{jourCourt(dimanche.date_iso, dimanche.jour)}</span>
+  const quiz = questionnaire && samedi && (
+    <li className="grid grid-cols-[52px_6px_1fr] gap-x-2.5 items-center min-h-11 border-b border-indigo/[0.06]">
+      <span className="text-xs font-semibold text-[#5E5C78] whitespace-nowrap">{jourCourt(samedi.date_iso, samedi.jour)}</span>
       <span className="w-1.5 h-7 rounded-full bg-[#B7B6C8]" aria-hidden />
       <span className="text-[0.8125rem] text-[#5E5C78]">Questionnaire « Ta semaine prochaine » à 8 h</span>
+    </li>
+  );
+  const ligneNolio = (x: SeanceNolio) => (
+    <li key={x.id} className="grid grid-cols-[52px_6px_1fr] gap-x-2.5 items-center min-h-11 border-b border-indigo/[0.06]">
+      <span className="text-xs font-semibold text-[#5E5C78] whitespace-nowrap">{jourCourt(x.date, '')}</span>
+      <span className="w-1.5 h-7 rounded-full" style={{ backgroundColor: x.couleur ?? '#B9C7C3' }} aria-hidden />
+      <span className="text-sm font-semibold text-indigo">
+        {x.nom}{x.minutes !== null && <span className="font-normal text-[#5E5C78]"> · {enHeures(x.minutes)}</span>}
+      </span>
+    </li>
+  );
+  const ligneJour = (j: Jour) => (
+    <li key={j.id} className="grid grid-cols-[52px_6px_1fr] gap-x-2.5 items-center min-h-11 border-b border-indigo/[0.06]">
+      <span className="text-xs font-semibold text-[#5E5C78] whitespace-nowrap">{jourCourt(j.date_iso, j.jour)}</span>
+      <span className="w-1.5 h-7 rounded-full" style={{ backgroundColor: couleurDuJour(j) }} aria-hidden />
+      <span className="text-sm font-semibold text-indigo">
+        {j.seance}{j.duree && <span className="font-normal text-[#5E5C78]"> · {j.duree}</span>}
+      </span>
     </li>
   );
   return (
@@ -214,30 +235,16 @@ export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null, arri
       {nolio ? (
         <ul>
           {nolio.length === 0 && <li className="min-h-11 flex items-center text-sm text-[#5E5C78] border-b border-indigo/[0.06]">Rien de prévu dans Nolio cette semaine.</li>}
-          {nolio.map((x) => (
-            <li key={x.id} className="grid grid-cols-[52px_6px_1fr] gap-x-2.5 items-center min-h-11 border-b border-indigo/[0.06]">
-              <span className="text-xs font-semibold text-[#5E5C78] whitespace-nowrap">{jourCourt(x.date, '')}</span>
-              <span className="w-1.5 h-7 rounded-full" style={{ backgroundColor: x.couleur ?? '#B9C7C3' }} aria-hidden />
-              <span className="text-sm font-semibold text-indigo">
-                {x.nom}{x.minutes !== null && <span className="font-normal text-[#5E5C78]"> · {enHeures(x.minutes)}</span>}
-              </span>
-            </li>
-          ))}
+          {nolio.filter((x) => !apresSamedi(x.date, '')).map(ligneNolio)}
           {quiz}
+          {nolio.filter((x) => apresSamedi(x.date, '')).map(ligneNolio)}
           {nolio.length === 0 && commence && <li className="pt-2">{commence}</li>}
         </ul>
       ) : jours.length > 0 ? (
         <ul>
-          {jours.map((j) => (
-            <li key={j.id} className="grid grid-cols-[52px_6px_1fr] gap-x-2.5 items-center min-h-11 border-b border-indigo/[0.06]">
-              <span className="text-xs font-semibold text-[#5E5C78] whitespace-nowrap">{jourCourt(j.date_iso, j.jour)}</span>
-              <span className="w-1.5 h-7 rounded-full" style={{ backgroundColor: couleurDuJour(j) }} aria-hidden />
-              <span className="text-sm font-semibold text-indigo">
-                {j.seance}{j.duree && <span className="font-normal text-[#5E5C78]"> · {j.duree}</span>}
-              </span>
-            </li>
-          ))}
+          {jours.filter((j) => !apresSamedi(j.date_iso, j.jour)).map(ligneJour)}
           {quiz}
+          {jours.filter((j) => apresSamedi(j.date_iso, j.jour)).map(ligneJour)}
         </ul>
       ) : !ligne ? commence : (
         <div className="space-y-1">

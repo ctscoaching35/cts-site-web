@@ -73,7 +73,7 @@ export default async function CGV() {
           <li>
             une invitation dans l’équipe CTS sur Nolio, la plateforme d’entraînement que nous utilisons (un compte
             d’athlète gratuit, créé à ton adresse si tu n’en as pas) : tes séances détaillées y sont écrites chaque
-            dimanche pour la semaine suivante, d’après ta semaine écoulée, tes réponses au questionnaire du dimanche et,
+            dimanche pour la semaine suivante, d’après ta semaine écoulée, tes réponses au questionnaire du samedi et,
             si tu l’acceptes, ton effort ressenti et ton Hooper ; tu quittes l’équipe une semaine après ta course, ton
             compte Nolio et tes séances restent à toi ;
           </li>

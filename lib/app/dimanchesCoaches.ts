@@ -1,6 +1,7 @@
 /**
- * Le dimanche de chaque athlète dans Nolio (CTS_NOLIO_CADRAGE.md dans le dépôt du moteur) : « Ta semaine prochaine » et
- * le Hooper, à 8 h. UNE SEMAINE À LA FOIS (décision coach du 23/10/2026, « juste pour la semaine suivante ») : chaque
+ * Le week-end de chaque athlète dans Nolio (CTS_NOLIO_CADRAGE.md dans le dépôt du moteur) : « Ta semaine prochaine » le
+ * samedi à 8 h, pour lui laisser le week-end (décision coach du 24/10/2026 ; le dimanche avant), lu par le passage du
+ * dimanche soir ; le Hooper le dimanche à 8 h, le bilan de sa semaine. UNE SEMAINE À LA FOIS (décision coach du 23/10/2026, « juste pour la semaine suivante ») : chaque
  * soir, le passage met en place le dimanche qui vient, un seul de chaque, sans récurrence — pour tout coaché relié à
  * Nolio (en automatique, à la main ou sans objectif ; sa question ouverte, « Une information à remonter à ton coach ? »,
  * facultative ; le Hooper toujours) et pour tout acheteur dont la préparation est en route (le Hooper avec son accord de
@@ -25,7 +26,10 @@ export type DimanchesCoache = { dimanche?: string; semaine?: string | null; hoop
 const aujourdhuiParis = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
 // Le premier dimanche strictement après cette date.
 const dimancheApres = (iso: string) => ajouterJours(iso, 7 - ((new Date(`${iso}T12:00:00Z`).getUTCDay() + 6) % 7) - 1 || 7);
-const estDimanche = (iso: string) => new Date(`${iso.slice(0, 10)}T12:00:00Z`).getUTCDay() === 0;
+const jourDe = (iso: string) => new Date(`${iso.slice(0, 10)}T12:00:00Z`).getUTCDay();
+const estDimanche = (iso: string) => jourDe(iso) === 0;
+// Le samedi (le questionnaire) ou le dimanche (le Hooper, et le questionnaire d'avant le 24/10/2026).
+const duWeekEnd = (iso: string) => jourDe(iso) === 6 || jourDe(iso) === 0;
 
 // Le questionnaire des coachés : celui de tous, et la question ouverte au bout.
 const questionnaireCoache = () => ({
@@ -43,22 +47,27 @@ const leCadreHooper = () => (cadreHooper ??= listeNolio<{ id: string; scope?: st
 
 export type Dimanche = { dimanche: string; semaine: string | null; hooper: string | null; retires: number; soucis: string[] };
 
-// Le dimanche qui vient d'un athlète : ses questionnaires en place (gardés, ou posés), le reste retiré. garder : les
-// identifiants qu'il avait déjà, préférés s'ils tombent ce dimanche-là.
+// Le week-end qui vient d'un athlète : ses questionnaires en place (gardés, ou posés), le reste retiré. garder : les
+// identifiants qu'il avait déjà, préférés s'ils tombent ce week-end-là. Le questionnaire va le samedi ; le samedi même
+// (passé 8 h), celui du week-end est gardé, samedi ou dimanche, et un manquant se pose le dimanche.
 export async function poserLeDimanche(usr: string, { coache, avecHooper, garder = [] }: {
   coache: boolean; avecHooper: boolean; garder?: (string | null | undefined)[];
 }): Promise<Dimanche> {
   const d = await destinataire(usr);
   const qui = d.moi ? '' : `athlete=${d.usr}`;
-  const dimanche = dimancheApres(aujourdhuiParis());
-  const tous = (await listeNolio<QuizPrevu>(`planned/quizzes/?date_from=${dimanche}&date_to=${ajouterJours(dimanche, 7 * 60)}${qui ? `&${qui}` : ''}`))
-    .filter((q) => genreDu(q) && estDimanche(q.date_start)).sort((a, b) => a.date_start.localeCompare(b.date_start));
+  const aujourdhui = aujourdhuiParis();
+  const dimanche = dimancheApres(aujourdhui);
+  const samedi = ajouterJours(dimanche, -1);
+  const tous = (await listeNolio<QuizPrevu>(`planned/quizzes/?date_from=${samedi}&date_to=${ajouterJours(dimanche, 7 * 60)}${qui ? `&${qui}` : ''}`))
+    .filter((q) => (genreDu(q) === 'semaine' && duWeekEnd(q.date_start)) || (genreDu(q) === 'hooper' && estDimanche(q.date_start)))
+    .sort((a, b) => a.date_start.localeCompare(b.date_start));
   const gardes = new Set(garder.filter(Boolean));
   const res: Dimanche = { dimanche, semaine: null, hooper: null, retires: 0, soucis: [] };
   const pour = (corps: Record<string, unknown>) => (d.moi ? corps : { ...corps, athletes: [d.usr] });
   for (const genre of ['semaine', 'hooper'] as const) {
     const duGenre = tous.filter((q) => genreDu(q) === genre);
-    const duJour = duGenre.filter((q) => q.date_start.slice(0, 10) === dimanche);
+    const jours = genre === 'hooper' ? [dimanche] : samedi > aujourdhui ? [samedi] : [samedi, dimanche];
+    const duJour = duGenre.filter((q) => jours.includes(q.date_start.slice(0, 10)));
     const voulu = genre === 'semaine' || avecHooper;
     const garde = voulu ? (duJour.find((q) => gardes.has(q.id)) ?? duJour[0]) : undefined;
     if (garde) res[genre] = garde.id;
@@ -66,13 +75,13 @@ export async function poserLeDimanche(usr: string, { coache, avecHooper, garder 
       const cadre = genre === 'hooper' ? await leCadreHooper() : null;
       const corps: Record<string, unknown> = genre === 'semaine' ? (coache ? questionnaireCoache() : QUESTIONNAIRE_SEMAINE) : { quiz_frame: cadre };
       if (genre === 'semaine' || cadre) {
-        const r = await appelNolio('POST', 'planned/quizzes/', pour({ ...corps, date_start: dimanche, hour_start: '08:00' })).catch(() => null);
+        const r = await appelNolio('POST', 'planned/quizzes/', pour({ ...corps, date_start: jours[jours.length - 1], hour_start: '08:00' })).catch(() => null);
         if (r && (r.statut === 201 || r.statut === 200)) res[genre] = String(r.corps?.id ?? '');
-        else res.soucis.push(r ? refusNolio(r, genre === 'semaine' ? 'le questionnaire du dimanche' : 'le Hooper du dimanche') : `${genre} : Nolio injoignable`);
+        else res.soucis.push(r ? refusNolio(r, genre === 'semaine' ? 'le questionnaire du samedi' : 'le Hooper du dimanche') : `${genre} : Nolio injoignable`);
       }
     }
-    // Le reste part : une autre série dès son occurrence de ce dimanche, celle du gardé à partir du dimanche suivant, un
-    // questionnaire seul de ce genre.
+    // Le reste part : une autre série dès son occurrence de ce week-end, celle du gardé à partir du week-end suivant, un
+    // questionnaire seul de ce genre (un questionnaire du dimanche d'avant le 24/10/2026, une fois son samedi posé).
     const series = new Set<string>();
     for (const q of duGenre) {
       if (garde && q.id === garde.id) continue;
@@ -81,7 +90,7 @@ export async function poserLeDimanche(usr: string, { coache, avecHooper, garder 
       if (rec) series.add(rec);
       const x = await appelNolio('DELETE', `planned/quizzes/${q.id}/${rec ? '?recurrence_action=following' : ''}${qui ? `${rec ? '&' : '?'}${qui}` : ''}`).catch(() => null);
       if (x && (x.statut === 204 || x.statut === 200 || x.statut === 404)) res.retires += 1;
-      else res.soucis.push(x ? refusNolio(x, `un ${genre === 'semaine' ? 'questionnaire' : 'Hooper'} du dimanche en trop`) : 'un dimanche en trop : Nolio injoignable');
+      else res.soucis.push(x ? refusNolio(x, `un ${genre === 'semaine' ? 'questionnaire' : 'Hooper'} du week-end en trop`) : 'un week-end en trop : Nolio injoignable');
     }
   }
   return res;
@@ -186,7 +195,7 @@ export async function retirerLesDimanches(ficheId: string): Promise<string[]> {
   const qui = d.moi ? '' : `athlete=${d.usr}`;
   const demain = ajouterJours(aujourdhuiParis(), 1);
   const avenir = (await listeNolio<QuizPrevu>(`planned/quizzes/?date_from=${demain}&date_to=${ajouterJours(demain, 7 * 60)}${qui ? `&${qui}` : ''}`)
-    .catch(() => [] as QuizPrevu[])).filter((q) => genreDu(q) && estDimanche(q.date_start))
+    .catch(() => [] as QuizPrevu[])).filter((q) => genreDu(q) && duWeekEnd(q.date_start))
     .sort((a, b) => a.date_start.localeCompare(b.date_start));
   const soucis: string[] = [];
   const series = new Set<string>();

@@ -195,7 +195,7 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     // Un mot à la question ouverte du dimanche, ces 7 derniers jours (décision coach du 21/10/2026) : à lire dans Nolio.
     if ((a.questionnaires?.mot_le ?? '') >= ajouterJours(jour, -7)) {
       aRegarder.push({ niveau: 'sante', genre: 'mot', athlete: a.nom, action: 'Lire dans Nolio ›', href: NOLIO, externe: true,
-        texte: 'a un mot pour toi dans son questionnaire du dimanche.' });
+        texte: 'a un mot pour toi dans son questionnaire du samedi.' });
     }
     // Le RPE à revoir (décision coach du 21/10/2026) : une séance clé jugée trop dure sur son RPE deux semaines de suite.
     const deuxDernieres = [...semaines].sort((x, y) => Number(num(y.numero)) - Number(num(x.numero))).slice(0, 2);

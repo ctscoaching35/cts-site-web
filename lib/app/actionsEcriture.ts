@@ -44,7 +44,7 @@ export async function demarrerDansNolio(planId: string, _e: EtatGeste, formulair
         ? `Programmé : tes séances déjà posées vont jusqu’au ${le(depart.apres)}. Sa première semaine partira toute seule la veille du lundi ${le(depart.prevu)}, le dimanche soir ; rien n’est écrasé.`
         : `Programmé : un objectif à la fois. Il démarrera tout seul le ${le(depart.prevu)}, après la récupération de ${depart.apres}.` };
     }
-    return { ok: true, message: `C’est parti : la trame, les questionnaires du dimanche et la semaine ${depart.numero.replace('S', '')} sont dans Nolio. La suite s’écrit chaque dimanche.` };
+    return { ok: true, message: `C’est parti : la trame, les questionnaires du week-end et la semaine ${depart.numero.replace('S', '')} sont dans Nolio. La suite s’écrit chaque dimanche.` };
   } catch (e) {
     console.error(`Départ dans Nolio de ${planId} :`, e instanceof Error ? e.message : e);
     return { ok: false, message: e instanceof Error ? e.message : 'Le départ n’a pas abouti.' };
