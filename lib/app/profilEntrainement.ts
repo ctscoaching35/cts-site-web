@@ -7,6 +7,7 @@
  */
 import { textes } from '@/lib/plan';
 import { niveauDesFaits, texteDesFaits } from './niveau';
+import { ACCENTS } from './accentFond';
 import { ficheDuCompte } from './demandes';
 import { clientServeur, clientService } from './supabase';
 
@@ -51,6 +52,7 @@ export function lignesDuProfil(profil: ProfilEntrainement, pourCoach = false): [
     ['Semaine habituelle', profil.freq_hebdo
       ? `${profil.freq_hebdo} séances · ${jours.map((j) => j.slice(0, 3)).join(', ')} · sortie longue le ${String(profil.jour_sl ?? '—')}`
       : '—'],
+    ...(profil.cout_trail ? [['Ce qui coûte le plus', ACCENTS.find(([cle]) => cle === profil.cout_trail)?.[1] ?? '—'] as [string, string]] : []),
   ];
 }
 
@@ -68,6 +70,8 @@ export function lireProfil(form: FormData, pour: 'son' | 'ton', ancien?: ProfilE
   const jours = form.getAll('jours_disponibles').map(String).filter((j) => JOURS_SEMAINE.includes(j));
   const jourSl = String(form.get('jour_sl') ?? '');
   const freq = Number(form.get('freq_hebdo'));
+  // Ce qui lui coûte le plus en trail (décisions coach du 24/10/2026) : facultatif.
+  const cout = String(form.get('cout_trail') ?? '');
   const ses = pour === 'son' ? 'ses' : 'tes';
   if (!niveau) return { erreur: pour === 'son'
     ? 'Réponds aux deux questions de son niveau, ou choisis-le.'
@@ -83,6 +87,7 @@ export function lireProfil(form: FormData, pour: 'son' | 'ton', ancien?: ProfilE
   return { profil: {
     niveau, ...(faits ? { anciennete, entrainement } : {}), ...(niveauCoach ? { niveau_coach: niveauCoach } : {}),
     terrain, jours_disponibles: jours, jour_sl: jourSl, freq_hebdo: String(freq),
+    ...(ACCENTS.some(([cle]) => cle === cout) ? { cout_trail: cout } : {}),
   } };
 }
 

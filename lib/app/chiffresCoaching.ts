@@ -22,7 +22,7 @@ export async function chiffresDuCoaching(coachId: string): Promise<ChiffresCoach
   const fiches = (await athletesCoaches(coachId)).filter((a) => a.mode === 'coaching');
   const planIds = fiches.flatMap((a) => a.objectifs.map((o) => o.plan_id));
   const { data: plans } = planIds.length
-    ? await service.from('plans').select('id, demarre_le, course_date').in('id', planIds)
+    ? await service.from('plans').select('id, demarre_le, course_date, parametres').in('id', planIds)
     : { data: [] };
   const { data: ecrites } = planIds.length
     ? await service.from('semaines_ecrites').select('lundi:donnees->>lundi, journal, sans_ajustement, realise').in('plan_id', planIds)
@@ -45,7 +45,9 @@ export async function chiffresDuCoaching(coachId: string): Promise<ChiffresCoach
   });
   return {
     coaches: fiches.length, aLaMain: fiches.filter((a) => a.programmation === 'main').length,
-    enRoute: (plans ?? []).filter((p) => p.demarre_le && String(p.course_date) >= jour).length,
+    // Les saisons de fond ne sont pas des objectifs (décisions coach du 24/10/2026).
+    enRoute: (plans ?? []).filter((p) => p.demarre_le && String(p.course_date) >= jour
+      && !(p.parametres as { fond?: unknown } | null)?.fond).length,
     semaines,
   };
 }

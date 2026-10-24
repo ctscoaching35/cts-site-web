@@ -12,6 +12,7 @@ import { clientServeur, clientService } from '@/lib/app/supabase';
 import { dateLongue, jMoins } from '@/lib/app/plan';
 import { blocsDuPlan, jaugeDuPlan } from '@/lib/app/tableau';
 import { donneesTableau, fichesDePreparation, type CourseSecondaire } from '@/lib/app/tableauDuPlan';
+import { BlocsDeLaSaison } from '@/components/app/SaisonDeFond';
 
 // « Mes objectifs » (OM2, décision coach du 19/10/2026) : chaque objectif majeur du compte (les siens, ceux que son
 // coach lui prépare), en cours, à venir ou passé, et ses courses de préparation ; un toucher l'affiche ; les demandes
@@ -24,14 +25,17 @@ async function mesObjectifs() {
   const { data: params } = liste.length
     ? await clientService().from('plans').select('id, parametres').in('id', liste.map((p) => p.id))
     : { data: [] };
+  // Les saisons de fond ne sont pas des objectifs (décisions coach du 24/10/2026) : « Mon plan » les montre à part.
+  const saisons = new Set((params ?? []).filter((p) => (p.parametres as { fond?: unknown } | null)?.fond).map((p) => p.id as string));
   const prep = new Map((params ?? []).map((p) => [p.id as string,
     (((p.parametres as Record<string, unknown> | null)?.courses_secondaires ?? []) as CourseSecondaire[]).slice().sort((a, b) => a.date.localeCompare(b.date))]));
   const aujourdhui = new Date().toISOString().slice(0, 10);
   const fiche = await ficheDuCompte(compteId);
   return {
-    liste: liste.map((p: PlanDuCompte) => ({ ...p, preparations: prep.get(p.id) ?? [] })),
+    liste: liste.filter((p) => !saisons.has(p.id)).map((p: PlanDuCompte) => ({ ...p, preparations: prep.get(p.id) ?? [] })),
     // Son coaching d'abord (décision coach du 23/10/2026).
-    enCours: (liste.find((p) => p.coache && p.course_date >= aujourdhui) ?? liste.find((p) => p.course_date >= aujourdhui))?.id ?? null,
+    enCours: (liste.find((p) => p.coache && !saisons.has(p.id) && p.course_date >= aujourdhui)
+      ?? liste.find((p) => !saisons.has(p.id) && p.course_date >= aujourdhui))?.id ?? null,
     demandes: fiche ? await demandesDeLAthlete(fiche.id) : [],
   };
 }
@@ -57,31 +61,41 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
       <EnTeteApp ctx={ctx} />
       <main className="mx-auto max-w-2xl px-4 pt-3 pb-6 space-y-4">
         <Link href={lien('/app', ctx)} className="inline-flex items-center min-h-11 text-sm font-bold text-teal">‹ Accueil</Link>
-        <div className="-mt-1">
-          <Surtitre as="div">Objectif principal</Surtitre>
-          <h1 className="mt-1.5 text-[1.75rem] font-extrabold text-indigo tracking-tight leading-tight">{course.nom}</h1>
-          <p className="mt-1.5 text-[0.8125rem] text-[#5E5C78]">
-            {dateLongue(course.date)} · {course.format_clair}{course.dplus_m ? ` · ${Math.round(course.distance_km)} km · ${course.dplus_m.toLocaleString('fr-FR')} m D+` : ' sur route'}
-          </p>
-        </div>
+        {plan.fond ? (
+          <div className="-mt-1">
+            <Surtitre as="div">Ta saison de fond</Surtitre>
+            <h1 className="mt-1.5 text-[1.75rem] font-extrabold text-indigo tracking-tight leading-tight">Saison {plan.fond.saison}</h1>
+            <p className="mt-1.5 text-[0.8125rem] text-[#5E5C78]">
+              Du {dateLongue(plan.fond.debut, true)} au {dateLongue(plan.fond.fin, true)} · tes tests la semaine du {dateLongue(plan.fond.tests_le, true)}
+            </p>
+          </div>
+        ) : (
+          <div className="-mt-1">
+            <Surtitre as="div">Objectif principal</Surtitre>
+            <h1 className="mt-1.5 text-[1.75rem] font-extrabold text-indigo tracking-tight leading-tight">{course.nom}</h1>
+            <p className="mt-1.5 text-[0.8125rem] text-[#5E5C78]">
+              {dateLongue(course.date)} · {course.format_clair}{course.dplus_m ? ` · ${Math.round(course.distance_km)} km · ${course.dplus_m.toLocaleString('fr-FR')} m D+` : ' sur route'}
+            </p>
+          </div>
+        )}
 
         {/* Plus de PDF dans l'app (décision coach du 19/10/2026) : la préparation vit et s'ajuste semaine après semaine ;
             l'acheteur garde celui de l'e-mail de bienvenue. */}
-        <Link href={lien('/app/plan/course', ctx)} className="bg-indigo text-white rounded-[14px] p-3.5 flex items-center justify-between gap-3">
+        {!plan.fond && <Link href={lien('/app/plan/course', ctx)} className="bg-indigo text-white rounded-[14px] p-3.5 flex items-center justify-between gap-3">
           <span className="flex flex-col gap-1">
             <span className="text-sm font-bold">Ta fiche de course</span>
             {/* Ce qu'elle contient vraiment, dans l'ordre de ses parties (retour du coach du 20/10/2026). */}
             <span className="text-xs text-[#D6D5E6]">Profil, tronçons, déterminants de la performance, stratégie nutritionnelle</span>
           </span>
           <span aria-hidden>›</span>
-        </Link>
+        </Link>}
 
         {r.demande === 'envoyee' && (
           <Carte className="text-sm text-indigo"><p role="status">Ta demande est partie chez ton coach : il la relit et lance ta préparation.</p></Carte>
         )}
 
         {/* Programmé à la main (décision coach du 20/10/2026) : ni jalons ni blocs, qui suivent la trame du moteur. */}
-        {jauge.jalons.length > 0 && !ctx.aLaMain && (
+        {jauge.jalons.length > 0 && !ctx.aLaMain && !plan.fond && (
           <Carte className="space-y-3">
             <Surtitre>Tes jalons</Surtitre>
             <ul className="grid grid-cols-3 gap-2">
@@ -101,7 +115,9 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
           </Carte>
         )}
 
-        {!ctx.aLaMain && <Carte className="!pb-1.5">
+        {plan.fond && <BlocsDeLaSaison trame={d.trame} jour={jour} />}
+
+        {!ctx.aLaMain && !plan.fond && <Carte className="!pb-1.5">
           <Surtitre>Ta préparation, bloc par bloc</Surtitre>
           <p className="mt-1 mb-1 text-xs text-[#5E5C78] leading-relaxed">
             Ce que chaque bloc développe, jusqu’à ton jour J ; tes séances s’écrivent chaque dimanche dans Nolio.
@@ -139,7 +155,7 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
           </ol>
         </Carte>}
 
-        {d.ecrit && !ctx.demonstration && (
+        {d.ecrit && !ctx.demonstration && !plan.fond && (
           <Carte id="ajouter-course" className="space-y-3 scroll-mt-20">
             <Surtitre>Tes courses de préparation</Surtitre>
             {d.courses.map((c) => (

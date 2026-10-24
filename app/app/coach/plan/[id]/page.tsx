@@ -127,10 +127,11 @@ export default async function ObjectifCoache({ params, searchParams }: {
         </div>
         <div className="flex flex-wrap gap-2.5">
           {/* « Modifier l'objectif » (décision coach du 22/10/2026) : tout avant le départ ; en route, sauf sa date et sa distance. */}
-          {ecriture && course.date >= jour && (
+          {ecriture && course.date >= jour && !o.plan.fond && (
             <Link href={`/app/coach/nouveau?athlete=${o.athlete.id}&modifier=${id}`} className="inline-flex items-center min-h-11 px-4 rounded-xl border border-indigo/[0.18] bg-white text-[0.8125rem] font-bold">Modifier</Link>
           )}
-          <a href={lienFicheCourse(id)} target="_blank" rel="noopener" className="inline-flex items-center min-h-11 px-4 rounded-xl border border-indigo/[0.18] bg-white text-[0.8125rem] font-bold">Fiche de course</a>
+          {/* Une saison de fond n'a ni course ni questionnaire à refaire (décisions coach du 24/10/2026). */}
+          {!o.plan.fond && <a href={lienFicheCourse(id)} target="_blank" rel="noopener" className="inline-flex items-center min-h-11 px-4 rounded-xl border border-indigo/[0.18] bg-white text-[0.8125rem] font-bold">Fiche de course</a>}
           <a href="https://www.nolio.io/" target="_blank" rel="noopener" className="inline-flex items-center min-h-11 px-4 rounded-xl bg-indigo text-white text-[0.8125rem] font-bold">Ouvrir dans Nolio</a>
         </div>
       </div>
@@ -303,7 +304,7 @@ export default async function ObjectifCoache({ params, searchParams }: {
                   {c.date > jour && <div className="pl-14 -mt-1 flex flex-wrap gap-x-5"><ModifierCourse planId={id} course={c} /><RetirerCourse planId={id} date={c.date} nom={c.nom} /></div>}
                 </div>
               ))}
-              {course.date >= jour && (
+              {course.date >= jour && !o.plan.fond && (
                 <details className="text-sm" open={preps.length === 0 || Boolean(depuisNolio)}>
                   <summary className="cursor-pointer flex items-center justify-center min-h-11 rounded-xl border-[1.5px] border-dashed border-teal/45 text-[0.8125rem] font-bold text-teal list-none">
                     + Ajouter une course de préparation

@@ -79,6 +79,9 @@ function Ligne({ a, jour }: { a: LigneAthlete; jour: string }) {
   const manque = [!a.nolio && 'Nolio à associer', a.nolio && !a.accord && 'sans accord', !a.app && 'app à inviter'].filter(Boolean) as string[];
   // Sa semaine : sa place dans le plan, sinon où en est son objectif.
   const [semaine, bloc] = a.mode === 'plan' ? ['—', 'Rien ne s’écrit ici']
+    // La saison de fond (décisions coach du 24/10/2026) : le thème de la semaine.
+    : o?.fond && avenir ? [o.cours?.type === 'Assimilation' ? 'Semaine allégée' : o.fond.theme ? `Bloc ${o.fond.theme}` : 'Saison de fond',
+      o.fond.tests_dans ? `tests dans ${o.fond.tests_dans} sem.` : 'semaine de tests']
     : !o || !avenir ? [a.aLaMain ? 'Programmé à la main' : 'Sans objectif', '']
       : o.cours && o.demarre ? [`${o.cours.numero} / ${o.total ?? '?'} · ${o.cours.type}`, o.cours.bloc]
         : !o.ecrit ? ['Envoyé en entier', '']
@@ -98,7 +101,8 @@ function Ligne({ a, jour }: { a: LigneAthlete; jour: string }) {
       </span>
       <span className={o ? '' : 'text-[#5E5C78]'}>
         {o ? o.course_nom : 'Aucun objectif'}
-        {o && <span className={sous}>{dateCourte(o.course_date, jour)}{avenir ? ` · ${jMoins(jour, o.course_date)}` : ' · couru'}</span>}
+        {o && <span className={sous}>{o.fond ? `jusqu’au ${dateCourte(o.course_date, jour)}`
+          : `${dateCourte(o.course_date, jour)}${avenir ? ` · ${jMoins(jour, o.course_date)}` : ' · couru'}`}</span>}
       </span>
       <span>
         {semaine}

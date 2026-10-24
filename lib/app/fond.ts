@@ -15,6 +15,7 @@ import { debutApres, moteur, type Compte, type LigneTrame, type Trame } from './
 import { profilDeLaFiche } from './profilEntrainement';
 import { clientService } from './supabase';
 import { coefficientRiegel } from './zones';
+import { ACCENTS } from './accentFond';
 
 // Ce que le moteur rend d'une saison (POST /v1/trame).
 export type InfosFond = { saison: number; themes: string[]; debut: string; fin: string; tests_le: string };
@@ -31,10 +32,6 @@ const lundiApres = (jour: string) => ajouterJours(jour, 7 - ((new Date(`${jour}T
 const TESTS_ENTREE_JOURS = 91;
 // La saison suivante suit la précédente si elle a fini il y a moins de deux semaines ; sinon elle repart de 1.
 const ENCHAINEMENT_JOURS = 14;
-// Ce qui lui coûte le plus en trail (décision 4 bis), la question de son profil de coureur.
-export const ACCENTS = [
-  ['montees', 'Les montées'], ['descentes', 'Les descentes'], ['technique', 'La technique'], ['fin', 'La fin de course'],
-] as const;
 
 type PlanFiche = { id: string; course_date: string; demarre_le: string | null; depart_prevu: string | null;
   parametres: Record<string, unknown> | null; trame: Trame | null; donnees?: Plan | null };

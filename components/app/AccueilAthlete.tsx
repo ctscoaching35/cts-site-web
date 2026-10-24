@@ -6,6 +6,7 @@ import {
   CarteNolio, CarteObjectif, CetteSemaine, CoursesPreparation, FichesDeLaSemaine, Piliers,
 } from './TableauDeBord';
 import { Carte, CarteSombre, Surtitre } from './Ui';
+import { CarteSaison } from './SaisonDeFond';
 import { nouveauxBadges } from '@/lib/app/badges';
 import { mesBadges } from '@/lib/app/badgesNolio';
 import { monProfilDEntrainement } from '@/lib/app/profilEntrainement';
@@ -133,13 +134,16 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
           <PourBienDemarrer acheteur={!ctx.coache} nolio={d.nolio} accord={d.accord} questionnaire={d.ecrit && !ctx.aLaMain} installer={installer}
             profil={profil} lienProfil={lienProfil} seanceFaite={d.realises.some((r) => r.seances_faites > 0)} />
         )}
-        <CarteObjectif plan={plan} restants={restants} jauge={ctx.aLaMain ? null : jauge} etape={etape} href={lien('/app/plan', ctx)}
-          surtitre={!ctx.coache ? 'Ton objectif' : etape === 'apres' ? 'Ton dernier objectif majeur' : 'Ton prochain objectif majeur'}
-          coache={Boolean(ctx.coache)} />
+        {/* La saison de fond (décisions coach du 24/10/2026) : le bloc et le compte à rebours des tests. */}
+        {plan.fond ? <CarteSaison plan={plan} ligne={ligne} jour={jour} href={lien('/app/plan', ctx)} /> : (
+          <CarteObjectif plan={plan} restants={restants} jauge={ctx.aLaMain ? null : jauge} etape={etape} href={lien('/app/plan', ctx)}
+            surtitre={!ctx.coache ? 'Ton objectif' : etape === 'apres' ? 'Ton dernier objectif majeur' : 'Ton prochain objectif majeur'}
+            coache={Boolean(ctx.coache)} />
+        )}
         {etape !== 'apres' && (!demarrage || d.nolio === 'sorti') && <CarteNolio etat={d.nolio} />}
         <CarteNouveauBadge badges={nouveaux} href={`${lien('/app/profil', ctx)}#badges`} />
 
-        {etape !== 'apres' && restants <= 7 && (
+        {etape !== 'apres' && restants <= 7 && !plan.fond && (
           <Link href={lien('/app/plan/jour-j', ctx)} className="block bg-teal text-white rounded-2xl p-[18px]">
             <span className="block text-[0.6875rem] font-bold tracking-[0.14em] uppercase text-white/70 mb-1">Semaine de course</span>
             <span className="font-bold text-lg">{plan.jour_j.titre} ›</span>
@@ -148,7 +152,7 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
 
         {etape === 'apres' && !ctx.coache && <EtMaintenant ctx={ctx} />}
         {etape !== 'avant' && !ctx.aLaMain && <Piliers jauge={jauge} />}
-        {etape !== 'apres' && <CoursesPreparation courses={d.courses.filter((c) => c.date >= jour)} ajout={ajout} />}
+        {etape !== 'apres' && !plan.fond && <CoursesPreparation courses={d.courses.filter((c) => c.date >= jour)} ajout={ajout} />}
         {etape !== 'apres' && !ctx.aLaMain && (
           <CetteSemaine semaine={semaine} ligne={ligne} questionnaire={d.ecrit && restants > 7} nolio={nolio}
             arrivee={arrivee} depuis={arrivee ? jour : null} debut={debut} />

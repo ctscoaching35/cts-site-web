@@ -175,6 +175,8 @@ export type LigneTrame = {
   numero: string; type: string; bloc: string; lundi: string; dates: string; volume_h: number; charge: number | null;
   seances_cles: { jour: string; seance: string; famille: string }[]; week_end_choc: boolean; sl_min: number | null;
   passee: boolean;
+  // La saison de fond (moteur 8.353) : le thème du bloc (« Vitesse », « Seuil ») et la semaine de tests.
+  theme?: string; tests?: boolean;
 };
 export type Trame = { course: { date: string }; semaines: LigneTrame[]; fiches?: Fiche[] };
 export const trameDu = (parametres: Record<string, unknown>, fichesDuPlan?: string[]) =>

@@ -55,8 +55,11 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
       .in('id', a.objectifs.map((o) => o.plan_id))
     : { data: [] };
   const etat = new Map((plans ?? []).map((p) => [p.id as string, p as Record<string, unknown>]));
+  // Ses saisons de fond (décisions coach du 24/10/2026) : à part de ses objectifs ; la saison en cours, en une ligne.
+  const saisons = new Set((plans ?? []).filter((p) => (p.parametres as { fond?: unknown } | null)?.fond).map((p) => p.id as string));
+  const objectifs = a.objectifs.filter((o) => !saisons.has(o.plan_id));
   // PO1 : son profil, celui de sa fiche s'il a été modifié, sinon celui de son dernier objectif.
-  const dernier = a.objectifs[a.objectifs.length - 1];
+  const dernier = objectifs[objectifs.length - 1];
   const { data: intake } = dernier ? await service.from('plans').select('intake').eq('id', dernier.plan_id).maybeSingle() : { data: null };
   const deLIntake = (intake?.intake ?? {}) as Record<string, string | string[]>;
   const profil: Record<string, string | string[]> = a.profil ?? Object.fromEntries(
@@ -76,7 +79,8 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
     ['FC au seuil 2', a.fc_seuil2 ? `${a.fc_seuil2} bpm` : null, source('fc_seuil2')],
   ];
   const jour = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
-  const prochain = a.objectifs.find((o) => o.course_date >= jour)?.plan_id ?? null;
+  const prochain = objectifs.find((o) => o.course_date >= jour)?.plan_id ?? null;
+  const saisonEnCours = a.objectifs.find((o) => saisons.has(o.plan_id) && o.course_date >= jour) ?? null;
   const nomNolio = liste.find((x) => x.id === a.nolio_athlete_id)?.name ?? null;
   // Ses courses dans Nolio pas encore dans CTS (décision coach du 22/10/2026, « proposer, tu valides ») : aucun objectif
   // ni course de préparation à leur date.
@@ -95,7 +99,7 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
   });
   // Une course B devient une préparation de son objectif en cours, à partir de lundi prochain et avant sa course.
   const lundiProchain = ajouterJours(jour, 7 - ((new Date(`${jour}T12:00:00Z`).getUTCDay() + 6) % 7));
-  const dateProchain = a.objectifs.find((o) => o.plan_id === prochain)?.course_date ?? '';
+  const dateProchain = objectifs.find((o) => o.plan_id === prochain)?.course_date ?? '';
   const pastilles: [string, boolean][] = [
     // Son mode (décision coach du 23/10/2026), en premier.
     [a.mode === 'plan' ? 'Mode : Plan' : 'Mode : Coaching', a.mode !== 'plan'],
@@ -134,8 +138,17 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
                 + Objectif trail
               </Link>
             </div>
-            {a.objectifs.length === 0 && <p className="text-sm text-[#4A4866]">Aucun pour l’instant.</p>}
-            {a.objectifs.map((o) => {
+            {saisonEnCours && (
+              <Link href={`/app/coach/plan/${saisonEnCours.plan_id}`} className="flex items-center gap-3.5 p-3.5 rounded-xl bg-[#E1EFEA] text-[#0B4A40]">
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[0.9375rem] font-bold">{saisonEnCours.course_nom} · en cours</span>
+                  <span className="block text-[0.78rem]">Jusqu’au {dateLongue(saisonEnCours.course_date, true)} · le moteur écrit ses semaines ; un objectif qui arrive prend la suite.</span>
+                </span>
+                <span aria-hidden>›</span>
+              </Link>
+            )}
+            {objectifs.length === 0 && <p className="text-sm text-[#4A4866]">Aucun pour l’instant.</p>}
+            {objectifs.map((o) => {
               const p = etat.get(o.plan_id);
               const principal = o.plan_id === prochain;
               const preps = (((p?.parametres as Record<string, unknown> | null)?.courses_secondaires ?? []) as CourseSecondaire[])

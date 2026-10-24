@@ -26,7 +26,9 @@ export type LigneAthlete = {
   id: string; nom: string; usr: string | null; nolio: boolean; accord: boolean; app: boolean;
   objectif: { plan_id: string; course_nom: string; course_date: string; demarre: boolean; prevu: string | null;
     semaine: number | null; total: number | null; verdict: Verdict | null; ecrit: boolean;
-    cours: { numero: string; type: string; bloc: string } | null } | null;
+    cours: { numero: string; type: string; bloc: string } | null;
+    // Une saison de fond (décisions coach du 24/10/2026) : son numéro, le thème de la semaine, ses tests dans n semaines.
+    fond?: { saison: number; theme: string | null; tests_dans: number | null } } | null;
   ensuite: { texte: string; ton: 'rien' | 'action' | 'alerte'; href: string };
   // Son entrée, tant qu'elle n'est pas complète (décision coach du 22/10/2026) : « Entrée 3/5 » sur sa ligne.
   entree: { faites: number; total: number } | null;
@@ -206,6 +208,8 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
         texte: 'RPE à revoir avec lui : séance clé jugée trop dure deux semaines de suite.' });
     }
     const demarre = Boolean(p?.demarre_le);
+    // Une saison de fond : ni « Nouvel objectif » à 21 jours, ni départ ; elle se renouvelle d'elle-même.
+    const infosFond = (p?.trame as { fond?: { saison: number; tests_le: string } } | null)?.fond ?? null;
     const ecrit = Boolean(p?.parametres);
     const avenir = Boolean(o && o.course_date >= jour);
     const demande = demandes.find((d) => d.athlete_id === a.id);
@@ -260,7 +264,7 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
         href: `/app/coach/nouveau?athlete=${a.id}&course=${c.id}`, texte: `${c.nom}, le ${dateLongue(c.date, true)}, est dans Nolio sans objectif ici.` });
     }
     // Ce qui arrive : une course de préparation dans les 14 jours, un objectif dans les 21 jours sans suite, un test raté.
-    if (o && avenir) {
+    if (o && avenir && !infosFond) {
       for (const c of (((p?.parametres as { courses_secondaires?: { nom?: string; date?: string }[] } | null)?.courses_secondaires) ?? [])) {
         const dans = c.date ? joursEntre(jour, c.date) : -1;
         if (dans >= 0 && dans <= 14) aRegarder.push({ niveau: 'arrive', genre: 'preparation', athlete: a.nom, action: 'Voir ›', href: hrefPlan,
@@ -287,7 +291,9 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
       app: Boolean(a.compte_id),
       objectif: o ? { plan_id: o.plan_id, course_nom: o.course_nom, course_date: o.course_date, demarre, prevu: (p?.depart_prevu as string | null) ?? null,
         semaine: jauge?.semaine ?? null, total: trame?.length ?? null, verdict: jauge?.verdict ?? null, ecrit,
-        cours: enCours ? { numero: enCours.numero, type: enCours.type, bloc: enCours.bloc } : null } : null,
+        cours: enCours ? { numero: enCours.numero, type: enCours.type, bloc: enCours.bloc } : null,
+        ...(infosFond ? { fond: { saison: infosFond.saison, theme: (enCours as { theme?: string } | null)?.theme ?? null,
+          tests_dans: Math.max(0, Math.round(joursEntre(jour, infosFond.tests_le) / 7)) } } : {}) } : null,
       ensuite, entree: entree.complete ? null : { faites: entree.faites, total: entree.total },
       mode: a.mode, aLaMain: a.programmation === 'main',
       semaine: rPassee && rPassee.seances_prevues ? { faites: rPassee.seances_faites, prevues: rPassee.seances_prevues,
@@ -306,5 +312,6 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     else if (l.mode === 'plan') l.signal = { texte: 'Mode plan', niveau: 'neutre' };
     else if (l.signal.texte === 'Rien à faire') l.signal = { texte: 'Rien à signaler', niveau: 'ok' };
   }
-  return { athletes, aRegarder, demandes, enRoute: athletes.filter((a) => a.objectif?.demarre && a.objectif.course_date >= jour).length };
+  return { athletes, aRegarder, demandes,
+    enRoute: athletes.filter((a) => a.objectif?.demarre && !a.objectif.fond && a.objectif.course_date >= jour).length };
 }

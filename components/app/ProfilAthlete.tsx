@@ -5,6 +5,7 @@ import { useActionState, useEffect, useState } from 'react';
 import { enregistrerProfil, type EtatCoach } from '@/lib/app/actionsCoaching';
 import { modifierMonProfil } from '@/lib/app/actionsObjectifs';
 import { ANCIENNETES, ENTRAINEMENTS, niveauDesFaits } from '@/lib/app/niveau';
+import { ACCENTS } from '@/lib/app/accentFond';
 import { textes } from '@/lib/plan';
 
 const JOURS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
@@ -73,6 +74,13 @@ export default function ProfilAthlete({ athleteId, profil, pourMoi = false, rafr
         <select name="terrain" defaultValue={String(profil.terrain ?? '')} className={champ} required>
           <option value="" disabled>Choisis</option>
           {textes.terrain.options.map((o) => <option key={o.valeur} value={o.valeur}>{o.titre} — {o.description}</option>)}
+        </select>
+      </label>
+      {/* Facultative (décisions coach du 24/10/2026) : l'accent du terrain de sa saison de fond. */}
+      <label className="block text-xs font-semibold text-indigo">{moi ? 'Ce qui te coûte le plus en trail' : 'Ce qui lui coûte le plus en trail'}
+        <select name="cout_trail" defaultValue={String(profil.cout_trail ?? '')} className={champ}>
+          <option value="">Pas de réponse</option>
+          {ACCENTS.map(([valeur, titre]) => <option key={valeur} value={valeur}>{titre}</option>)}
         </select>
       </label>
       <fieldset className="space-y-2.5">
