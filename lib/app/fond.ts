@@ -32,14 +32,16 @@ const lundiApres = (jour: string) => ajouterJours(jour, 7 - ((new Date(`${jour}T
 const TESTS_ENTREE_JOURS = 91;
 // La saison suivante suit la précédente si elle a fini il y a moins de deux semaines ; sinon elle repart de 1.
 const ENCHAINEMENT_JOURS = 14;
+// Pas de saison quand sa préparation part dans moins de 4 semaines, moins d'un bloc (décision coach du 24/10/2026 : une
+// saison d'une semaine avant un départ n'a pas de sens) ; ces semaines restent comme avant, le moteur n'y écrit rien.
+const DEPART_PROCHE_JOURS = 28;
 
 type PlanFiche = { id: string; course_date: string; demarre_le: string | null; depart_prevu: string | null;
   parametres: Record<string, unknown> | null; trame: Trame | null; donnees?: Plan | null };
 
-// Le lundi `lundi` est-il déjà pris par une préparation (en route, ou qui part cette semaine-là), par sa récupération
-// après la course, ou par une saison ?
+// Le lundi `lundi` est-il déjà pris par une préparation (en route, ou qui part dans moins de 4 semaines), par sa
+// récupération après la course, ou par une saison ?
 function couvert(plans: PlanFiche[], lundi: string): boolean {
-  const dimanche = ajouterJours(lundi, 6);
   for (const p of plans) {
     if (!p.parametres) continue;
     if (estFond(p.parametres)) {
@@ -47,7 +49,7 @@ function couvert(plans: PlanFiche[], lundi: string): boolean {
       continue;
     }
     if (p.demarre_le && p.course_date >= lundi) return true;
-    if (!p.demarre_le && p.depart_prevu && p.depart_prevu <= dimanche) return true;
+    if (!p.demarre_le && p.depart_prevu && p.depart_prevu < ajouterJours(lundi, DEPART_PROCHE_JOURS)) return true;
     // Sa récupération, jusqu'au lundi de reprise (cts_semaine.semaine_de_recuperation, décision coach du 23/10/2026).
     if (p.demarre_le && p.course_date < lundi && joursEntre(p.course_date, lundi) <= 42) {
       const champs = (p.parametres.champs ?? {}) as Record<string, unknown>;
