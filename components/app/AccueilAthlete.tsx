@@ -18,8 +18,7 @@ import { donneesTableau, semaineDansNolio, semaineEcrite } from '@/lib/app/table
 // L'accueil de l'athlète (CTS_NOLIO_CADRAGE.md dans le dépôt du moteur, T1, AP1, AP2 ; maquette validée par le coach le
 // 19/10/2026) : les séances vivent dans Nolio ; ici l'objectif et sa montagne, un badge tout neuf (BG3), les piliers,
 // les courses de préparation, la semaine en cours, la fiche du moment ; pour un coaché entre deux objectifs, l'accueil
-// d'entre-deux. Celui de l'athlète connecté (app/app/page.tsx), et celui d'un coaché que son coach regarde, en lecture
-// seule (« Voir son app », décision coach du 24/10/2026).
+// d'entre-deux. Celui de l'athlète connecté (app/app/page.tsx).
 // demarrage : « Pour bien démarrer » (décision coach du 21/10/2026), tant qu'elle n'est pas masquée sur cet appareil ;
 // demande : sa demande d'objectif vient de partir ; aVenir : un objectif à venir sur son compte, demandé seulement après
 // sa dernière course.
