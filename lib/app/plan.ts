@@ -150,7 +150,8 @@ export type Plan = {
   version_moteur: string | null;
   athlete: { nom: string };
   // Une saison de fond (lib/app/fond.ts, décisions coach du 24/10/2026) : sa place, ses thèmes, ses dates.
-  fond?: { saison: number; themes: string[]; debut: string; fin: string; tests_le: string };
+  // tests_les : les lundis des semaines de vitesse critique (la fin du premier bloc à l'entrée, la dernière).
+  fond?: { saison: number; themes: string[]; debut: string; fin: string; tests_le: string; tests_les?: string[] };
   course: {
     nom: string;
     date: string;

@@ -209,7 +209,7 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     }
     const demarre = Boolean(p?.demarre_le);
     // Une saison de fond : ni « Nouvel objectif » à 21 jours, ni départ ; elle se renouvelle d'elle-même.
-    const infosFond = (p?.trame as { fond?: { saison: number; tests_le: string } } | null)?.fond ?? null;
+    const infosFond = (p?.trame as { fond?: { saison: number; tests_le: string; tests_les?: string[] } } | null)?.fond ?? null;
     const ecrit = Boolean(p?.parametres);
     const avenir = Boolean(o && o.course_date >= jour);
     const demande = demandes.find((d) => d.athlete_id === a.id);
@@ -293,7 +293,8 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
         semaine: jauge?.semaine ?? null, total: trame?.length ?? null, verdict: jauge?.verdict ?? null, ecrit,
         cours: enCours ? { numero: enCours.numero, type: enCours.type, bloc: enCours.bloc } : null,
         ...(infosFond ? { fond: { saison: infosFond.saison, theme: (enCours as { theme?: string } | null)?.theme ?? null,
-          tests_dans: Math.max(0, Math.round(joursEntre(jour, infosFond.tests_le) / 7)) } } : {}) } : null,
+          tests_dans: Math.max(0, Math.round(joursEntre(jour, (infosFond.tests_les ?? [infosFond.tests_le])
+            .find((t) => t >= lundi) ?? infosFond.tests_le) / 7)) } } : {}) } : null,
       ensuite, entree: entree.complete ? null : { faites: entree.faites, total: entree.total },
       mode: a.mode, aLaMain: a.programmation === 'main',
       semaine: rPassee && rPassee.seances_prevues ? { faites: rPassee.seances_faites, prevues: rPassee.seances_prevues,

@@ -2,7 +2,7 @@ import Link from 'next/link';
 import clsx from 'clsx';
 import { Carte, CarteSombre, Surtitre } from './Ui';
 import type { LigneTrame } from '@/lib/app/ecriture';
-import { dateLongue, joursEntre, type Plan } from '@/lib/app/plan';
+import { ajouterJours, dateLongue, joursEntre, type Plan } from '@/lib/app/plan';
 
 // La saison de fond dans l'app (décisions coach du 24/10/2026, mesure 7 : « le bloc et le compte à rebours des tests »,
 // jamais « semaine N sur M »). Ce que chaque thème travaille, dans les mots de l'app.
@@ -35,7 +35,9 @@ export function CarteSaison({ plan, ligne, jour, href }: { plan: Plan; ligne: Li
         {!tests && (
           <div className="shrink-0 text-center bg-white/10 rounded-xl px-3 py-2.5">
             <div className="text-[0.6875rem] text-[#D6D5E6]">Tes tests</div>
-            <div className="text-base font-extrabold leading-tight">{enSemaines(joursEntre(jour, fond.tests_le))}</div>
+            <div className="text-base font-extrabold leading-tight">
+              {enSemaines(joursEntre(jour, (fond.tests_les ?? [fond.tests_le]).find((t) => t >= ajouterJours(jour, -6)) ?? fond.tests_le))}
+            </div>
           </div>
         )}
       </div>
@@ -57,9 +59,10 @@ export function BlocsDeLaSaison({ trame, jour }: { trame: LigneTrame[]; jour: st
   trame.forEach((l, i) => {
     const au = l.lundi ? new Date(Date.parse(`${l.lundi}T12:00:00Z`) + 6 * 86400_000).toISOString().slice(0, 10) : '';
     if (l.tests) {
-      etapes.push({ cle: `tests-${i}`, titre: i === 0 ? 'Entrée · tests' : 'Semaine de tests',
-        texte: i === 0 ? 'Tes repères refaits avant de commencer : vitesse critique et test de la parole.'
-          : 'Vitesse critique et test de la parole : tes zones et ton profil à jour, et le thème de ta saison suivante.',
+      const derniere = i === trame.length - 1;
+      etapes.push({ cle: `tests-${i}`, titre: derniere ? 'Semaine de tests' : 'Test de vitesse critique',
+        texte: derniere ? 'Vitesse critique et test de la parole : tes zones et ton profil à jour, et le thème de ta saison suivante.'
+          : 'Après trois semaines qui t’y préparent : ta vitesse critique, tes allures et ton profil.',
         du: l.lundi, au });
       return;
     }

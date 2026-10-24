@@ -18,7 +18,7 @@ import { coefficientRiegel } from './zones';
 import { ACCENTS } from './accentFond';
 
 // Ce que le moteur rend d'une saison (POST /v1/trame).
-export type InfosFond = { saison: number; themes: string[]; debut: string; fin: string; tests_le: string };
+export type InfosFond = { saison: number; themes: string[]; debut: string; fin: string; tests_le: string; tests_les?: string[] };
 type ParamsFond = { saison: number; debut: string; entree?: boolean };
 
 export const estFond = (parametres: unknown): boolean => Boolean((parametres as { fond?: unknown } | null)?.fond);

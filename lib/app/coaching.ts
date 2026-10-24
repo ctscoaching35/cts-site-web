@@ -238,9 +238,10 @@ export async function seancesDuMoteur(plan: Plan, planId: string, semaine: Semai
         // La saison de fond (décisions coach du 24/10/2026) : son bandeau (« Bloc Vitesse », « tes tests dans 5
         // semaines ») et ses deux séances de renfo ; le rang parmi les semaines de charge de toute la saison.
         ...(plan.fond ? {
-          fond: true, theme: semaine.theme ?? null, tests: semaine.lundi === plan.fond.tests_le
-            || (semaine.numero === plan.semaines[0]?.numero && semaine.type === 'Assimilation'),
-          tests_dans: semaine.lundi ? Math.round(joursEntre(semaine.lundi, plan.fond.tests_le) / 7) : null,
+          fond: true, theme: semaine.theme ?? null,
+          tests: Boolean(semaine.lundi && (plan.fond.tests_les ?? [plan.fond.tests_le]).includes(semaine.lundi)),
+          tests_dans: semaine.lundi ? Math.round(joursEntre(semaine.lundi,
+            (plan.fond.tests_les ?? [plan.fond.tests_le]).find((t) => t >= semaine.lundi!) ?? plan.fond.tests_le) / 7) : null,
           rang_charge: plan.semaines.slice(0, plan.semaines.findIndex((s) => s.numero === semaine.numero) + 1)
             .filter((s) => s.type === 'Charge').length || null,
         } : {}) } }),
