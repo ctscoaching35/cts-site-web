@@ -183,19 +183,21 @@ const couleurDuJour = (j: Jour) => j.couleur ?? FAMILLES[j.famille]?.filet ?? '#
 
 // nolio : la semaine telle qu'elle est dans Nolio, retouches du coach comprises (tableauDuPlan.semaineDansNolio) ; sans
 // elle, la semaine écrite par le moteur. Tant qu'elle n'est pas dans Nolio (décision coach du 20/10/2026) : arrivee dit
-// quand elle y arrive, et les jours d'avant depuis ne s'y poseront pas (un départ en milieu de semaine). premiere : la
-// semaine où la préparation commence, avant son début.
+// quand elle y arrive, et les jours d'avant depuis ne s'y poseront pas (un départ en milieu de semaine). Toujours la
+// semaine en cours, rien d'autre (décision coach du 24/10/2026) : avant le départ, ce qui est dans Nolio cette semaine ;
+// sans rien à y montrer, debut dit quand la préparation commence.
 const ARRIVEE = {
   invitation: 'Tes séances arrivent dans Nolio dès que tu as rejoint l’équipe CTS.',
   bientot: 'Tes séances de la semaine arrivent bientôt dans Nolio.',
 } as const;
-export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null, arrivee = null, depuis = null, premiere = false }: {
+export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null, arrivee = null, depuis = null, debut = null }: {
   semaine: Semaine | null; ligne: LigneTrame | null; questionnaire: boolean; nolio?: SeanceNolio[] | null;
-  arrivee?: keyof typeof ARRIVEE | null; depuis?: string | null; premiere?: boolean;
+  arrivee?: keyof typeof ARRIVEE | null; depuis?: string | null; debut?: string | null;
 }) {
   const jours = (semaine?.jours ?? []).filter((j) => j.famille !== 'repos' && j.seance && !(depuis && j.date_iso && j.date_iso < depuis));
   const dimanche = semaine?.jours.find((j) => j.jour.toLowerCase().startsWith('dim'));
-  if (!nolio && !jours.length && !ligne) return null;
+  if (!nolio && !jours.length && !ligne && !debut) return null;
+  const commence = debut && <p className="text-sm text-indigo">Ta préparation commence le {dateLongue(debut)}.</p>;
   const quiz = questionnaire && dimanche && (
     <li className="grid grid-cols-[52px_6px_1fr] gap-x-2.5 items-center min-h-11">
       <span className="text-xs font-semibold text-[#5E5C78] whitespace-nowrap">{jourCourt(dimanche.date_iso, dimanche.jour)}</span>
@@ -206,10 +208,9 @@ export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null, arri
   return (
     <Carte className="space-y-1">
       <div className="flex justify-between items-baseline gap-3 mb-2">
-        <Surtitre>{premiere ? 'Ta première semaine' : 'Cette semaine'}</Surtitre>
+        <Surtitre>Cette semaine</Surtitre>
         {ligne && <span className="text-xs font-semibold" style={{ color: BANNIERE[ligne.type] ?? '#4F6F69' }}>{ligne.type}</span>}
       </div>
-      {premiere && ligne?.lundi && <p className="text-sm font-semibold text-indigo pb-1">Elle commence le {dateLongue(ligne.lundi)}.</p>}
       {nolio ? (
         <ul>
           {nolio.length === 0 && <li className="min-h-11 flex items-center text-sm text-[#5E5C78] border-b border-indigo/[0.06]">Rien de prévu dans Nolio cette semaine.</li>}
@@ -223,6 +224,7 @@ export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null, arri
             </li>
           ))}
           {quiz}
+          {nolio.length === 0 && commence && <li className="pt-2">{commence}</li>}
         </ul>
       ) : jours.length > 0 ? (
         <ul>
@@ -237,7 +239,7 @@ export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null, arri
           ))}
           {quiz}
         </ul>
-      ) : ligne && (
+      ) : !ligne ? commence : (
         <div className="space-y-1">
           <p className="text-sm text-indigo">{enHeures(Math.round(ligne.volume_h * 60))} de volume prévu{ligne.week_end_choc ? ' · week-end choc' : ''}</p>
           {ligne.seances_cles.length > 0 && (
@@ -247,7 +249,7 @@ export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null, arri
           )}
         </div>
       )}
-      {nolio || !arrivee ? (
+      {!nolio && !jours.length && !ligne ? null : nolio || !arrivee ? (
         <div className="mt-2.5 p-3 rounded-xl bg-sand flex items-center justify-between gap-3">
           <span className="text-xs text-[#4A4866]">Le détail de chaque séance est dans Nolio.</span>
           <a href={NOLIO} target="_blank" rel="noopener" className="shrink-0 inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">Ouvrir Nolio ›</a>

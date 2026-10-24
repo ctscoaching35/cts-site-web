@@ -69,15 +69,17 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
   const etape = moment(plan, jour);
   const restants = joursEntre(jour, plan.course.date);
   const rang = d.trame.findIndex((l) => l.lundi && momentDe(l.lundi, jour) === 'encours');
-  // Avant le début, la première semaine de la préparation (décision coach du 20/10/2026).
-  const ligne = rang >= 0 ? d.trame[rang] : etape === 'avant' ? (d.trame[0] ?? null) : null;
+  // Toujours la semaine en cours, rien d'autre (décision coach du 24/10/2026 ; avant : la première semaine de la
+  // préparation, avant son début) : avant le départ, ce qui est dans Nolio cette semaine, et quand la préparation commence.
+  const ligne = rang >= 0 ? d.trame[rang] : null;
   const semaine = ligne ? await semaineEcrite(ctx, ligne.numero) : null;
+  const debut = etape === 'avant' ? d.trame.find((l) => l.lundi && l.lundi > jour)?.lundi ?? null : null;
   // Ce qui est dans Nolio cette semaine, retouches du coach comprises (décision coach du 20/10/2026), une fois la semaine
   // partie dans Nolio ; programmé à la main, la semaine en cours, sans la trame du moteur.
-  const nolio = ctx.aLaMain ? await semaineDansNolio(ctx, lundiCourant)
+  const nolio = ctx.aLaMain || (!ligne && etape === 'avant') ? await semaineDansNolio(ctx, lundiCourant)
     : ligne?.lundi ? await semaineDansNolio(ctx, ligne.lundi, ligne.numero) : null;
   // Pas encore dans Nolio : la semaine de la préparation, et quand elle y arrive (décision coach du 20/10/2026).
-  const arrivee = nolio || ctx.demonstration ? null : !ctx.coache && d.nolio !== 'actif' ? 'invitation' as const : 'bientot' as const;
+  const arrivee = nolio || ctx.demonstration || !ligne ? null : !ctx.coache && d.nolio !== 'actif' ? 'invitation' as const : 'bientot' as const;
   const jauge = jaugeDuPlan(d.trame, d.realises, jour);
   const fiches = fichesDeLaSemaine(d.fiches, jour);
   const nom = prenom(plan.athlete.nom);
@@ -150,7 +152,7 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
         {etape !== 'apres' && <CoursesPreparation courses={d.courses.filter((c) => c.date >= jour)} ajout={ajout} />}
         {etape !== 'apres' && !ctx.aLaMain && (
           <CetteSemaine semaine={semaine} ligne={ligne} questionnaire={d.ecrit && restants > 7} nolio={nolio}
-            arrivee={arrivee} depuis={arrivee ? jour : null} premiere={etape === 'avant'} />
+            arrivee={arrivee} depuis={arrivee ? jour : null} debut={debut} />
         )}
         {etape !== 'apres' && ctx.aLaMain && <CetteSemaine semaine={null} ligne={null} questionnaire={false} nolio={nolio} />}
         {etape !== 'apres' && <FichesDeLaSemaine fiches={fiches} ctx={ctx} />}
