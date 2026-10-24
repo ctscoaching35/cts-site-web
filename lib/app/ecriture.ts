@@ -17,6 +17,7 @@ import { site } from '@/lib/content';
 import { API_URL } from '@/lib/plan';
 import {
   chargeDepuisNolio, creer, destinataire, envoyerSemaineCible, garderEnvoi, mettreAJourSemaineCible, profilDe, seancesDuMoteur,
+  volumeDuMoment,
   type Cible, type Envoi, type SeanceEnvoyee,
 } from './coaching';
 import { envoyerRelanceInvitation, EXPEDITEUR } from './emailBienvenue';
@@ -679,7 +680,8 @@ async function recalerSurLePrecedent(o: Objectif, precedentId: string, lundi: st
   const duree = (min: number) => { const m = Math.round(min); return `${Math.floor(m / 60)}h${String(m % 60).padStart(2, '0')}`; };
   const champs = {
     ...((o.parametres.champs ?? {}) as Record<string, unknown>),
-    volume_hebdo_actuel: duree(volumes.reduce((a, b) => a + b, 0) / volumes.length),
+    // Le volume du moment (décision coach du 24/10/2026) : sa dernière semaine, bornée par la moyenne et la moyenne +30 %.
+    volume_hebdo_actuel: duree(volumeDuMoment(volumes).retenu),
     ...(sl.length ? { sortie_longue_actuelle: duree(Math.max(...sl)) } : {}),
   };
   const parametres = { ...o.parametres, champs, declaree_le: lundi };

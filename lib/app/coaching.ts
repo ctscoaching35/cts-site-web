@@ -173,14 +173,31 @@ export async function chargeDepuisNolio(coachId: string, usr: string | null): Pr
   if (!recentes.length) {
     return { champs: charge, lu: true, detail: `Rien en course, trail ou tapis dans Nolio ${periode} : les champs gardent ses dernières réponses, à corriger.${pourquoi}` };
   }
-  charge.volume_hebdo_actuel = enHeuresMinutes(recentes.reduce((a, r) => a + r.min, 0) / 4);
+  const parSemaine = [0, 1, 2, 3].map((i) => recentes
+    .filter((r) => r.date >= ajouterJours(debut, 7 * i) && r.date < ajouterJours(debut, 7 * (i + 1))).reduce((a, r) => a + r.min, 0));
+  const volume = volumeDuMoment(parSemaine);
+  charge.volume_hebdo_actuel = enHeuresMinutes(volume.retenu);
   const longue = recentes.reduce((a, r) => (r.min > a.min ? r : a));
   charge.sortie_longue_actuelle = enHeuresMinutes(longue.min);
-  const semaines = [0, 1, 2, 3].map((i) => `semaine du ${jm(ajouterJours(debut, 7 * i))} ${enHeuresMinutes(recentes
-    .filter((r) => r.date >= ajouterJours(debut, 7 * i) && r.date < ajouterJours(debut, 7 * (i + 1))).reduce((a, r) => a + r.min, 0))}`);
+  const semaines = parSemaine.map((m, i) => `semaine du ${jm(ajouterJours(debut, 7 * i))} ${enHeuresMinutes(m)}`);
   const sansCourse = competitions.some((c) => c >= debut && c < fin) ? ', sans le jour de course' : '';
+  const retenu = volume.pourquoi === 'derniere' ? `retenu ${charge.volume_hebdo_actuel}, sa dernière semaine`
+    : volume.pourquoi === 'plafond' ? `retenu ${charge.volume_hebdo_actuel}, la moyenne +30 % (sa dernière semaine, ${enHeuresMinutes(parSemaine[3])}, est bien au-dessus)`
+      : `retenu la moyenne (sa dernière semaine, ${enHeuresMinutes(parSemaine[3])}, est plus basse)`;
   return { champs: charge, lu: true, detail: `Lu dans Nolio ${periode}, course, trail et tapis seulement (sans renfo ni autres sports${sansCourse}) : `
-    + `${semaines.join(' · ')}, soit ${charge.volume_hebdo_actuel} en moyenne ; plus longue sortie ${charge.sortie_longue_actuelle} le ${jm(longue.date)}.${pourquoi}` };
+    + `${semaines.join(' · ')}, soit ${enHeuresMinutes(volume.moyenne)} en moyenne, ${retenu} ; plus longue sortie ${charge.sortie_longue_actuelle} le ${jm(longue.date)}.${pourquoi}` };
+}
+
+// LE VOLUME DU MOMENT (décision coach du 24/10/2026, « la moyenne est souvent peu représentative ») : sa dernière semaine,
+// jamais sous la moyenne des 4 (une semaine malade ou allégée ne fait pas partir trop bas) ni au-delà de cette moyenne
+// +30 % (un pic isolé ne fait pas partir trop haut ; la hausse brutale du volume, Nielsen 2014). semaines : les minutes
+// de course de chaque semaine, dans l'ordre, la dernière au bout. La plus longue sortie reste celle des 4 semaines.
+export function volumeDuMoment(semaines: number[]): { retenu: number; moyenne: number; pourquoi: 'derniere' | 'plafond' | 'moyenne' } {
+  const moyenne = semaines.reduce((a, b) => a + b, 0) / Math.max(1, semaines.length);
+  const derniere = semaines[semaines.length - 1] ?? 0;
+  if (derniere <= moyenne) return { retenu: moyenne, moyenne, pourquoi: 'moyenne' };
+  if (derniere > moyenne * 1.3) return { retenu: moyenne * 1.3, moyenne, pourquoi: 'plafond' };
+  return { retenu: derniere, moyenne, pourquoi: 'derniere' };
 }
 
 // Les 4 semaines sur lesquelles se lit sa charge, fin exclue : les 4 dernières ; après une compétition de moins de 4
