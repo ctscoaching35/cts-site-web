@@ -30,7 +30,8 @@ export async function changerProgrammation(athleteId: string, programmation: 'au
 
 // « Créer sa fiche » (décision coach du 22/10/2026) : un athlète de son équipe Nolio sans fiche ici, sa fiche créée d'un
 // clic, déjà reliée à Nolio, sans objectif ; ses dimanches partent au passage de 18 h 30 et son objectif se crée ensuite
-// depuis sa fiche (« Son entrée », sa course Nolio déjà remplie).
+// depuis sa fiche (« Son entrée », sa course Nolio déjà remplie). Le coach lui-même, « (toi) » dans Nolio (décision coach
+// du 24/10/2026) : sa fiche de test, « (test) », pour vivre l'app d'un coaché sur son propre Nolio.
 export async function creerFicheDepuisNolio(nolioId: string): Promise<void> {
   const coach = await coachConnecte();
   if (!coach || !/^usr_[A-Za-z0-9]+$/.test(nolioId)) return;
@@ -39,11 +40,12 @@ export async function creerFicheDepuisNolio(nolioId: string): Promise<void> {
     .eq('nolio_athlete_id', nolioId).maybeSingle();
   let id = deja?.id as string | undefined;
   if (!id) {
-    // Son nom tel que Nolio le donne, et seulement un athlète de son équipe, jamais un acheteur de plan.
-    const membre = (await athletesNolio()).find((x) => x.id === nolioId && !x.name.endsWith('(toi)'));
+    // Son nom tel que Nolio le donne, et seulement un athlète de son équipe (ou le coach), jamais un acheteur de plan.
+    const membre = (await athletesNolio()).find((x) => x.id === nolioId);
     if (!membre || (await usrAcheteurs(coach.compteId)).has(nolioId)) return;
+    const nom = membre.name.replace(/\(toi\)$/, '(test)');
     const { data, error } = await service.from('athletes_coaches')
-      .insert({ coach_id: coach.compteId, nom: membre.name, nolio_athlete_id: nolioId }).select('id').single();
+      .insert({ coach_id: coach.compteId, nom, nolio_athlete_id: nolioId }).select('id').single();
     if (error || !data) {
       console.error('Fiche depuis Nolio :', error?.message);
       return;

@@ -32,6 +32,8 @@ export default async function Coach({ searchParams }: { searchParams: Promise<{ 
   // Sans les acheteurs de plans (décision coach du 22/10/2026) : ils sont dans « Chiffres ».
   const acheteurs = await usrAcheteurs(coach.compteId).catch(() => new Set<string>());
   const sansFiche = (nolio ?? []).filter((x) => !relies.has(x.id) && !acheteurs.has(x.id) && !x.name.endsWith('(toi)'));
+  // Le coach lui-même (décision coach du 24/10/2026) : sa fiche de test, pour vivre l'app d'un coaché sur son Nolio.
+  const toi = (nolio ?? []).find((x) => x.name.endsWith('(toi)') && !relies.has(x.id));
   const jour = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
   const coaches = vue.athletes.filter((a) => a.mode === 'coaching').length;
   const compteurs: { n: number; texte: string; ton: string; href?: string }[] = [
@@ -71,7 +73,7 @@ export default async function Coach({ searchParams }: { searchParams: Promise<{ 
         ) : erreur ? (
           <p className="text-sm text-[#4A4866]">{erreur}</p>
         ) : (
-          <details className="text-sm" open={sansFiche.length > 0}>
+          <details className="text-sm" open={sansFiche.length > 0 || Boolean(toi)}>
             <summary className="cursor-pointer min-h-11 flex items-center font-semibold text-indigo">
               {sansFiche.length ? `${sansFiche.length} athlète${sansFiche.length > 1 ? 's' : ''} de Nolio sans fiche ici` : 'Tous tes athlètes de Nolio ont leur fiche'}
             </summary>
@@ -86,6 +88,14 @@ export default async function Coach({ searchParams }: { searchParams: Promise<{ 
                 </li>
               ))}
             </ul>
+            {toi && (
+              <div className="flex items-center justify-between gap-3 pt-2 pb-1 border-t border-indigo/[0.06] text-[#4A4866]">
+                <span>Toi : vis l’app d’un coaché sur ton propre Nolio.</span>
+                <form action={creerFicheDepuisNolio.bind(null, toi.id)}>
+                  <button type="submit" className="min-h-10 px-3 rounded-[10px] border border-teal text-teal text-[0.8125rem] font-bold">Créer ta fiche de test ›</button>
+                </form>
+              </div>
+            )}
           </details>
         )}
       </Carte>
