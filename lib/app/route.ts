@@ -27,15 +27,18 @@ export function secondesDuChrono(brut: unknown): number | null {
 }
 
 // Les prérequis du marathon (décision 5) : signalés, jamais refusés — moins de 3 h par semaine, une plus longue sortie
-// sous 1h15, ou un premier marathon préparé en moins de 20 semaines (24 conseillées). La phrase, ou null.
+// sous 1h15, ou un premier marathon préparé en moins de 20 semaines (24 conseillées). Une préparation déjà en cours,
+// reprise en route (décision coach du 24/10/2026, « elle a déjà commencé sa prépa ») : 3 h et 1h15 tenus, les semaines
+// qui restent ne se signalent pas ; sans ces chiffres, elles se signalent. La phrase, ou null.
 export function prerequisMarathon(champs: Record<string, unknown>, semainesDePreparation: number | null): string | null {
   if (String(champs.format ?? '') !== 'R42') return null;
   const volume = secondesDuChrono(champs.volume_hebdo_actuel);
   const sortie = secondesDuChrono(champs.sortie_longue_actuelle);
+  const enPreparation = volume !== null && volume >= 3 * 3600 && sortie !== null && sortie >= 75 * 60;
   const manques = [
     volume !== null && volume < 3 * 3600 ? 'moins de 3 h de course par semaine' : null,
     sortie !== null && sortie < 75 * 60 ? 'une plus longue sortie sous 1h15' : null,
-    champs.premier_marathon === 'oui' && semainesDePreparation !== null && semainesDePreparation < 20
+    champs.premier_marathon === 'oui' && !enPreparation && semainesDePreparation !== null && semainesDePreparation < 20
       ? `un premier marathon préparé en ${semainesDePreparation} semaines (24 conseillées)` : null,
   ].filter(Boolean);
   return manques.length ? `${manques.join(', ')} : à regarder avec lui avant de lancer le marathon.` : null;
