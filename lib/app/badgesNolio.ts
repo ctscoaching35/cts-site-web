@@ -8,11 +8,14 @@
 import { ajouterSeances, ETAT_VIDE, type Activite, type EtatBadges } from './badges';
 import type { Contexte } from './contexte';
 import { objectifAffiche } from './ecriture';
-import { listeNolio, moiNolio, nolioConfigure, SPORTS_COURSE } from './nolio';
+import { kmNolio, listeNolio, moiNolio, nolioConfigure, sansVitesseImpossible, SPORTS_COURSE } from './nolio';
 import { ajouterJours } from './plan';
 import { clientService } from './supabase';
 
 const PREMIERE_ANNEE = 2010;
+// Les badges calculés avant cette date se recalculent sur tout l'historique : la règle des vitesses impossibles
+// (nolio.sansVitesseImpossible, décision coach du 24/10/2026) éteint ceux qu'une séance fausse avait débloqués.
+const RECALCUL_AVANT = '2026-10-26';
 const aujourdhuiParis = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
 
 type Reel = {
@@ -20,23 +23,11 @@ type Reel = {
   elevation_gain?: { value?: number } | null; distance?: { value?: number; unit?: string } | number | null;
 };
 
-// La distance d'une séance en km, quelle que soit son unité ; sans unité, des mètres au-delà de 300.
-function enKm(d: Reel['distance']): number | null {
-  if (d === null || d === undefined) return null;
-  const v = typeof d === 'number' ? d : d.value;
-  if (typeof v !== 'number' || !Number.isFinite(v)) return null;
-  const unite = typeof d === 'number' ? '' : String(d.unit ?? '').toLowerCase();
-  if (unite === 'km') return v;
-  if (unite === 'm') return v / 1000;
-  if (unite === 'mi') return v * 1.609344;
-  return v > 300 ? v / 1000 : v;
-}
-
 async function seances(usr: string, moi: boolean, du: string, au: string): Promise<Activite[]> {
   const reels = await listeNolio<Reel>(`real/trainings/?date_from=${du}&date_to=${au}`
     + `&fields=id,date_start,sport,duration,elevation_gain,distance${moi ? '' : `&athlete=${usr}`}`);
-  return reels.filter((r) => SPORTS_COURSE.includes(String(r.sport))).map((r) => ({
-    id: r.id, date: r.date_start.slice(0, 10), km: enKm(r.distance),
+  return reels.filter((r) => SPORTS_COURSE.includes(String(r.sport))).map(sansVitesseImpossible).map((r) => ({
+    id: r.id, date: r.date_start.slice(0, 10), km: kmNolio(r.distance),
     min: typeof r.duration?.value === 'number' ? r.duration.value / 60 : null,
     dplus: typeof r.elevation_gain?.value === 'number' ? r.elevation_gain.value : null,
   }));
@@ -69,10 +60,10 @@ export async function calculerBadges(budgetMs = 240_000): Promise<CompteBadges[]
       continue;
     }
     try {
-      const { data: ligne, error } = await service.from('badges').select('debloques, mois').eq('nolio_athlete_id', usr).maybeSingle();
+      const { data: ligne, error } = await service.from('badges').select('debloques, mois, maj_le').eq('nolio_athlete_id', usr).maybeSingle();
       if (error) throw new Error(error.message);
       let etat: EtatBadges;
-      if (!ligne) {
+      if (!ligne || String(ligne.maj_le ?? '') < RECALCUL_AVANT) {
         const toutes: Activite[] = [];
         for (let an = PREMIERE_ANNEE; an <= annee; an += 1) {
           toutes.push(...await seances(usr, usr === moi, `${an}-01-01`, an === annee ? hier : `${an}-12-31`));

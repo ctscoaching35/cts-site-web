@@ -7,7 +7,7 @@ import type { Realise } from './ecriture';
 export type Prevue = { id: string; date_start: string; sport?: string | null; duration?: { value?: number } | null; rpe?: number | null };
 export type Reelle = {
   id: string; date_start: string; sport?: string | null; duration?: { value?: number } | null; elevation_gain?: { value?: number } | null;
-  planned?: string | null; debrief?: { rpe?: number | null } | null;
+  distance?: { value?: number; unit?: string } | number | null; planned?: string | null; debrief?: { rpe?: number | null } | null;
 };
 
 const minutes = (d: { value?: number } | null | undefined) => (typeof d?.value === 'number' ? Math.round(d.value / 60) : null);

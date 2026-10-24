@@ -14,6 +14,34 @@ export const nolioConfigure = () => Boolean(process.env.NOLIO_API_KEY?.trim());
 // Tapis » (décision coach du 23/10/2026 : le tapis compte comme de la course).
 export const SPORTS_COURSE = ['spt_kNYHjuEzDJRiYCX', 'spt_YprHS7jgV5vdsz0', 'spt_MN7QZspJBLkSzwy'];
 
+// La distance d'une séance en km, quelle que soit son unité ; sans unité, des mètres au-delà de 300.
+export function kmNolio(d: { value?: number; unit?: string } | number | null | undefined): number | null {
+  if (d === null || d === undefined) return null;
+  const v = typeof d === 'number' ? d : d.value;
+  if (typeof v !== 'number' || !Number.isFinite(v)) return null;
+  const unite = typeof d === 'number' ? '' : String(d.unit ?? '').toLowerCase();
+  if (unite === 'km') return v;
+  if (unite === 'm') return v / 1000;
+  if (unite === 'mi') return v * 1.609344;
+  return v > 300 ? v / 1000 : v;
+}
+
+// UNE SÉANCE À UNE VITESSE IMPOSSIBLE (décision coach du 24/10/2026 : ses badges de 80 km et de 12 h venaient d'un trajet
+// enregistré en course, 89,8 km en 1h17, et d'une montre oubliée, 13,7 km en 14h12) : sous 2 km/h ou au-delà de 25 km/h
+// de moyenne, sa durée, sa distance et son dénivelé ne comptent nulle part — ni badges, ni charge lue dans Nolio, ni
+// semaine écoulée ; la séance reste faite. Sans distance (ou à zéro) ou sans durée, rien ne se juge : un tapis sans
+// capteur compte. La plus lente des vraies séances du coach : 14 km et 1 200 m D+ à 3,5 km/h.
+const VITESSE_MIN_KMH = 2;
+const VITESSE_MAX_KMH = 25;
+type Mesures = { duration?: { value?: number } | null; distance?: { value?: number; unit?: string } | number | null;
+  elevation_gain?: { value?: number } | null };
+export function sansVitesseImpossible<T extends Mesures>(r: T): T {
+  const km = kmNolio(r.distance);
+  const heures = typeof r.duration?.value === 'number' ? r.duration.value / 3600 : 0;
+  if (!km || !heures || (km / heures >= VITESSE_MIN_KMH && km / heures <= VITESSE_MAX_KMH)) return r;
+  return { ...r, duration: null, distance: null, elevation_gain: null };
+}
+
 // Une erreur de Nolio dite au coach : sa phrase est faite pour lui et ne contient jamais la clé. Toute autre erreur
 // reste dans les journaux du serveur (elle pourrait la contenir : un en-tête refusé est cité en entier).
 export class ErreurNolio extends Error {}

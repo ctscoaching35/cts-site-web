@@ -23,7 +23,7 @@ import {
 import { envoyerRelanceInvitation, EXPEDITEUR } from './emailBienvenue';
 import { lienFicheCourse } from './ficheCourse';
 import { dateDe } from './trameNolio';
-import { appelNolio, coachs, listeNolio, refusNolio, SPORTS_COURSE } from './nolio';
+import { appelNolio, coachs, listeNolio, refusNolio, sansVitesseImpossible, SPORTS_COURSE } from './nolio';
 import { ajouterJours, joursEntre, type Plan, type Semaine } from './plan';
 import { clientService } from './supabase';
 import type { Fiche } from './tableau';
@@ -235,9 +235,11 @@ export async function lireRetours(o: Objectif, du: string, au: string): Promise<
   for (const e of o.envois) for (const s of e.seances as SeanceEnvoyee[])
     if (s.nolio_id && (s.genre ?? 'seance') === 'seance' && !s.jour_id.includes(':')) parNolio.set(String(s.nolio_id), s.jour_id);
   type Reel = { id: string; date_start: string; sport?: string | null; duration?: { value: number } | null; planned?: string | null;
-    elevation_gain?: { value: number } | null; debrief?: { rpe?: number | null; feeling?: number | null } | null };
-  const reels = await listeNolio<Reel>(
-    `real/trainings/?date_from=${du}&date_to=${au}&fields=id,date_start,sport,duration,elevation_gain,planned,debrief${qui}`);
+    elevation_gain?: { value: number } | null; distance?: { value?: number; unit?: string } | number | null;
+    debrief?: { rpe?: number | null; feeling?: number | null } | null };
+  const reels = (await listeNolio<Reel>(
+    `real/trainings/?date_from=${du}&date_to=${au}&fields=id,date_start,sport,duration,distance,elevation_gain,planned,debrief${qui}`))
+    .map(sansVitesseImpossible);
   const seances: RetourSeance[] = reels.filter((r) => r.planned && parNolio.has(r.planned)).map((r) => ({
     id: parNolio.get(r.planned as string) as string, date: r.date_start.slice(0, 10), faite: true,
     duree_min: r.duration?.value ? Math.round(r.duration.value / 60) : null,

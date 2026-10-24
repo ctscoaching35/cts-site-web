@@ -10,7 +10,7 @@
 import { noterLeMot } from './dimanchesCoaches';
 import { indiceHooper, type Realise } from './ecriture';
 import { resumeDeLaSemaine, type Prevue, type Reelle } from './resumeSemaine';
-import { listeNolio, moiNolio, nolioConfigure, SPORTS_COURSE } from './nolio';
+import { listeNolio, moiNolio, nolioConfigure, sansVitesseImpossible, SPORTS_COURSE } from './nolio';
 import { ajouterJours } from './plan';
 import { clientService } from './supabase';
 
@@ -63,7 +63,7 @@ export async function resumerSemaines(budgetMs = 240_000): Promise<CompteSemaine
         const course = (x: { sport?: string | null }) => SPORTS_COURSE.includes(String(x.sport));
         const prevues = (await listeNolio<Prevue>(`planned/trainings/?date_from=${lundi}&date_to=${dimanche}${qui}`)).filter(course);
         const reelles = (await listeNolio<Reelle>(`real/trainings/?date_from=${lundi}&date_to=${dimanche}`
-          + `&fields=id,date_start,sport,duration,elevation_gain,planned,debrief${qui}`)).filter(course);
+          + `&fields=id,date_start,sport,duration,distance,elevation_gain,planned,debrief${qui}`)).filter(course).map(sansVitesseImpossible);
         const valeurs = item
           ? await listeNolio<{ id: string; date_start: string; value: number | null }>(`metrics/values/?item=${item}&date_from=${lundi}&date_to=${dimanche}${qui}`)
           : [];

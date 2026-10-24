@@ -10,7 +10,7 @@ import { actionsTrame, dateDe, empreinte, type Voulu } from './trameNolio';
 import { lienFicheCourse } from './ficheCourse';
 import { ajouterJours, jMoins, joursEntre, type Plan, type Semaine } from './plan';
 import { qualitesDuBloc } from './tableau';
-import { appelNolio, convertirIdsV1, listeNolio, moiNolio, nolioConfigure, refusNolio, SPORTS_COURSE } from './nolio';
+import { appelNolio, convertirIdsV1, listeNolio, moiNolio, nolioConfigure, refusNolio, sansVitesseImpossible, SPORTS_COURSE } from './nolio';
 import { ficheDuCompte } from './demandes';
 import { profilPourLeQuestionnaire } from './profilEntrainement';
 import { clientServeur, clientService } from './supabase';
@@ -155,8 +155,10 @@ export async function chargeDepuisNolio(coachId: string, usr: string | null): Pr
     `planned/competitions/?date_from=${ajouterJours(aujourdhui, -70)}&date_to=${ajouterJours(aujourdhui, -1)}&fields=id,date_start${q}`)
     .catch(() => [])).map((c) => c.date_start.slice(0, 10));
   const { debut, fin, recul } = fenetreDeCharge(aujourdhui, competitions);
-  const reels = await listeNolio<{ id: string; date_start: string; duration?: { value: number } | null; sport?: string | null }>(
-    `real/trainings/?date_from=${debut < du ? debut : du}&date_to=${ajouterJours(aujourdhui, -1)}&fields=id,date_start,duration,sport${q}`);
+  type Reel = { id: string; date_start: string; duration?: { value?: number } | null; sport?: string | null;
+    distance?: { value?: number; unit?: string } | number | null };
+  const reels = (await listeNolio<Reel>(`real/trainings/?date_from=${debut < du ? debut : du}&date_to=${ajouterJours(aujourdhui, -1)}`
+    + `&fields=id,date_start,duration,distance,sport${q}`)).map(sansVitesseImpossible);
   const jours = new Set(competitions);
   const toutes = reels.filter((r) => SPORTS_COURSE.includes(String(r.sport)) && r.duration?.value)
     .map((r) => ({ date: r.date_start.slice(0, 10), min: (r.duration as { value: number }).value / 60 }));
