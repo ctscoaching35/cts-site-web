@@ -1,8 +1,10 @@
 /**
  * Les repères déjà saisis dans Nolio (décision coach du 24/10/2026, « la plus récente l'emporte ») : chaque nuit, pour
  * chaque coaché en mode coaching qui a donné son accord de lecture, la dernière valeur des métriques Nolio « Vitesse
- * critique Running » (en secondes par km) et « FC seuil 2 » (en bpm). Si elle a moins de 6 mois et qu'elle est plus
- * récente que le repère de l'app, ou que l'app n'en a pas, elle le remplace : source « nolio », sa date. Un repère de
+ * critique Running » (en secondes par km) et « FC seuil 2 » (en bpm). L'app n'en a pas : elle la prend, quel que soit
+ * son âge (décision coach du 26/10/2026, « rentre les données Nolio de chaque athlète dans l'app si tu n'as pas
+ * mieux ») ; l'app en a une : la valeur de Nolio la remplace si elle a moins de 6 mois et qu'elle est plus récente.
+ * Source « nolio », sa date (la fiche la montre). Un repère de
  * l'app sans date (d'avant le 19/10/2026) reste. Les zones de l'app suivent, elles se calculent depuis sa fiche. Les
  * métriques sont celles du catalogue de Nolio (lues le 24/10/2026 sur le compte du coach : `is_nolio`, la même pour tous).
  * Côté serveur seulement.
@@ -42,9 +44,10 @@ export async function reperesDeNolio(budgetMs = 60_000): Promise<CompteReperes[]
         const v = ((r.corps?.data ?? []) as { date_start?: string; value?: number | null; restriction?: unknown }[])[0];
         const le = String(v?.date_start ?? '').slice(0, 10);
         const valeur = v && v.value !== null && v.value !== undefined && !v.restriction ? m.valeur(Number(v.value)) : null;
-        if (valeur === null || !le || le < limite) continue;
+        if (valeur === null || !le) continue;
         const avant = sources[m.cle]?.le;
-        if (f[m.cle] !== null && f[m.cle] !== undefined && (!avant || avant >= le)) continue;
+        const dejaLa = f[m.cle] !== null && f[m.cle] !== undefined;
+        if (dejaLa && (le < limite || !avant || avant >= le)) continue;
         maj[m.cle] = valeur;
         sources[m.cle] = { le, source: 'nolio' };
       }
