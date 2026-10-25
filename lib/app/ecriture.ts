@@ -16,7 +16,7 @@ import { cache } from 'react';
 import { site } from '@/lib/content';
 import { API_URL } from '@/lib/plan';
 import {
-  chargeDepuisNolio, creer, destinataire, envoyerSemaineCible, garderEnvoi, mettreAJourSemaineCible, profilDe, seancesDuMoteur,
+  chargeDepuisNolio, creer, destinataire, envoyerSemaineCible, ficheAthlete, garderEnvoi, mettreAJourSemaineCible, profilDe, seancesDuMoteur,
   volumeDuMoment,
   type Cible, type Envoi, type SeanceEnvoyee,
 } from './coaching';
@@ -1263,6 +1263,32 @@ export async function zonesDeLaFicheVersNolio(athleteId: string): Promise<string
     .catch((e) => [e instanceof Error ? e.message : String(e)]);
   if (soucis.length) console.error(`Zones Nolio de la fiche ${athleteId} :`, soucis.join(' ; '));
   return soucis;
+}
+
+// LE RATTRAPAGE DES ZONES (décision coach du 25/10/2026, l'écriture ouverte à tous) : une nuit, les zones de chaque
+// coaché qui a déjà des repères (sa vitesse critique, ou ses deux seuils de FC) partent dans son Nolio, comme quand le
+// coach enregistre ses repères : d'après son objectif écrit le plus récent, sinon sa fiche. Ensuite, à chaque valeur.
+export async function rattraperLesZones(budgetMs = 150_000): Promise<Compte[]> {
+  const debut = Date.now();
+  const { data: fiches } = await clientService().from('athletes_coaches').select('id, coach_id, mode, nolio_athlete_id, vc_ms, fc_seuil1, fc_seuil2')
+    .not('nolio_athlete_id', 'is', null);
+  const comptes: Compte[] = [];
+  for (const f of (fiches ?? []).filter((x) => x.mode !== 'plan' && (x.vc_ms || (x.fc_seuil1 && x.fc_seuil2)))) {
+    if (Date.now() - debut > budgetMs) {
+      comptes.push({ plan: '', quoi: 'zones remises' });
+      continue;
+    }
+    try {
+      const fiche = await ficheAthlete(String(f.coach_id), String(f.id));
+      const dernier = fiche?.objectifs[fiche.objectifs.length - 1];
+      const o = dernier ? await objectifEcrit(dernier.plan_id).catch(() => null) : null;
+      const soucis = o ? await zonesVersNolio(o) : dernier ? [] : await zonesDeLaFicheVersNolio(String(f.id));
+      comptes.push({ plan: dernier?.plan_id ?? '', quoi: 'zones écrites dans Nolio', ...(soucis.length ? { erreur: soucis.join(' ; ') } : {}) });
+    } catch (e) {
+      comptes.push({ plan: '', quoi: 'zones non écrites', erreur: e instanceof Error ? e.message : String(e) });
+    }
+  }
+  return comptes;
 }
 
 // ZN1 : les zones CTS dans le Nolio de l'athlète, d'après son profil (et une valeur qui vient d'arriver).

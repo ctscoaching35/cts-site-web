@@ -7,8 +7,8 @@
  * enveloppe (`settings/zones/wrappers/{id}/`, `auto_recompute: false` pour les garder) et les noms au niveau du flux
  * (`settings/zones/streams/{id}/zones/{zone}/`). Droits `settings:read` et `settings:write` sur la clé.
  *
- * ÉCRITURE LIMITÉE AU COMPTE DU COACH (« (toi) ») TANT QUE L'ESSAI N'EST PAS FAIT : POUR_TOUS passe à true après
- * l'essai, avec l'accord du coach.
+ * OUVERTE À TOUS le 25/10/2026 (décision du coach, « calibrer dans Nolio zones de vitesse et zones bpm
+ * automatiquement ») : l'essai sur son compte a tenu (FC et allure écrites, noms de l'app, recalcul de Nolio coupé).
  *
  * Choix faits en construisant, à montrer au coach : la FC s'écrit avec les deux seuils (5 zones : endurance de seuil 1
  * − 25 à seuil 1 − 5, la plage déjà donnée aux séances ; seuil 1 ; tempo ; seuil 2 ; VO2max de seuil 2 à seuil 2 + 15) ;
@@ -21,7 +21,7 @@ import type { Zones } from './plan';
 import { appelNolio, refusNolio } from './nolio';
 import { allure, decalageSeuil1, type Profil } from './zones';
 
-export const POUR_TOUS = false;
+export const POUR_TOUS = true;
 
 // min, max : comme l'enveloppe Nolio les range (la FC du bas vers le haut ; l'allure du plus lent au plus rapide).
 type Borne = { nom: string; min: number | string; max: number | string };
