@@ -312,7 +312,9 @@ export async function rattraperLaSemaine(planId: string): Promise<string> {
     .select('plan_id');
   if (!prise?.length) throw new Error('Cette semaine est déjà en train de partir : regarde dans une minute.');
   try {
-    const retours = await lireRetours(o, ajouterJours(lundi, -35), aujourdhui);
+    // La première semaine d'une saison de fond, sans retours, comme le dimanche.
+    const premiere = Boolean((o.parametres as { fond?: unknown }).fond) && !o.envois.some((e) => /^S\d+$/.test(e.semaine));
+    const retours = premiere ? null : await lireRetours(o, ajouterJours(lundi, -35), aujourdhui);
     await ecrireEtEnvoyer(o, s.numero, retours, { depuis: aujourdhui });
   } catch (e) {
     const { data: ligne } = await service.from('nolio_envois').select('seances').eq('plan_id', planId).eq('semaine', s.numero).maybeSingle();

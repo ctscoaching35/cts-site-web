@@ -238,10 +238,12 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
       aRegarder.push({ niveau: 'bloque', genre: 'accord', cle: `accord:${a.id}`, athlete: a.nom, action: 'Accord reçu ›', href: '/app/coach/suivi#sans-accord',
         texte: 'sans accord de lecture : envoie-lui le message d’accord dans Nolio.' });
     }
-    // La semaine en cours pas partie dans Nolio (le passage du dimanche en échec, même après ses reprises).
-    if (o && avenir && ecrit && demarre && !aLaMain.has(o.plan_id) && o.course_date >= lundi && semaines.length
+    // La semaine en cours pas partie dans Nolio (le passage du dimanche en échec, même après ses reprises). La première
+    // d'une saison de fond aussi (25/10/2026 : sans semaine écrite avant, elle passait inaperçue).
+    const premiereDeSaison = Boolean(infosFond && p?.demarre_le && String(p.demarre_le) <= lundi);
+    if (o && avenir && ecrit && demarre && !aLaMain.has(o.plan_id) && o.course_date >= lundi
         && !semaines.some((l) => (l.donnees as Semaine | null)?.lundi === lundi)
-        && semaines.some((l) => String((l.donnees as Semaine | null)?.lundi ?? '') < lundi)) {
+        && (premiereDeSaison || semaines.some((l) => String((l.donnees as Semaine | null)?.lundi ?? '') < lundi))) {
       aRegarder.push({ niveau: 'bloque', genre: 'semaine', cle: `semaine:${o.plan_id}:${lundi}`, athlete: a.nom, action: 'Réessayer ›', href: hrefPlan, planId: o.plan_id,
         texte: `sa semaine du ${jourMois(lundi)} n’est pas partie dans Nolio.` });
     }
