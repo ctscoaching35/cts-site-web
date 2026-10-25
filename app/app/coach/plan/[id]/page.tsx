@@ -5,7 +5,7 @@ import BanniereSemaine from '@/components/app/BanniereSemaine';
 import CadreCoach from '@/components/app/CadreCoach';
 import EnvoiSemaine from '@/components/app/EnvoiSemaine';
 import { AjouterCourse, AnnulerSemaine, DemarrerNolio, ModifierCourse, RetirerCourse } from '@/components/app/GestesEcriture';
-import { Montagne } from '@/components/app/TableauDeBord';
+import { estRoute, Montagne } from '@/components/app/TableauDeBord';
 import { Carte, CarteSombre, PastilleDate, Surtitre } from '@/components/app/Ui';
 import { garderObjectif, retirerObjectif } from '@/lib/app/actionsCoaching';
 import { objectifCoache, verifierEnvois } from '@/lib/app/coaching';
@@ -278,7 +278,7 @@ export default async function ObjectifCoache({ params, searchParams }: {
           {jauge && (
             <CarteSombre className="space-y-2.5">
               <Surtitre ton="clair">Sa préparation</Surtitre>
-              <Montagne score={jauge.score} ton={jauge.verdict?.ton ?? null} />
+              <Montagne score={jauge.score} ton={jauge.verdict?.ton ?? null} route={estRoute(o.plan.course.format)} />
               <p className="text-[0.9375rem] font-bold">{jauge.verdict?.libelle ?? 'Pas encore assez de semaines faites pour un verdict'}</p>
               {jauge.piliers.length > 0 && <p className="text-[0.8rem] text-[#D6D5E6] leading-relaxed">{jauge.piliers.map((p) => p.detail).join(' · ')}</p>}
             </CarteSombre>

@@ -53,8 +53,27 @@ export function CarteNolio({ etat }: { etat: EtatNolio }) {
 
 const REMPLI = { bien: '#2BB39B', retrait: '#E3A23B', retard: '#E2725B' } as const;
 const SOMMET = 'M0 170 L78 92 L112 116 L176 26 L236 98 L262 80 L350 170 Z';
+// Un objectif sur route (décision coach du 25/10/2026) : à la place de la montagne, la route qui serpente du départ
+// (à gauche) jusqu'à la ligne d'arrivée et son fanion ; le même remplissage, dans le sens de la course.
+const ROUTE_X0 = 14;
+const ROUTE_X1 = 314;
+const ROUTE_DEMI = 19;
+// Une ondulation et demie, à plat aux deux bouts (la ligne d'arrivée tombe droite) ; les bords à la normale de l'axe,
+// pour une route d'égale largeur.
+const ROUTE_AXE = Array.from({ length: 81 }, (_, i) => {
+  const u = i / 80;
+  const pente = (-26 * 3 * Math.PI * Math.sin(3 * Math.PI * u)) / (ROUTE_X1 - ROUTE_X0);
+  const n = Math.hypot(1, pente);
+  return { x: ROUTE_X0 + u * (ROUTE_X1 - ROUTE_X0), y: 98 + 26 * Math.cos(3 * Math.PI * u), nx: -pente / n, ny: 1 / n };
+});
+const ROUTE = `M${ROUTE_AXE.map((p) => `${(p.x - p.nx * ROUTE_DEMI).toFixed(1)} ${(p.y - p.ny * ROUTE_DEMI).toFixed(1)}`).join(' L')} L${[...ROUTE_AXE]
+  .reverse().map((p) => `${(p.x + p.nx * ROUTE_DEMI).toFixed(1)} ${(p.y + p.ny * ROUTE_DEMI).toFixed(1)}`).join(' L')} Z`;
+// La ligne médiane : un tiret toutes les cinq étapes de l'axe.
+const ROUTE_TIRETS = ROUTE_AXE.slice(0, -4).filter((_, i) => i % 5 === 0).map((p, k) => ({ a: p, b: ROUTE_AXE[k * 5 + 3] }));
+export const estRoute = (format: string | null | undefined) => /^R(10|21|42)$/.test(String(format ?? ''));
 
-export function Montagne({ score, ton }: { score: number | null; ton: keyof typeof REMPLI | null }) {
+export function Montagne({ score, ton, route = false }: { score: number | null; ton: keyof typeof REMPLI | null; route?: boolean }) {
+  if (route) return <Route score={score} ton={ton} />;
   // La montagne monte de 170 (le pied) à 26 (le sommet) : elle se remplit de la moyenne des piliers.
   const niveau = score === null ? null : 170 - Math.max(0, Math.min(1, score)) * 144;
   const libelle = score === null ? 'Ta montagne de préparation, qui se remplira semaine après semaine'
@@ -70,6 +89,34 @@ export function Montagne({ score, ton }: { score: number | null; ton: keyof type
       {niveau !== null && <line x1="0" y1={niveau} x2="350" y2={niveau} stroke="#8FD1C3" strokeWidth={1} strokeDasharray="3 4" />}
       <line x1="176" y1="26" x2="176" y2="6" stroke="#FFFFFF" strokeWidth={1.5} />
       <path d="M176 6 L192 11 L176 16 Z" fill="#8FD1C3" />
+    </svg>
+  );
+}
+
+function Route({ score, ton }: { score: number | null; ton: keyof typeof REMPLI | null }) {
+  const part = score === null ? null : Math.max(0, Math.min(1, score));
+  const niveau = part === null ? null : ROUTE_X0 + part * (ROUTE_X1 - ROUTE_X0);
+  const repere = niveau === null ? null : ROUTE_AXE[Math.round(((niveau - ROUTE_X0) / (ROUTE_X1 - ROUTE_X0)) * (ROUTE_AXE.length - 1))];
+  const fin = ROUTE_AXE[ROUTE_AXE.length - 1];
+  const libelle = part === null ? 'Ta route de préparation, qui se remplira semaine après semaine'
+    : `Ta route de préparation, remplie ${part >= 0.85 ? 'presque jusqu’à l’arrivée' : part >= 0.65 ? 'aux deux tiers' : 'à moitié ou moins'}`;
+  return (
+    <svg viewBox="0 0 350 170" className="block w-full h-auto" role="img" aria-label={libelle}>
+      <defs><clipPath id="cts-route"><path d={ROUTE} /></clipPath></defs>
+      <path d={ROUTE} fill="rgba(255,255,255,0.07)" />
+      {niveau !== null && ton && <rect x="0" y="0" width={niveau} height="170" fill={REMPLI[ton]} clipPath="url(#cts-route)" />}
+      <path d={ROUTE} fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth={1.5} strokeLinejoin="round" />
+      {ROUTE_TIRETS.map(({ a, b }) => (
+        <line key={a.x} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="rgba(255,255,255,0.55)" strokeWidth={1.5} strokeLinecap="round" />
+      ))}
+      {/* La ligne d'arrivée à damier, et son fanion. */}
+      {Array.from({ length: 12 }, (_, i) => (
+        <rect key={i} x={fin.x - 10 + (i % 2) * 5} y={fin.y - ROUTE_DEMI + Math.floor(i / 2) * 5} width="5" height="5"
+          fill={(i + Math.floor(i / 2)) % 2 ? '#FFFFFF' : 'rgba(255,255,255,0.15)'} />
+      ))}
+      <line x1={fin.x + 6} y1={fin.y - ROUTE_DEMI} x2={fin.x + 6} y2={fin.y - ROUTE_DEMI - 34} stroke="#FFFFFF" strokeWidth={1.5} />
+      <path d={`M${fin.x + 6} ${fin.y - ROUTE_DEMI - 34} L${fin.x + 22} ${fin.y - ROUTE_DEMI - 29} L${fin.x + 6} ${fin.y - ROUTE_DEMI - 24} Z`} fill="#8FD1C3" />
+      {repere && <circle cx={repere.x} cy={repere.y} r={4.5} fill="#FFFFFF" stroke="#8FD1C3" strokeWidth={2} />}
     </svg>
   );
 }
@@ -100,7 +147,7 @@ export function CarteObjectif({ plan, restants, jauge, etape, href, surtitre = '
           </div>
         )}
       </div>
-      {jauge && <Montagne score={jauge.score} ton={jauge.verdict?.ton ?? null} />}
+      {jauge && <Montagne score={jauge.score} ton={jauge.verdict?.ton ?? null} route={estRoute(plan.course.format)} />}
       {!jauge ? (etape === 'apres' && <p className="text-[0.9375rem] font-bold">Ta course est derrière toi : bravo pour le chemin.</p>)
       : etape === 'avant' ? (
         <p className="text-[0.9375rem] font-bold">{coache ? 'Tes séances arrivent chaque dimanche dans Nolio.' : plan.couverture.debut}</p>
