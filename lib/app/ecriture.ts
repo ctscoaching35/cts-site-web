@@ -220,7 +220,11 @@ function lireQuestionnaire(items: { question: string; value: unknown }[]): Quest
   const reponse = (n: number) => items.find((i) => i.question === QUESTIONNAIRE_SEMAINE.items[n].question)?.value;
   const jours = reponse(0);
   if (!Array.isArray(jours)) return undefined;
-  const jour = (v: unknown) => (typeof v === 'string' && JOURS.includes(v.toLowerCase()) ? v.toLowerCase() : null);
+  // Nolio rend un choix par son rang, de 0 (lundi) à 6 (dimanche) — vu le 25/10/2026 sur le compte du coach : [1, 3, 6]
+  // pour mardi, jeudi, dimanche ; jusque-là les jours cochés se perdaient et le moteur reprenait ceux du profil. Un nom
+  // reste lu.
+  const jour = (v: unknown) => (typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < JOURS.length ? JOURS[v]
+    : typeof v === 'string' && JOURS.includes(v.toLowerCase()) ? v.toLowerCase() : null);
   const nb = Number(reponse(2));
   return { jours: jours.map(jour).filter((x): x is string => Boolean(x)), jour_sl: jour(reponse(1)),
     nb_seances: Number.isFinite(nb) && nb > 0 ? Math.round(nb) : null, arret: reponse(3) === true || reponse(3) === 'true' };
