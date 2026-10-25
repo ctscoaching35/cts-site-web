@@ -19,11 +19,11 @@ export async function GET(request: Request) {
   if (!supabaseConfigure()) return Response.json({ envoyees: 0 });
   const envoyees = await envoyerRelancesDues();
   const comptesInactifs = await passerComptesInactifs();
-  // Le dimanche de chaque coaché (décision coach du 21/10/2026) : sa série posée ou renouvelée.
-  const dimanches = await programmerLesDimanches().catch((e) => [{ plan: '', quoi: 'dimanches en échec', erreur: e instanceof Error ? e.message : String(e) }]);
   // La saison de fond (décisions coach du 24/10/2026) : celle de chaque coaché sans objectif à préparer, pour le lundi qui
-  // vient ; le passage du dimanche l'écrit.
+  // vient ; le passage du dimanche l'écrit. D'abord : le dimanche soir, ses reprises de 21 h et 23 h l'attendent.
   const saisons = await saisonsDuJour().catch((e) => [{ plan: '', quoi: 'saisons de fond en échec', erreur: e instanceof Error ? e.message : String(e) }]);
+  // Le week-end de chaque coaché (décision coach du 21/10/2026), en temps compté : le reste, le soir suivant.
+  const dimanches = await programmerLesDimanches().catch((e) => [{ plan: '', quoi: 'dimanches en échec', erreur: e instanceof Error ? e.message : String(e) }]);
   // Une semaine à la fois (décision coach du 23/10/2026) : les bandeaux posés d'avance, au-delà de la semaine qui vient.
   const trames = await retirerLaTrameAuDela().catch((e) => [{ plan: '', quoi: 'trames en échec', erreur: e instanceof Error ? e.message : String(e) }]);
   // L'écriture semaine par semaine : la fatigue du jour, les invitations à refaire, le résumé au coach.

@@ -97,20 +97,31 @@ export async function poserLeDimanche(usr: string, { coache, avecHooper, garder 
 }
 
 // Chaque jour : le dimanche qui vient de chaque coaché relié à Nolio (sa fiche, en mode coaching) et de chaque acheteur
-// dont la préparation est en route et la course après ce dimanche (un seul par athlète, même avec deux plans).
-export async function programmerLesDimanches(): Promise<Compte[]> {
+// dont la préparation est en route et la course après ce dimanche (un seul par athlète, même avec deux plans). EN TEMPS
+// COMPTÉ (24/10/2026 : retirer les séries d'avant de 18 coachés a pris les 5 minutes du passage, les 6 derniers et tout ce
+// qui suivait coupés) : au-delà de budgetMs, le reste le soir suivant ; d'abord les fiches dont le week-end qui vient
+// n'est pas encore en place, les séries d'avant en tête.
+const REMIS = 'week-end remis au soir suivant';
+export async function programmerLesDimanches(budgetMs = 120_000): Promise<Compte[]> {
+  const debut = Date.now();
   const service = clientService();
   const { data: toutes, error } = await service.from('athletes_coaches').select('*').not('nolio_athlete_id', 'is', null);
   // Avant la migration du 21/10/2026, la colonne n'existe pas : rien à faire.
   if (error || toutes?.some((f) => !('questionnaires' in f))) return [];
+  const prochain = dimancheApres(aujourdhuiParis());
+  const rang = (f: { questionnaires?: DimanchesCoache | null }) => (!f.questionnaires?.dimanche ? 0 : f.questionnaires.dimanche !== prochain ? 1 : 2);
   // Un athlète en mode plan (décision coach du 23/10/2026) a le dimanche de son plan acheté.
-  const fiches = (toutes ?? []).filter((f) => f.mode !== 'plan');
+  const fiches = (toutes ?? []).filter((f) => f.mode !== 'plan').sort((a, b) => rang(a) - rang(b));
   const comptes: Compte[] = [];
   const faits = new Set<string>();
   for (const f of fiches) {
     const usr = String(f.nolio_athlete_id ?? '');
     if (!/^usr_/.test(usr) || faits.has(usr)) continue;
     faits.add(usr);
+    if (Date.now() - debut > budgetMs) {
+      comptes.push({ plan: '', quoi: REMIS });
+      continue;
+    }
     const avant = (f.questionnaires ?? null) as DimanchesCoache | null;
     try {
       const r = await poserLeDimanche(usr, { coache: true, avecHooper: true, garder: [avant?.semaine, avant?.hooper] });
@@ -123,7 +134,7 @@ export async function programmerLesDimanches(): Promise<Compte[]> {
       comptes.push({ plan: '', quoi: 'dimanche non posé', erreur: e instanceof Error ? e.message : String(e) });
     }
   }
-  const dimanche = dimancheApres(aujourdhuiParis());
+  const dimanche = prochain;
   const { data: plans } = await service.from('plans').select('id, coach_id, nolio_athlete_id, accord_lecture_le')
     .eq('nolio_statut', 'actif').not('demarre_le', 'is', null).not('parametres', 'is', null).gt('course_date', dimanche);
   const { data: coaching } = await service.from('coaching').select('plan_id');
@@ -132,6 +143,10 @@ export async function programmerLesDimanches(): Promise<Compte[]> {
     const usr = String(p.nolio_athlete_id ?? '');
     if (!/^usr_/.test(usr) || faits.has(usr)) continue;
     faits.add(usr);
+    if (Date.now() - debut > budgetMs) {
+      comptes.push({ plan: p.id as string, quoi: REMIS });
+      continue;
+    }
     comptes.push(await dimancheDuPlan(p as PlanAchete));
   }
   return comptes;
