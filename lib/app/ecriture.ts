@@ -258,8 +258,10 @@ export async function lireRetours(o: Objectif, du: string, au: string): Promise<
     hooper = valeurs.filter((v) => typeof v.value === 'number')
       .map((v) => ({ date: v.date_start.slice(0, 10), valeur: v.value as number }));
   }
-  const resultats = await listeNolio<{ id: string; name?: string; date_start: string; items: { question: string; value: unknown }[] }>(
-    `real/quiz_results/?date_from=${ajouterJours(au, -6)}&date_to=${au}${qui}`).catch(() => []);
+  // Les réponses envoyées seulement (is_confirmed) : Nolio liste aussi les questionnaires ouverts et pas envoyés, aux
+  // valeurs de brouillon (25/10/2026 : un « 3 » lu « −6 » avant l'envoi).
+  const resultats = (await listeNolio<{ id: string; name?: string; date_start: string; is_confirmed?: boolean; items: { question: string; value: unknown }[] }>(
+    `real/quiz_results/?date_from=${ajouterJours(au, -6)}&date_to=${au}${qui}`).catch(() => [])).filter((r) => r.is_confirmed !== false);
   const dernier = resultats.filter((r) => r.name === QUESTIONNAIRE_SEMAINE.name).sort((a, b) => b.date_start.localeCompare(a.date_start))[0];
   // « Nolio fait foi » : les séances prévues de ces semaines, une semaine de marge de chaque côté (une séance déplacée
   // juste à côté reste la sienne).
@@ -1370,8 +1372,9 @@ export async function lireLesTests(planId: string): Promise<TestLu[]> {
     const lienZones = `${site.url}/app/plan/zones`;
     if (cle === 'parole') {
       const d = await destinataire(o.nolioAthlete);
-      const resultats = await listeNolio<{ id: string; name?: string; items: { question: string; value: unknown }[] }>(
-        `real/quiz_results/?date_from=${j.date_iso}&date_to=${aujourdhui}${d.moi ? '' : `&athlete=${d.usr}`}`).catch(() => []);
+      const resultats = (await listeNolio<{ id: string; name?: string; is_confirmed?: boolean; items: { question: string; value: unknown }[] }>(
+        `real/quiz_results/?date_from=${j.date_iso}&date_to=${aujourdhui}${d.moi ? '' : `&athlete=${d.usr}`}`).catch(() => []))
+        .filter((x) => x.is_confirmed !== false);
       const r = resultats.find((x) => x.name === QUESTIONNAIRE_PAROLE.name);
       const reponse = (n: number) => r?.items.find((i) => i.question === QUESTIONNAIRE_PAROLE.items[n].question)?.value;
       const v = r ? lireParole(reponse(0), reponse(1)) : null;

@@ -183,8 +183,9 @@ export async function dimancheDuPlan(p: PlanAchete): Promise<Compte> {
 export async function noterLeMot(ficheIds: string[], qui: string): Promise<void> {
   if (!ficheIds.length) return;
   const aujourdhui = aujourdhuiParis();
-  const resultats = await listeNolio<{ id: string; name?: string; date_start: string; items?: { question: string; value: unknown }[] }>(
-    `real/quiz_results/?date_from=${ajouterJours(aujourdhui, -2)}&date_to=${aujourdhui}${qui}`).catch(() => []);
+  // Les réponses envoyées seulement (is_confirmed), jamais un brouillon.
+  const resultats = (await listeNolio<{ id: string; name?: string; date_start: string; is_confirmed?: boolean; items?: { question: string; value: unknown }[] }>(
+    `real/quiz_results/?date_from=${ajouterJours(aujourdhui, -2)}&date_to=${aujourdhui}${qui}`).catch(() => [])).filter((r) => r.is_confirmed !== false);
   const mot = resultats.filter((r) => r.name === QUESTIONNAIRE_SEMAINE.name
     && (r.items ?? []).some((i) => i.question === QUESTION_OUVERTE && typeof i.value === 'string' && i.value.trim()))
     .map((r) => r.date_start.slice(0, 10)).sort().pop();
