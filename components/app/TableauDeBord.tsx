@@ -58,6 +58,8 @@ const SOMMET = 'M0 170 L78 92 L112 116 L176 26 L236 98 L262 80 L350 170 Z';
 const ROUTE_X0 = 14;
 const ROUTE_X1 = 314;
 const ROUTE_DEMI = 19;
+// Le damier de la ligne d'arrivée : 6 cases sur la largeur de la route, 2 en profondeur.
+const DAMIER = (ROUTE_DEMI * 2) / 6;
 // Une ondulation et demie, à plat aux deux bouts (la ligne d'arrivée tombe droite) ; les bords à la normale de l'axe,
 // pour une route d'égale largeur.
 const ROUTE_AXE = Array.from({ length: 81 }, (_, i) => {
@@ -69,7 +71,7 @@ const ROUTE_AXE = Array.from({ length: 81 }, (_, i) => {
 const ROUTE = `M${ROUTE_AXE.map((p) => `${(p.x - p.nx * ROUTE_DEMI).toFixed(1)} ${(p.y - p.ny * ROUTE_DEMI).toFixed(1)}`).join(' L')} L${[...ROUTE_AXE]
   .reverse().map((p) => `${(p.x + p.nx * ROUTE_DEMI).toFixed(1)} ${(p.y + p.ny * ROUTE_DEMI).toFixed(1)}`).join(' L')} Z`;
 // La ligne médiane : un tiret toutes les cinq étapes de l'axe.
-const ROUTE_TIRETS = ROUTE_AXE.slice(0, -4).filter((_, i) => i % 5 === 0).map((p, k) => ({ a: p, b: ROUTE_AXE[k * 5 + 3] }));
+const ROUTE_TIRETS = ROUTE_AXE.slice(0, -8).filter((_, i) => i % 5 === 0).map((p, k) => ({ a: p, b: ROUTE_AXE[k * 5 + 3] }));
 export const estRoute = (format: string | null | undefined) => /^R(10|21|42)$/.test(String(format ?? ''));
 
 export function Montagne({ score, ton, route = false }: { score: number | null; ton: keyof typeof REMPLI | null; route?: boolean }) {
@@ -96,26 +98,42 @@ export function Montagne({ score, ton, route = false }: { score: number | null; 
 function Route({ score, ton }: { score: number | null; ton: keyof typeof REMPLI | null }) {
   const part = score === null ? null : Math.max(0, Math.min(1, score));
   const niveau = part === null ? null : ROUTE_X0 + part * (ROUTE_X1 - ROUTE_X0);
-  const repere = niveau === null ? null : ROUTE_AXE[Math.round(((niveau - ROUTE_X0) / (ROUTE_X1 - ROUTE_X0)) * (ROUTE_AXE.length - 1))];
+  // Le repère s'arrête avant la ligne d'arrivée, pour ne pas couvrir le damier.
+  const x = niveau === null ? null : Math.min(niveau, ROUTE_X1 - DAMIER * 2 - 6);
+  const repere = x === null ? null : ROUTE_AXE[Math.round(((x - ROUTE_X0) / (ROUTE_X1 - ROUTE_X0)) * (ROUTE_AXE.length - 1))];
   const fin = ROUTE_AXE[ROUTE_AXE.length - 1];
   const libelle = part === null ? 'Ta route de préparation, qui se remplira semaine après semaine'
     : `Ta route de préparation, remplie ${part >= 0.85 ? 'presque jusqu’à l’arrivée' : part >= 0.65 ? 'aux deux tiers' : 'à moitié ou moins'}`;
   return (
     <svg viewBox="0 0 350 170" className="block w-full h-auto" role="img" aria-label={libelle}>
-      <defs><clipPath id="cts-route"><path d={ROUTE} /></clipPath></defs>
+      <defs>
+        <clipPath id="cts-route"><path d={ROUTE} /></clipPath>
+        <pattern id="cts-damier" patternUnits="userSpaceOnUse" x={fin.x} y={fin.y - ROUTE_DEMI} width={DAMIER * 2} height={DAMIER * 2}>
+          <rect width={DAMIER * 2} height={DAMIER * 2} fill="#2F2D4E" />
+          <rect width={DAMIER} height={DAMIER} fill="#FFFFFF" />
+          <rect x={DAMIER} y={DAMIER} width={DAMIER} height={DAMIER} fill="#FFFFFF" />
+        </pattern>
+        <pattern id="cts-drapeau" patternUnits="userSpaceOnUse" x={fin.x + 6} y={fin.y - ROUTE_DEMI - 45} width="10" height="10">
+          <rect width="10" height="10" fill="#2F2D4E" />
+          <rect width="5" height="5" fill="#FFFFFF" />
+          <rect x="5" y="5" width="5" height="5" fill="#FFFFFF" />
+        </pattern>
+      </defs>
       <path d={ROUTE} fill="rgba(255,255,255,0.07)" />
       {niveau !== null && ton && <rect x="0" y="0" width={niveau} height="170" fill={REMPLI[ton]} clipPath="url(#cts-route)" />}
       <path d={ROUTE} fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth={1.5} strokeLinejoin="round" />
       {ROUTE_TIRETS.map(({ a, b }) => (
         <line key={a.x} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="rgba(255,255,255,0.55)" strokeWidth={1.5} strokeLinecap="round" />
       ))}
-      {/* La ligne d'arrivée à damier, et son fanion. */}
-      {Array.from({ length: 12 }, (_, i) => (
-        <rect key={i} x={fin.x - 10 + (i % 2) * 5} y={fin.y - ROUTE_DEMI + Math.floor(i / 2) * 5} width="5" height="5"
-          fill={(i + Math.floor(i / 2)) % 2 ? '#FFFFFF' : 'rgba(255,255,255,0.15)'} />
-      ))}
-      <line x1={fin.x + 6} y1={fin.y - ROUTE_DEMI} x2={fin.x + 6} y2={fin.y - ROUTE_DEMI - 34} stroke="#FFFFFF" strokeWidth={1.5} />
-      <path d={`M${fin.x + 6} ${fin.y - ROUTE_DEMI - 34} L${fin.x + 22} ${fin.y - ROUTE_DEMI - 29} L${fin.x + 6} ${fin.y - ROUTE_DEMI - 24} Z`} fill="#8FD1C3" />
+      {/* La ligne d'arrivée : un damier de 6 cases sur la largeur de la route, calé sur ses bords. */}
+      <rect x={fin.x - DAMIER * 2} y={fin.y - ROUTE_DEMI} width={DAMIER * 2} height={ROUTE_DEMI * 2} fill="url(#cts-damier)" clipPath="url(#cts-route)" />
+      <line x1={fin.x - DAMIER * 2} y1={fin.y - ROUTE_DEMI} x2={fin.x - DAMIER * 2} y2={fin.y + ROUTE_DEMI} stroke="rgba(255,255,255,0.45)" strokeWidth={1} />
+      {/* Le drapeau à damier, planté au bord de la route. */}
+      <line x1={fin.x + 5} y1={fin.y - ROUTE_DEMI + 2} x2={fin.x + 5} y2={fin.y - ROUTE_DEMI - 44} stroke="#FFFFFF" strokeWidth={1.6} strokeLinecap="round" />
+      <circle cx={fin.x + 5} cy={fin.y - ROUTE_DEMI - 45} r={1.8} fill="#FFFFFF" />
+      <path d={`M${fin.x + 6} ${fin.y - ROUTE_DEMI - 43} C${fin.x + 12} ${fin.y - ROUTE_DEMI - 47} ${fin.x + 19} ${fin.y - ROUTE_DEMI - 39} ${fin.x + 27} ${fin.y - ROUTE_DEMI - 43}`
+        + ` L${fin.x + 27} ${fin.y - ROUTE_DEMI - 28} C${fin.x + 19} ${fin.y - ROUTE_DEMI - 24} ${fin.x + 12} ${fin.y - ROUTE_DEMI - 32} ${fin.x + 6} ${fin.y - ROUTE_DEMI - 28} Z`}
+        fill="url(#cts-drapeau)" stroke="#FFFFFF" strokeWidth={0.8} strokeLinejoin="round" />
       {repere && <circle cx={repere.x} cy={repere.y} r={4.5} fill="#FFFFFF" stroke="#8FD1C3" strokeWidth={2} />}
     </svg>
   );
