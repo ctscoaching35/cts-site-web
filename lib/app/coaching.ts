@@ -347,8 +347,25 @@ const NOM: Record<Genre, [string, string, string]> = { seance: ['la', 'séance',
 
 // Créer une séance, une note ou un bandeau dans Nolio ; rend son identifiant et sa version à l'envoi. deja : Nolio
 // refuse un second bandeau sur la même période (409), celui que le coach a posé lui-même est gardé.
+// LE BANDEAU DU MOTEUR REMPLACE (décision coach du 25/10/2026) : Nolio refuse un bandeau qui partage un jour avec un
+// autre (409) ; ceux qui chevauchent la semaine (un bandeau du coach, même sur plusieurs semaines) sont retirés, et le
+// sien reposé, une fois. Le moteur n'écrit que pour les coachés en automatique et les acheteurs. Le nombre retiré.
+async function libererLaSemaine(d: Destinataire, debut: string, fin: string): Promise<number> {
+  const params = new URLSearchParams({ date_from: ajouterJours(debut, -365), date_to: ajouterJours(fin, 365) });
+  if (!d.moi) params.set('athlete', d.usr);
+  const cycles = await listeNolio<{ id: string; date_start: string; date_end: string }>(`planned/cycles/?${params}`).catch(() => []);
+  let retires = 0;
+  for (const c of cycles.filter((x) => x.date_start.slice(0, 10) <= fin && x.date_end.slice(0, 10) >= debut)) {
+    const r = await appelNolio('DELETE', `planned/cycles/${c.id}/${requete(d)}`).catch(() => null);
+    if (r && (r.statut === 204 || r.statut === 200 || r.statut === 404)) retires += 1;
+  }
+  return retires;
+}
+
 export async function creer(d: Destinataire, jourId: string, corps: Record<string, unknown>, genre: Genre = 'seance'): Promise<SeanceEnvoyee & { erreur?: string; deja?: boolean }> {
-  const r = await appelNolio('POST', CHEMINS[genre], d.moi ? corps : { ...corps, athletes: [d.usr] });
+  const envoi = () => appelNolio('POST', CHEMINS[genre], d.moi ? corps : { ...corps, athletes: [d.usr] });
+  let r = await envoi();
+  if (genre === 'cycle' && r.statut === 409 && await libererLaSemaine(d, String(corps.date_start), String(corps.date_end))) r = await envoi();
   if (genre === 'cycle' && r.statut === 409) return { jour_id: jourId, nolio_id: null, deja: true };
   if (r.statut !== 201 && r.statut !== 200) return { jour_id: jourId, nolio_id: null, erreur: refusNolio(r, `${NOM[genre][0]} ${NOM[genre][1]} du ${String(corps.date_start)}`) };
   const id = String(r.corps?.id ?? '');
