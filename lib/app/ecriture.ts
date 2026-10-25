@@ -604,6 +604,11 @@ export async function demarrerObjectif(planId: string, { prevenir = true, lundi,
     if (o.coache && !o.envois.length) {
       await ancrerAuDepart(o, premier).catch((e) => console.error(`Ancrage de ${planId} :`, e instanceof Error ? e.message : e));
     }
+    // Deux allégées de suite, jamais (décision coach du 26/10/2026) : un départ sur la semaine allégée du plan, sa
+    // dernière semaine déjà basse dans Nolio, la fait passer en charge.
+    if (o.coache && !o.envois.length && premiere.type === 'Assimilation') {
+      await marquerDerniereAllegee(o).catch((e) => console.error(`Semaine allégée de ${planId} :`, e instanceof Error ? e.message : e));
+    }
     await dimancheDeLAcheteur(o);
     // OM3 : l'objectif et ses courses de préparation, en compétitions dans Nolio.
     const { course } = o.plan;
@@ -639,6 +644,21 @@ async function recalerSurNolio(o: Objectif, lundi: string) {
   if (!charge?.volume_hebdo_actuel) return;
   const champs = { ...((o.parametres.champs ?? {}) as Record<string, unknown>), ...charge };
   const parametres = { ...o.parametres, champs, declaree_le: lundi };
+  try {
+    await moteur('/v1/trame', { parametres });
+  } catch {
+    return;
+  }
+  await clientService().from('plans').update({ parametres, trame: null }).eq('id', o.planId);
+  o.parametres = parametres;
+}
+
+// Sa dernière semaine courue, déjà allégée (lue dans Nolio, sous 75 % de la moyenne de ses 4) : la marque « derniere_allegee »
+// des paramètres, que le moteur lit pour la semaine rejointe (cts_semaine, cts_orchestrateur, cts_route).
+async function marquerDerniereAllegee(o: Objectif) {
+  const lu = await chargeDepuisNolio(o.coachId, o.nolioAthlete);
+  if (!lu?.derniereAllegee) return;
+  const parametres = { ...o.parametres, derniere_allegee: true };
   try {
     await moteur('/v1/trame', { parametres });
   } catch {

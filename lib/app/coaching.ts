@@ -139,7 +139,7 @@ export async function questionnairePrerempli(coachId: string, athleteId: string)
 const enHeuresMinutes = (min: number) => `${Math.floor(min / 60)}h${String(Math.round(min % 60)).padStart(2, '0')}`;
 // lu : la charge vient de Nolio ; sinon, detail dit pourquoi, et les champs gardent ses réponses précédentes (décision coach
 // du 23/10/2026 : « relis à chaque fois dans Nolio », et dis-le quand ce n'est pas possible). Une erreur de Nolio remonte.
-export async function chargeDepuisNolio(coachId: string, usr: string | null): Promise<{ champs: Record<string, string>; detail: string; lu: boolean } | null> {
+export async function chargeDepuisNolio(coachId: string, usr: string | null): Promise<{ champs: Record<string, string>; detail: string; lu: boolean; derniereAllegee?: boolean } | null> {
   if (!usr || !nolioConfigure()) return null;
   const { data: accord } = await clientService().from('nolio_accords').select('accord_le').eq('coach_id', coachId).eq('nolio_athlete_id', usr).maybeSingle();
   if (!accord) {
@@ -179,6 +179,9 @@ export async function chargeDepuisNolio(coachId: string, usr: string | null): Pr
     .filter((r) => r.date >= ajouterJours(debut, 7 * i) && r.date < ajouterJours(debut, 7 * (i + 1))).reduce((a, r) => a + r.min, 0));
   const volume = volumeDuMoment(parSemaine);
   charge.volume_hebdo_actuel = enHeuresMinutes(volume.retenu);
+  // Sa dernière semaine déjà allégée, sous 75 % de la moyenne des 4 (décision coach du 26/10/2026 : au départ, une
+  // semaine rejointe allégée devient alors une semaine de charge).
+  const derniereAllegee = volume.moyenne > 0 && parSemaine[3] < 0.75 * volume.moyenne;
   const longue = recentes.reduce((a, r) => (r.min > a.min ? r : a));
   charge.sortie_longue_actuelle = enHeuresMinutes(longue.min);
   const semaines = parSemaine.map((m, i) => `semaine du ${jm(ajouterJours(debut, 7 * i))} ${enHeuresMinutes(m)}`);
@@ -186,7 +189,7 @@ export async function chargeDepuisNolio(coachId: string, usr: string | null): Pr
   const retenu = volume.pourquoi === 'derniere' ? `retenu ${charge.volume_hebdo_actuel}, sa dernière semaine`
     : volume.pourquoi === 'plafond' ? `retenu ${charge.volume_hebdo_actuel}, la moyenne +30 % (sa dernière semaine, ${enHeuresMinutes(parSemaine[3])}, est bien au-dessus)`
       : `retenu la moyenne (sa dernière semaine, ${enHeuresMinutes(parSemaine[3])}, est plus basse)`;
-  return { champs: charge, lu: true, detail: `Lu dans Nolio ${periode}, course, trail et tapis seulement (sans renfo ni autres sports${sansCourse}) : `
+  return { champs: charge, lu: true, derniereAllegee, detail: `Lu dans Nolio ${periode}, course, trail et tapis seulement (sans renfo ni autres sports${sansCourse}) : `
     + `${semaines.join(' · ')}, soit ${enHeuresMinutes(volume.moyenne)} en moyenne, ${retenu} ; plus longue sortie ${charge.sortie_longue_actuelle} le ${jm(longue.date)}.${pourquoi}` };
 }
 
