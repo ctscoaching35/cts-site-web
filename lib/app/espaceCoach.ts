@@ -71,7 +71,7 @@ const SIGNAL: Record<string, string> = {
   ajustement: 'Semaine ajustée', mot: 'Un mot pour toi', rpe: 'RPE à revoir', demarrer: 'À démarrer', nolio: 'Nolio à associer',
   equipe: 'Hors de l’équipe Nolio', accord: 'Sans accord de lecture', semaine: 'Semaine pas partie', chrono_route: 'Chrono à revoir',
   prerequis: 'Prérequis à voir', course_nolio: 'Course A dans Nolio', preparation: 'Course de préparation', suite: 'Rien après',
-  test: 'Test à revoir',
+  test: 'Test à revoir', profil: 'Profil à remplir',
 };
 
 // L'équipe Nolio du coach, que le tableau de bord et « À regarder » lisent à l'ouverture ; sans réponse de Nolio,
@@ -237,6 +237,14 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     } else if (a.nolio_athlete_id && !avecAccord.has(a.nolio_athlete_id)) {
       aRegarder.push({ niveau: 'bloque', genre: 'accord', cle: `accord:${a.id}`, athlete: a.nom, action: 'Accord reçu ›', href: '/app/coach/suivi#sans-accord',
         texte: 'sans accord de lecture : envoie-lui le message d’accord dans Nolio.' });
+    }
+    // Sans objectif ni profil de coureur (25/10/2026 : 4 saisons de fond refusées en silence par le moteur, faute de
+    // niveau, de terrain, de jour de sortie longue ou de nombre de séances) : sa saison ne peut pas partir.
+    const profilComplet = ['niveau', 'terrain', 'jour_sl', 'freq_hebdo', 'jours_disponibles']
+      .every((k) => a.profil?.[k] !== undefined && String(a.profil[k]).length > 0);
+    if (a.programmation !== 'main' && a.nolio_athlete_id && !a.objectifs.length && !profilComplet) {
+      aRegarder.push({ niveau: 'bloque', genre: 'profil', cle: `profil:${a.id}`, athlete: a.nom, action: 'Son profil ›',
+        href: `/app/coach/athlete/${a.id}#son-profil`, texte: 'profil de coureur à remplir : sa saison de fond ne peut pas partir sans lui.' });
     }
     // La semaine en cours pas partie dans Nolio (le passage du dimanche en échec, même après ses reprises). La première
     // d'une saison de fond aussi (25/10/2026 : sans semaine écrite avant, elle passait inaperçue).
