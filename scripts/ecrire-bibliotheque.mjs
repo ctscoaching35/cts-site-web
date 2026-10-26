@@ -101,6 +101,7 @@ for (const [nom, sort] of Object.entries(catalogue.seances_du_coach)) {
       if (idDe(y.category) === archives) continue;
       journal.push(`archivée : ${nom}`);
       if (ecrire) await nolio('PATCH', `library/training_frames/${y.id}/`, { category: archives });
+      y.category = archives;
     }
     continue;
   }
@@ -112,6 +113,38 @@ for (const [nom, sort] of Object.entries(catalogue.seances_du_coach)) {
   const id = await dossier(sort.sous, racine);
   journal.push(`gardée : ${nom} → ${sort.dossier} › ${sort.sous} › ${sort.nom}`);
   if (ecrire) await nolio('PATCH', `library/training_frames/${lesquelles[0].id}/`, { name: sort.nom, category: id });
+  Object.assign(lesquelles[0], { name: sort.nom, category: id });
+}
+
+// Les essais : les séances qui restent dans un dossier d'essai (celles du moteur) partent dans un dossier à supprimer
+// par le coach ; ses séances, elles, ont été rangées plus haut.
+if (catalogue.essais) {
+  const essai = dossiers.find((d) => d.name === catalogue.essais.dossier && !idDe(d.parent));
+  if (essai) {
+    const sous = dossiers.filter((d) => idDe(d.parent) === essai.id).map((d) => d.id);
+    const restes = seances.filter((y) => [essai.id, ...sous].includes(idDe(y.category)));
+    const vers = restes.length ? await dossier(catalogue.essais.vers) : null;
+    for (const y of restes) {
+      journal.push(`essai rangé à supprimer : ${y.name}`);
+      if (ecrire) await nolio('PATCH', `library/training_frames/${y.id}/`, { category: vers });
+    }
+  }
+}
+
+// L'ordre de chaque sous-dossier : celui du catalogue (par temps au seuil), puis ce que le coach y a ajouté.
+const COLLECTIONS = ['training_frames', 'competition_frames', 'note_frames', 'message_trigger_frames', 'quiz_frames'];
+for (const d of catalogue.dossiers) {
+  const racine = dossiers.find((x) => x.name === d.nom && !idDe(x.parent));
+  for (const s of d.sous) {
+    const sous = racine && dossiers.find((x) => x.name === s.nom && idDe(x.parent) === racine.id);
+    if (!sous || !ecrire) continue;
+    const presents = [];
+    for (const c of COLLECTIONS) presents.push(...(await tous(`library/${c}/?category=${sous.id}`)));
+    const rang = new Map(s.seances.map((x, i) => [x.name, i]));
+    const ordre = [...presents].sort((a, b) => (rang.get(a.name) ?? 1e6) - (rang.get(b.name) ?? 1e6));
+    await nolio('POST', `library/categories/${sous.id}/frames/order/`, { ids: ordre.map((x) => x.id) });
+    journal.push(`ordre : ${d.nom} › ${s.nom} (${ordre.length})`);
+  }
 }
 
 console.log(journal.join('\n'));
