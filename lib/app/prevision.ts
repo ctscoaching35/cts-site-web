@@ -9,8 +9,17 @@ import type { Suivi } from './signauxSuivi';
 
 export type Niveau = 'rouge' | 'orange' | 'vert' | 'rien';
 export type Prevision = { niveau: Niveau; pourquoi: string; prevoit: string };
-// ecrit : le moteur écrit ses semaines (objectif démarré, programmé automatiquement) ; aLaMain : le coach les écrit.
-export type Statut = { ecrit: boolean; aLaMain: boolean };
+// ecrit : le moteur écrit ses semaines (objectif démarré, programmé automatiquement) ; aLaMain : le coach les écrit ;
+// pasParti : pourquoi il ne les écrit pas encore — ni objectif ni saison, ou un objectif et le lundi de son départ
+// programmé (null : à démarrer).
+export type Statut = { ecrit: boolean; aLaMain: boolean; pasParti?: { objectif: boolean; depart: string | null } };
+
+// Le départ programmé au lundi part la veille au soir (lib/app/ecriture.ts, departsDuJour) : « dimanche 1/11 ».
+const veille = (lundi: string) => {
+  const d = new Date(`${lundi}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'numeric', timeZone: 'UTC' });
+};
 
 // R1 : moins de 60 % de la charge faite ; R3 : trois jours à signal en sept jours, dont un d'état (Hooper, ressenti).
 const SEMAINE_FAITE_MIN = 0.6;
@@ -18,7 +27,14 @@ const FATIGUE_JOURS = 3;
 
 export function prevision(suivi: Suivi, statut: Statut): Prevision {
   if (statut.aLaMain) return { niveau: 'rien', pourquoi: '', prevoit: 'Rien : tu écris ses séances' };
-  if (!statut.ecrit) return { niveau: 'rien', pourquoi: '', prevoit: 'Rien : le moteur n’écrit pas ses semaines' };
+  if (!statut.ecrit) {
+    // Pourquoi rien, et ce qui vient (décision coach du 26/10/2026 : « la raison »).
+    const p = statut.pasParti;
+    const prevoit = !p ? 'Rien : le moteur n’écrit pas ses semaines'
+      : !p.objectif ? 'Rien : pas encore de saison, vois « À regarder »'
+        : p.depart ? `Sa première semaine part ${veille(p.depart)} au soir` : 'Rien : son objectif est à démarrer';
+    return { niveau: 'rien', pourquoi: '', prevoit };
+  }
   const fatigue = suivi.signaux.filter((s) => s.genre === 'hooper' || s.genre === 'sensations' || s.genre === 'plus_dur');
   const jours = new Set(fatigue.map((s) => s.jour)).size;
   const etat = fatigue.some((s) => s.genre === 'hooper' || s.genre === 'sensations');

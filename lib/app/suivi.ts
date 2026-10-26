@@ -58,7 +58,8 @@ export async function accords(coachId: string): Promise<Map<string, string>> {
 }
 
 // Pour « Dimanche, le moteur prévoit » (décision coach du 24/10/2026) : de chaque coaché relié à Nolio, sa fiche, son
-// prochain objectif, et si le moteur écrit ses semaines (objectif à venir démarré, programmé automatiquement) ou le coach.
+// prochain objectif, et si le moteur écrit ses semaines (objectif à venir démarré, programmé automatiquement) ou le coach ;
+// sinon, pourquoi pas encore (ni objectif ni saison, ou le départ programmé de son objectif).
 export type StatutSuivi = Statut & { fiche: string; objectif: string | null };
 export async function statutsDuSuivi(coachId: string): Promise<Map<string, StatutSuivi>> {
   const jour = aujourdhuiParis();
@@ -66,12 +67,14 @@ export async function statutsDuSuivi(coachId: string): Promise<Map<string, Statu
   const prochains = new Map(fiches.map((a) => [a.id, a.objectifs.find((o) => o.course_date >= jour) ?? null]));
   const ids = [...prochains.values()].filter(Boolean).map((o) => o!.plan_id);
   const { data: plans } = ids.length
-    ? await clientService().from('plans').select('id, demarre_le, parametres').in('id', ids)
+    ? await clientService().from('plans').select('id, demarre_le, depart_prevu, parametres').in('id', ids)
     : { data: [] };
   const ecrits = new Set((plans ?? []).filter((p) => p.demarre_le && p.parametres).map((p) => p.id as string));
+  const departs = new Map((plans ?? []).map((p) => [p.id as string, (p.depart_prevu as string | null) ?? null]));
   return new Map(fiches.map((a) => {
     const o = prochains.get(a.id);
+    const ecrit = Boolean(o && ecrits.has(o.plan_id));
     return [a.nolio_athlete_id as string, { fiche: a.id, objectif: o?.course_nom ?? null, aLaMain: a.programmation === 'main',
-      ecrit: Boolean(o && ecrits.has(o.plan_id)) }];
+      ecrit, ...(ecrit ? {} : { pasParti: { objectif: Boolean(o), depart: o ? departs.get(o.plan_id) ?? null : null } }) }];
   }));
 }
