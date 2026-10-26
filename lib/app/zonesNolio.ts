@@ -23,6 +23,7 @@
  * les couvre tous). Un athlète dont Nolio n'a pas le même nombre de zones garde les siennes, et le coach est prévenu.
  */
 import type { Zones } from './plan';
+import { ecrireMetriquesNolio } from './metriquesNolio';
 import { appelNolio, refusNolio } from './nolio';
 import { allure, decalageSeuil1, type Profil } from './zones';
 
@@ -76,9 +77,15 @@ const enveloppe = (liste: Enveloppe[], flux: string) => {
   return actives.find((w) => w.sports.some((s) => COURSE.includes(idDe(s)))) ?? actives.find((w) => !w.sports.length) ?? null;
 };
 
-// Écrit les zones CTS dans le Nolio d'un athlète. Rend ce qui n'a pas pu s'écrire (pour le coach), [] si tout va.
+// Écrit les zones CTS dans le Nolio d'un athlète, puis ses repères dans ses métriques (metriquesNolio.ts, décisions
+// coach du 26/10/2026). Rend ce qui n'a pas pu s'écrire (pour le coach), [] si tout va.
 export async function ecrireZonesNolio(usr: string, moi: boolean, p: Profil, zones: Zones | null | undefined): Promise<string[]> {
   if (!zones || (!moi && !POUR_TOUS)) return [];
+  const soucis = await ecrireZonesSeules(usr, moi, p, zones);
+  return [...soucis, ...await ecrireMetriquesNolio(usr, moi, p, zones).catch((e) => [e instanceof Error ? e.message : String(e)])];
+}
+
+async function ecrireZonesSeules(usr: string, moi: boolean, p: Profil, zones: Zones): Promise<string[]> {
   const q = moi ? '' : `?athlete=${usr}`;
   const voulu: [string, Borne[] | null][] = [['heartrate', zonesFc(p)], ['pace', zonesAllure(p, zones)]];
   if (!voulu.some(([, b]) => b)) return [];
