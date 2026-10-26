@@ -10,12 +10,17 @@
  * OUVERTE À TOUS le 25/10/2026 (décision du coach, « calibrer dans Nolio zones de vitesse et zones bpm
  * automatiquement ») : l'essai sur son compte a tenu (FC et allure écrites, noms de l'app, recalcul de Nolio coupé).
  *
- * Choix faits en construisant, à montrer au coach : la FC s'écrit avec les deux seuils (5 zones : endurance de seuil 1
- * − 25 à seuil 1 − 5, la plage déjà donnée aux séances ; seuil 1 ; tempo ; seuil 2 ; VO2max de seuil 2 à seuil 2 + 15) ;
- * l'allure avec la VC (6 zones, la récupération bornée à 50 % de la VC ; la VO2max dès 100 % de la VC, sans le trou de
- * l'app entre 100 et 105 %, comme les zones de Nolio se suivent) ; la FC vaut pour tous les sports de l'athlète (son
- * enveloppe de FC les couvre tous) ; un athlète dont Nolio n'a pas le même nombre de zones garde les siennes, et le
- * coach est prévenu.
+ * LES NUMÉROS DU COACH (décision du 26/10/2026, CTS_STRUCTURE_COMMUNE.md, décision 1) : les zones écrites le 25/10
+ * suivaient les lignes de l'app, le seuil 1 comme zone à part, et décalaient d'un cran les numéros que visent les
+ * séances types du coach (son allure Z4, le seuil 2, devenait le tempo ; sa Z5, la VO2max, le seuil 2 ; sa FC Z2,
+ * l'endurance, le seuil 1). Une échelle commune, ses numéros : Z1 récupération, Z2 endurance fondamentale, Z2+ seuil 1,
+ * Z3 tempo, Z4 seuil 2, Z5 VO2max, Z6 sprint. Nolio numérote ses zones à la suite, sans « 2+ » : le seuil 1 vit dans
+ * sa Z2 (il se vise en % de la VC ou en valeurs). L'allure, 6 zones : la récupération bornée à 50 % de la VC, la Z2 de
+ * l'endurance au haut du seuil 1 (le seuil 1 recoupé les décale), le tempo jusqu'à 92 %, le seuil 2 jusqu'à 100 %, la
+ * VO2max jusqu'à 112 % (sans le trou de l'app entre 100 et 105 % : les zones de Nolio se suivent), le sprint jusqu'à
+ * 140 %. La FC, 5 zones : la récupération jusqu'à seuil 1 − 15, la Z2 jusqu'à seuil 1 + 5, le tempo jusqu'à seuil 2
+ * − 5, le seuil 2, la VO2max jusqu'à seuil 2 + 15 ; elle vaut pour tous les sports de l'athlète (son enveloppe de FC
+ * les couvre tous). Un athlète dont Nolio n'a pas le même nombre de zones garde les siennes, et le coach est prévenu.
  */
 import type { Zones } from './plan';
 import { appelNolio, refusNolio } from './nolio';
@@ -26,16 +31,17 @@ export const POUR_TOUS = true;
 // min, max : comme l'enveloppe Nolio les range (la FC du bas vers le haut ; l'allure du plus lent au plus rapide).
 type Borne = { nom: string; min: number | string; max: number | string };
 
-// Les noms des lignes du tableau des zones de l'app (cts_contenu.ZONES_RPE).
-const NOMS_FC = ['Zone 2 — endurance fondamentale', 'Seuil 1', 'Zone 3 — tempo', 'Zone 4 — seuil 2', 'Zone 5 — VO2max'];
-const NOMS_ALLURE = ['Zone 1 — récupération', 'Zone 2 — endurance fondamentale', 'Seuil 1', 'Zone 3 — tempo',
-  'Zone 4 — seuil 2', 'Zone 5 — VO2max'];
+// Les noms de l'échelle commune (cts_contenu.ZONES_RPE), le seuil 1 dans la zone 2.
+const Z2 = 'Zone 2 — endurance fondamentale et seuil 1';
+const NOMS_FC = ['Zone 1 — récupération', Z2, 'Zone 3 — tempo', 'Zone 4 — seuil 2', 'Zone 5 — VO2max'];
+const NOMS_ALLURE = ['Zone 1 — récupération', Z2, 'Zone 3 — tempo', 'Zone 4 — seuil 2', 'Zone 5 — VO2max', 'Zone 6 — sprint'];
+const SPRINT_HAUT = 140;
 
 export function zonesFc(p: Profil): Borne[] | null {
   const s1 = p.fc_seuil1;
   const s2 = p.fc_seuil2;
   if (s1 === null || s2 === null) return null;
-  const bornes = [s1 - 25, s1 - 5, s1 + 5, s2 - 5, s2, s2 + 15];
+  const bornes = [s1 - 40, s1 - 15, s1 + 5, s2 - 5, s2, s2 + 15];
   if (bornes.some((b, i) => i && b <= bornes[i - 1])) return null;
   return NOMS_FC.map((nom, i) => ({ nom, min: bornes[i], max: bornes[i + 1] }));
 }
@@ -46,13 +52,14 @@ export function zonesAllure(p: Profil, zones: Pick<Zones, 'tableau' | 'recoupeme
   const vc = p.vc_ms;
   const d = decalageSeuil1(p, zones);
   const l = zones.tableau.lignes;
+  // Les lignes de l'app : 0 récupération, 1 endurance, 2 seuil 1, 3 tempo, 4 seuil 2, 5 VO2max, 6 sprint.
   const pcts: [number, number][] = [
     [50, (l[0]?.allure_sous_vc ?? 70) + d],
-    [(l[1]?.allure_vc?.[0] ?? 70) + d, (l[1]?.allure_vc?.[1] ?? 80) + d],
-    [(l[2]?.allure_vc?.[0] ?? 80) + d, (l[2]?.allure_vc?.[1] ?? 85) + d],
+    [(l[1]?.allure_vc?.[0] ?? 70) + d, (l[2]?.allure_vc?.[1] ?? 85) + d],
     [(l[3]?.allure_vc?.[0] ?? 85) + d, l[3]?.allure_vc?.[1] ?? 92],
     [l[4]?.allure_vc?.[0] ?? 92, l[4]?.allure_vc?.[1] ?? 100],
     [l[4]?.allure_vc?.[1] ?? 100, l[5]?.allure_vc?.[1] ?? 112],
+    [l[5]?.allure_vc?.[1] ?? 112, SPRINT_HAUT],
   ];
   if (pcts.some(([a, b], i) => b <= a || (i && a < pcts[i - 1][0]))) return null;
   return NOMS_ALLURE.map((nom, i) => ({ nom, min: allure((vc * pcts[i][0]) / 100), max: allure((vc * pcts[i][1]) / 100) }));
@@ -97,7 +104,7 @@ export async function ecrireZonesNolio(usr: string, moi: boolean, p: Profil, zon
       soucis.push(refusNolio(e, `les zones ${flux === 'pace' ? 'd’allure' : 'de FC'}`));
       continue;
     }
-    // Les noms, ceux du tableau de l'app (au niveau du flux : toutes ses enveloppes les prennent).
+    // Les noms de l'échelle commune (au niveau du flux : toutes ses enveloppes les prennent).
     for (const [i, z] of w.zones.entries()) {
       if (!z.id) continue;
       await appelNolio('PATCH', `settings/zones/streams/${w.stream}/zones/${z.id}/${q}`, { name: bornes[i].nom }).catch(() => null);
