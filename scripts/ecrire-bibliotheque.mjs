@@ -6,7 +6,7 @@
  * renommées sans toucher leur contenu, ou rangées dans les archives. Rien n'est jamais supprimé.
  *
  *   ./.venv/bin/python3 -c "import json, cts_bibliotheque as b; print(json.dumps(b.catalogue()))" > catalogue.json
- *   node scripts/ecrire-bibliotheque.mjs catalogue.json [--ecrire]
+ *   node scripts/ecrire-bibliotheque.mjs catalogue.json [--ecrire] [--mettre-a-jour]
  *
  * Sans --ecrire, rien ne part : il dit ce qu'il ferait. Relancé, il retrouve ce qui existe déjà (un dossier par son nom
  * et son parent, une séance du moteur par son nom dans son dossier) et le met à jour au lieu de le doubler. Lit la clé
@@ -17,6 +17,9 @@ import { readFileSync } from 'node:fs';
 
 nextEnv.loadEnvConfig(process.cwd());
 const ecrire = process.argv.includes('--ecrire');
+// Les séances déjà écrites ne sont réécrites qu'avec --mettre-a-jour : chaque appel compte dans le quota de
+// l'application Nolio, partagé avec le site (un passage les réécrivait toutes, 270 appels, et Nolio a freiné).
+const mettreAJour = process.argv.includes('--mettre-a-jour');
 const chemin = process.argv.slice(2).find((a) => !a.startsWith('--'));
 if (!chemin) throw new Error('Le catalogue (JSON de cts_bibliotheque.catalogue) manque.');
 const catalogue = JSON.parse(readFileSync(chemin, 'utf8'));
@@ -53,6 +56,8 @@ const idDe = (x) => (x && typeof x === 'object' ? x.id : x) ?? null;
 const dossiers = await tous('library/categories/');
 const seances = await tous('library/training_frames/');
 const journal = [];
+// Les sous-dossiers où une séance a été créée : seuls ceux-là sont remis en ordre.
+const crees = new Set();
 
 // Un dossier par son nom et son parent ; créé s'il manque.
 async function dossier(nom, parent = null) {
@@ -76,10 +81,12 @@ for (const d of catalogue.dossiers) {
     for (const x of s.seances) {
       const deja = seances.find((y) => y.name === x.name && idDe(y.category) === id);
       if (deja) {
+        if (!mettreAJour) continue;
         journal.push(`mise à jour : ${d.nom} › ${s.nom} › ${x.name}`);
         if (ecrire) await nolio('PATCH', `library/training_frames/${deja.id}/`, { ...x });
       } else {
         journal.push(`créée : ${d.nom} › ${s.nom} › ${x.name}`);
+        crees.add(id);
         if (ecrire) seances.push(await nolio('POST', 'library/training_frames/', { ...x, category: id }));
       }
     }
@@ -137,7 +144,7 @@ for (const d of catalogue.dossiers) {
   const racine = dossiers.find((x) => x.name === d.nom && !idDe(x.parent));
   for (const s of d.sous) {
     const sous = racine && dossiers.find((x) => x.name === s.nom && idDe(x.parent) === racine.id);
-    if (!sous || !ecrire) continue;
+    if (!sous || !ecrire || (!mettreAJour && !crees.has(sous.id))) continue;
     const presents = [];
     for (const c of COLLECTIONS) presents.push(...(await tous(`library/${c}/?category=${sous.id}`)));
     const rang = new Map(s.seances.map((x, i) => [x.name, i]));
