@@ -86,3 +86,17 @@ export const STRATEGIE_EXEMPLE: Strategie = {
   ],
   le: '2026-10-20',
 };
+
+// Ses glucides par heure du jour J, [bas, haut], tirés de la carte « Glucides » de sa stratégie gardée pour sa course
+// (« 70 g/h », « 60-75 g/h ») ; null sans stratégie. Le moteur y fait arriver l'entraînement de l'intestin de ses
+// sorties longues (décision coach du 26/10/2026, « la stratégie dépend surtout de l'athlète »).
+export async function glucidesDeLaStrategie(planId: string): Promise<[number, number] | null> {
+  const s = (await strategiesDuPlan(planId))[COURSE_OBJECTIF];
+  const valeur = s?.cartes.find((c) => c.nom === 'Glucides')?.valeur ?? '';
+  const m = /(\d{2,3})(?:\s*(?:-|–|à)\s*(\d{2,3}))?/.exec(valeur);
+  if (!m) return null;
+  const bas = Number(m[1]);
+  const haut = m[2] ? Number(m[2]) : bas;
+  return bas >= 20 && haut <= 130 && bas <= haut ? [bas, haut] : null;
+}
+

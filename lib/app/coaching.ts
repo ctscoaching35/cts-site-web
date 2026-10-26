@@ -7,7 +7,7 @@
  */
 import { API_URL } from '@/lib/plan';
 import { actionsTrame, dateDe, empreinte, type Voulu } from './trameNolio';
-import { lienFicheCourse } from './ficheCourse';
+import { noteFicheCourse } from './ficheCourse';
 import { ajouterJours, jMoins, joursEntre, type Plan, type Semaine } from './plan';
 import { qualitesDuBloc } from './tableau';
 import { appelNolio, convertirIdsV1, listeNolio, moiNolio, nolioConfigure, refusNolio, sansVitesseImpossible, SPORTS_COURSE } from './nolio';
@@ -139,7 +139,9 @@ export async function questionnairePrerempli(coachId: string, athleteId: string)
 const enHeuresMinutes = (min: number) => `${Math.floor(min / 60)}h${String(Math.round(min % 60)).padStart(2, '0')}`;
 // lu : la charge vient de Nolio ; sinon, detail dit pourquoi, et les champs gardent ses réponses précédentes (décision coach
 // du 23/10/2026 : « relis à chaque fois dans Nolio », et dis-le quand ce n'est pas possible). Une erreur de Nolio remonte.
-export async function chargeDepuisNolio(coachId: string, usr: string | null): Promise<{ champs: Record<string, string>; detail: string; lu: boolean; derniereAllegee?: boolean } | null> {
+export type ChargeLue = { champs: Record<string, string>; detail: string; lu: boolean; derniereAllegee?: boolean; seancesDures?: number;
+  slSemaines?: number; longueMin?: number };
+export async function chargeDepuisNolio(coachId: string, usr: string | null): Promise<ChargeLue | null> {
   if (!usr || !nolioConfigure()) return null;
   const { data: accord } = await clientService().from('nolio_accords').select('accord_le').eq('coach_id', coachId).eq('nolio_athlete_id', usr).maybeSingle();
   if (!accord) {
@@ -156,12 +158,12 @@ export async function chargeDepuisNolio(coachId: string, usr: string | null): Pr
     .catch(() => [])).map((c) => c.date_start.slice(0, 10));
   const { debut, fin, recul } = fenetreDeCharge(aujourdhui, competitions);
   type Reel = { id: string; date_start: string; duration?: { value?: number } | null; sport?: string | null;
-    distance?: { value?: number; unit?: string } | number | null };
+    distance?: { value?: number; unit?: string } | number | null; debrief?: { rpe?: number | null } | null };
   const reels = (await listeNolio<Reel>(`real/trainings/?date_from=${debut < du ? debut : du}&date_to=${ajouterJours(aujourdhui, -1)}`
-    + `&fields=id,date_start,duration,distance,sport${q}`)).map(sansVitesseImpossible);
+    + `&fields=id,date_start,duration,distance,sport,debrief${q}`)).map(sansVitesseImpossible);
   const jours = new Set(competitions);
   const toutes = reels.filter((r) => SPORTS_COURSE.includes(String(r.sport)) && r.duration?.value)
-    .map((r) => ({ date: r.date_start.slice(0, 10), min: (r.duration as { value: number }).value / 60 }));
+    .map((r) => ({ date: r.date_start.slice(0, 10), min: (r.duration as { value: number }).value / 60, rpe: r.debrief?.rpe ?? null }));
   const recentes = toutes.filter((r) => r.date >= debut && r.date < fin && !jours.has(r.date));
   const course = toutes.filter((r) => r.date >= du);
   const dates = [du, ...course.map((r) => r.date).sort(), aujourdhui];
@@ -182,15 +184,24 @@ export async function chargeDepuisNolio(coachId: string, usr: string | null): Pr
   // Sa dernière semaine déjà allégée, sous 75 % de la moyenne des 4 (décision coach du 26/10/2026 : au départ, une
   // semaine rejointe allégée devient alors une semaine de charge).
   const derniereAllegee = volume.moyenne > 0 && parSemaine[3] < 0.75 * volume.moyenne;
-  const longue = recentes.reduce((a, r) => (r.min > a.min ? r : a));
+  // LA PLUS LONGUE SORTIE SUR 8 SEMAINES (le départ individualisé, décision coach du 26/10/2026) : s'il n'a pas eu de trou
+  // de plus de 2 semaines (ni course récente qui recule le calcul) ; sinon les 4 semaines.
+  const sansTrou = !recul && Math.max(...ecarts) <= 14;
+  const fenetreSl = sansTrou ? course.filter((r) => !jours.has(r.date)) : recentes;
+  const longue = fenetreSl.reduce((a, r) => (r.min > a.min ? r : a));
   charge.sortie_longue_actuelle = enHeuresMinutes(longue.min);
+  // Ses séances dures des 4 semaines (RPE 7 ou plus, lu avec son accord) : au moins une par semaine en moyenne, il sort
+  // d'un bloc de qualité (les fondations sautées, décision coach du 26/10/2026).
+  const seancesDures = recentes.filter((r) => (r.rpe ?? 0) >= 7).length;
   const semaines = parSemaine.map((m, i) => `semaine du ${jm(ajouterJours(debut, 7 * i))} ${enHeuresMinutes(m)}`);
   const sansCourse = competitions.some((c) => c >= debut && c < fin) ? ', sans le jour de course' : '';
   const retenu = volume.pourquoi === 'derniere' ? `retenu ${charge.volume_hebdo_actuel}, sa dernière semaine`
     : volume.pourquoi === 'plafond' ? `retenu ${charge.volume_hebdo_actuel}, la moyenne +30 % (sa dernière semaine, ${enHeuresMinutes(parSemaine[3])}, est bien au-dessus)`
       : `retenu la moyenne (sa dernière semaine, ${enHeuresMinutes(parSemaine[3])}, est plus basse)`;
-  return { champs: charge, lu: true, derniereAllegee, detail: `Lu dans Nolio ${periode}, course, trail et tapis seulement (sans renfo ni autres sports${sansCourse}) : `
-    + `${semaines.join(' · ')}, soit ${enHeuresMinutes(volume.moyenne)} en moyenne, ${retenu} ; plus longue sortie ${charge.sortie_longue_actuelle} le ${jm(longue.date)}.${pourquoi}` };
+  return { champs: charge, lu: true, derniereAllegee, seancesDures, slSemaines: sansTrou ? 8 : 4, longueMin: longue.min,
+    detail: `Lu dans Nolio ${periode}, course, trail et tapis seulement (sans renfo ni autres sports${sansCourse}) : `
+    + `${semaines.join(' · ')}, soit ${enHeuresMinutes(volume.moyenne)} en moyenne, ${retenu} ; plus longue sortie ${charge.sortie_longue_actuelle} le ${jm(longue.date)}`
+    + `${sansTrou ? ' (sur 8 semaines, sans coupure)' : ''} ; ${seancesDures} séance${seancesDures > 1 ? 's' : ''} dure${seancesDures > 1 ? 's' : ''} (RPE 7 ou plus) en 4 semaines.${pourquoi}` };
 }
 
 // LE VOLUME DU MOMENT (décision coach du 24/10/2026, « la moyenne est souvent peu représentative ») : sa dernière semaine,
@@ -236,7 +247,7 @@ type JourTraduit = { id: string; nolio: Record<string, unknown> | null; note: Re
 const SEMAINE = 'semaine';
 const RENFO = ':renfo';
 export async function seancesDuMoteur(plan: Plan, planId: string, semaine: Semaine, profil: Record<string, number>, niveau: string,
-  avecTrame = true, coache = false) {
+  avecTrame = true, coache = false, avecApp = true) {
   // La place de la semaine dans son bloc : la dose du renfo monte à partir de la troisième. Et parmi ses semaines de
   // charge : les deux séances de renfo du bloc alternent sans se répéter après une assimilation (RF5).
   const duBloc = plan.semaines.filter((s) => s.bloc === semaine.bloc);
@@ -276,9 +287,10 @@ export async function seancesDuMoteur(plan: Plan, planId: string, semaine: Semai
   // La fiche de course, une note de plus (« fiche:course »), avec son lien privé. Les fiches de la bibliothèque ne
   // partent plus dans Nolio (décision coach du 21/10/2026 : une note ne s'y lit pas d'un coup d'œil ; l'app les donne
   // chaque semaine, « Les fiches de la semaine »).
+  // La fiche de course : le nom de sa course, et la note en deux temps (décision coach du 26/10/2026).
   const fiches = ((corps.fiches ?? []) as { id: string; note: Record<string, unknown> }[]).filter((f) => f.id === 'fiche:course').map((f) => ({
     id: f.id, nolio: null,
-    note: { ...f.note, description: String(f.note.description ?? '').replace('{lien_fiche_course}', lienFicheCourse(planId)) },
+    note: { ...f.note, name: `Ta fiche de course — ${plan.course.nom}`, description: noteFicheCourse(planId, avecApp) },
   }));
   // avecTrame : la semaine porte son bandeau et sa fiche de course (une semaine à la fois, décision coach du 23/10/2026) ;
   // sans, ses jours et son renfo seulement.
@@ -316,13 +328,15 @@ async function monterRenfo(seances: { id: string; nolio: Record<string, unknown>
 export type Cible = {
   coachId: string; planId: string; plan: Plan; nolioAthlete: string | null; profil: Record<string, number>;
   niveau: string; envois: Envoi[]; avecTrame: boolean; coache?: boolean;
+  // Le compte d'un coaché invité dans l'app (la note de sa fiche de course en dépend) ; un acheteur a toujours l'app.
+  compteAthlete?: string | null;
 };
 
 async function cibleCoache(coachId: string, planId: string): Promise<Cible> {
   const o = await objectifCoache(coachId, planId);
   if (!o) throw new Error('Objectif introuvable');
   return { coachId, planId, plan: o.plan, nolioAthlete: o.athlete.nolio_athlete_id, profil: profilDe(o.athlete),
-    niveau: o.niveau, envois: o.envois, avecTrame: true, coache: true };
+    niveau: o.niveau, envois: o.envois, avecTrame: true, coache: true, compteAthlete: o.athlete.compte_id ?? null };
 }
 
 type Destinataire = { usr: string; moi: boolean };
@@ -393,7 +407,7 @@ export async function envoyerSemaineCible(c: Cible, numero: string, semaineEcrit
   if (c.envois.some((e) => e.semaine === numero)) throw new Error('Cette semaine est déjà envoyée : mets-la à jour.');
   const semaine = semaineEcrite ?? c.plan.semaines.find((s) => s.numero === numero);
   if (!semaine) throw new Error('Semaine introuvable');
-  const { jours, cycle, renfo } = await seancesDuMoteur(c.plan, planId, semaine, c.profil, c.niveau, c.avecTrame, Boolean(c.coache));
+  const { jours, cycle, renfo } = await seancesDuMoteur(c.plan, planId, semaine, c.profil, c.niveau, c.avecTrame, Boolean(c.coache), !(c.coache && !c.compteAthlete));
   const crees: SeanceEnvoyee[] = [];
   let bandeau = '';
   if (cycle) {
@@ -512,7 +526,8 @@ export async function realignerTrame(c: Cible, cle: string, aujourdhui: string):
   // rien de nouveau n'est posé d'avance, le reste arrive avec chaque semaine écrite.
   const poses = new Set((envoi.seances as SeanceEnvoyee[]).map((x) => x.jour_id));
   for (const s of c.plan.semaines.filter((x) => x.lundi && x.lundi > aujourdhui)) {
-    const { cycle, renfo } = await seancesDuMoteur(c.plan, c.planId, { ...s, jours: [] }, c.profil, c.niveau, true, Boolean(c.coache));
+    const { cycle, renfo } = await seancesDuMoteur(c.plan, c.planId, { ...s, jours: [] }, c.profil, c.niveau, true, Boolean(c.coache),
+      !(c.coache && !c.compteAthlete));
     if (cycle && poses.has(`${cle}:${s.numero}`)) voulus.set(`${cle}:${s.numero}`, { genre: 'cycle', corps: cycle });
     for (const f of renfo) {
       const note = f.note as Record<string, unknown> | null;
@@ -602,7 +617,7 @@ export async function mettreAJourSemaineCible(c: Cible, numero: string, semaineE
   if (!envoi || !semaine?.lundi) throw new Error('Cette semaine n’est pas encore envoyée.');
   await convertirEnvoisV1(planId, d, [envoi]);
   const dansNolio = await versions(d, ajouterJours(semaine.lundi, -1), ajouterJours(semaine.lundi, 7));
-  const { jours, cycle, renfo } = await seancesDuMoteur(c.plan, planId, semaine, c.profil, c.niveau, c.avecTrame, Boolean(c.coache));
+  const { jours, cycle, renfo } = await seancesDuMoteur(c.plan, planId, semaine, c.profil, c.niveau, c.avecTrame, Boolean(c.coache), !(c.coache && !c.compteAthlete));
   const date = (jourId: string) => {
     if (jourId === SEMAINE) return 'la semaine';
     const jour = semaine.jours.find((j) => j.id === jourId.replace(RENFO, ''))?.date ?? jourId;

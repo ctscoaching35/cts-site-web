@@ -85,6 +85,10 @@ export default async function ObjectifCoache({ params, searchParams }: {
   const prochaine = trame?.semaines.find((l) => l.lundi && momentDe(l.lundi, jour) === 'avenir') ?? null;
   // Le coaching individualisé dit une semaine par son lundi, pas par son numéro (décision coach du 19/10/2026).
   const lundiDe = new Map((trame?.semaines ?? []).map((l) => [l.numero, l.lundi]));
+  // Ce que le site a lu et décidé au départ (lib/app/ecriture.deciderLeDepart).
+  type DepartLu = { le: string; lu: boolean; detail: string | null; seances_dures: number | null; sl_semaines: number | null;
+    sl_relevee: string | null; fondations_sautees: boolean; allegee_en_charge: boolean };
+  const depart = ((ecriture?.parametres as Record<string, unknown> | null)?.depart_lu ?? null) as DepartLu | null;
   const preps = (((ecriture?.parametres as Record<string, unknown> | null)?.courses_secondaires ?? []) as CourseSecondaire[])
     .slice().sort((a, b) => a.date.localeCompare(b.date));
   const fichesPrepa = ecriture?.parametres ? await fichesDePreparation(id) : new Set<string>();
@@ -282,6 +286,22 @@ export default async function ObjectifCoache({ params, searchParams }: {
               <p className="text-[0.9375rem] font-bold">{jauge.verdict?.libelle ?? 'Pas encore assez de semaines faites pour un verdict'}</p>
               {jauge.piliers.length > 0 && <p className="text-[0.8rem] text-[#D6D5E6] leading-relaxed">{jauge.piliers.map((p) => p.detail).join(' · ')}</p>}
             </CarteSombre>
+          )}
+
+          {depart && (
+            <Carte className="!p-5 space-y-2">
+              <Surtitre>Son départ</Surtitre>
+              {/* Le départ individualisé (décisions coach du 26/10/2026) : ce que le site a lu dans Nolio au départ, et ce que
+                  le moteur en fait. */}
+              <ul className="space-y-1.5 text-[0.8125rem] leading-relaxed text-[#4A4866]">
+                <li>Au rang du plan : ses échelles partent de l’échelon que le plan prévoit à cette date ; le RPE et la fatigue les font redescendre.</li>
+                {depart.fondations_sautees && <li>Fondations sautées : il sortait d’un bloc de qualité ({depart.seances_dures} séances dures en 4 semaines), elles deviennent un développement.</li>}
+                {depart.allegee_en_charge && <li>Semaine allégée passée en charge : sa dernière semaine était déjà basse.</li>}
+                {depart.sl_relevee && <li>Plus longue sortie de référence relevée à {depart.sl_relevee} (sur {depart.sl_semaines} semaines).</li>}
+                {!depart.lu && <li>Rien lu dans Nolio (pas d’accord de lecture) : ses réponses déclarées servent de départ.</li>}
+              </ul>
+              {depart.detail && <p className="text-[0.75rem] leading-relaxed text-[#5E5C78]">Lu le {dateLongue(depart.le, true)} : {depart.detail}</p>}
+            </Carte>
           )}
 
           {ecriture?.parametres && (

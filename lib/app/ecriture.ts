@@ -14,7 +14,7 @@
  */
 import { cache } from 'react';
 import { site } from '@/lib/content';
-import { API_URL } from '@/lib/plan';
+import { API_URL, lireTemps } from '@/lib/plan';
 import {
   chargeDepuisNolio, creer, destinataire, envoyerSemaineCible, ficheAthlete, garderEnvoi, mettreAJourSemaineCible, profilDe, seancesDuMoteur,
   volumeDuMoment,
@@ -22,6 +22,7 @@ import {
 } from './coaching';
 import { envoyerRelanceInvitation, EXPEDITEUR } from './emailBienvenue';
 import { lienFicheCourse } from './ficheCourse';
+import { glucidesDeLaStrategie } from './strategie';
 import { dateDe } from './trameNolio';
 import { appelNolio, coachs, listeNolio, refusNolio, sansVitesseImpossible, SPORTS_COURSE } from './nolio';
 import { ajouterJours, joursEntre, type Plan, type Semaine } from './plan';
@@ -362,8 +363,11 @@ export async function ecrireEtEnvoyer(o: Objectif, numero: string, retours: Reto
   sansAjustement?: boolean; depuis?: string; reprise?: boolean;
 } = {}): Promise<SortieMoteur> {
   await suivreLeProfil(o);
+  // Sa stratégie du jour J gardée (le calculateur de nutrition) : le ravito de ses sorties longues y arrive.
+  const glucides = await glucidesDeLaStrategie(o.planId).catch(() => null);
   const sortie = await moteur<SortieMoteur>('/v1/semaine', {
-    parametres: o.parametres, numero, etat: o.etat, retours, sans_ajustement: Boolean(options.sansAjustement),
+    parametres: glucides ? { ...o.parametres, glucides_cible: glucides } : o.parametres, numero, etat: o.etat, retours,
+    sans_ajustement: Boolean(options.sansAjustement),
     valeurs: valeursConnues(o, o.plan.semaines.find((x) => x.numero === numero)?.lundi), reprise: Boolean(options.reprise),
   });
   return envoyerEtRanger(o, numero, sortie, options);
@@ -610,10 +614,10 @@ export async function demarrerObjectif(planId: string, { prevenir = true, lundi,
     if (o.coache && !o.envois.length) {
       await ancrerAuDepart(o, premier).catch((e) => console.error(`Ancrage de ${planId} :`, e instanceof Error ? e.message : e));
     }
-    // Deux allégées de suite, jamais (décision coach du 26/10/2026) : un départ sur la semaine allégée du plan, sa
-    // dernière semaine déjà basse dans Nolio, la fait passer en charge.
-    if (o.coache && !o.envois.length && premiere.type === 'Assimilation') {
-      await marquerDerniereAllegee(o, premiere.lundi).catch((e) => console.error(`Semaine allégée de ${planId} :`, e instanceof Error ? e.message : e));
+    // LE DÉPART INDIVIDUALISÉ (décisions coach du 26/10/2026) : au rang du plan, fondations sautées, semaine allégée
+    // passée en charge, plus longue sortie sur 8 semaines ; ce qui a été lu, pour la carte « Son départ ».
+    if (o.coache && !o.envois.length) {
+      await deciderLeDepart(o, premiere).catch((e) => console.error(`Départ de ${planId} :`, e instanceof Error ? e.message : e));
     }
     await dimancheDeLAcheteur(o);
     // OM3 : l'objectif et ses courses de préparation, en compétitions dans Nolio.
@@ -659,12 +663,56 @@ async function recalerSurNolio(o: Objectif, lundi: string) {
   o.parametres = parametres;
 }
 
-// Sa dernière semaine courue, déjà allégée (lue dans Nolio, sous 75 % de la moyenne de ses 4) : « allegee_en_charge », le
-// lundi de sa première semaine écrite, que le moteur passe alors en charge (cts_semaine, cts_orchestrateur, cts_route).
-async function marquerDerniereAllegee(o: Objectif, lundi: string) {
-  const lu = await chargeDepuisNolio(o.coachId, o.nolioAthlete);
-  if (!lu?.derniereAllegee) return;
-  const parametres = { ...o.parametres, allegee_en_charge: lundi };
+// LE DÉPART INDIVIDUALISÉ (décisions coach du 26/10/2026, CTS_DEPART_INDIVIDUALISE.md) : au départ d'un coaché, une
+// lecture de Nolio (chargeDepuisNolio, avec son accord) décide, dans les paramètres que le moteur lit :
+// - « au_rang_du_plan » : ses échelles au rang du plan (un coaché a fait ses semaines avec son coach) ;
+// - « fondations_sautees » : il part en fondations après au moins une séance dure par semaine (RPE 7 ou plus) sur 4 ;
+// - « allegee_en_charge » : sa première semaine, allégée dans le plan, juste après une semaine déjà basse ;
+// - la plus longue sortie de référence : celle des 8 semaines sans coupure, si elle dépasse la déclarée.
+// Ce qui a été lu et décidé reste (« depart_lu ») pour la carte « Son départ » de l'espace coach.
+const SEANCES_DURES_MIN = 4;
+async function deciderLeDepart(o: Objectif, premiere: Semaine) {
+  const lu = await chargeDepuisNolio(o.coachId, o.nolioAthlete).catch(() => null);
+  const champs = { ...((o.parametres.champs ?? {}) as Record<string, unknown>) };
+  const fondationsSautees = Boolean(lu?.lu && premiere.bloc === 'Bloc fondations' && (lu.seancesDures ?? 0) >= SEANCES_DURES_MIN);
+  const allegeeEnCharge = Boolean(lu?.lu && premiere.type === 'Assimilation' && lu.derniereAllegee);
+  const declaree = lireTemps(String(champs.sortie_longue_actuelle ?? ''));
+  const slRelevee = Boolean(lu?.longueMin && lu.champs.sortie_longue_actuelle && (!declaree || lu.longueMin / 60 > declaree + 1e-9));
+  if (slRelevee) champs.sortie_longue_actuelle = lu?.champs.sortie_longue_actuelle;
+  const parametres = {
+    ...o.parametres, champs, au_rang_du_plan: true,
+    ...(fondationsSautees ? { fondations_sautees: true } : {}),
+    ...(allegeeEnCharge && premiere.lundi ? { allegee_en_charge: premiere.lundi } : {}),
+    depart_lu: {
+      le: aujourdhuiParis(), lu: Boolean(lu?.lu), detail: lu?.detail ?? null, seances_dures: lu?.seancesDures ?? null,
+      derniere_allegee: lu?.derniereAllegee ?? null, sl_semaines: lu?.slSemaines ?? null,
+      sl_relevee: slRelevee ? lu?.champs.sortie_longue_actuelle ?? null : null,
+      fondations_sautees: fondationsSautees, allegee_en_charge: allegeeEnCharge,
+    },
+  };
+  try {
+    await moteur('/v1/trame', { parametres });
+  } catch {
+    return;
+  }
+  await clientService().from('plans').update({ parametres, trame: null }).eq('id', o.planId);
+  o.parametres = parametres;
+}
+
+// Les coachés déjà partis avant le départ individualisé (le dimanche, avant d'écrire leur semaine) : la marque « au rang
+// du plan », et, s'ils sont encore en fondations, la décision des fondations sautées, prise une fois (gardée vraie ou
+// fausse).
+async function completerLeDepart(o: Objectif, semaine: Semaine) {
+  const p = o.parametres as Record<string, unknown>;
+  const champs = (p.champs ?? {}) as Record<string, unknown>;
+  const marquer = !p.au_rang_du_plan && champs.coaching !== 'oui';
+  // Seulement juste après le départ (une semaine écrite au plus) : plus tard, ses séances dures sont celles du plan.
+  const decider = p.fondations_sautees === undefined && semaine.bloc === 'Bloc fondations'
+    && o.envois.filter((e) => /^S\d+$/.test(e.semaine)).length <= 1;
+  if (!marquer && !decider) return;
+  const lu = decider ? await chargeDepuisNolio(o.coachId, o.nolioAthlete).catch(() => null) : null;
+  const parametres = { ...p, au_rang_du_plan: true,
+    ...(decider ? { fondations_sautees: Boolean(lu?.lu && (lu.seancesDures ?? 0) >= SEANCES_DURES_MIN) } : {}) };
   try {
     await moteur('/v1/trame', { parametres });
   } catch {
@@ -896,6 +944,9 @@ export async function passageDuDimanche(budgetMs = 240_000): Promise<Compte[]> {
           comptes.push({ plan: planId, quoi: `${numero} : saison de fond laissée, séances du coach gardées`, coache: true });
           continue;
         }
+      }
+      if (o.coache && !fond && s) {
+        await completerLeDepart(o, s).catch((e) => console.error(`Départ complété de ${planId} :`, e instanceof Error ? e.message : e));
       }
       const { data: prise } = await service.from('nolio_envois')
         .upsert({ plan_id: planId, semaine: numero, coach_id: o.coachId, seances: [] }, { onConflict: 'plan_id,semaine', ignoreDuplicates: true })

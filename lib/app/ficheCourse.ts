@@ -22,3 +22,21 @@ export function planDuJeton(jeton: string): string | null {
   const recue = Buffer.from(sig);
   return attendue.length === recue.length && timingSafeEqual(attendue, recue) ? planId : null;
 }
+
+// LE LIEN COURT ET LA NOTE (décision coach du 26/10/2026 : « quelque chose de plus professionnel » qu'un lien brut d'une
+// centaine de caractères). Le code court : 8 lettres ou chiffres tirés de la même signature (rien à garder) ; la page
+// /c/{code} retrouve le plan parmi ceux en cours et renvoie vers son lien privé.
+export function codeCourt(planId: string): string {
+  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+  return createHmac('sha256', secret).update(`fiche-court:${planId}`).digest('base64url').replace(/[^A-Za-z0-9]/g, '').slice(0, 8);
+}
+export const lienCourtFicheCourse = (planId: string) => `${site.url}/c/${codeCourt(planId)}`;
+
+// La note « Ta fiche de course » de Nolio : avec l'app, sans lien (elle y est, onglet « Mon plan ») ; sans l'app, ce
+// qu'elle contient et le lien court.
+export function noteFicheCourse(planId: string, avecApp: boolean): string {
+  if (avecApp) return 'Ton affûtage commence : ta fiche de course est prête dans ton app CTS, onglet « Mon plan ».';
+  return ['Ton affûtage commence : ta fiche de course est prête.', '· ta course et ton jour J', '· le profil et les tronçons',
+    '· ta stratégie nutritionnelle', `Ouvre-la : ${lienCourtFicheCourse(planId)}`].join('\n');
+}
+
