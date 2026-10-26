@@ -5,7 +5,8 @@ import CadreCoach from '@/components/app/CadreCoach';
 import { PasserEnCoaching } from '@/components/app/GestesMode';
 import { chiffresParSemaine } from '@/lib/app/mesure';
 import { acheteursDesPlans } from '@/lib/app/acheteurs';
-import { chiffresDuCoaching } from '@/lib/app/chiffresCoaching';
+import { chiffresDuCoaching, type ChiffresCoaching } from '@/lib/app/chiffresCoaching';
+import type { FamilleRetouche } from '@/lib/app/retouches';
 import { exigerCoach } from '@/lib/app/nolio';
 import { supabaseConfigure } from '@/lib/app/supabase';
 
@@ -20,6 +21,13 @@ const COLONNES: [string, string][] = [
   ['offre', 'Page des plans'], ['questionnaire', 'Questionnaires'], ['recap', 'Récapitulatifs'],
   ['paiement', 'Paiements lancés'], ['achats', 'Achats'], ['euros', 'Encaissé'], ['rappels', 'Rappels demandés'],
 ];
+
+const FAMILLE: Record<FamilleRetouche, string> = {
+  ef: 'EF', seuil1: 'Seuil 1', seuil2: 'Seuil 2', vo2max: 'VO2max, côtes, course test', allure: 'Allure de course',
+  sl: 'Sortie longue', mecanique: 'Mécanique (navettes, Myocrossmax)', renfo: 'Renfo',
+};
+const part = (n: number, sur: number) => (sur ? `${Math.round((100 * n) / sur)} %` : '—');
+const ecart = (e: number | null) => (e === null ? '—' : `${e > 0 ? '+' : e < 0 ? '−' : ''}${Math.abs(Math.round(e * 100))} %`);
 
 const date = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 // Où en est son invitation dans l'équipe Nolio.
@@ -104,7 +112,72 @@ async function PartieCoaching({ coachId }: { coachId: string }) {
           dimanche.
         </p>
       </section>
+      <Retouches r={c.retouches} enCours={derniere.lundi} />
     </>
+  );
+}
+
+// Tes retouches dans Nolio (décision coach du 26/10/2026) : la part de ce que le moteur envoie que tu corriges, et
+// où.
+function Retouches({ r, enCours }: { r: ChiffresCoaching['retouches']; enCours: string }) {
+  const th = 'py-2.5 px-3 text-right font-bold';
+  const td = 'py-3 px-3 text-right tabular-nums';
+  return (
+    <section className="bg-white rounded-2xl border border-indigo/[0.08] p-5 space-y-3">
+      <h2 className="text-[0.6875rem] font-bold tracking-[0.14em] uppercase text-teal">Tes retouches dans Nolio</h2>
+      {!r ? (
+        <p className="text-sm text-[#5E5C78]">Rien encore : les retouches se comptent chaque nuit, sur les semaines écrites par le moteur.</p>
+      ) : (
+        <>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[620px] text-sm">
+              <thead>
+                <tr className="text-left text-[0.6875rem] uppercase tracking-[0.08em] text-[#5E5C78]">
+                  <th className="py-2.5 pr-3 font-bold">Semaine du</th><th className={th}>Envoyées</th><th className={th}>Modifiées</th>
+                  <th className={th}>Supprimées</th><th className={th}>Part retouchée</th><th className={clsx(th, 'pr-0')}>Ajoutées</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-indigo/[0.06]">
+                {r.semaines.map((s) => (
+                  <tr key={s.lundi}>
+                    <td className="py-3 pr-3 font-semibold whitespace-nowrap">{date(s.lundi)}{s.lundi === enCours ? ' (en cours)' : ''}</td>
+                    <td className={td}>{s.envoyees}</td><td className={td}>{s.modifiees}</td><td className={td}>{s.supprimees}</td>
+                    <td className={clsx(td, 'font-bold')}>{part(s.modifiees + s.supprimees, s.envoyees)}</td>
+                    <td className={clsx(td, 'pr-0')}>{s.ajoutees}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <h3 className="pt-2 text-sm font-bold">Par famille, 4 dernières semaines</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[620px] text-sm">
+              <thead>
+                <tr className="text-left text-[0.6875rem] uppercase tracking-[0.08em] text-[#5E5C78]">
+                  <th className="py-2.5 pr-3 font-bold">Famille</th><th className={th}>Envoyées</th><th className={th}>Modifiées</th>
+                  <th className={th}>Supprimées</th><th className={th}>Part retouchée</th><th className={clsx(th, 'pr-0')}>Durée des modifiées</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-indigo/[0.06]">
+                {r.familles.map((f) => (
+                  <tr key={f.famille}>
+                    <td className="py-3 pr-3 font-semibold">{FAMILLE[f.famille]}</td>
+                    <td className={td}>{f.envoyees}</td><td className={td}>{f.modifiees}</td><td className={td}>{f.supprimees}</td>
+                    <td className={clsx(td, 'font-bold')}>{part(f.modifiees + f.supprimees, f.envoyees)}</td>
+                    <td className={clsx(td, 'pr-0')}>{ecart(f.ecart)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+      <p className="text-[0.8125rem] text-[#5E5C78]">
+        Comptées chaque nuit sur la semaine en cours et la précédente. Modifiée : son contenu changé dans Nolio (un
+        changement de jour ne compte pas). Ajoutées : les séances de course que tu as posées dans une semaine écrite par
+        le moteur. Durée des modifiées : leur durée dans Nolio par rapport à la durée prévue (−15 % : tu les raccourcis).
+      </p>
+    </section>
   );
 }
 

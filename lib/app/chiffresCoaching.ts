@@ -1,16 +1,23 @@
 /**
  * Les chiffres du coaching individualisé (maquette validée par le coach le 24/10/2026, onglet « Coaching
  * individualisé » de « Chiffres ») : ses athlètes coachés, leurs objectifs en route, et semaine par semaine ce que le
- * moteur a écrit, ce qu'il a ajusté, et les Hooper reçus. Tout vient de la base, rien n'est lu dans Nolio. Côté serveur
- * seulement.
+ * moteur a écrit, ce qu'il a ajusté, et les Hooper reçus ; ses retouches dans Nolio (décision coach du 26/10/2026),
+ * comptées la nuit (lib/app/retouches.ts). Tout vient de la base, rien n'est lu dans Nolio. Côté serveur seulement.
  */
 import { athletesCoaches } from './coaching';
 import type { Realise } from './ecriture';
 import { ajouterJours } from './plan';
+import { FAMILLES_RETOUCHE, retouchesDuCoach, type FamilleRetouche, type RetouchesSemaine } from './retouches';
 import { clientService } from './supabase';
 
 export type SemaineCoaching = { lundi: string; ecrites: number; ajustements: number; hooper: number; resumees: number };
-export type ChiffresCoaching = { coaches: number; aLaMain: number; enRoute: number; semaines: SemaineCoaching[] };
+// Par famille, sur les 4 dernières semaines : ecart, l'écart de durée des séances modifiées (−0,15 : 15 % plus courtes),
+// null sans durée lue.
+export type RetouchesFamille = { famille: FamilleRetouche; envoyees: number; modifiees: number; supprimees: number; ecart: number | null };
+export type ChiffresCoaching = {
+  coaches: number; aLaMain: number; enRoute: number; semaines: SemaineCoaching[];
+  retouches: { semaines: RetouchesSemaine[]; familles: RetouchesFamille[] } | null;
+};
 
 const SEMAINES = 8;
 
@@ -43,11 +50,29 @@ export async function chiffresDuCoaching(coachId: string): Promise<ChiffresCoach
       hooper: resumes.filter((r) => r.hooper !== null).length, resumees: resumes.length,
     };
   });
+  // Les retouches : rien tant qu'aucune semaine n'a été comptée.
+  const comptees = await retouchesDuCoach(coachId, lundis[SEMAINES - 1]);
+  const retouches = comptees.length ? {
+    semaines: lundis.map((l): RetouchesSemaine => {
+      const duLundi = comptees.filter((x) => x.lundi === l);
+      const somme = (k: 'envoyees' | 'modifiees' | 'supprimees') =>
+        duLundi.reduce((t, x) => t + Object.values(x.familles).reduce((u, f) => u + (f?.[k] ?? 0), 0), 0);
+      return { lundi: l, envoyees: somme('envoyees'), modifiees: somme('modifiees'), supprimees: somme('supprimees'),
+        ajoutees: duLundi.reduce((t, x) => t + x.ajoutees, 0) };
+    }),
+    familles: FAMILLES_RETOUCHE.map((famille): RetouchesFamille => {
+      const f = comptees.filter((x) => lundis.slice(0, 4).includes(x.lundi)).map((x) => x.familles[famille]).filter((x) => x !== undefined);
+      const somme = (k: 'envoyees' | 'modifiees' | 'supprimees' | 'min_avant' | 'min_apres') => f.reduce((t, x) => t + x[k], 0);
+      const avant = somme('min_avant');
+      return { famille, envoyees: somme('envoyees'), modifiees: somme('modifiees'), supprimees: somme('supprimees'),
+        ecart: avant ? somme('min_apres') / avant - 1 : null };
+    }).filter((f) => f.envoyees > 0),
+  } : null;
   return {
     coaches: fiches.length, aLaMain: fiches.filter((a) => a.programmation === 'main').length,
     // Les saisons de fond ne sont pas des objectifs (décisions coach du 24/10/2026).
     enRoute: (plans ?? []).filter((p) => p.demarre_le && String(p.course_date) >= jour
       && !(p.parametres as { fond?: unknown } | null)?.fond).length,
-    semaines,
+    semaines, retouches,
   };
 }
