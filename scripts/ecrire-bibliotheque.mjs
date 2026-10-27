@@ -83,7 +83,11 @@ for (const d of catalogue.dossiers) {
       if (deja) {
         if (!mettreAJour) continue;
         journal.push(`mise à jour : ${d.nom} › ${s.nom} › ${x.name}`);
-        if (ecrire) await nolio('PATCH', `library/training_frames/${deja.id}/`, { ...x });
+        // Nolio refuse une description en texte brut sur une séance qui en a déjà une (« plain text would erase its
+        // formatting ») : la mise à jour l'envoie en HTML, un paragraphe.
+        const { description, ...reste } = x;
+        const html = `<p>${description.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`;
+        if (ecrire) await nolio('PATCH', `library/training_frames/${deja.id}/`, { ...reste, description_html: html });
       } else {
         journal.push(`créée : ${d.nom} › ${s.nom} › ${x.name}`);
         crees.add(id);
