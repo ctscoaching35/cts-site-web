@@ -941,10 +941,15 @@ export async function passageDuDimanche(budgetMs = 240_000): Promise<Compte[]> {
           comptes.push({ plan: planId, quoi: `${numero} : saison de fond arrêtée, une préparation prend la suite`, coache: true });
           continue;
         }
-        if (await seancesDejaPosees(o, lundi, ajouterJours(lundi, 6))) {
-          comptes.push({ plan: planId, quoi: `${numero} : saison de fond laissée, séances du coach gardées`, coache: true });
-          continue;
-        }
+      }
+      // PC1 POUR TOUTES LES SEMAINES (décision coach du 19/10/2026, « rien n'est écrasé » ; audit du 30/10/2026) : des
+      // séances de course que le coach a déjà posées dans la semaine qui vient restent les siennes, rien ne s'y écrit,
+      // comme au départ, en récupération et en saison de fond. Avant, une semaine de préparation s'écrivait par-dessus et
+      // ses séances se doublaient dans Nolio.
+      if (s && await seancesDejaPosees(o, lundi, ajouterJours(lundi, 6))) {
+        comptes.push({ plan: planId, quoi: `${numero} : ${fond ? 'saison de fond' : 'semaine'} laissée, séances du coach gardées`,
+          coache: true });
+        continue;
       }
       if (o.coache && !fond && s) {
         await completerLeDepart(o, s).catch((e) => console.error(`Départ complété de ${planId} :`, e instanceof Error ? e.message : e));
