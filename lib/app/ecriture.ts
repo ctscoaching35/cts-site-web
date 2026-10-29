@@ -33,6 +33,8 @@ import { allure, coefficientRiegel, kmh, PROFIL_VIDE } from './zones';
 import { reperesDeBase } from './reperes';
 import { ecrireZonesNolio } from './zonesNolio';
 import { allureViseeKmh, ecrireAllureVisee } from './metriquesNolio';
+import { CONTINUITE_ACTIVE, seancesLues, type SeanceLue } from './continuite';
+import type { ProfilLu } from './classement';
 
 export type Etat = Record<string, unknown>;
 // compteAthlete : le compte d'un coaché invité dans l'app (T6) ; ses gestes (une course, le veto) valent comme ceux du
@@ -49,6 +51,8 @@ export type RetourSeance = {
 export type Questionnaire = { jours: string[]; jour_sl: string | null; nb_seances: number | null; arret: boolean };
 export type Retours = {
   seances: RetourSeance[]; hooper: { date: string; valeur: number }[]; questionnaire?: Questionnaire; nolio?: SemaineNolio;
+  // La continuité (audit du 30/10/2026) : les séances faites des 4 dernières semaines, classées par leur structure.
+  lues?: SeanceLue[];
 };
 // « Nolio fait foi » (décisions coach du 20/10/2026) : la semaine telle qu'elle est dans Nolio, que le moteur juge
 // (cts_ajustements.semaine_reelle) : chaque séance qu'il a écrite et qui y est encore, avec sa durée et son RPE (une
@@ -293,7 +297,18 @@ export async function lireRetours(o: Objectif, du: string, au: string): Promise<
   for (const p of posees.values()) {
     ajoutees.push({ date: p.date_start.slice(0, 10), prevue_min: minutes(p.duration), rpe_prevu: rpe(p.rpe), faite: false });
   }
-  return { seances, hooper, nolio: { prevues, ajoutees }, ...(dernier ? { questionnaire: lireQuestionnaire(dernier.items) } : {}) };
+  // LA CONTINUITÉ (décisions coach du 26/10/2026) : ses séances faites, classées par leur structure, quel qu'en soit
+  // l'auteur ; derrière son interrupteur (lib/app/continuite.ts), une lecture qui échoue n'empêche pas la semaine.
+  const lues = CONTINUITE_ACTIVE ? await (async () => {
+    const d = await destinataire(o.nolioAthlete);
+    return seancesLues({ planifiees, reelles: reels, moteur: new Set(parNolio.keys()), profil: o.profil as ProfilLu,
+      accordLecture: o.accordLecture, athlete: d.moi ? '' : d.usr, au });
+  })().catch((e) => {
+    console.error(`Séances lues de ${o.planId} :`, e instanceof Error ? e.message : e);
+    return undefined;
+  }) : undefined;
+  return { seances, hooper, nolio: { prevues, ajoutees }, ...(dernier ? { questionnaire: lireQuestionnaire(dernier.items) } : {}),
+    ...(lues ? { lues } : {}) };
 }
 
 // ─── Écrire et envoyer ────────────────────────────────────────────────────

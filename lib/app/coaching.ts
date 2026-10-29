@@ -5,6 +5,7 @@
  * Les séances sont traduites par le moteur (POST /v1/nolio/seances), avec les valeurs de l'athlète, puis créées
  * dans Nolio par l'API v2, avec la clé du coach.
  */
+import { CONTINUITE_ACTIVE } from './continuite';
 import { API_URL } from '@/lib/plan';
 import { actionsTrame, dateDe, empreinte, type Voulu } from './trameNolio';
 import { noteFicheCourse } from './ficheCourse';
@@ -158,12 +159,19 @@ export async function chargeDepuisNolio(coachId: string, usr: string | null): Pr
     .catch(() => [])).map((c) => c.date_start.slice(0, 10));
   const { debut, fin, recul } = fenetreDeCharge(aujourdhui, competitions);
   type Reel = { id: string; date_start: string; duration?: { value?: number } | null; sport?: string | null;
-    distance?: { value?: number; unit?: string } | number | null; debrief?: { rpe?: number | null } | null };
+    distance?: { value?: number; unit?: string } | number | null; debrief?: { rpe?: number | null } | null;
+    planned?: string | null };
   const reels = (await listeNolio<Reel>(`real/trainings/?date_from=${debut < du ? debut : du}&date_to=${ajouterJours(aujourdhui, -1)}`
-    + `&fields=id,date_start,duration,distance,sport,debrief${q}`)).map(sansVitesseImpossible);
+    + `&fields=id,date_start,duration,distance,sport,debrief,planned${q}`)).map(sansVitesseImpossible);
+  // Le RPE prévu de la séance, quand l'athlète n'a pas noté le sien (audit du 30/10/2026 : sans débrief, aucune séance
+  // dure n'était vue, même après quatre semaines de Seuil 2) ; derrière l'interrupteur de la continuité.
+  const rpePrevus = CONTINUITE_ACTIVE ? new Map((await listeNolio<{ id: string; rpe?: number | null }>(
+    `planned/trainings/?date_from=${debut}&date_to=${ajouterJours(aujourdhui, -1)}${q}`).catch(() => []))
+    .map((p) => [p.id, p.rpe ?? null])) : new Map<string, number | null>();
   const jours = new Set(competitions);
   const toutes = reels.filter((r) => SPORTS_COURSE.includes(String(r.sport)) && r.duration?.value)
-    .map((r) => ({ date: r.date_start.slice(0, 10), min: (r.duration as { value: number }).value / 60, rpe: r.debrief?.rpe ?? null }));
+    .map((r) => ({ date: r.date_start.slice(0, 10), min: (r.duration as { value: number }).value / 60,
+      rpe: r.debrief?.rpe ?? (r.planned ? rpePrevus.get(r.planned) ?? null : null) }));
   const recentes = toutes.filter((r) => r.date >= debut && r.date < fin && !jours.has(r.date));
   const course = toutes.filter((r) => r.date >= du);
   const dates = [du, ...course.map((r) => r.date).sort(), aujourdhui];
