@@ -272,7 +272,9 @@ export async function lireRetours(o: Objectif, du: string, au: string): Promise<
   // « Nolio fait foi » : les séances prévues de ces semaines, une semaine de marge de chaque côté (une séance déplacée
   // juste à côté reste la sienne).
   type Prevue = { id: string; date_start: string; sport?: string | null; duration?: { value?: number } | null; rpe?: number | null };
-  const planifiees = await listeNolio<Prevue>(`planned/trainings/?date_from=${ajouterJours(du, -7)}&date_to=${ajouterJours(au, 7)}${qui}`);
+  // Avec la continuité, la révision de chaque séance (une séance du moteur retouchée par le coach devient la sienne).
+  const planifiees = await listeNolio<Prevue>(`planned/trainings/?date_from=${ajouterJours(du, -7)}&date_to=${ajouterJours(au, 7)}${qui}`
+    + (CONTINUITE_ACTIVE ? '&with_revision=true' : ''));
   const minutes = (d: { value?: number } | null | undefined) => (typeof d?.value === 'number' ? Math.round(d.value / 60) : null);
   const rpe = (x: unknown) => (typeof x === 'number' ? x : null);
   const jours = new Set([o.plan.course.date, ...((o.parametres.courses_secondaires ?? []) as Course[]).map((c) => c.date)]);
@@ -301,7 +303,14 @@ export async function lireRetours(o: Objectif, du: string, au: string): Promise<
   // l'auteur ; derrière son interrupteur (lib/app/continuite.ts), une lecture qui échoue n'empêche pas la semaine.
   const lues = CONTINUITE_ACTIVE ? await (async () => {
     const d = await destinataire(o.nolioAthlete);
-    return seancesLues({ planifiees, reelles: reels, moteur: new Set(parNolio.keys()), profil: o.profil as ProfilLu,
+    // Une séance du moteur que le coach a retouchée (sa révision Nolio a changé depuis l'envoi, comme les retouches
+    // comptées) est la sienne : sa dose compte.
+    const envoyees = new Map(o.envois.flatMap((e) => e.seances as SeanceEnvoyee[]).filter((x) => x.nolio_id)
+      .map((x) => [String(x.nolio_id), x.revision ?? null]));
+    const intactes = new Set(planifiees.filter((p) => envoyees.has(p.id)
+      && (!envoyees.get(p.id) || !(p as { revision?: string | null }).revision
+        || envoyees.get(p.id) === (p as { revision?: string | null }).revision)).map((p) => p.id));
+    return seancesLues({ planifiees, reelles: reels, moteur: intactes, profil: o.profil as ProfilLu,
       accordLecture: o.accordLecture, athlete: d.moi ? '' : d.usr, au });
   })().catch((e) => {
     console.error(`Séances lues de ${o.planId} :`, e instanceof Error ? e.message : e);
