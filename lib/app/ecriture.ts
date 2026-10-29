@@ -32,6 +32,7 @@ import { fcSeuil2DuTest, lireParole, vcDuTest, type Flux, type Tour } from './te
 import { allure, coefficientRiegel, kmh, PROFIL_VIDE } from './zones';
 import { reperesDeBase } from './reperes';
 import { ecrireZonesNolio } from './zonesNolio';
+import { allureViseeKmh, ecrireAllureVisee } from './metriquesNolio';
 
 export type Etat = Record<string, unknown>;
 // compteAthlete : le compte d'un coaché invité dans l'app (T6) ; ses gestes (une course, le veto) valent comme ceux du
@@ -1374,6 +1375,9 @@ export async function zonesVersNolio(o: Objectif, v: Valeurs = {}): Promise<stri
   const d = await destinataire(o.nolioAthlete);
   const p = { ...PROFIL_VIDE, ...o.profil, ...Object.fromEntries(Object.entries(v).filter(([, x]) => x !== null && x !== undefined)) };
   const soucis = await ecrireZonesNolio(d.usr, d.moi, p, o.plan.zones).catch((e) => [e instanceof Error ? e.message : String(e)]);
+  // L'allure visée d'un objectif de route (décision A3 du 27/10/2026), avec ses repères.
+  const kmh = allureViseeKmh(formatDe(o), o.tempsH);
+  if (kmh) soucis.push(...await ecrireAllureVisee(d.usr, d.moi, kmh).catch((e) => [e instanceof Error ? e.message : String(e)]));
   if (soucis.length) console.error(`Zones Nolio du plan ${o.planId} :`, soucis.join(' ; '));
   return soucis;
 }

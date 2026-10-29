@@ -60,3 +60,27 @@ export async function ecrireMetriquesNolio(usr: string, moi: boolean, p: Profil,
   }
   return soucis;
 }
+
+// L'ALLURE VISÉE (décision A3 du coach, 27/10/2026) : la vitesse du chrono de son objectif de route, en km/h, que les
+// séances d'allure de course de la bibliothèque visent à ± 2 % (cts_bibliotheque, ALLUREVISEE). La métrique, créée par
+// l'API le 29/10/2026 avec l'accord du coach. Rien pour un trail : son allure n'a pas de sens.
+const ALLURE_VISEE_ITEM = 'mti_7VQyOgBo9OEMRW5';
+const DISTANCE_ROUTE_KM: Record<string, number> = { R10: 10, R21: 21.0975, R42: 42.195 };
+
+export function allureViseeKmh(format: string, tempsH: number | null | undefined): number | null {
+  const km = DISTANCE_ROUTE_KM[format];
+  return km && tempsH && tempsH > 0 ? Math.round((km / tempsH) * 10) / 10 : null;
+}
+
+// Écrite datée du jour quand elle change (un chrono revu), jamais en double. Rend ce qui n'a pas pu s'écrire, [] sinon.
+export async function ecrireAllureVisee(usr: string, moi: boolean, kmh: number): Promise<string[]> {
+  const qui = moi ? '' : `athlete=${usr}`;
+  const r = await appelNolio('GET', `metrics/values/?item=${ALLURE_VISEE_ITEM}&limit=1${qui ? `&${qui}` : ''}`);
+  if (r.statut !== 200) return [refusNolio(r, 'la lecture de l’allure visée')];
+  const derniere = ((r.corps?.data ?? []) as { value?: number | null }[])[0];
+  if (derniere?.value !== null && derniere?.value !== undefined && Math.abs(Number(derniere.value) - kmh) < 0.05) return [];
+  const e = await appelNolio('POST', `metrics/values/${qui ? `?${qui}` : ''}`, {
+    item: ALLURE_VISEE_ITEM, value: kmh, date_start: aujourdhui(), description: 'Allure visée CTS (chrono de l’objectif)',
+  });
+  return e.statut === 201 || e.statut === 200 ? [] : [refusNolio(e, 'l’écriture de l’allure visée')];
+}

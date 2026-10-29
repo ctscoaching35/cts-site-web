@@ -8,7 +8,7 @@ import { supabaseConfigure } from '@/lib/app/supabase';
 export const dynamic = 'force-dynamic';
 // Un plan refait en quelques secondes ; le moteur peut d'abord devoir se réveiller.
 export const maxDuration = 300;
-const RATTRAPAGE_ZONES_JUSQUAU = '2026-10-28';
+const RATTRAPAGE_ZONES_JUSQUAU = '2026-11-01';
 
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET?.trim();
@@ -18,7 +18,8 @@ export async function GET(request: Request) {
   const comptes = await actualiserPlans();
   // Le rattrapage des zones dans Nolio (décision coach du 25/10/2026, l'écriture ouverte à tous) : la nuit du 25 au
   // 26/10, puis celle du 26 au 27/10 pour les numéros du coach (décision du 26/10/2026), et celle du 27 au 28/10 pour
-  // les métriques (la VC, les FC aux seuils, la vitesse au seuil 1), dans le temps qui reste à la tâche.
+  // les métriques (la VC, les FC aux seuils, la vitesse au seuil 1), et jusqu'au 1/11 pour l'allure visée des objectifs
+  // de route (décision A3 du 27/10/2026), dans le temps qui reste à la tâche.
   const jour = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
   if (jour <= RATTRAPAGE_ZONES_JUSQUAU) {
     comptes.push(...await rattraperLesZones(Math.max(30_000, 240_000 - (Date.now() - debut)))
