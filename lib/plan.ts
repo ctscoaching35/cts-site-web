@@ -78,7 +78,7 @@ export const textes = {
         titre: 'Débutant',
         description:
           'Je cours depuis moins de deux ans. Je n’ai jamais suivi de plan structuré. Le fractionné ne fait pas partie de mes habitudes. Au-delà d’1h30 de course, je commence à subir.',
-        formats: 'Format ouvert : Trail Court.',
+        formats: 'Formats ouverts : Trail Court et Trail Marathon.',
       },
       {
         valeur: 'intermediaire',
@@ -143,6 +143,13 @@ export function avertissements(c: Champs, config: ConfigPlan, aujourdhui = new D
       c.niveau === 'debutant'
         ? 'Après plus de 4 semaines sans courir, le plan débutant reste le bon choix : il démarre au plus bas. Écoute tes sensations les premières semaines, et allège si une douleur apparaît.'
         : 'Après plus de 4 semaines sans courir, tes deux premières semaines de plan se font sans séance dure, puis la vitesse revient par un Seuil 2 au plus bas : tes muscles et tes tendons se réhabituent avant la vitesse. Écoute tes sensations, et allège si une douleur apparaît.'
+    );
+  }
+  // Le Trail Marathon du débutant (audit de la programmation trail du 30/10/2026, P1 ; décision coach) : ouvert, avec
+  // ce qui protège le mieux d'une première longue course, la blessure de surcharge et l'abandon.
+  if (c.niveau === 'debutant' && c.format === 'TM') {
+    out.push(
+      'Une première course de cette distance : vise d’abord l’arrivée. Marche dans les côtes raides, bois à ta soif, sans te forcer, et si tu le peux, cours avant une course d’environ la moitié de la distance. Ton plan reste celui du débutant : il monte doucement.'
     );
   }
   const n = config.semaines_par_formule[`${c.format}-${c.duree_mois}`];
