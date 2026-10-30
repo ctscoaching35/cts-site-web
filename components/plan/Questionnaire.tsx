@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { compterEtape } from '@/lib/mesure';
+import { compterEtape, porteDuRefus } from '@/lib/mesure';
 import clsx from 'clsx';
 import { estimerChrono } from '@/lib/app/route';
 import { alerteSortieLongue, API_URL, avertissements, type Champs, champsVides, type ConfigPlan, dureeConseillee, dureesProposees, formatDepuisDistance, formatOuvert, intakePourApi, noteFormat, placementReference, plancherSeances, reperesChrono, FORMATS_ROUTE, textes, type CourseReference } from '@/lib/plan';
@@ -214,6 +214,16 @@ export default function Questionnaire({
   const placement = placementReference(c, reference);
   const alerteSl = config ? alerteSortieLongue(c, config) : null;
   const alertes = useMemo(() => (config ? avertissements(c, config) : []), [c, config]);
+  // Les portes (audit de la programmation trail du 30/10/2026, P6) : celles qui bloquent avant l'envoi, une fois par
+  // visite ; pas pour le coach.
+  const formatFerme = Boolean(config && c.format && c.niveau && !formatOuvert(c, config, coach));
+  const sansDuree = Boolean(config && c.format && c.temps_cible && !formatFerme && durees.length === 0);
+  useEffect(() => {
+    if (coach) return;
+    if (formatFerme) compterEtape('porte_niveau');
+    if (sansDuree) compterEtape('porte_duree');
+    if (alerteSl) compterEtape('porte_sortie_longue');
+  }, [coach, formatFerme, sansDuree, alerteSl]);
 
   // Cohérence des menus filtrés quand une réponse amont change.
   useEffect(() => {
@@ -272,6 +282,8 @@ export default function Questionnaire({
       if (!r.ok) {
         const corps = await r.json().catch(() => null);
         setRefus(corps?.message || 'Une erreur est survenue. Réessaie dans quelques minutes.');
+        // Les portes (P6) : un refus du moteur, par son type.
+        if (!coach && corps?.error === 'refus_metier' && corps?.message) compterEtape(porteDuRefus(String(corps.message)));
         setEnvoi(false);
         return;
       }

@@ -6,7 +6,9 @@
  */
 import { clientService } from './supabase';
 
-export const ETAPES = ['offre', 'questionnaire', 'recap', 'paiement'] as const;
+// Les portes du questionnaire (audit de la programmation trail du 30/10/2026, P6) : un refus avant paiement, par type.
+export const PORTES = ['porte_niveau', 'porte_duree', 'porte_frequence', 'porte_sortie_longue', 'porte_temps', 'porte_autre'] as const;
+export const ETAPES = ['offre', 'questionnaire', 'recap', 'paiement', ...PORTES] as const;
 export type Etape = (typeof ETAPES)[number];
 
 export async function compter(etape: Etape) {
@@ -36,10 +38,14 @@ export async function chiffresParSemaine(): Promise<Semaine[]> {
   const semaines = new Map<string, Semaine>();
   const semaine = (iso: string) => {
     const lundi = lundiDe(iso);
-    if (!semaines.has(lundi)) semaines.set(lundi, { lundi, offre: 0, questionnaire: 0, recap: 0, paiement: 0, achats: 0, euros: 0, rappels: 0 });
+    if (!semaines.has(lundi)) {
+      semaines.set(lundi, { lundi, ...Object.fromEntries(ETAPES.map((e) => [e, 0])), achats: 0, euros: 0, rappels: 0 } as Semaine);
+    }
     return semaines.get(lundi)!;
   };
-  for (const m of mesures ?? []) semaine(m.jour)[m.etape as Etape] += m.n;
+  for (const m of mesures ?? []) {
+    if (ETAPES.includes(m.etape as Etape)) semaine(m.jour)[m.etape as Etape] += m.n;
+  }
   for (const a of achats ?? []) {
     const s = semaine(a.paye_le);
     s.achats += 1;

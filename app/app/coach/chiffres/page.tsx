@@ -22,6 +22,13 @@ const COLONNES: [string, string][] = [
   ['paiement', 'Paiements lancés'], ['achats', 'Achats'], ['euros', 'Encaissé'], ['rappels', 'Rappels demandés'],
 ];
 
+// Les portes du questionnaire (audit de la programmation trail du 30/10/2026, P6) : les refus avant paiement, par type.
+const PORTES: [string, string][] = [
+  ['porte_niveau', 'Format fermé au niveau'], ['porte_duree', 'Aucune durée'], ['porte_frequence', 'Séances par semaine'],
+  ['porte_sortie_longue', 'Sortie longue sous 45 min'], ['porte_temps', 'Temps au-delà du plafond'],
+  ['porte_autre', 'Autre (saisie, course)'],
+];
+
 const FAMILLE: Record<FamilleRetouche, string> = {
   ef: 'EF', seuil1: 'Seuil 1', seuil2: 'Seuil 2', vo2max: 'VO2max, côtes, course test', allure: 'Allure de course',
   sl: 'Sortie longue', mecanique: 'Mécanique (navettes, Myocrossmax)', renfo: 'Renfo',
@@ -233,6 +240,34 @@ async function PartiePlans() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Les portes (P6) : combien de visites bloquent sur chacune, semaine par semaine. */}
+      {semaines.length > 0 && (
+        <section className="space-y-2">
+          <p className="text-sm text-indigo/70 leading-relaxed">
+            Les portes : combien de visites bloquent sur chacune, une fois par visite, avant le paiement. C’est ce que
+            chaque porte coûte en ventes.
+          </p>
+          <div className="bg-white rounded-2xl border border-indigo/[0.08] overflow-x-auto">
+            <table className="w-full text-sm text-indigo">
+              <thead>
+                <tr className="text-left text-xs uppercase tracking-cts text-indigo/60">
+                  <th className="p-3 whitespace-nowrap">Semaine du</th>
+                  {PORTES.map(([, nom]) => <th key={nom} className="p-3 text-right whitespace-nowrap">{nom}</th>)}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-indigo/10">
+                {semaines.map((s) => (
+                  <tr key={s.lundi}>
+                    <td className="p-3 whitespace-nowrap font-semibold">{date(s.lundi)}</td>
+                    {PORTES.map(([cle]) => <td key={cle} className="p-3 text-right tabular-nums">{s[cle as keyof typeof s]}</td>)}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
       )}
 
       {/* Les acheteurs (décision coach du 22/10/2026) : à part du coaching, en lecture ; leur accord est le leur. */}

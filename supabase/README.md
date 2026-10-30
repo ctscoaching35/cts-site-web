@@ -220,3 +220,9 @@ resté près de 3 ans sans activité, puis le supprime 30 jours plus tard, comme
 du lancement ; D4). La dernière activité compte les sessions de l'app, pas seulement la connexion par code : l'app
 restée ouverte sur un téléphone ne se reconnecte jamais. Sans la fonction, rien n'est supprimé. Jamais un compte coach.
 
+
+## 21. Les portes du questionnaire
+
+Les compteurs du tunnel de vente comptent aussi les refus avant paiement, par type
+(`supabase/migrations/20261031000000_mesures_portes.sql`) : SQL Editor, coller le fichier, Run. Une ligne par porte et
+par semaine dans « Chiffres » (onglet Plans). Sans la migration, les portes ne se comptent pas ; rien d'autre ne change.
