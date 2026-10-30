@@ -141,7 +141,7 @@ export default function Questionnaire({
     try {
       const brouillon = localStorage.getItem(CLE_BROUILLON);
       // La réponse de santé n'est jamais reprise d'un brouillon, même ancien.
-      if (brouillon) setC({ ...champsVides, ...JSON.parse(brouillon), blessure: '' });
+      if (brouillon) setC({ ...champsVides, ...JSON.parse(brouillon), blessure: '', coeur: '' });
     } catch {
       /* brouillon illisible : on repart de zéro */
     }
@@ -155,7 +155,7 @@ export default function Questionnaire({
       // lettre, rien ne la garde sur l'ordinateur d'un athlète qui ne va pas au bout.
       // L'arrêt récent, donnée d'entraînement depuis le second audit (D16), y reste
       // comme la charge actuelle.
-      localStorage.setItem(CLE_BROUILLON, JSON.stringify({ ...c, blessure: undefined }));
+      localStorage.setItem(CLE_BROUILLON, JSON.stringify({ ...c, blessure: undefined, coeur: undefined }));
     } catch {
       /* stockage indisponible : sans conséquence */
     }
@@ -760,7 +760,7 @@ export default function Questionnaire({
       {/* La blessure en cours (décision coach du 19/10/2026) : gardée pour les plans achetés (le garde-fou d'O1 et des
           CGV), retirée du coaching individualisé, où le coach connaît son athlète et où rien n'était transmis. */}
       {!coach && <Section numero={7} titre="Avant de commencer">
-        {(['blessure'] as const).map((q) => (
+        {(['blessure', 'coeur'] as const).map((q) => (
           <div key={q}>
             <p className="font-bold text-indigo mb-3">{textes.sante[q]}</p>
             <div className="flex gap-3">
@@ -786,6 +786,15 @@ export default function Questionnaire({
             <p>Si tu veux être accompagné pour reprendre, nos coachs sont kinés du sport :</p>
             <a href="/#contact" className="inline-flex items-center min-h-11 font-bold text-teal">Parle-nous de ton projet ›</a>
           </div>
+        )}
+        {/* Le dépistage cardiaque (P4, 30/10/2026) : un avertissement, l'achat reste possible. Un dépistage et une
+            éducation en ligne avant la course ont réduit de 64 % les incidents graves (SAFER VIII, 153 208 partants). */}
+        {c.coeur === 'oui' && (
+          <p role="status" className="rounded-r-xl border-l-4 border-teal bg-sand p-4 text-[0.875rem] text-indigo leading-relaxed">
+            Avant de commencer, montre ces signes à ton médecin : ils méritent un avis avant une préparation, et un bilan
+            avec un test d’effort te dira si tu peux t’entraîner sans risque. Tant qu’ils reviennent, arrête-toi et ne force
+            jamais au travers.
+          </p>
         )}
       </Section>}
 
