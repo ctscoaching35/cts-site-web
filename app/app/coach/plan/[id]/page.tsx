@@ -184,6 +184,9 @@ export default async function ObjectifCoache({ params, searchParams }: {
                           {prochaine.seances_cles.length ? ` · ${prochaine.seances_cles.map((c) => c.seance.split(' — ')[0]).join(' · ')}` : ''}
                           {prochaine.sl_min ? ` · sortie longue de ${enHeures(prochaine.sl_min)} annoncée` : ''}.
                         </p>
+                        <Link href={`/app/coach/plan/${id}/apercu`} className="inline-flex items-center min-h-9 mt-1 text-[0.8125rem] font-bold text-teal">
+                          Voir ce qu’elle donnerait aujourd’hui ›
+                        </Link>
                       </div>
                     </div>
                   )}

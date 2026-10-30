@@ -372,30 +372,42 @@ async function garderNote(o: Objectif, cle: string, dateIso: string, titre: stri
 // Le profil du coureur (décision coach du 21/10/2026, « le point faible à distance ») : « rapide » ou « endurant », tiré
 // de son test de vitesse critique par la règle de l'app (coefficient de Riegel sous 0,90), porté par les paramètres du
 // plan, que le moteur lit pour son développement ; sans test, aucun. Remis à jour à chaque semaine écrite.
-async function suivreLeProfil(o: Objectif) {
+// Les paramètres avec le profil du jour, sans rien écrire (l'aperçu du dimanche les prend tels quels).
+function avecLeProfil(o: Objectif): Record<string, unknown> {
   // En fond, le profil se lit au début de la saison (lib/app/fond.ts) : l'ordre de ses blocs en dépend.
-  if ((o.parametres as { fond?: unknown }).fond) return;
+  if ((o.parametres as { fond?: unknown }).fond) return o.parametres;
   const vc = (o.profil as { vc_ms?: number }).vc_ms;
   const profil = vc && o.dPrime ? (coefficientRiegel(vc, o.dPrime) < 0.9 ? 'rapide' : 'endurant') : null;
-  if ((o.parametres.profil_coureur ?? null) === profil) return;
+  if ((o.parametres.profil_coureur ?? null) === profil) return o.parametres;
   const { profil_coureur: _ancien, ...reste } = o.parametres;
-  const parametres = profil ? { ...reste, profil_coureur: profil } : reste;
+  return profil ? { ...reste, profil_coureur: profil } : reste;
+}
+
+async function suivreLeProfil(o: Objectif) {
+  const parametres = avecLeProfil(o);
+  if (parametres === o.parametres) return;
   await clientService().from('plans').update({ parametres, trame: null }).eq('id', o.planId);
   o.parametres = parametres;
+}
+
+// La semaine écrite par le moteur, rien d'envoyé ni de gardé.
+async function semaineDuMoteur(o: Objectif, numero: string, retours: Retours | null, options: {
+  sansAjustement?: boolean; reprise?: boolean;
+} = {}): Promise<SortieMoteur> {
+  // Sa stratégie du jour J gardée (le calculateur de nutrition) : le ravito de ses sorties longues y arrive.
+  const glucides = await glucidesDeLaStrategie(o.planId).catch(() => null);
+  return moteur<SortieMoteur>('/v1/semaine', {
+    parametres: glucides ? { ...o.parametres, glucides_cible: glucides } : o.parametres, numero, etat: o.etat, retours,
+    sans_ajustement: Boolean(options.sansAjustement),
+    valeurs: valeursConnues(o, o.plan.semaines.find((x) => x.numero === numero)?.lundi), reprise: Boolean(options.reprise),
+  });
 }
 
 export async function ecrireEtEnvoyer(o: Objectif, numero: string, retours: Retours | null, options: {
   sansAjustement?: boolean; depuis?: string; reprise?: boolean;
 } = {}): Promise<SortieMoteur> {
   await suivreLeProfil(o);
-  // Sa stratégie du jour J gardée (le calculateur de nutrition) : le ravito de ses sorties longues y arrive.
-  const glucides = await glucidesDeLaStrategie(o.planId).catch(() => null);
-  const sortie = await moteur<SortieMoteur>('/v1/semaine', {
-    parametres: glucides ? { ...o.parametres, glucides_cible: glucides } : o.parametres, numero, etat: o.etat, retours,
-    sans_ajustement: Boolean(options.sansAjustement),
-    valeurs: valeursConnues(o, o.plan.semaines.find((x) => x.numero === numero)?.lundi), reprise: Boolean(options.reprise),
-  });
-  return envoyerEtRanger(o, numero, sortie, options);
+  return envoyerEtRanger(o, numero, await semaineDuMoteur(o, numero, retours, options), options);
 }
 
 // LA RÉCUPÉRATION APRÈS LA COURSE (décision coach du 23/10/2026) : pour un coaché, les semaines entre celle de sa course
@@ -410,9 +422,11 @@ export function semaineDeRecuperation(o: Pick<Objectif, 'coache' | 'plan' | 'tem
   return { numero: `S${o.plan.semaines.length + Math.round(joursEntre(derniere.lundi, lundi) / 7)}`, jusqua };
 }
 
+const recuperationDuMoteur = (o: Objectif, numero: string, jusqua: string, retours: Retours | null) =>
+  moteur<SortieMoteur>('/v1/recuperation', { parametres: o.parametres, numero, jusqua, etat: o.etat, retours });
+
 async function ecrireLaRecuperation(o: Objectif, numero: string, jusqua: string, retours: Retours | null): Promise<SortieMoteur> {
-  const sortie = await moteur<SortieMoteur>('/v1/recuperation', { parametres: o.parametres, numero, jusqua, etat: o.etat, retours });
-  return envoyerEtRanger(o, numero, sortie);
+  return envoyerEtRanger(o, numero, await recuperationDuMoteur(o, numero, jusqua, retours));
 }
 
 // La semaine écrite par le moteur : dans Nolio, avec sa note du dimanche, puis rangée (journal, résumé, état).
@@ -727,22 +741,29 @@ async function deciderLeDepart(o: Objectif, premiere: Semaine) {
 // Les coachés déjà partis avant le départ individualisé (le dimanche, avant d'écrire leur semaine) : la marque « au rang
 // du plan », et, s'ils sont encore en fondations, la décision des fondations sautées, prise une fois (gardée vraie ou
 // fausse).
-async function completerLeDepart(o: Objectif, semaine: Semaine) {
+// Ses paramètres complétés, sans rien écrire (l'aperçu du dimanche les prend tels quels) ; null : rien ne change.
+async function departComplete(o: Objectif, semaine: Semaine): Promise<Record<string, unknown> | null> {
   const p = o.parametres as Record<string, unknown>;
   const champs = (p.champs ?? {}) as Record<string, unknown>;
   const marquer = !p.au_rang_du_plan && champs.coaching !== 'oui';
   // Seulement juste après le départ (une semaine écrite au plus) : plus tard, ses séances dures sont celles du plan.
   const decider = p.fondations_sautees === undefined && semaine.bloc === 'Bloc fondations'
     && o.envois.filter((e) => /^S\d+$/.test(e.semaine)).length <= 1;
-  if (!marquer && !decider) return;
+  if (!marquer && !decider) return null;
   const lu = decider ? await chargeDepuisNolio(o.coachId, o.nolioAthlete).catch(() => null) : null;
   const parametres = { ...p, au_rang_du_plan: true,
     ...(decider ? { fondations_sautees: Boolean(lu?.lu && (lu.seancesDures ?? 0) >= SEANCES_DURES_MIN) } : {}) };
   try {
     await moteur('/v1/trame', { parametres });
   } catch {
-    return;
+    return null;
   }
+  return parametres;
+}
+
+async function completerLeDepart(o: Objectif, semaine: Semaine) {
+  const parametres = await departComplete(o, semaine);
+  if (!parametres) return;
   await clientService().from('plans').update({ parametres, trame: null }).eq('id', o.planId);
   o.parametres = parametres;
 }
@@ -927,6 +948,7 @@ export type Compte = { plan: string; quoi: string; erreur?: string; coache?: boo
 // font que ce qui manque. Un verrou par semaine : le passage la réserve (une ligne vide de nolio_envois, unique par plan
 // et par semaine) avant de l'écrire, si bien que deux passages lancés ensemble ne la doublent jamais dans Nolio ; un
 // échec avant toute création la libère pour la reprise (décision coach du 20/10/2026 : sécuriser le dimanche).
+// L'aperçu du dimanche (apercuDuDimanche) suit le même chemin, sans rien envoyer : ils changent ensemble.
 export const REMIS = 'remis à la reprise';
 export async function passageDuDimanche(budgetMs = 240_000): Promise<Compte[]> {
   const debut = Date.now();
@@ -1000,6 +1022,49 @@ export async function passageDuDimanche(budgetMs = 240_000): Promise<Compte[]> {
     }
   }
   return comptes;
+}
+
+// L'APERÇU DU DIMANCHE (proposé au coach le 30/10/2026, avant le premier dimanche de la continuité) : ce que le passage
+// du dimanche ferait maintenant d'un objectif, par le même chemin que passageDuDimanche (à garder ensemble) : la semaine
+// laissée et pourquoi, ou celle que le moteur écrirait, avec ce qu'il a lu. Rien n'est envoyé ni gardé, ni dans Nolio
+// ni dans la base : le profil du coureur et le départ complété se calculent sans s'écrire. Ce qui sera couru ou rempli
+// d'ici dimanche soir peut encore la changer.
+export type Apercu = { lundi: string; numero: string | null; quoi: string; sortie?: SortieMoteur; retours?: Retours | null };
+export async function apercuDuDimanche(planId: string): Promise<Apercu> {
+  const aujourdhui = aujourdhuiParis();
+  // Le lundi qui vient (le dimanche, celui du lendemain).
+  const lundi = ajouterJours(aujourdhui, 7 - ((new Date(`${aujourdhui}T12:00:00Z`).getUTCDay() + 6) % 7));
+  const rien = (quoi: string, numero: string | null = null): Apercu => ({ lundi, numero, quoi });
+  const o = await objectifEcrit(planId);
+  if (!o) return rien('Ancien format, envoyé en entier : rien ne s’écrit le dimanche.');
+  if (!o.nolioAthlete) return rien('Pas de compte Nolio relié : rien ne s’écrit.');
+  if ((await plansALaMain()).has(planId)) return rien('Programmé à la main : le moteur n’écrit rien.');
+  const { data: p } = await clientService().from('plans').select('demarre_le, depart_prevu, nolio_statut').eq('id', planId).single();
+  if (!p?.demarre_le) {
+    return rien(p?.depart_prevu && String(p.depart_prevu) <= lundi
+      ? 'Départ lundi : sa première semaine part avec son départ, dimanche soir.' : 'Pas encore démarré dans Nolio.');
+  }
+  if (!o.coache && p.nolio_statut !== 'actif') return rien('Pas actif dans Nolio : rien ne s’écrit.');
+  const s = semaineDu(o.plan, lundi);
+  const recuperation = s ? null : semaineDeRecuperation(o, lundi);
+  const numero = s?.numero ?? recuperation?.numero ?? null;
+  if (!numero) return rien('Pas de semaine à écrire lundi.');
+  if (o.envois.some((e) => e.semaine === numero)) return rien('Déjà partie dans Nolio.', numero);
+  const posees = await seancesDejaPosees(o, lundi, ajouterJours(lundi, 6));
+  if (recuperation && posees) return rien('Récupération laissée : tu as déjà posé des séances cette semaine-là, elles restent les tiennes.', numero);
+  const fond = Boolean((o.parametres as { fond?: unknown }).fond);
+  if (fond) {
+    const { semainePriseParUnObjectif } = await import('./fond');
+    if (await semainePriseParUnObjectif(planId, lundi)) return rien('La saison de fond s’arrête : une préparation prend la suite.', numero);
+  }
+  if (s && posees) return rien('Semaine laissée : tu as déjà posé des séances cette semaine-là, elles restent les tiennes.', numero);
+  if (o.coache && !fond && s) o.parametres = (await departComplete(o, s).catch(() => null)) ?? o.parametres;
+  const retours = fond && !o.envois.some((e) => /^S\d+$/.test(e.semaine)) ? null : await lireRetours(o, ajouterJours(lundi, -35), aujourdhui);
+  if (recuperation) {
+    return { lundi, numero, quoi: 'Semaine de récupération', sortie: await recuperationDuMoteur(o, numero, recuperation.jusqua, retours), retours };
+  }
+  o.parametres = avecLeProfil(o);
+  return { lundi, numero, quoi: 'Semaine', sortie: await semaineDuMoteur(o, numero, retours), retours };
 }
 
 // Les retours tardifs (décision coach du 20/10/2026, « oui, chaque nuit ») : chaque nuit, le résumé des deux dernières

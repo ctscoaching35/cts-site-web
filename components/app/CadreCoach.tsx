@@ -5,9 +5,9 @@ import { Deconnexion } from './BoutonsCompte';
 
 // Le cadre de l'espace coach (maquettes validées par le coach le 19/10/2026, puis le 24/10/2026) : un menu à gauche sur
 // ordinateur, au-dessus du contenu sur téléphone (Tableau de bord, À regarder, sa propre page, Suivi des 7 jours,
-// Chiffres ; plus de Bibliothèque, décision coach du 20/10/2026 : « ça ne m'apporte rien »), le coach. Plus de lien « Voir l'app d'un athlète » (décision coach du 20/10/2026) : il ouvrait l'app du compte coach ;
+// Dimanche, l'aperçu des semaines qui s'écrivent dimanche soir, ajouté le 30/10/2026, Chiffres ; plus de Bibliothèque, décision coach du 20/10/2026 : « ça ne m'apporte rien »), le coach. Plus de lien « Voir l'app d'un athlète » (décision coach du 20/10/2026) : il ouvrait l'app du compte coach ;
 // chaque version se voit par son propre compte (coach, coaché, acheteur).
-export type RubriqueCoach = 'tableau' | 'regarder' | 'suivi' | 'chiffres';
+export type RubriqueCoach = 'tableau' | 'regarder' | 'suivi' | 'dimanche' | 'chiffres';
 
 // aRegarder : le nombre de lignes de « À regarder », que le tableau de bord et « À regarder » connaissent.
 export default function CadreCoach({ actif, aRegarder = 0, coach, children }: {
@@ -17,6 +17,7 @@ export default function CadreCoach({ actif, aRegarder = 0, coach, children }: {
     ['tableau', 'Tableau de bord', '/app/coach'],
     ['regarder', 'À regarder', '/app/coach/a-regarder'],
     ['suivi', 'Suivi des 7 jours', '/app/coach/suivi'],
+    ['dimanche', 'Dimanche', '/app/coach/dimanche'],
     ['chiffres', 'Chiffres', '/app/coach/chiffres'],
   ];
   return (
