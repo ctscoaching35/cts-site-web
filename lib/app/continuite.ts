@@ -10,8 +10,8 @@ import { classerSeance, type FamilleLue, type NoeudNolio, type ProfilLu } from '
 import { appelNolio, SPORTS_COURSE } from './nolio';
 import { ajouterJours } from './plan';
 
-// L'interrupteur (décision du coach attendue, audit du 30/10/2026) : faux, rien n'est lu ni envoyé au moteur.
-export const CONTINUITE_ACTIVE = false;
+// L'interrupteur : activé par le coach le 30/10/2026 (« active pour tous et pousse »), après l'audit de la nuit.
+export const CONTINUITE_ACTIVE = true;
 // Les séances lues : les 4 dernières semaines.
 const SEMAINES_LUES = 4;
 
