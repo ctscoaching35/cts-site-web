@@ -145,6 +145,14 @@ export function avertissements(c: Champs, config: ConfigPlan, aujourdhui = new D
         : 'Après plus de 4 semaines sans courir, tes deux premières semaines de plan se font sans séance dure, puis la vitesse revient par un Seuil 2 au plus bas : tes muscles et tes tendons se réhabituent avant la vitesse. Écoute tes sensations, et allège si une douleur apparaît.'
     );
   }
+  // Trois séances sur une course de 50 km-effort et plus (audit de la programmation trail du 30/10/2026, P3) : acceptées
+  // jusqu'à 100 km-effort, avec ce qu'elles changent.
+  const kmEffort = Number(c.distance_km) + Number(c.dplus_m || 0) / 100;
+  if (!FORMATS_ROUTE.some((f) => f.code === c.format) && c.freq_hebdo === '3' && kmEffort >= 50) {
+    out.push(
+      'Trois séances par semaine pour une course de cette taille : ton plan garde la même sortie longue, avec un peu moins de volume autour. Une séance de marche en côte, de vélo ou de renforcement en plus, si tu le peux, compense une partie de l’écart.'
+    );
+  }
   const n = config.semaines_par_formule[`${c.format}-${c.duree_mois}`];
   if (n && c.date_course) {
     const course = new Date(`${c.date_course}T00:00:00`);
