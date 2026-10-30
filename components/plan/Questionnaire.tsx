@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { compterEtape } from '@/lib/mesure';
 import clsx from 'clsx';
 import { estimerChrono } from '@/lib/app/route';
-import { alerteSortieLongue, API_URL, avertissements, type Champs, champsVides, type ConfigPlan, dureeConseillee, dureesPossibles, formatDepuisDistance, formatOuvert, intakePourApi, noteFormat, placementReference, plancherSeances, reperesChrono, FORMATS_ROUTE, textes, type CourseReference } from '@/lib/plan';
+import { alerteSortieLongue, API_URL, avertissements, type Champs, champsVides, type ConfigPlan, dureeConseillee, dureesProposees, formatDepuisDistance, formatOuvert, intakePourApi, noteFormat, placementReference, plancherSeances, reperesChrono, FORMATS_ROUTE, textes, type CourseReference } from '@/lib/plan';
 
 const NOMS_JOURS: Record<string, string> = {
   lundi: 'Lundi', mardi: 'Mardi', mercredi: 'Mercredi', jeudi: 'Jeudi',
@@ -194,7 +194,7 @@ export default function Questionnaire({
   // Le format se déduit de la distance (F4) : un format que le niveau n'ouvre pas ne propose
   // aucune durée, et la note sous la distance dit pourquoi.
   // Seulement les durées que sa course admet, celle qui colle à sa date cochée d'office (décision coach du 20/10/2026).
-  const durees = config && formatOuvert(c, config, coach) ? dureesPossibles(c, config) : [];
+  const durees = config && formatOuvert(c, config, coach) ? dureesProposees(c, config) : [];
   const conseillee = config ? dureeConseillee(c, config, durees) : null;
   const notePourFormat = config ? noteFormat(c, config, coach) : null;
   const blocDistance = (
@@ -229,7 +229,7 @@ export default function Questionnaire({
       }
       // Une durée que la course n'admet plus laisse la place à celle qui colle à sa date ; sans choix, celle-ci d'office.
       if (!coach) {
-        const possibles = formatOuvert(n, config, coach) ? dureesPossibles(n, config) : [];
+        const possibles = formatOuvert(n, config, coach) ? dureesProposees(n, config) : [];
         if (!n.duree_mois || !possibles.map(String).includes(n.duree_mois)) {
           const d = dureeConseillee(n, config, possibles);
           n.duree_mois = d === null ? '' : String(d);

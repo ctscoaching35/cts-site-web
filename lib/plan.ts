@@ -292,6 +292,16 @@ export function dureeConseillee(c: Champs, config: ConfigPlan, durees: number[],
   return triees[triees.length - 1];
 }
 
+// Les durées proposées à l'achat (audit de la programmation trail du 30/10/2026, T2 ; décision coach, « A ») : celles
+// que la course admet, sans dépasser celle qui colle à sa date, le choix que le coaching fait déjà. Une formule plus
+// longue serait rejointe plus loin en route, payée pour des semaines déjà passées : à 12 semaines d'un trail marathon,
+// le 6 mois ne donnait plus que du spécifique. Sans date, toutes celles que la course admet.
+export function dureesProposees(c: Champs, config: ConfigPlan, aujourdhui = new Date()): number[] {
+  const possibles = dureesPossibles(c, config);
+  const colle = dureeConseillee(c, config, possibles, aujourdhui);
+  return colle === null ? possibles : possibles.filter((m) => m <= colle);
+}
+
 // coach : en coaching individualisé, tout format s'ouvre à tout niveau (décision coach du 23/10/2026, « lever la
 // porte », comme le moteur : cts_intake.valider_champs).
 export function formatOuvert(c: Champs, config: ConfigPlan, coach = false): boolean {
