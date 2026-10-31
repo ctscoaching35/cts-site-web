@@ -70,6 +70,12 @@ type SortieMoteur = {
   etat: Etat; parametres: Record<string, unknown> | null;
   // Ce qui a été fait la semaine écoulée (moteur 8.327), rangé avec elle pour le tableau de bord ; null sans retours.
   realise: Realise | null;
+  // Le pourquoi de la semaine, pour le coach (moteur, cts_pourquoi ; demande du coach du 31/10/2026).
+  pourquoi?: Pourquoi;
+};
+export type Pourquoi = {
+  profil: string[]; ou: string; semaine_passee: string | null; regles: Record<string, unknown>[];
+  seances: { jour: string; seance: string | null; pourquoi: string }[]; placement: string;
 };
 export type Realise = {
   numero: string; lundi: string; type: string | null; charge_prevue: number; charge_faite: number; charge_tenue: number; rpe_lu: boolean;

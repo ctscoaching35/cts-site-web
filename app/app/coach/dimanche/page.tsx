@@ -41,6 +41,14 @@ export default async function Dimanche() {
           écrirait maintenant, ce qu’il change et ce qu’il a lu. Rien n’est envoyé.
         </p>
       </div>
+      {/* Le rapport du dimanche (demande du coach du 31/10/2026) : toutes les semaines et leur pourquoi, à la suite. */}
+      <Link href="/app/coach/dimanche/rapport" className="bg-indigo text-white rounded-[14px] p-3.5 flex items-center justify-between gap-3">
+        <span className="flex flex-col gap-1">
+          <span className="text-sm font-bold">Le rapport du dimanche</span>
+          <span className="text-xs text-[#D6D5E6]">Chaque semaine proposée et son pourquoi, athlète par athlète</span>
+        </span>
+        <span aria-hidden>›</span>
+      </Link>
       <Carte className="!p-5">
         {ecrites.length === 0 ? <p className="text-sm text-teal font-semibold">Aucune semaine à écrire dimanche.</p> : (
           <ul>
