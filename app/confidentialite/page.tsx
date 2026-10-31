@@ -75,8 +75,8 @@ export default async function Confidentialite() {
               effacer en supprimant les données du site dans ton navigateur.
             </li>
             <li>
-              <strong>La question sur une blessure</strong> ne quitte jamais ton appareil : elle sert seulement à t’afficher
-              un conseil.
+              <strong>Les questions sur une blessure et sur ton cœur</strong> ne quittent jamais ton appareil : elles servent
+              seulement à t’afficher un conseil.
             </li>
             <li>
               <strong>Le rappel.</strong> Si tu coches « Envoie-moi un rappel », nous gardons ton e-mail et la date de ton

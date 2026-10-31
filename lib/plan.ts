@@ -56,6 +56,9 @@ export type Champs = {
   freq_hebdo: string;
   // Section 7 : la blessure ne quitte jamais le navigateur ; « oui » arrête l'achat (décision coach du 20/10/2026).
   blessure: string;
+  // Le dépistage cardiaque (audit de la programmation trail du 30/10/2026, P4) : comme la blessure, il ne quitte jamais
+  // le navigateur ; « oui » avertit (consulter avant de commencer) sans arrêter l'achat.
+  coeur: string;
   // Section 2 : l'arrêt récent part avec le plan, comme la charge actuelle (second audit
   // du moteur, D16) : il fait démarrer le plan par deux semaines sans séance dure.
   coupure: string;
@@ -67,7 +70,7 @@ export const champsVides: Champs = {
   nom: '', email: '', niveau: '', volume_hebdo_actuel: '', sortie_longue_actuelle: '',
   format: '', duree_mois: '', course_nom: '', date_course: '',
   distance_km: '', dplus_m: '', dmoins_m: '', temps_cible: '', terrain: '',
-  jours_disponibles: [], jour_sl: '', freq_hebdo: '', blessure: '', coupure: '', premier_marathon: '',
+  jours_disponibles: [], jour_sl: '', freq_hebdo: '', blessure: '', coeur: '', coupure: '', premier_marathon: '',
 };
 
 export const textes = {
@@ -132,6 +135,7 @@ export const textes = {
   },
   sante: {
     blessure: 'Une blessure ou une douleur t’empêche-t-elle de courir normalement en ce moment ?',
+    coeur: 'À l’effort, as-tu déjà ressenti une douleur dans la poitrine, un malaise ou un essoufflement inhabituel, ou as-tu une maladie du cœur connue ?',
   },
 };
 
@@ -417,9 +421,10 @@ export function plancherSeances(c: Champs, config: ConfigPlan): { min: number; m
   return { min, max, note: `Minimum ${min} séances par semaine sur ce format.${passage} ${bornes}`.trim() };
 }
 
-/** L'intake envoyé à l'API : tous les champs sauf la blessure, qui reste sur la page. */
+/** L'intake envoyé à l'API : tous les champs sauf la blessure et le cœur, qui restent sur la page. */
 export function intakePourApi(c: Champs) {
-  const { blessure, ...reste } = c;
+  const { blessure, coeur, ...reste } = c;
   void blessure;
+  void coeur;
   return reste;
 }
