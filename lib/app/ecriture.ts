@@ -181,6 +181,9 @@ export async function moteur<T>(chemin: string, corps: unknown): Promise<T> {
 export type LigneTrame = {
   numero: string; type: string; bloc: string; lundi: string; dates: string; volume_h: number; charge: number | null;
   seances_cles: { jour: string; seance: string; famille: string }[]; week_end_choc: boolean; sl_min: number | null;
+  // Le week-end en relief annoncé d'avance (moteur, FT1-3) : le week-end choc, ou le stage de terrain de qui n'a pas le
+  // relief de sa course.
+  week_end_relief?: 'choc' | 'terrain' | null;
   passee: boolean;
   // La saison de fond (moteur 8.353) : le thème du bloc (« Vitesse », « Seuil ») et la semaine de tests.
   theme?: string; tests?: boolean;

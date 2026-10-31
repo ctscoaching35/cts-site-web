@@ -150,6 +150,14 @@ function jalons(trame: LigneTrame[], faits: Realise[], rang: number): Jalon[] {
   ];
 }
 
+// Le week-end en relief, annoncé dès le départ (moteur, FT1-3 ; décision coach du 31/10/2026 : « si l'athlète l'apprend
+// une semaine avant, c'est compliqué »), sur un terrain le plus proche possible de celui du jour J. Le prochain à venir.
+export type WeekEndRelief = { samedi: string; dimanche: string; genre: 'choc' | 'terrain' };
+export function weekEndRelief(trame: LigneTrame[], aujourdhui: string): WeekEndRelief | null {
+  const l = trame.find((x) => x.week_end_relief && x.lundi && ajouterJours(x.lundi, 6) >= aujourdhui);
+  return l && l.week_end_relief ? { samedi: ajouterJours(l.lundi, 5), dimanche: ajouterJours(l.lundi, 6), genre: l.week_end_relief } : null;
+}
+
 // ─── Les graphiques (T10) ─────────────────────────────────────────────────
 
 // Une barre par semaine, en minutes de course (décision coach du 19/10/2026 : les durées, la même mesure des deux
