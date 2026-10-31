@@ -266,7 +266,7 @@ export const plansOffre = {
     items: [
       'Pas d’envoi sur ta montre pour l’instant : tes séances sont dans l’app.',
       'Pas de coach qui te répond : le plan est construit à partir de tes réponses. Pour un suivi par Juliette ou Romain, il y a le coaching individualisé.',
-      'Les formats ouverts dépendent de ton niveau : un débutant prépare un Trail Court, l’ultra-trail est réservé aux coureurs confirmés.',
+      'Les formats ouverts dépendent de ton niveau : un débutant prépare un Trail Court ou un Trail Marathon, l’ultra-trail est réservé aux coureurs confirmés.',
       'Il ne remplace pas un avis médical.',
     ],
     lienCoaching: { label: 'Découvrir le coaching individualisé', href: '/#offre' },
