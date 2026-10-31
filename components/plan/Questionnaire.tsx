@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { compterEtape, porteDuRefus } from '@/lib/mesure';
 import clsx from 'clsx';
 import { estimerChrono } from '@/lib/app/route';
-import { alerteSortieLongue, API_URL, avertissements, type Champs, champsVides, type ConfigPlan, dureeConseillee, dureesProposees, formatDepuisDistance, formatOuvert, intakePourApi, noteFormat, placementReference, plancherSeances, reperesChrono, FORMATS_ROUTE, textes, type CourseReference } from '@/lib/plan';
+import { alerteSortieLongue, API_URL, avertissements, type Champs, champsVides, type ConfigPlan, dureeConseillee, dureesProposees, formatDepuisDistance, formatOuvert, intakePourApi, noteFormat, placementReference, referenceExigee, plancherSeances, reperesChrono, FORMATS_ROUTE, textes, type CourseReference } from '@/lib/plan';
 
 const NOMS_JOURS: Record<string, string> = {
   lundi: 'Lundi', mardi: 'Mardi', mercredi: 'Mercredi', jeudi: 'Jeudi',
@@ -212,6 +212,11 @@ export default function Questionnaire({
   // La course de référence, facultative (décision coach du 23/10/2026) : elle place dans une bande ; elle n'est pas gardée.
   const [reference, setReference] = useState<CourseReference>({ km: '', dplus: '', temps: '' });
   const placement = placementReference(c, reference);
+  // La course de référence exigée (P2) : son minimum en km-effort, ou null.
+  const refMin = config ? referenceExigee(c, config, coach) : null;
+  // Envoyée avec l'intake quand elle est remplie ; l'API ne la garde pas.
+  const avecReference = (x: ReturnType<typeof intakePourApi>) =>
+    reference.km.trim() ? { ...x, reference_km: reference.km, reference_dplus: reference.dplus || '0' } : x;
   const alerteSl = config ? alerteSortieLongue(c, config) : null;
   const alertes = useMemo(() => (config ? avertissements(c, config) : []), [c, config]);
   // Les portes (audit de la programmation trail du 30/10/2026, P6) : celles qui bloquent avant l'envoi, une fois par
@@ -277,7 +282,7 @@ export default function Questionnaire({
       const r = await fetch(`${API_URL}/v1/verification${coach ? '?coach=1' : ''}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(intakePourApi(champs)),
+        body: JSON.stringify(avecReference(intakePourApi(champs))),
       });
       if (!r.ok) {
         const corps = await r.json().catch(() => null);
@@ -318,7 +323,7 @@ export default function Questionnaire({
     setEnvoi(true);
     setRefus('');
     const donnees = new FormData();
-    donnees.append('intake', JSON.stringify(intakePourApi(c)));
+    donnees.append('intake', JSON.stringify(avecReference(intakePourApi(c))));
     if (gpx) donnees.append('gpx', gpx);
     if (coach && athleteId) donnees.append('athlete_id', athleteId);
     if (coach && demandeId) donnees.append('demande_id', demandeId);
@@ -662,17 +667,23 @@ export default function Questionnaire({
             placeholder={chronoEstime ? `estimé : ${chronoEstime}` : infoRoute ? `ex. ${infoRoute.exemple}` : 'ex. 5h30'} value={c.temps_cible} onChange={(e) => maj('temps_cible')(e.target.value)} />
           {reperes && !route && <p className="text-sm text-teal mt-2 leading-relaxed">{reperes}</p>}
           {!route && (
-            <details className="mt-3" open={Boolean(reference.km || reference.temps)}>
-              <summary className="cursor-pointer inline-flex items-center min-h-11 text-sm font-semibold text-teal">Une course récente de référence, facultative</summary>
+            <details className="mt-3" open={Boolean(reference.km || reference.temps || refMin)}>
+              <summary className="cursor-pointer inline-flex items-center min-h-11 text-sm font-semibold text-teal">
+                {refMin ? 'Une course terminée ces deux dernières années, obligatoire pour celle-ci' : 'Une course récente de référence, facultative'}
+              </summary>
               <div className="mt-1 grid grid-cols-3 gap-2">
                 {([['km', 'Distance (km)', 'ex. 42'], ['dplus', 'D+ (m)', 'ex. 2000'], ['temps', 'Temps', 'ex. 6h10']] as const).map(([cle, nom, ex]) => (
                   <label key={cle} className="block text-xs font-semibold text-indigo">{nom}
                     <input className={`${inputCls} mt-1`} inputMode={cle === 'temps' ? 'text' : 'decimal'} placeholder={ex} value={reference[cle]}
-                      onChange={(e) => setReference((r) => ({ ...r, [cle]: e.target.value }))} />
+                      required={Boolean(refMin) && cle === 'km'} onChange={(e) => setReference((r) => ({ ...r, [cle]: e.target.value }))} />
                   </label>
                 ))}
               </div>
-              <p className={aideCls}>Elle situe le coureur dans une bande, ramenée à la taille de cette course ; elle n’est pas gardée.</p>
+              <p className={aideCls}>
+                {refMin
+                  ? `Un ultra ou un trail long de plus de 10 h se prépare après une course plus courte déjà terminée : elle doit valoir au moins ${refMin} km-effort (km + D+/100), la moitié de celle-ci. Elle n’est pas gardée.`
+                  : 'Elle situe le coureur dans une bande, ramenée à la taille de cette course ; elle n’est pas gardée.'}
+              </p>
             </details>
           )}
           {placement && !route && (

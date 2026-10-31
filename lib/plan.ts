@@ -11,6 +11,8 @@ export const API_URL = (process.env.NEXT_PUBLIC_CTS_API_URL || 'http://localhost
 
 export type ConfigPlan = {
   formats_par_niveau: Record<string, string[]>;
+  // La course de référence de l'ultra et du Trail Long de plus de 10 h (P2, 30/10/2026) : sa part minimale du km-effort.
+  porte_ultra?: { part_min: number; temps_tl_h: number };
   formats: { code: string; nom: string; bornes: string }[];
   formats_par_distance?: [string, number | null, boolean][];
   durees_par_format: Record<string, number[]>;
@@ -85,14 +87,14 @@ export const textes = {
         titre: 'Intermédiaire',
         description:
           'Je cours régulièrement depuis deux ans ou plus. J’ai déjà suivi un plan d’entraînement. Je pratique le fractionné. Je tiens 2h30 de course sans difficulté majeure.',
-        formats: 'Formats ouverts : Trail Court, Trail Marathon, et Trail Long jusqu’à 10h de course.',
+        formats: 'Formats ouverts : tous, jusqu’à l’ultra. Au-delà de 10h de course, avec une course déjà terminée d’au moins la moitié de sa taille.',
       },
       {
         valeur: 'confirme',
         titre: 'Confirmé',
         description:
           'Je m’entraîne de façon structurée depuis plusieurs années, plusieurs fois par semaine. J’ai déjà terminé des courses longues. Les sorties de 4h font partie de ma pratique.',
-        formats: 'Formats ouverts : tous, jusqu’à l’ultra.',
+        formats: 'Formats ouverts : tous, jusqu’à l’ultra. Au-delà de 10h de course, avec une course déjà terminée d’au moins la moitié de sa taille.',
       },
     ],
     note:
@@ -224,6 +226,17 @@ export function reperesChrono(c: Champs, config: ConfigPlan, coach = false): str
 // la pente des vainqueurs (temps en km-effort à la puissance 1,2, la plus juste pour un même coureur) ; sa bande et un
 // chrono estimé à 6 % près. Réserve quand les deux courses sont très différentes, ou au-delà d'une nuit.
 export type CourseReference = { km: string; dplus: string; temps: string };
+
+// LA PORTE DE L'ULTRA (audit de la programmation trail du 30/10/2026, P2) : l'ultra et le Trail Long de plus de 10 h
+// demandent une course terminée ces deux dernières années, d'au moins la moitié du km-effort visé ; l'API la vérifie.
+// Le minimum en km-effort, ou null quand la course n'en demande pas (et pour le coach, qui juge).
+export function referenceExigee(c: Champs, config: ConfigPlan, coach = false): number | null {
+  const porte = config.porte_ultra;
+  const h = lireTemps(c.temps_cible ?? '');
+  if (coach || !porte || !(c.format === 'UT' || (c.format === 'TL' && h !== null && h > porte.temps_tl_h))) return null;
+  const ke = kmEffort(c.distance_km, c.dplus_m);
+  return ke > 0 ? Math.ceil(ke * porte.part_min) : null;
+}
 export function placementReference(c: Champs, ref: CourseReference): string | null {
   const ke = kmEffort(c.distance_km, c.dplus_m);
   const keRef = kmEffort(ref.km, ref.dplus);
