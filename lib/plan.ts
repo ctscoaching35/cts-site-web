@@ -154,6 +154,13 @@ export function avertissements(c: Champs, config: ConfigPlan, aujourdhui = new D
       'Une première course de cette distance : vise d’abord l’arrivée. Marche dans les côtes raides, bois à ta soif, sans te forcer, et si tu le peux, cours avant une course d’environ la moitié de la distance. Ton plan reste celui du débutant : il monte doucement.'
     );
   }
+  // Trois séances sur une course de 50 km-effort et plus (audit de la programmation trail du 30/10/2026, P3) : acceptées
+  // jusqu'à 100 km-effort, avec ce qu'elles changent.
+  if (!FORMATS_ROUTE.some((f) => f.code === c.format) && c.freq_hebdo === '3' && kmEffort(c.distance_km, c.dplus_m) >= 50) {
+    out.push(
+      'Trois séances par semaine pour une course de cette taille : ton plan garde la même sortie longue, avec un peu moins de volume autour. Une séance de marche en côte, de vélo ou de renforcement en plus, si tu le peux, compense une partie de l’écart.'
+    );
+  }
   const n = config.semaines_par_formule[`${c.format}-${c.duree_mois}`];
   if (n && c.date_course) {
     const course = new Date(`${c.date_course}T00:00:00`);
