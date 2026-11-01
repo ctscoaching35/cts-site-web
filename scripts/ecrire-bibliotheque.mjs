@@ -163,6 +163,48 @@ if (catalogue.essais) {
   }
 }
 
+// LE RESTE AUX ARCHIVES (décision coach du 02/11/2026 : « on ne gardera que les séances que l'on utilise ensemble avec le
+// moteur, le reste part en archive ») : toute séance qui n'est pas une séance du catalogue à sa place, hors des dossiers
+// d'archives et du dossier à supprimer, part dans les archives. Les séances seulement : les questionnaires (Hooper) et
+// les exercices, que l'app lit, ne bougent pas.
+if (catalogue.archiver_le_reste) {
+  const aLeurPlace = new Set();
+  for (const d of catalogue.dossiers) {
+    const racine = dossiers.find((x) => x.name === d.nom && !idDe(x.parent));
+    for (const s of d.sous) {
+      const sous = racine && dossiers.find((x) => x.name === s.nom && idDe(x.parent) === racine.id);
+      if (sous) for (const x of s.seances) aLeurPlace.add(`${sous.id}|${x.name}`);
+    }
+  }
+  const aLabri = new Set([catalogue.archives, catalogue.archives_barre, catalogue.essais?.vers].filter(Boolean));
+  const range = (id) => {
+    for (let d = dossiers.find((x) => x.id === id), i = 0; d && i < 10; d = dossiers.find((x) => x.id === idDe(d.parent)), i += 1) {
+      if (aLabri.has(d.name)) return true;
+    }
+    return false;
+  };
+  const vers = await dossier(catalogue.archives);
+  for (const y of seances) {
+    const cat = idDe(y.category);
+    if (aLeurPlace.has(`${cat}|${y.name}`) || range(cat)) continue;
+    const ou = dossiers.find((x) => x.id === cat);
+    const parent = ou && dossiers.find((x) => x.id === idDe(ou.parent));
+    journal.push(`archivée (hors du moteur) : ${parent ? `${parent.name} › ` : ''}${ou ? ou.name : '(sans dossier)'} › ${y.name}`);
+    if (ecrire) await nolio('PATCH', `library/training_frames/${y.id}/`, { category: vers });
+    y.category = vers;
+  }
+}
+
+// Les dossiers vides après le passage (le coach les supprime lui-même).
+const pleins = new Set(seances.map((y) => idDe(y.category)));
+for (const d of dossiers) {
+  const enfants = dossiers.filter((x) => idDe(x.parent) === d.id);
+  if (d.type === 'event' && !pleins.has(d.id) && !enfants.some((x) => pleins.has(x.id)) && !String(d.id).startsWith('(nouveau')) {
+    const parent = dossiers.find((x) => x.id === idDe(d.parent));
+    journal.push(`dossier sans séance (à supprimer par le coach, après un coup d'œil) : ${parent ? `${parent.name} › ` : ''}${d.name}`);
+  }
+}
+
 // L'ordre de chaque sous-dossier : celui du catalogue (par temps au seuil), puis ce que le coach y a ajouté.
 const COLLECTIONS = ['training_frames', 'competition_frames', 'note_frames', 'message_trigger_frames', 'quiz_frames'];
 for (const d of catalogue.dossiers) {
@@ -181,3 +223,15 @@ for (const d of catalogue.dossiers) {
 
 console.log(journal.join('\n'));
 console.log(`\n${journal.length} opérations${ecrire ? ' faites' : ' prévues (rien n’est parti : --ecrire pour les faire)'}.`);
+
+// Le bilan : les séances de la barre par dossier de premier niveau, après le passage (à blanc : les créations à venir
+// n'y sont pas).
+const racineDe = (id) => {
+  let d = dossiers.find((x) => x.id === id);
+  for (let i = 0; d && idDe(d.parent) && i < 10; i += 1) d = dossiers.find((x) => x.id === idDe(d.parent));
+  return d ? d.name : '(sans dossier)';
+};
+const bilan = new Map();
+for (const y of seances) bilan.set(racineDe(idDe(y.category)), (bilan.get(racineDe(idDe(y.category))) ?? 0) + 1);
+console.log(`\nBilan (${seances.length} séances) :`);
+for (const [nom, n] of [...bilan].sort((a, b) => b[1] - a[1])) console.log(`  ${n}\t${nom}`);
