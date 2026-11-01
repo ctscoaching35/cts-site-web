@@ -3,7 +3,9 @@
  * La bibliothèque CTS écrite dans le Nolio du coach (CTS_DOCTRINE_SEANCES.md dans le dépôt du moteur ; décision coach du
  * 26/10/2026, « reconstruire la barre latérale avec les familles de séance ») : les dossiers et les séances types du
  * moteur (cts_bibliotheque.catalogue, rendu en JSON), puis ses séances types à leur place — gardées, déplacées et
- * renommées sans toucher leur contenu, ou rangées dans les archives. Rien n'est jamais supprimé.
+ * renommées sans toucher leur contenu, ou rangées dans les archives — et les séances de l'ancienne barre du moteur que
+ * le catalogue ne porte plus (décision coach du 01/11/2026 : la barre construite depuis le moteur), rangées dans leur
+ * dossier d'archives. Rien n'est jamais supprimé.
  *
  *   ./.venv/bin/python3 -c "import json, cts_bibliotheque as b; print(json.dumps(b.catalogue()))" > catalogue.json
  *   node scripts/ecrire-bibliotheque.mjs catalogue.json [--ecrire] [--mettre-a-jour]
@@ -125,6 +127,25 @@ for (const [nom, sort] of Object.entries(catalogue.seances_du_coach)) {
   journal.push(`gardée : ${nom} → ${sort.dossier} › ${sort.sous} › ${sort.nom}`);
   if (ecrire) await nolio('PATCH', `library/training_frames/${lesquelles[0].id}/`, { name: sort.nom, category: id });
   Object.assign(lesquelles[0], { name: sort.nom, category: id });
+}
+
+// L'ancienne barre du moteur (celle du 27/10/2026) : chaque séance que le nouveau catalogue ne porte plus au même endroit
+// (dossier, sous-dossier, nom) part dans son dossier d'archives ; celles que le coach a ajoutées dans ces dossiers, par un
+// autre nom, restent où elles sont.
+if (catalogue.anciennes_du_moteur?.length) {
+  const versArchives = await dossier(catalogue.archives_barre);
+  for (const a of catalogue.anciennes_du_moteur) {
+    const racine = dossiers.find((d) => d.name === a.dossier && !idDe(d.parent));
+    const sous = racine && dossiers.find((d) => d.name === a.sous && idDe(d.parent) === racine.id);
+    const y = sous && seances.find((x) => x.name === a.nom && idDe(x.category) === sous.id);
+    if (!y) {
+      journal.push(`introuvable (ancienne barre du moteur) : ${a.dossier} › ${a.sous} › ${a.nom}`);
+      continue;
+    }
+    journal.push(`archivée (ancienne barre du moteur) : ${a.dossier} › ${a.sous} › ${a.nom}`);
+    if (ecrire) await nolio('PATCH', `library/training_frames/${y.id}/`, { category: versArchives });
+    y.category = versArchives;
+  }
 }
 
 // Les essais : les séances qui restent dans un dossier d'essai (celles du moteur) partent dans un dossier à supprimer
