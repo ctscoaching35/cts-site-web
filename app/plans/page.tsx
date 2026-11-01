@@ -97,14 +97,8 @@ export default async function PagePlans() {
           </div>
         </section>
 
-        <section className="mx-auto max-w-4xl px-6 py-16 sm:py-20 grid gap-12 sm:grid-cols-2">
-          <div>
-            <EnTeteSection eyebrow={t.exemple.eyebrow} title={t.exemple.title} />
-            <p className="text-indigo/75 leading-relaxed mb-6">{t.exemple.texte}</p>
-            <a href={t.exemple.lien.href} target="_blank" rel="noopener" className="font-bold text-teal underline underline-offset-4">
-              {t.exemple.lien.label} →
-            </a>
-          </div>
+        {/* Plus de plan d'exemple en PDF (décision coach du 02/11/2026 : on arrête le PDF du plan). */}
+        <section className="mx-auto max-w-4xl px-6 py-16 sm:py-20">
           <div>
             <EnTeteSection eyebrow={t.coachs.eyebrow} title={t.coachs.title} />
             <p className="text-indigo/75 leading-relaxed">{t.coachs.texte}</p>

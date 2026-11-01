@@ -237,13 +237,6 @@ export const plansOffre = {
       'La bibliothèque CTS : 22 fiches (nutrition, récupération, renforcement, descente…) et les calculateurs.',
     ],
   },
-  exemple: {
-    eyebrow: 'Un exemple',
-    title: 'À quoi ressemble un plan',
-    texte:
-      'Un trail de 42 km et 2 700 m de D+, niveau intermédiaire, quatre séances par semaine, préparé en 4 mois : le plan complet, semaine par semaine, dans sa version PDF.',
-    lien: { label: 'Voir le plan d’exemple (PDF)', href: '/exemples/plan-exemple-cts.pdf' },
-  },
   coachs: {
     eyebrow: 'Qui est derrière',
     title: 'Deux kinés du sport, une méthode',
