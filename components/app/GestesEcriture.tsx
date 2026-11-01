@@ -137,7 +137,7 @@ export function AjouterCourse({ planId, initial, ancienne }: {
           ))}
         </div>
         <span className="mt-1 block font-normal text-[#5E5C78]">{aFond
-          ? 'À fond : un vrai test, avec une récupération plus longue après.'
+          ? 'À fond, pour une course de moins de 3 h : un vrai test, avec une récupération plus longue après.'
           : 'En gestion : environ 7 sur 10, ton objectif reste devant.'}</span>
       </div>
       {!route && <label className="flex flex-col gap-1.5 text-xs font-semibold text-indigo">{ancienne ? 'Nouvelle trace GPX — facultative' : 'Trace GPX — facultative'}
