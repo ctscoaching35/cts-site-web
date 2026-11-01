@@ -402,10 +402,12 @@ async function semaineDuMoteur(o: Objectif, numero: string, retours: Retours | n
 } = {}): Promise<SortieMoteur> {
   // Sa stratégie du jour J gardée (le calculateur de nutrition) : le ravito de ses sorties longues y arrive.
   const glucides = await glucidesDeLaStrategie(o.planId).catch(() => null);
+  const lundi = o.plan.semaines.find((x) => x.numero === numero)?.lundi;
+  const faits = await testsFaitsSansValeur(o.planId, lundi).catch(() => new Set<string>());
   return moteur<SortieMoteur>('/v1/semaine', {
     parametres: glucides ? { ...o.parametres, glucides_cible: glucides } : o.parametres, numero, etat: o.etat, retours,
     sans_ajustement: Boolean(options.sansAjustement),
-    valeurs: valeursConnues(o, o.plan.semaines.find((x) => x.numero === numero)?.lundi), reprise: Boolean(options.reprise),
+    valeurs: valeursConnues(o, lundi, faits), reprise: Boolean(options.reprise),
   });
 }
 
@@ -1358,11 +1360,36 @@ export async function poserCourse(o: Objectif, c: Course, principale: boolean) {
 // jamais à moins de 8 semaines de l'objectif. L'ancienne valeur sert jusque-là. Les acheteurs : la règle d'avant.
 const RETEST_J = 182;
 const RETEST_HORS_COURSE_J = 56;
-function valeursConnues(o: Objectif, lundi?: string | null) {
+function valeursConnues(o: Objectif, lundi?: string | null, faits: Set<string> = new Set()) {
   const loin = o.coache && Boolean(lundi) && joursEntre(lundi as string, o.plan.course.date) > RETEST_HORS_COURSE_J;
   const frais = (cle: string) => !loin || String(o.reperesSources?.[cle]?.le ?? '').slice(0, 10) >= ajouterJours(lundi as string, -RETEST_J);
-  return { fc_seuil1: 'fc_seuil1' in o.profil && frais('fc_seuil1'), vc: 'vc_ms' in o.profil && frais('vc_ms'),
-    fc_seuil2: 'fc_seuil2' in o.profil && frais('fc_seuil2'), lecture: o.accordLecture, coache: o.coache };
+  return { fc_seuil1: ('fc_seuil1' in o.profil && frais('fc_seuil1')) || faits.has('parole'),
+    vc: ('vc_ms' in o.profil && frais('vc_ms')) || faits.has('vitesse_critique'),
+    fc_seuil2: ('fc_seuil2' in o.profil && frais('fc_seuil2')) || faits.has('fc_seuil2'), lecture: o.accordLecture, coache: o.coache };
+}
+
+// Un test fait sans valeur ne revient pas avant 6 semaines (décision coach du 01/11/2026 : « l'athlète ne refait jamais
+// un test qu'il vient de faire ») : « À regarder » prévient le coach (« Test à revoir »), qui entre la valeur ou relance
+// l'athlète. Fait sans valeur : lu illisible ou sans réponse ; le test de la parole passé et pas encore lu (son
+// questionnaire peut arriver jusqu'à 3 jours après) aussi. Une séance de test non faite revient.
+const TEST_FAIT_J = 42;
+async function testsFaitsSansValeur(planId: string, lundi?: string | null): Promise<Set<string>> {
+  if (!lundi) return new Set();
+  const service = clientService();
+  const depuis = ajouterJours(lundi, -TEST_FAIT_J);
+  const [{ data: lus }, { data: ecrites }] = await Promise.all([
+    service.from('tests_lus').select('jour_id, statut').eq('plan_id', planId),
+    service.from('semaines_ecrites').select('donnees').eq('plan_id', planId).gte('ecrite_le', `${ajouterJours(depuis, -7)}T00:00:00Z`),
+  ]);
+  const statut = new Map((lus ?? []).map((l) => [l.jour_id as string, l.statut as string]));
+  const faits = new Set<string>();
+  for (const j of (ecrites ?? []).flatMap((e) => ((e.donnees as Semaine | null)?.jours ?? []))) {
+    const cle = testEcrit(j);
+    if (!cle || !j.date_iso || j.date_iso < depuis || j.date_iso >= lundi) continue;
+    const s = statut.get(j.id);
+    if (s === 'illisible' || s === 'sans_reponse' || (s === undefined && cle === 'parole')) faits.add(cle);
+  }
+  return faits;
 }
 
 const testEcrit = (j: Semaine['jours'][number]) =>
