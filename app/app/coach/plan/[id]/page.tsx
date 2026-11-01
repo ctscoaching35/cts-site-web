@@ -215,7 +215,7 @@ export default async function ObjectifCoache({ params, searchParams }: {
                                 r.sl_faite_min ? `sortie longue ${enHeures(r.sl_faite_min)}` : null, r.hooper !== null ? `Hooper ${r.hooper}` : null].filter(Boolean).join(' · ')}
                             </p>
                           )}
-                          {w.bilan && <p className="text-[0.8125rem] leading-relaxed text-[#3B3957]">{w.bilan}</p>}
+                          {w.bilan && <p className="text-[0.8125rem] leading-relaxed text-[#3B3957] whitespace-pre-line">{w.bilan}</p>}
                           {w.sans_ajustement && <p className="text-xs text-[#5E5C78]">Ajustements annulés.</p>}
                           {lus.map((t) => (
                             <p key={t.jour_id} className="flex items-start gap-2 p-2.5 rounded-[10px] bg-white text-[0.8rem] leading-relaxed text-[#3B3957]">

@@ -111,7 +111,7 @@ export default async function SuiviCoach() {
                     <Link href={`/app/coach/plan/${a.planId}`} className="hover:underline">{a.nom}</Link>
                     <span className="font-normal text-indigo/60"> · {a.lundi ? `semaine du ${jourMois(a.lundi)}` : `semaine ${a.numero.slice(1)}`}{a.raisons.length > 0 && ` · ${a.raisons.join(', ')}`}</span>
                   </div>
-                  {a.bilan && <p className="text-indigo/75">{a.bilan}</p>}
+                  {a.bilan && <p className="text-indigo/75 whitespace-pre-line">{a.bilan}</p>}
                   {a.raisons.length > 0 && <AnnulerSemaine planId={a.planId} numero={a.numero} />}
                   {a.allegees.map((j) => (
                     <p key={j.id} className="text-indigo/75">

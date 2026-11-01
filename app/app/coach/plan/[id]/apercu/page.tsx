@@ -83,7 +83,7 @@ export default async function ApercuDimanche({ params }: { params: Promise<{ id:
             {textes.length > 0 && (
               <div className="pt-2">
                 <p className="text-[0.8125rem] font-bold">La note « Ta semaine » qu’il lira</p>
-                <p className="mt-1 text-sm leading-relaxed text-[#3B3957]">{textes.join(' ')}</p>
+                <p className="mt-1 text-sm leading-relaxed text-[#3B3957] whitespace-pre-line">{textes.join(' ')}</p>
               </div>
             )}
           </Carte>
