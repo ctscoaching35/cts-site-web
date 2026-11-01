@@ -76,6 +76,12 @@ export default function ProfilAthlete({ athleteId, profil, pourMoi = false, rafr
           {textes.terrain.options.map((o) => <option key={o.valeur} value={o.valeur}>{o.titre} — {o.description}</option>)}
         </select>
       </label>
+      {/* Le tapis qui monte (FT3-1, décision coach du 01/11/2026) : facultatif ; sert quand la côte fait moins de 5 min. */}
+      <label className="flex items-start gap-2.5 text-xs font-semibold text-indigo">
+        <input type="checkbox" name="tapis" value="oui" defaultChecked={profil.tapis === 'oui'} className="mt-0.5 accent-teal" />
+        <span>{moi ? 'J’ai accès à un tapis de course qui monte' : 'Accès à un tapis de course qui monte'}
+          <span className="block font-normal text-[#5E5C78]">Utile avec une côte de moins de 5 min, pour une course qui monte.</span></span>
+      </label>
       {/* Facultative (décisions coach du 24/10/2026) : l'accent du terrain de sa saison de fond. */}
       <label className="block text-xs font-semibold text-indigo">{moi ? 'Ce qui te coûte le plus en trail' : 'Ce qui lui coûte le plus en trail'}
         <select name="cout_trail" defaultValue={String(profil.cout_trail ?? '')} className={champ}>

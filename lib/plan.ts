@@ -64,6 +64,9 @@ export type Champs = {
   coupure: string;
   // « oui » : un premier marathon (route, signalé au coach sous 20 semaines de préparation).
   premier_marathon: string;
+  // « oui » : un tapis de course qui monte (FT3-1, décision coach du 01/11/2026), facultatif ; le moteur s'en sert quand
+  // la côte manque (moins de 5 min) et que la course monte.
+  tapis: string;
 };
 
 export const champsVides: Champs = {
@@ -71,6 +74,7 @@ export const champsVides: Champs = {
   format: '', duree_mois: '', course_nom: '', date_course: '',
   distance_km: '', dplus_m: '', dmoins_m: '', temps_cible: '', terrain: '',
   jours_disponibles: [], jour_sl: '', freq_hebdo: '', blessure: '', coeur: '', coupure: '', premier_marathon: '',
+  tapis: '',
 };
 
 export const textes = {
@@ -127,6 +131,9 @@ export const textes = {
       { valeur: 'pentu', titre: 'Pentu', description: 'Côtes de 5 à 10 min de montée.' },
       { valeur: 'tres_pentu', titre: 'Très pentu', description: 'Côtes de plus de 10 min de montée.' },
     ],
+    // Posée avec une côte de moins de 5 min seulement (FT3-1, décision coach du 01/11/2026) : facultative, sans effet
+    // ailleurs.
+    tapis: 'As-tu accès à un tapis de course qui monte ?',
   },
   disponibilite: {
     aide:

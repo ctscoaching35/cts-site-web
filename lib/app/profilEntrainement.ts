@@ -13,7 +13,8 @@ import { clientServeur, clientService } from './supabase';
 
 export type ProfilEntrainement = Record<string, string | string[]>;
 // Les réponses qui partent au questionnaire d'un objectif ; les deux faits du niveau et le choix du coach restent ici.
-const CLES = ['niveau', 'terrain', 'jours_disponibles', 'jour_sl', 'freq_hebdo'];
+// Le tapis qui monte (FT3-1, décision coach du 01/11/2026) part aussi : facultatif, dans le profil (jsonb), sans migration.
+const CLES = ['niveau', 'terrain', 'tapis', 'jours_disponibles', 'jour_sl', 'freq_hebdo'];
 const JOURS_SEMAINE = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
 
 export async function profilDeLaFiche(athleteId: string): Promise<ProfilEntrainement> {
@@ -48,7 +49,8 @@ export function lignesDuProfil(profil: ProfilEntrainement, pourCoach = false): [
       : profil.niveau_coach ? `${niveau}, choisi par ton coach`
       : faits && pourCoach ? `${niveau}, proposé d’après ses réponses (${faits})`
       : faits ? `${niveau} · ${faits}` : niveau],
-    ['Terrain', textes.terrain.options.find((o) => o.valeur === profil.terrain)?.titre ?? '—'],
+    ['Terrain', (textes.terrain.options.find((o) => o.valeur === profil.terrain)?.titre ?? '—')
+      + (profil.tapis === 'oui' ? ' · un tapis qui monte' : '')],
     ['Semaine habituelle', profil.freq_hebdo
       ? `${profil.freq_hebdo} séances · ${jours.map((j) => j.slice(0, 3)).join(', ')} · sortie longue le ${String(profil.jour_sl ?? '—')}`
       : '—'],
@@ -67,6 +69,8 @@ export function lireProfil(form: FormData, pour: 'son' | 'ton', ancien?: ProfilE
   const faits = niveauDesFaits(anciennete, entrainement);
   const niveau = niveauCoach || faits || '';
   const terrain = String(form.get('terrain') ?? '');
+  // Le tapis qui monte (FT3-1) : facultatif, « oui » ou rien.
+  const tapis = form.get('tapis') === 'oui';
   const jours = form.getAll('jours_disponibles').map(String).filter((j) => JOURS_SEMAINE.includes(j));
   const jourSl = String(form.get('jour_sl') ?? '');
   const freq = Number(form.get('freq_hebdo'));
@@ -86,7 +90,7 @@ export function lireProfil(form: FormData, pour: 'son' | 'ton', ancien?: ProfilE
     : 'Au niveau débutant, 4 séances par semaine au plus : choisis-en 4. Ton coach peut revoir ton niveau.' };
   return { profil: {
     niveau, ...(faits ? { anciennete, entrainement } : {}), ...(niveauCoach ? { niveau_coach: niveauCoach } : {}),
-    terrain, jours_disponibles: jours, jour_sl: jourSl, freq_hebdo: String(freq),
+    terrain, tapis: tapis ? 'oui' : 'non', jours_disponibles: jours, jour_sl: jourSl, freq_hebdo: String(freq),
     ...(ACCENTS.some(([cle]) => cle === cout) ? { cout_trail: cout } : {}),
   } };
 }
