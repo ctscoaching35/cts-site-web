@@ -4,7 +4,7 @@
  * ce qui attend le coach, d'abord. « À regarder » (décision coach du 21/10/2026, « une liste, quatre niveaux ») : tout
  * ce qui demande son intervention, classé par urgence, chaque ligne avec son geste — ce qui bloque (objectif demandé,
  * Nolio à associer ou quitté, accord manquant, objectif pas démarré, semaine pas partie), la santé (arrêt, fatigue
- * franche, RPE à revoir, sans retour), les décisions du moteur (semaine manquée, séance trop dure), ce qui arrive (course de
+ * franche, RPE à revoir, sans retour, sous le plan), les décisions du moteur (semaine manquée, séance trop dure), ce qui arrive (course de
  * préparation, objectif sans suite, test illisible, course A de Nolio sans objectif). Les choix de l'athlète
  * (disponibilités, séance en plus) n'y sont pas : son objectif les montre. Tout vient de la base, sauf l'équipe Nolio
  * que la page lit déjà et les courses A de Nolio, lues une fois par heure : les signaux de chaque séance restent dans
@@ -59,6 +59,8 @@ const lundiDe = (jour: string) => ajouterJours(jour, -((new Date(`${jour}T12:00:
 const NOLIO = 'https://www.nolio.io/';
 // Le week-end choc s'annonce un mois avant (FT1-3).
 const WEEK_END_CHOC_PREVENIR_JOURS = 30;
+// AC4 : la part de la charge prévue sous laquelle une semaine compte « sous le plan ».
+const SOUS_LE_PLAN = 0.8;
 const ARRET: Record<string, string> = {
   reprendre: 'reprise au niveau de sa dernière semaine courue', reprise: 'une semaine de reprise allégée',
   reconstruire: 'préparation reconstruite sur la moitié de ce qu’il courait avant',
@@ -70,7 +72,7 @@ type Journal = { regle?: string; effet?: string; trop_dur?: boolean }[];
 // la page « À regarder »).
 const SIGNAL: Record<string, string> = {
   demande: 'Objectif demandé', achat: 'Achat à passer en plan', arret: 'Arrêt de course', fatigue: 'Fatigue franche',
-  ajustement: 'Semaine ajustée', mot: 'Un mot pour toi', rpe: 'RPE à revoir', retour: 'Sans retour', demarrer: 'À démarrer', nolio: 'Nolio à associer',
+  ajustement: 'Semaine ajustée', mot: 'Un mot pour toi', rpe: 'RPE à revoir', retour: 'Sans retour', sous_plan: 'Sous le plan', demarrer: 'À démarrer', nolio: 'Nolio à associer',
   equipe: 'Hors de l’équipe Nolio', accord: 'Sans accord de lecture', semaine: 'Semaine pas partie', chrono_route: 'Chrono à revoir',
   prerequis: 'Prérequis à voir', course_nolio: 'Course A dans Nolio', preparation: 'Course de préparation', suite: 'Rien après',
   test: 'Test à revoir', profil: 'Profil à remplir', week_end_choc: 'Week-end choc à annoncer',
@@ -221,6 +223,19 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
         && deuxDernieres.every(sansRpe) && String(deuxDernieres[0].ecrite_le).slice(0, 10) >= ajouterJours(jour, -8)) {
       aRegarder.push({ niveau: 'sante', genre: 'retour', cle: `retour:${deuxDernieres[0].plan_id}:${deuxDernieres[0].numero}`, athlete: a.nom, action: 'Lui écrire ›', href: NOLIO, externe: true,
         texte: 'Pas de retour depuis deux semaines : ses séances sont faites, sans aucun RPE noté.' });
+    }
+    // Sous le plan (AC4, décision coach du 01/11/2026, « A ») : moins de 80 % de la charge prévue tenue trois semaines de
+    // suite (plus de 80 % des semaines faites : un objectif atteint bien plus souvent). La semaine manquée (R1) reste au
+    // moteur ; ici, le coach qui en parle avec lui.
+    const troisDernieres = [...semaines].sort((x, y) => Number(num(y.numero)) - Number(num(x.numero))).slice(0, 3);
+    const sousLePlan = (l: { realise?: unknown }) => {
+      const r = l.realise as Realise | null;
+      return Boolean(r && r.charge_prevue > 0 && r.charge_tenue < SOUS_LE_PLAN * r.charge_prevue);
+    };
+    if (troisDernieres.length === 3 && troisDernieres.every((l, i) => i === 0 || Number(num(troisDernieres[i - 1].numero)) === Number(num(l.numero)) + 1)
+        && troisDernieres.every(sousLePlan) && String(troisDernieres[0].ecrite_le).slice(0, 10) >= ajouterJours(jour, -8)) {
+      aRegarder.push({ niveau: 'sante', genre: 'sous_plan', cle: `sous_plan:${troisDernieres[0].plan_id}:${troisDernieres[0].numero}`, athlete: a.nom, action: 'Lui écrire ›', href: NOLIO, externe: true,
+        texte: 'Sous le plan depuis trois semaines : moins de 80 % de la charge prévue tenue, trois semaines de suite.' });
     }
     const demarre = Boolean(p?.demarre_le);
     // Une saison de fond : ni « Nouvel objectif » à 21 jours, ni départ ; elle se renouvelle d'elle-même.
