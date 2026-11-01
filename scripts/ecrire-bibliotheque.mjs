@@ -57,6 +57,46 @@ const idDe = (x) => (x && typeof x === 'object' ? x.id : x) ?? null;
 
 const dossiers = await tous('library/categories/');
 const seances = await tous('library/training_frames/');
+
+// LA VÉRIFICATION (--verifier ; rien n'est écrit) : chaque séance du catalogue relue dans Nolio, à sa place, comparée à
+// ce que le moteur a écrit : la description, puis chaque étape (intensité, durée ou distance, cibles, commentaire, lap).
+if (process.argv.includes('--verifier')) {
+  const texte = (h) => String(h ?? '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#39;|&apos;/g, "'").replace(/&quot;/g, '"').replace(/\s+/g, ' ').trim();
+  const plat = (noeuds) => (noeuds ?? []).flatMap((n) => (n.kind === 'repeat'
+    ? [`× ${n.times}`, ...plat(n.steps), 'fin']
+    // Nolio rend les distances en km (100 m : 0,1 km) et ajoute le nom des zones (« resolved ») : comparé sans.
+    : [[n.intensity, n.duration ? `${n.duration.value}${n.duration.unit}`
+      : `${Math.round(n.distance?.value * (n.distance?.unit === 'km' ? 1000 : 1))}m`,
+      JSON.stringify((n.targets ?? []).map((t) => Object.fromEntries(Object.entries(t).filter(([k]) => k !== 'resolved').sort()))),
+      texte(n.comment).replace(/\s+/g, ' '), n.lap_advance ? 'lap' : ''].join(' | ')]));
+  let justes = 0;
+  const ecarts = [];
+  for (const d of catalogue.dossiers) {
+    const racine = dossiers.find((x) => x.name === d.nom && !idDe(x.parent));
+    for (const s of d.sous) {
+      const sous = racine && dossiers.find((x) => x.name === s.nom && idDe(x.parent) === racine.id);
+      for (const x of s.seances) {
+        const y = sous && seances.find((z) => z.name === x.name && idDe(z.category) === sous.id);
+        if (!y) { ecarts.push(`ABSENTE : ${d.nom} › ${s.nom} › ${x.name}`); continue; }
+        const lu = await nolio('GET', `library/training_frames/${y.id}/`);
+        const attendu = plat(x.workout);
+        const recu = plat(lu.workout);
+        const desc = texte(lu.description_html ?? lu.description);
+        const pb = [];
+        if (desc !== texte(x.description)) pb.push(`description : « ${desc.slice(0, 120)} »`);
+        if (attendu.length !== recu.length) pb.push(`${recu.length} étapes au lieu de ${attendu.length}`);
+        attendu.forEach((a, i) => { if (recu[i] !== undefined && recu[i] !== a) pb.push(`étape ${i + 1} : attendu « ${a} », lu « ${recu[i]} »`); });
+        if (pb.length) ecarts.push(`${d.nom} › ${s.nom} › ${x.name}\n    ${pb.slice(0, 4).join('\n    ')}`);
+        else justes += 1;
+      }
+    }
+  }
+  console.log(ecarts.join('\n'));
+  console.log(`\n${justes} séances conformes au moteur, ${ecarts.length} écart(s).`);
+  process.exit(0);
+}
+
 const journal = [];
 // Les sous-dossiers où une séance a été créée : seuls ceux-là sont remis en ordre.
 const crees = new Set();
@@ -195,13 +235,18 @@ if (catalogue.archiver_le_reste) {
   }
 }
 
-// Les dossiers vides après le passage (le coach les supprime lui-même).
-const pleins = new Set(seances.map((y) => idDe(y.category)));
+// Les dossiers vides après le passage (le coach les supprime lui-même) : ni séance, ni compétition, ni note, ni message,
+// ni questionnaire, ni sous-dossier qui en contienne.
+const autres = [];
+for (const c of ['competition_frames', 'note_frames', 'message_trigger_frames', 'quiz_frames']) {
+  autres.push(...(await tous(`library/${c}/`).catch(() => [])));
+}
+const pleins = new Set([...seances, ...autres].map((y) => idDe(y.category)));
+const contient = (id, i = 0) => pleins.has(id) || (i < 10 && dossiers.some((x) => idDe(x.parent) === id && contient(x.id, i + 1)));
 for (const d of dossiers) {
-  const enfants = dossiers.filter((x) => idDe(x.parent) === d.id);
-  if (d.type === 'event' && !pleins.has(d.id) && !enfants.some((x) => pleins.has(x.id)) && !String(d.id).startsWith('(nouveau')) {
+  if (d.type === 'event' && !contient(d.id) && !String(d.id).startsWith('(nouveau')) {
     const parent = dossiers.find((x) => x.id === idDe(d.parent));
-    journal.push(`dossier sans séance (à supprimer par le coach, après un coup d'œil) : ${parent ? `${parent.name} › ` : ''}${d.name}`);
+    journal.push(`dossier vide (à supprimer par le coach) : ${parent ? `${parent.name} › ` : ''}${d.name}`);
   }
 }
 
