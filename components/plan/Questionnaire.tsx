@@ -734,6 +734,21 @@ export default function Questionnaire({
               titre={o.titre} description={o.description} />
           ))}
         </div>
+        {/* Le tapis qui monte (FT3-1, décision coach du 01/11/2026) : avec une côte de moins de 5 min seulement, facultatif. */}
+        {(c.terrain === 'vallonne' || c.terrain === 'intermediaire') && (
+          <div className="mt-5">
+            <p className="font-bold text-indigo mb-3">{textes.terrain.tapis}</p>
+            <div className="flex gap-3">
+              {['non', 'oui'].map((v) => (
+                <label key={v} className={clsx('flex items-center gap-2 px-5 py-2.5 rounded-xl border cursor-pointer',
+                  c.tapis === v ? 'border-teal bg-teal/5' : 'border-indigo/15')}>
+                  <input type="radio" name="tapis" value={v} checked={c.tapis === v} onChange={() => maj('tapis')(v)} className="accent-teal" />
+                  <span className="text-indigo capitalize">{v}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
       </Section>}
 
       {!court && <Section numero={coach ? (route ? 4 : 5) : 6} titre="Ta disponibilité">
