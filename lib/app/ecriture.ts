@@ -82,6 +82,8 @@ export type Realise = {
   seances_prevues: number; seances_faites: number; duree_prevue_min: number; duree_faite_min: number;
   sl_prevue_min: number | null; sl_faite_min: number | null; cles_prevues: number; cles_reussies: number;
   dplus_m: number | null; hooper: number | null;
+  // Une semaine résumée depuis Nolio (resumeSemaine.ts) : chaque séance faite a son RPE, la charge est entière.
+  rpe_complet?: boolean;
 };
 
 // Les clés de nolio_envois qui ne sont pas des semaines : la trame (bandeaux et fiches de tout le plan), les
@@ -396,6 +398,26 @@ async function suivreLeProfil(o: Objectif) {
   o.parametres = parametres;
 }
 
+// JAMAIS DEUX SEMAINES LÉGÈRES DE SUITE (décision coach du 02/11/2026, « A ») : les charges faites des quatre semaines
+// d'avant celle qui s'écrit, la plus ancienne d'abord, que le moteur prend quand son état ne les a pas (la reprise d'un
+// athlète programmé à la main) : le résumé d'une semaine qu'il a écrite, sinon celui lu depuis Nolio chaque nuit
+// (semainesNolio.ts), quand chaque séance faite a son RPE — sans, la charge serait trop basse et la semaine passerait
+// pour légère ; null sinon. Rien de nouveau n'est lu dans Nolio.
+async function chargesAvant(planId: string, lundi: string | null | undefined): Promise<(number | null)[] | null> {
+  if (!lundi) return null;
+  const lundis = [28, 21, 14, 7].map((j) => ajouterJours(lundi, -j));
+  const service = clientService();
+  const { data: ecrites } = await service.from('semaines_ecrites').select('realise').eq('plan_id', planId);
+  const { data: c } = await service.from('coaching').select('athlete_id').eq('plan_id', planId).maybeSingle();
+  const { data: lues } = c?.athlete_id
+    ? await service.from('semaines_athlete').select('lundi, realise').eq('athlete_id', c.athlete_id).in('lundi', lundis)
+    : { data: null };
+  const duMoteur = new Map((ecrites ?? []).map((l) => l.realise as Realise | null).filter((r): r is Realise => Boolean(r?.lundi))
+    .map((r) => [r.lundi, r.charge_faite]));
+  const deNolio = new Map((lues ?? []).map((l) => [String(l.lundi), l.realise as Realise]));
+  return lundis.map((l) => duMoteur.get(l) ?? (deNolio.get(l)?.rpe_complet ? deNolio.get(l)!.charge_faite : null));
+}
+
 // La semaine écrite par le moteur, rien d'envoyé ni de gardé.
 async function semaineDuMoteur(o: Objectif, numero: string, retours: Retours | null, options: {
   sansAjustement?: boolean; reprise?: boolean;
@@ -408,6 +430,7 @@ async function semaineDuMoteur(o: Objectif, numero: string, retours: Retours | n
     parametres: glucides ? { ...o.parametres, glucides_cible: glucides } : o.parametres, numero, etat: o.etat, retours,
     sans_ajustement: Boolean(options.sansAjustement),
     valeurs: valeursConnues(o, lundi, faits), reprise: Boolean(options.reprise),
+    charges_avant: await chargesAvant(o.planId, lundi).catch(() => null),
   });
 }
 
@@ -1791,7 +1814,7 @@ export async function passageQuotidien(): Promise<Compte[]> {
 
 const REGLES_EN_CLAIR: Record<string, string> = {
   R1: 'semaine en grande partie manquée', R2: 'séance clé trop dure ou écourtée', R3: 'fatigue', R4: 'arrêt',
-  R5: 'disponibilités', R7: 'séance en plus', O3: 'course secondaire',
+  R5: 'disponibilités', R7: 'séance en plus', O3: 'course secondaire', CH: 'charge reprise après une semaine légère',
 };
 
 // Le Suivi du coach (décision 8 du document des règles) : les ajustements de ses coachés écrits ces 8 derniers jours,

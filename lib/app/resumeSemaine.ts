@@ -32,5 +32,8 @@ export function resumeDeLaSemaine(lundi: string, prevues: Prevue[], reelles: Ree
     cles_prevues: 0, cles_reussies: 0,
     dplus_m: dplus.length ? Math.round(dplus.reduce((n, r) => n + (r.elevation_gain?.value as number), 0)) : null,
     hooper,
+    // La charge entière, chaque séance faite avec son RPE (la règle des deux semaines légères ne prend que celle-là) ;
+    // une semaine sans aucune séance n'est pas légère, c'est un arrêt (R4, que le moteur juge seul).
+    rpe_complet: reelles.length > 0 && reelles.every((r) => typeof r.debrief?.rpe === 'number' || !(minutes(r.duration) ?? 0)),
   };
 }
