@@ -5,7 +5,7 @@ import PourquoiSemaine from '@/components/app/PourquoiSemaine';
 import { Carte, Surtitre } from '@/components/app/Ui';
 import { athletesCoaches } from '@/lib/app/coaching';
 import { apercuDuDimanche, type Apercu } from '@/lib/app/ecriture';
-import { enClair } from '@/lib/app/journalEnClair';
+import { enClair, reponsesDuSamedi } from '@/lib/app/journalEnClair';
 import { exigerCoach } from '@/lib/app/nolio';
 import { ajouterJours, dateLongue } from '@/lib/app/plan';
 import { clientService, supabaseConfigure } from '@/lib/app/supabase';
@@ -77,6 +77,7 @@ export default async function RapportDuDimanche() {
                     {r.apercu.sortie.journal.flatMap((e, i) => enClair(e).map((t, k) => <li key={`${i}-${k}`}>{t}</li>))}
                   </ul>
                 )}
+                {r.apercu.retours && <p className="pt-1 text-sm text-[#3B3957]">{reponsesDuSamedi(r.apercu.retours.questionnaire)}</p>}
                 <Link href={`/app/coach/plan/${r.planId}/apercu`} className="inline-block pt-1 text-[0.8125rem] font-bold text-teal">L’aperçu complet ›</Link>
               </Carte>
               {r.apercu.sortie.pourquoi && <PourquoiSemaine pourquoi={r.apercu.sortie.pourquoi} />}

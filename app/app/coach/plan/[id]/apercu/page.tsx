@@ -5,7 +5,7 @@ import CadreCoach from '@/components/app/CadreCoach';
 import { Carte, Surtitre } from '@/components/app/Ui';
 import { objectifCoache } from '@/lib/app/coaching';
 import { apercuDuDimanche } from '@/lib/app/ecriture';
-import { dose, enClair, FAMILLE } from '@/lib/app/journalEnClair';
+import { dose, enClair, FAMILLE, reponsesDuSamedi } from '@/lib/app/journalEnClair';
 import PourquoiSemaine from '@/components/app/PourquoiSemaine';
 import { exigerCoach } from '@/lib/app/nolio';
 import { dateLongue, jourMois } from '@/lib/app/plan';
@@ -81,6 +81,7 @@ export default async function ApercuDimanche({ params }: { params: Promise<{ id:
           </Carte>
           <Carte className="!p-5 space-y-2">
             <Surtitre>Ce qu’il a lu</Surtitre>
+            {a?.retours && <p className="text-sm text-[#3B3957]">{reponsesDuSamedi(a.retours.questionnaire)}</p>}
             {r && (
               <p className="text-sm text-[#3B3957]">
                 Semaine écoulée : {r.seances_faites} séance{r.seances_faites > 1 ? 's' : ''} faite{r.seances_faites > 1 ? 's' : ''} sur {r.seances_prevues}

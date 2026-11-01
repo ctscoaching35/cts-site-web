@@ -1,6 +1,7 @@
 // Le journal du moteur en clair pour le coach (les règles du dimanche, cts_ajustements), et les doses lues : partagés par
 // l'aperçu du dimanche et le rapport du dimanche.
 import type { FamilleLue } from './classement';
+import type { Questionnaire } from './ecriture';
 import { jourMois } from './plan';
 
 export const FAMILLE: Record<FamilleLue, string> = {
@@ -13,6 +14,20 @@ export type Dose = { date?: string; minutes?: number; reps?: number; bloc_min?: 
 
 // Une dose lue, en clair : « 3 × 12 min », ou « 25 min » d'un seul bloc.
 export const dose = (d: Dose) => (d.reps && d.reps > 1 ? `${d.reps} × ${d.bloc_min} min` : `${Math.round(d.minutes ?? 0)} min`);
+
+// Les réponses du questionnaire du samedi, en clair (décision coach du 01/11/2026) : Nolio affiche les cases du choix multiple
+// toujours vides, même cochées ; le site les lit par leur rang et les montre ici.
+export function reponsesDuSamedi(q: Questionnaire | undefined): string {
+  if (!q) return 'Pas de réponse au questionnaire du samedi : le moteur reprend ses jours habituels.';
+  const nom = (j: string) => j[0].toUpperCase() + j.slice(1);
+  const morceaux = [
+    q.jours.length ? q.jours.map(nom).join(', ') : 'aucun jour coché lisible',
+    q.jour_sl ? `sortie longue le ${q.jour_sl}` : null,
+    q.nb_seances ? `${q.nb_seances} séance${q.nb_seances > 1 ? 's' : ''}` : null,
+    q.arret ? 'un arrêt signalé' : 'pas d’arrêt',
+  ].filter(Boolean);
+  return `Ses réponses du samedi : ${morceaux.join(' ; ')}.`;
+}
 
 // Une ligne du journal du moteur, en clair pour le coach.
 export function enClair(e: Entree): string[] {
