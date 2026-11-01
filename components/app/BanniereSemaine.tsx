@@ -5,7 +5,9 @@ import { BANNIERE } from '@/lib/app/charte';
 // ses dates en surtitre, le type en titre, le bloc en pastille, le volume et les séances en grand, et
 // la place de la semaine dans le plan. Le filet à gauche garde la couleur du type, celle du PDF. course : la date de
 // l'objectif d'un coaché, dont la semaine se dit en J- et non « semaine 8 sur 16 » (décision coach du 19/10/2026).
-export default function BanniereSemaine({ semaine, course }: { semaine: Semaine; course?: string }) {
+// vers : le nom de la course du J-, quand ce n'est pas l'objectif de la semaine (une saison de fond, qui n'a pas de course,
+// compte vers le prochain objectif : retour coach du 01/11/2026).
+export default function BanniereSemaine({ semaine, course, vers }: { semaine: Semaine; course?: string; vers?: string }) {
   // « semaine 15 / 24 » et « 5 séances », tels que le moteur les écrit : l'app ne fait que les ranger.
   const rang = /(\d+)\s*\/\s*(\d+)/.exec(semaine.progression);
   const [n, total] = rang ? [Number(rang[1]), Number(rang[2])] : [0, 0];
@@ -13,11 +15,13 @@ export default function BanniereSemaine({ semaine, course }: { semaine: Semaine;
   return (
     <div className="bg-white shadow-sm border-l-4 px-4 py-3" style={{ borderLeftColor: BANNIERE[semaine.type] ?? '#2F2D4E' }}>
       <div className="text-[0.7rem] font-semibold tracking-cts uppercase text-indigo/55">
-        {course && semaine.lundi ? jMoins(semaine.lundi, course) : total ? `Semaine ${n} sur ${total}` : semaine.numero} · {semaine.dates}
+        {course && semaine.lundi ? `${jMoins(semaine.lundi, course)}${vers ? ` avant ${vers}` : ''}` : total ? `Semaine ${n} sur ${total}` : semaine.numero} · {semaine.dates}
       </div>
       <div className="flex flex-wrap items-center gap-2 mt-1">
         <span className="text-xl font-extrabold text-indigo">{semaine.type}</span>
-        <span className="text-xs font-semibold text-indigo bg-[#E4E3EE] px-2.5 py-1 rounded-full">{semaine.bloc}</span>
+        <span className="text-xs font-semibold text-indigo bg-[#E4E3EE] px-2.5 py-1 rounded-full">
+          {semaine.theme ? `Saison de fond · Bloc ${semaine.theme}` : semaine.bloc}
+        </span>
       </div>
       <div className="flex gap-6 mt-2">
         <div>

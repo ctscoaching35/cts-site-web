@@ -35,6 +35,13 @@ export default async function ApercuDimanche({ params }: { params: Promise<{ id:
   const lues = a?.retours?.lues;
   const textes = sortie ? (sortie.bilan ? [sortie.bilan] : sortie.notes.map((n) => n.texte)) : [];
   const r = sortie?.realise ?? null;
+  // Une saison de fond n'a pas de course (sa date est une sentinelle à 40 semaines) : le J- compte vers son prochain
+  // objectif (retour coach du 01/11/2026 : « J-278 », « je n'arrive pas à savoir si tu es sur un bloc de fond »).
+  const prochain = o.plan.fond
+    ? [...o.athlete.objectifs].filter((x) => x.plan_id !== id && x.course_date >= (a?.lundi ?? ''))
+      .sort((x, y) => x.course_date.localeCompare(y.course_date))[0] ?? null
+    : null;
+  const seancesSemaine = sortie ? sortie.semaine.jours.map((j) => j.seance) : undefined;
   return (
     <CadreCoach actif="tableau">
       <Link href={`/app/coach/plan/${id}`} className="inline-flex items-center min-h-9 text-[0.8125rem] font-bold text-teal">‹ {o.athlete.nom}</Link>
@@ -51,7 +58,8 @@ export default async function ApercuDimanche({ params }: { params: Promise<{ id:
         <>
           <Carte className="!p-5 space-y-3">
             <Surtitre>{a?.quoi === 'Semaine' ? 'La semaine qui partira' : a?.quoi}</Surtitre>
-            <BanniereSemaine semaine={sortie.semaine} course={o.plan.course.date} />
+            <BanniereSemaine semaine={sortie.semaine} course={o.plan.fond ? prochain?.course_date : o.plan.course.date}
+              vers={o.plan.fond ? prochain?.course_nom : undefined} />
             <ul className="bg-white divide-y divide-indigo/10 text-sm">
               {sortie.semaine.jours.map((j) => (
                 <li key={j.id} className="flex gap-3 px-1 py-2">
@@ -69,7 +77,7 @@ export default async function ApercuDimanche({ params }: { params: Promise<{ id:
             <Surtitre>Ce que le moteur change</Surtitre>
             {sortie.journal.length ? (
               <ul className="space-y-1.5 text-sm leading-relaxed text-[#3B3957] list-disc pl-5">
-                {sortie.journal.flatMap((e, i) => enClair(e).map((t, k) => <li key={`${i}-${k}`}>{t}</li>))}
+                {sortie.journal.flatMap((e, i) => enClair(e, seancesSemaine).map((t, k) => <li key={`${i}-${k}`}>{t}</li>))}
               </ul>
             ) : <p className="text-sm text-[#3B3957]">Rien : la semaine suit le plan.</p>}
             {textes.length > 0 && (

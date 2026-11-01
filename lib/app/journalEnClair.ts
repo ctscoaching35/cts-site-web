@@ -29,8 +29,10 @@ export function reponsesDuSamedi(q: Questionnaire | undefined): string {
   return `Ses réponses du samedi : ${morceaux.join(' ; ')}.`;
 }
 
-// Une ligne du journal du moteur, en clair pour le coach.
-export function enClair(e: Entree): string[] {
+// Une ligne du journal du moteur, en clair pour le coach. seances : les noms des séances de la semaine ; la mémoire d'une
+// qualité absente de la semaine n'est pas dite (retour coach du 01/11/2026 : « plus de seuil 2 au final ? »).
+const QUALITES_NOMMEES = new Set(['seuil1', 'tempo', 'seuil2', 'vo2max']);
+export function enClair(e: Entree, seances?: string[]): string[] {
   const effet = typeof e.effet === 'string' ? e.effet : null;
   switch (e.regle) {
     case 'R1': return [`Moins de 60 % de la semaine faite (${e.charge_faite_pct} % de la charge) : rien ne se rattrape, les séances clés refont la même marche.`];
@@ -39,9 +41,11 @@ export function enClair(e: Entree): string[] {
     case 'R4': return [`Arrêt${typeof e.jours === 'number' ? ` de ${e.jours} jours` : ''} : ${effet ?? ''}.`];
     case 'C1':
       if (e.doses && typeof e.doses === 'object') {
-        return Object.entries(e.doses as Record<string, Dose>).map(([f, d]) => `${FAMILLE[f as FamilleLue] ?? f} : la marche part de la séance du ${d.date ? jourMois(d.date) : '?'} (${dose(d)}) ; ${d.monte ? 'la suivante monte d’une marche' : 'la suivante la refait (RPE au-dessus du prévu)'}.`);
+        return Object.entries(e.doses as Record<string, Dose>)
+          .filter(([f]) => !seances || !QUALITES_NOMMEES.has(f) || seances.some((n) => n.startsWith(FAMILLE[f as FamilleLue] ?? f)))
+          .map(([f, d]) => `${FAMILLE[f as FamilleLue] ?? f} : la marche part de la séance du ${d.date ? jourMois(d.date) : '?'} (${dose(d)}) ; ${d.monte ? 'la suivante monte d’une marche' : 'la suivante la refait (RPE au-dessus du prévu)'}.`);
       }
-      return [`Sortie longue : la tienne (${e.duree_coach_min} min${e.faite ? ', courue' : ', pas courue'}) fixe la suivante, ${e.plafond_min} min au plus.`];
+      return [`Sortie longue : la tienne (${e.duree_coach_min} min${e.faite ? ', courue' : ', pas courue'}) fixe la suivante, ${e.plafond_min} min au plus (le plafond de sécurité, +10 %).`];
     default: return [`${String(e.regle ?? '')} : ${effet ?? JSON.stringify(e)}`];
   }
 }

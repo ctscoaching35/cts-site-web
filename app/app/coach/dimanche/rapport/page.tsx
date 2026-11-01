@@ -61,7 +61,10 @@ export default async function RapportDuDimanche() {
           {r.apercu?.sortie && (
             <>
               <Carte className="!p-5 space-y-2">
-                <Surtitre>{r.apercu.quoi === 'Semaine' ? `La semaine qui partira (${r.apercu.numero})` : r.apercu.quoi}</Surtitre>
+                <Surtitre>
+                  {r.apercu.quoi === 'Semaine' ? `La semaine qui partira (${r.apercu.numero})` : r.apercu.quoi}
+                  {r.apercu.sortie.semaine.theme ? ` · saison de fond, bloc ${r.apercu.sortie.semaine.theme}` : ''}
+                </Surtitre>
                 <ul className="divide-y divide-indigo/10 text-sm">
                   {r.apercu.sortie.semaine.jours.filter((j) => j.famille !== 'repos').map((j) => (
                     <li key={j.id} className="flex gap-3 py-1.5">
@@ -74,7 +77,8 @@ export default async function RapportDuDimanche() {
                 </ul>
                 {r.apercu.sortie.journal.length > 0 && (
                   <ul className="pt-1 space-y-1 text-sm leading-relaxed text-[#3B3957] list-disc pl-5">
-                    {r.apercu.sortie.journal.flatMap((e, i) => enClair(e).map((t, k) => <li key={`${i}-${k}`}>{t}</li>))}
+                    {r.apercu.sortie.journal.flatMap((e, i) => enClair(e, r.apercu!.sortie!.semaine.jours.map((j) => j.seance))
+                      .map((t, k) => <li key={`${i}-${k}`}>{t}</li>))}
                   </ul>
                 )}
                 {r.apercu.retours && <p className="pt-1 text-sm text-[#3B3957]">{reponsesDuSamedi(r.apercu.retours.questionnaire)}</p>}
