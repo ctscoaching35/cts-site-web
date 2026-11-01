@@ -69,7 +69,8 @@ export function RetirerCourse({ planId, date, nom }: { planId: string; date: str
 // Modifier une course de préparation à venir (décision coach du 23/10/2026, « tout modifiable ») : le formulaire de
 // l'ajout, prérempli.
 export function ModifierCourse({ planId, course }: {
-  planId: string; course: { nom: string; date: string; distance_km: number; dplus_m: number; chrono?: string | null; discipline?: 'trail' | 'route' };
+  planId: string; course: { nom: string; date: string; distance_km: number; dplus_m: number; chrono?: string | null; discipline?: 'trail' | 'route';
+    mode?: 'gestion' | 'a_fond' };
 }) {
   return (
     <details className="text-xs min-w-0 open:basis-full">
@@ -83,17 +84,22 @@ export function ModifierCourse({ planId, course }: {
 // (ancienne : sa date d'avant).
 export function AjouterCourse({ planId, initial, ancienne }: {
   planId: string; ancienne?: string;
-  initial?: { nom: string; date: string; distance_km: number | null; dplus_m: number | null; chrono: string | null; discipline?: 'trail' | 'route' } | null;
+  initial?: { nom: string; date: string; distance_km: number | null; dplus_m: number | null; chrono: string | null; discipline?: 'trail' | 'route';
+    mode?: 'gestion' | 'a_fond' } | null;
 }) {
   const [etat, action, enCours] = useActionState<EtatGeste, FormData>(
     ancienne ? modifierCourse.bind(null, planId, ancienne) : ajouterCourse.bind(null, planId), null);
   // Trail ou route (décision coach du 23/10/2026) ; une course de Nolio qui ressemble à la route s'ouvre en route.
   const [route, setRoute] = useState(initial?.discipline ? initial.discipline === 'route'
     : Boolean(initial && formatRouteDe(initial.distance_km, initial.dplus_m)));
+  // En gestion par défaut ; à fond seulement loin de l'objectif, jamais un ultra (CP1, décision coach du 01/11/2026) : le
+  // moteur le vérifie.
+  const [aFond, setAFond] = useState(initial?.mode === 'a_fond');
   const champ = 'mt-1.5 w-full min-h-11 rounded-[10px] border border-indigo/20 px-3 text-sm font-normal text-indigo bg-white';
   return (
     <form action={action} className="space-y-3">
       <input type="hidden" name="discipline" value={route ? 'route' : 'trail'} />
+      <input type="hidden" name="mode" value={aFond ? 'a_fond' : 'gestion'} />
       <div role="group" aria-label="Discipline" className="inline-flex p-1 rounded-xl bg-[#F2EFE8] gap-1">
         {([[false, 'Trail'], [true, 'Route']] as const).map(([r, nom]) => (
           <button key={nom} type="button" aria-pressed={route === r} onClick={() => setRoute(r)}
@@ -120,6 +126,19 @@ export function AjouterCourse({ planId, initial, ancienne }: {
         <label className="block text-xs font-semibold text-indigo">Chrono visé
           <input name="chrono" required placeholder={route ? '0h45' : '2h15'} className={champ} defaultValue={initial?.chrono ?? undefined} />
         </label>
+      </div>
+      <div className="text-xs font-semibold text-indigo">Comment tu la cours ?
+        <div role="group" aria-label="Comment tu la cours" className="mt-1.5 flex p-1 rounded-xl bg-[#F2EFE8] gap-1">
+          {([[false, 'En gestion'], [true, 'À fond']] as const).map(([f, nom]) => (
+            <button key={nom} type="button" aria-pressed={aFond === f} onClick={() => setAFond(f)}
+              className={`flex-1 min-h-10 px-3 rounded-[9px] text-sm ${aFond === f ? 'bg-white text-indigo font-bold shadow-sm' : 'text-[#4A4866] font-semibold'}`}>
+              {nom}
+            </button>
+          ))}
+        </div>
+        <span className="mt-1 block font-normal text-[#5E5C78]">{aFond
+          ? 'À fond : un vrai test, avec une récupération plus longue après.'
+          : 'En gestion : environ 7 sur 10, ton objectif reste devant.'}</span>
       </div>
       {!route && <label className="flex flex-col gap-1.5 text-xs font-semibold text-indigo">{ancienne ? 'Nouvelle trace GPX — facultative' : 'Trace GPX — facultative'}
         <input name="gpx" type="file" accept=".gpx" className="block w-full max-w-full text-sm font-normal text-indigo file:mr-3 file:min-h-10 file:px-3 file:rounded-[10px] file:border-0 file:bg-[#E1EFEA] file:text-teal-dark file:font-bold" />

@@ -24,7 +24,7 @@ export type DonneesTableau = {
 };
 // chrono : le chrono visé (PO3), absent d'une course ajoutée avant le 19/10/2026.
 export type CourseSecondaire = { nom: string; date: string; distance_km: number; dplus_m: number; chrono?: string | null;
-  discipline?: 'trail' | 'route' };
+  discipline?: 'trail' | 'route'; mode?: 'gestion' | 'a_fond' };
 
 export async function donneesTableau(ctx: Contexte): Promise<DonneesTableau> {
   // Un coaché sans objectif : ni trame ni semaines écrites ; ses données sont sa saison (saisonDuCoureur).

@@ -1263,7 +1263,7 @@ const SPORT_TRAIL = 'spt_YprHS7jgV5vdsz0';
 const SPORT_COURSE_A_PIED = 'spt_kNYHjuEzDJRiYCX';
 // discipline : « route » pour une course sur route (décision coach du 23/10/2026), le trail sinon.
 export type Course = { nom: string; date: string; distance_km: number; dplus_m: number; chrono?: string | null; temps_h?: number | null;
-  discipline?: 'trail' | 'route' };
+  discipline?: 'trail' | 'route'; mode?: 'gestion' | 'a_fond' };
 
 // La fiche de course d'une course de préparation part avec la semaine où elle tombe (une semaine avant la course, ou
 // tout de suite si la course est plus proche ; décision coach du 23/10/2026, une semaine à la fois) : celles qui tombent

@@ -110,6 +110,8 @@ async function enregistrerCourse(planId: string, form: FormData, ancienne: strin
     distance_km: Number(String(form.get('distance_km') ?? '').replace(',', '.')),
     dplus_m: route ? 0 : Number(String(form.get('dplus_m') ?? '0').replace(',', '.')) || 0,
     discipline: route ? 'route' as const : 'trail' as const,
+    // En gestion ou à fond (CP1, décision coach du 01/11/2026) : la récupération et ce que le moteur accepte en dépendent.
+    mode: form.get('mode') === 'a_fond' ? 'a_fond' as const : 'gestion' as const,
     ...(temps_h !== null ? { temps_h, chrono: `${Math.floor(temps_h)}h${String(Math.round((temps_h % 1) * 60)).padStart(2, '0')}` } : {}),
   };
   if (!(course.distance_km > 0 && course.distance_km <= 200) || course.dplus_m < 0 || course.dplus_m > 15000) {
