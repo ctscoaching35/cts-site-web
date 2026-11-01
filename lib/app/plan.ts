@@ -70,6 +70,8 @@ export type Zones = {
   rpe_decide: string;
   vitesse_critique_ouverte: boolean;
   tests_disponibles: CleTest[];
+  // Faux pour un plan de route (moteur, décision coach du 01/11/2026) : la FC au seuil 2 n'y est jamais proposée.
+  fc_seuil2_hors_plan?: boolean;
   tests: TestZones[];
   consentement: string;
   effacer: string;

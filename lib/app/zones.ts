@@ -122,8 +122,10 @@ export const testFait = (cle: CleTest, p: Profil) =>
 // Les tests que « Tes zones » propose : ceux du plan, et la FC au seuil 2 dès que la vitesse critique l'est, même quand
 // le plan n'a pas de séance de fractions sur le plat où écrire sa mesure (décision coach du 20/10/2026, « ouverte pour
 // tous ») : une valeur mesurée hors du plan règle aussi les zones et les séances.
+// Pas en route (décision coach du 01/11/2026) : ses séances se pilotent à l'allure, la FC au seuil 2 n'y change rien.
 export const testsProposes = (zones: Zones): CleTest[] =>
   zones.tests_disponibles.includes('vitesse_critique') && !zones.tests_disponibles.includes('fc_seuil2')
+    && zones.fc_seuil2_hors_plan !== false
     ? [...zones.tests_disponibles, 'fc_seuil2'] : zones.tests_disponibles;
 // La FC au seuil 2 proposée hors du plan : il n'écrit pas sa séance de mesure.
 export const fcSeuil2HorsPlan = (zones: Zones) => !zones.tests_disponibles.includes('fc_seuil2') && testsProposes(zones).includes('fc_seuil2');
