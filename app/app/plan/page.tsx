@@ -10,7 +10,7 @@ import { annulerDemande, demanderRetrait } from '@/lib/app/actionsObjectifs';
 import { demandesDeLAthlete, estRetrait, ficheDuCompte } from '@/lib/app/demandes';
 import { clientServeur, clientService } from '@/lib/app/supabase';
 import { dateLongue, jMoins } from '@/lib/app/plan';
-import { blocsDuPlan, jaugeDuPlan } from '@/lib/app/tableau';
+import { blocsDuPlan, jaugeDuPlan, weekEndChoc } from '@/lib/app/tableau';
 import { donneesTableau, fichesDePreparation, type CourseSecondaire } from '@/lib/app/tableauDuPlan';
 import { BlocsDeLaSaison } from '@/components/app/SaisonDeFond';
 
@@ -53,6 +53,7 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
   const d = await donneesTableau(ctx);
   const objectifs = ctx.demonstration ? null : await mesObjectifs();
   const jauge = jaugeDuPlan(d.trame, d.realises, jour);
+  const choc = !ctx.aLaMain && !plan.fond ? weekEndChoc(d.trame, jour) : null;
   const courseAVenir = plan.course.date >= jour;
   const fichesPrepa = ctx.demonstration ? new Set<string>() : await fichesDePreparation(ctx.cle);
   const { course } = plan;
@@ -89,6 +90,19 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
           </span>
           <span aria-hidden>›</span>
         </Link>}
+
+        {/* Le week-end choc, annoncé dès le départ (FT1-3, « B ») : l'athlète ne l'apprend pas une semaine avant. */}
+        {choc && (
+          <Carte className="space-y-1.5">
+            <Surtitre>À prévoir</Surtitre>
+            <p className="text-sm font-bold text-indigo">
+              Ton week-end choc : le {dateLongue(choc.samedi)} et le {dateLongue(choc.dimanche)}
+            </p>
+            <p className="text-[0.8125rem] text-[#5E5C78] leading-relaxed">
+              Deux sorties longues de suite, le temps fort de ta préparation. Si tu peux, fais-les en relief, sur un terrain le plus proche possible de celui de ta course (relief, sol, technicité) : prévois-le dès maintenant.
+            </p>
+          </Carte>
+        )}
 
         {r.demande === 'envoyee' && (
           <Carte className="text-sm text-indigo"><p role="status">Ta demande est partie chez ton coach : il la relit et lance ta préparation.</p></Carte>

@@ -150,6 +150,15 @@ function jalons(trame: LigneTrame[], faits: Realise[], rang: number): Jalon[] {
   ];
 }
 
+// Le week-end choc, annoncé dès le départ (FT1-3 ; décisions coach du 31/10 et du 01/11/2026 : « c'est bien si
+// l'athlète ne l'apprend pas une semaine à l'avance »), sur un terrain le plus proche possible de celui du jour J. Le
+// prochain à venir ; la trame du moteur marque déjà ses semaines (week_end_choc).
+export type WeekEndChoc = { samedi: string; dimanche: string };
+export function weekEndChoc(trame: LigneTrame[], aujourdhui: string): WeekEndChoc | null {
+  const l = trame.find((x) => x.week_end_choc && x.lundi && ajouterJours(x.lundi, 6) >= aujourdhui);
+  return l ? { samedi: ajouterJours(l.lundi, 5), dimanche: ajouterJours(l.lundi, 6) } : null;
+}
+
 // ─── Les graphiques (T10) ─────────────────────────────────────────────────
 
 // Une barre par semaine, en minutes de course (décision coach du 19/10/2026 : les durées, la même mesure des deux
