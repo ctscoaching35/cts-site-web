@@ -363,6 +363,17 @@ export function noteFormat(c: Champs, config: ConfigPlan, coach = false): string
 }
 
 /** Temps saisi -> heures, la même lecture que l'API (cts_intake.parse_temps_cible) ; null si illisible. */
+// LA RÉCUPÉRATION APRÈS L'OBJECTIF (décisions coach du 21/10/2026 et du 01/11/2026, « A » : « trois semaines au maximum ») :
+// deux jours sans séance dure ni sortie longue par heure de course, 3 au moins, 21 au plus ; 14 après un marathon sur
+// route (décision 7 du marathon, 23/10/2026). Une récupération active : deux jours de repos, puis une EF courte un jour
+// sur deux (le moteur, cts_semaine.semaine_de_recuperation).
+export const RECUPERATION_MARATHON_J = 14;
+export const RECUPERATION_MAX_J = 21;
+export function joursRecuperation(heures: number, format?: string): number {
+  if (format === 'R42') return RECUPERATION_MARATHON_J;
+  return Math.min(RECUPERATION_MAX_J, Math.max(3, Math.ceil(2 * heures)));
+}
+
 export function lireTemps(brut: string): number | null {
   const s = brut.trim().toLowerCase();
   let m = s.match(/^([-+]?\d+)\s*(?:h|:)\s*(\d{1,2})\s*(?:min|mn)?$/);

@@ -14,7 +14,7 @@
  */
 import { cache } from 'react';
 import { site } from '@/lib/content';
-import { API_URL, lireTemps } from '@/lib/plan';
+import { API_URL, joursRecuperation, lireTemps } from '@/lib/plan';
 import {
   chargeDepuisNolio, creer, destinataire, envoyerSemaineCible, ficheAthlete, garderEnvoi, mettreAJourSemaineCible, profilDe, seancesDuMoteur,
   volumeDuMoment,
@@ -417,7 +417,7 @@ export async function ecrireEtEnvoyer(o: Objectif, numero: string, retours: Reto
 }
 
 // LA RÉCUPÉRATION APRÈS LA COURSE (décision coach du 23/10/2026) : pour un coaché, les semaines entre celle de sa course
-// et son lundi de reprise (debutApres : un jour sans séance dure par heure de course, deux au moins, jusqu'au lundi
+// et son lundi de reprise (debutApres : deux jours sans séance dure par heure de course, 3 à 21, jusqu'au lundi
 // qui suit), numérotées à la suite du plan ; le moteur les écrit (repos les 2 jours d'après la course, puis une EF
 // courte un jour disponible sur deux) et elles partent dans Nolio comme les autres. null hors de cette fenêtre.
 export function semaineDeRecuperation(o: Pick<Objectif, 'coache' | 'plan' | 'tempsH' | 'parametres'>, lundi: string): { numero: string; jusqua: string } | null {
@@ -856,17 +856,15 @@ function heures(brut: unknown): number {
   return m ? Number(m[1]) + Number(m[2] || 0) / 60 : 0;
 }
 
-// Le lundi qui suit la récupération d'une course (O3 : un jour sans séance dure par heure de course, 2 au moins).
 // Le format d'un objectif (« R42 » pour un marathon sur route), tel que ses paramètres le gardent.
 function formatDe(o: Pick<Objectif, 'parametres'>): string {
   return String(((o.parametres.champs ?? {}) as Record<string, unknown>).format ?? '');
 }
 
-// LA RÉCUPÉRATION APRÈS UN MARATHON (décision 7 du marathon, 23/10/2026) : deux semaines, puis la reprise ; ailleurs,
-// un jour sans séance dure par heure de course, deux au moins (décision du 21/10), jusqu'au lundi qui suit.
-const RECUPERATION_MARATHON_J = 14;
+// LA RÉCUPÉRATION APRÈS L'OBJECTIF (lib/plan.ts, joursRecuperation : deux jours par heure de course, 3 à 21 ; 14 après
+// un marathon sur route), jusqu'au lundi qui suit.
 export function debutApres(q: Pick<Voisin, 'course_date' | 'temps_h'> & { format?: string }): string {
-  const fin = ajouterJours(q.course_date, q.format === 'R42' ? RECUPERATION_MARATHON_J : Math.max(2, Math.ceil(q.temps_h)));
+  const fin = ajouterJours(q.course_date, joursRecuperation(q.temps_h, q.format));
   const rang = (new Date(`${fin}T12:00:00Z`).getUTCDay() + 6) % 7;
   return ajouterJours(fin, 7 - rang);
 }

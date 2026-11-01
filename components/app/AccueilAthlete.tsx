@@ -11,7 +11,7 @@ import { nouveauxBadges } from '@/lib/app/badges';
 import { mesBadges } from '@/lib/app/badgesNolio';
 import { monProfilDEntrainement } from '@/lib/app/profilEntrainement';
 import { lien, prenom, type Contexte } from '@/lib/app/contexte';
-import { lireTemps } from '@/lib/plan';
+import { joursRecuperation, lireTemps } from '@/lib/plan';
 import { ajouterJours, dateLongue, joursEntre, moment } from '@/lib/app/plan';
 import { fichesDeLaSemaine, jaugeDuPlan, momentDe } from '@/lib/app/tableau';
 import { donneesTableau, semaineDansNolio, semaineEcrite } from '@/lib/app/tableauDuPlan';
@@ -164,18 +164,18 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
   );
 }
 
-// Après sa course, un acheteur (décision coach du 20/10/2026, les nuances des plans, point 4) : d'abord récupérer, un
-// jour sans séance dure par heure de course, deux au moins (la règle O3 du moteur), avec la fiche Récupération ;
-// ensuite son prochain objectif majeur, par l'aiguillage.
+// Après sa course, un acheteur (décision coach du 20/10/2026, les nuances des plans, point 4) : d'abord récupérer
+// (lib/plan.ts, joursRecuperation : deux jours par heure de course, 3 à 21, 14 après un marathon sur route), avec la
+// fiche Récupération ; ensuite son prochain objectif majeur, par l'aiguillage.
 function EtMaintenant({ ctx }: { ctx: Contexte }) {
   const heures = lireTemps(ctx.plan.course.temps_cible ?? '');
-  const jours = Math.max(2, Math.ceil(heures ?? 2));
+  const jours = joursRecuperation(heures ?? 2, ctx.plan.course.format);
   return (
     <Carte className="space-y-3">
       <Surtitre>Et maintenant ?</Surtitre>
       <div className="space-y-1">
         <p className="text-[0.875rem] text-[#4A4866] leading-relaxed">
-          D’abord, récupère : {jours} jours sans séance dure, un par heure de course, puis reprends en douceur.
+          D’abord, récupère : {jours} jours sans séance dure, puis reprends en douceur.
         </p>
         <Link href={lien('/app/bibliotheque/recuperation', ctx)} className="inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">
           Lire la fiche Récupération ›
