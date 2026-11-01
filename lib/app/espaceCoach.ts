@@ -4,7 +4,7 @@
  * ce qui attend le coach, d'abord. « À regarder » (décision coach du 21/10/2026, « une liste, quatre niveaux ») : tout
  * ce qui demande son intervention, classé par urgence, chaque ligne avec son geste — ce qui bloque (objectif demandé,
  * Nolio à associer ou quitté, accord manquant, objectif pas démarré, semaine pas partie), la santé (arrêt, fatigue
- * franche, RPE à revoir), les décisions du moteur (semaine manquée, séance trop dure), ce qui arrive (course de
+ * franche, RPE à revoir, sans retour), les décisions du moteur (semaine manquée, séance trop dure), ce qui arrive (course de
  * préparation, objectif sans suite, test illisible, course A de Nolio sans objectif). Les choix de l'athlète
  * (disponibilités, séance en plus) n'y sont pas : son objectif les montre. Tout vient de la base, sauf l'équipe Nolio
  * que la page lit déjà et les courses A de Nolio, lues une fois par heure : les signaux de chaque séance restent dans
@@ -70,7 +70,7 @@ type Journal = { regle?: string; effet?: string; trop_dur?: boolean }[];
 // la page « À regarder »).
 const SIGNAL: Record<string, string> = {
   demande: 'Objectif demandé', achat: 'Achat à passer en plan', arret: 'Arrêt de course', fatigue: 'Fatigue franche',
-  ajustement: 'Semaine ajustée', mot: 'Un mot pour toi', rpe: 'RPE à revoir', demarrer: 'À démarrer', nolio: 'Nolio à associer',
+  ajustement: 'Semaine ajustée', mot: 'Un mot pour toi', rpe: 'RPE à revoir', retour: 'Sans retour', demarrer: 'À démarrer', nolio: 'Nolio à associer',
   equipe: 'Hors de l’équipe Nolio', accord: 'Sans accord de lecture', semaine: 'Semaine pas partie', chrono_route: 'Chrono à revoir',
   prerequis: 'Prérequis à voir', course_nolio: 'Course A dans Nolio', preparation: 'Course de préparation', suite: 'Rien après',
   test: 'Test à revoir', profil: 'Profil à remplir', week_end_choc: 'Week-end choc à annoncer',
@@ -210,6 +210,17 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
         && String(deuxDernieres[0].ecrite_le).slice(0, 10) >= ajouterJours(jour, -8)) {
       aRegarder.push({ niveau: 'sante', genre: 'rpe', cle: `rpe:${deuxDernieres[0].plan_id}:${deuxDernieres[0].numero}`, athlete: a.nom, action: 'Lui écrire ›', href: NOLIO, externe: true,
         texte: 'RPE à revoir avec lui : séance clé jugée trop dure deux semaines de suite.' });
+    }
+    // Pas de retour (AC2, décision coach du 01/11/2026, « A ») : deux semaines de suite avec des séances faites et aucun
+    // RPE. Le plan continue (Nolio connaît les séances faites) ; sa note du dimanche le lui demande (moteur 8.406).
+    const sansRpe = (l: { realise?: unknown }) => {
+      const r = l.realise as Realise | null;
+      return Boolean(r && r.seances_faites > 0 && !r.rpe_lu);
+    };
+    if (deuxDernieres.length === 2 && Number(num(deuxDernieres[0].numero)) === Number(num(deuxDernieres[1].numero)) + 1
+        && deuxDernieres.every(sansRpe) && String(deuxDernieres[0].ecrite_le).slice(0, 10) >= ajouterJours(jour, -8)) {
+      aRegarder.push({ niveau: 'sante', genre: 'retour', cle: `retour:${deuxDernieres[0].plan_id}:${deuxDernieres[0].numero}`, athlete: a.nom, action: 'Lui écrire ›', href: NOLIO, externe: true,
+        texte: 'Pas de retour depuis deux semaines : ses séances sont faites, sans aucun RPE noté.' });
     }
     const demarre = Boolean(p?.demarre_le);
     // Une saison de fond : ni « Nouvel objectif » à 21 jours, ni départ ; elle se renouvelle d'elle-même.
