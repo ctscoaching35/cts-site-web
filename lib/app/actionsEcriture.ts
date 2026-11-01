@@ -66,7 +66,8 @@ export async function annulerSemaine(planId: string, numero: string, _e: EtatGes
   }
 }
 
-// O2, O3 : une course secondaire, vérifiée par le moteur (3 semaines avant l'objectif, une toutes les 4 semaines, jamais
+// O2, O3, CP1 : une course secondaire, vérifiée par le moteur (3, 4, 6 ou 8 semaines avant l'objectif selon sa durée ;
+// à fond seulement loin de l'objectif, jamais un ultra ; une toutes les 4 semaines, deux de 3 h et plus au plus ; jamais
 // plus longue que lui ; plus longue que la plus longue sortie récente, signalée). Elle compte dans les semaines écrites
 // à partir du dimanche qui vient.
 export async function ajouterCourse(planId: string, _e: EtatGeste, form: FormData): Promise<EtatGeste> {
