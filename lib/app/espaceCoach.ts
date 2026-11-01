@@ -20,7 +20,7 @@ import { plansALaMain, type LigneTrame, type Realise } from './ecriture';
 import { ajouterJours, dateLongue, jourMois, joursEntre, type Semaine } from './plan';
 import { athletesNolio, ErreurNolio, nolioConfigure, type AthleteNolio } from './nolio';
 import { clientService } from './supabase';
-import { jaugeDuPlan, type Verdict } from './tableau';
+import { jaugeDuPlan, weekEndChoc, type Verdict } from './tableau';
 
 export type LigneAthlete = {
   id: string; nom: string; usr: string | null; nolio: boolean; accord: boolean; app: boolean;
@@ -57,6 +57,8 @@ export type VueCoach = { athletes: LigneAthlete[]; aRegarder: ARegarder[]; deman
 const aujourdhui = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
 const lundiDe = (jour: string) => ajouterJours(jour, -((new Date(`${jour}T12:00:00Z`).getUTCDay() + 6) % 7));
 const NOLIO = 'https://www.nolio.io/';
+// Le week-end choc s'annonce un mois avant (FT1-3).
+const WEEK_END_CHOC_PREVENIR_JOURS = 30;
 const ARRET: Record<string, string> = {
   reprendre: 'reprise au niveau de sa dernière semaine courue', reprise: 'une semaine de reprise allégée',
   reconstruire: 'préparation reconstruite sur la moitié de ce qu’il courait avant',
@@ -71,7 +73,7 @@ const SIGNAL: Record<string, string> = {
   ajustement: 'Semaine ajustée', mot: 'Un mot pour toi', rpe: 'RPE à revoir', demarrer: 'À démarrer', nolio: 'Nolio à associer',
   equipe: 'Hors de l’équipe Nolio', accord: 'Sans accord de lecture', semaine: 'Semaine pas partie', chrono_route: 'Chrono à revoir',
   prerequis: 'Prérequis à voir', course_nolio: 'Course A dans Nolio', preparation: 'Course de préparation', suite: 'Rien après',
-  test: 'Test à revoir', profil: 'Profil à remplir',
+  test: 'Test à revoir', profil: 'Profil à remplir', week_end_choc: 'Week-end choc à annoncer',
 };
 
 // L'équipe Nolio du coach, que le tableau de bord et « À regarder » lisent à l'ouverture ; sans réponse de Nolio,
@@ -281,6 +283,16 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
         const dans = c.date ? joursEntre(jour, c.date) : -1;
         if (dans >= 0 && dans <= 14) aRegarder.push({ niveau: 'arrive', genre: 'preparation', cle: `preparation:${o.plan_id}:${c.date}`, athlete: a.nom, action: 'Voir ›', href: hrefPlan,
           texte: `${c.nom ?? 'sa course de préparation'} dans ${dans} jour${dans > 1 ? 's' : ''} (course de préparation).` });
+      }
+      // Le week-end choc, un mois avant (FT1-3, décision coach du 01/11/2026 : « dans mon app coach, une notification me
+      // disant de prévenir mon athlète 1 mois avant ») : l'athlète d'un coaching ne reçoit ses semaines qu'une à une.
+      // Le plan vendu n'en a pas besoin : il part en entier dans Nolio.
+      const choc = trame && !aLaMain.has(o.plan_id) ? weekEndChoc(trame, jour) : null;
+      const dansChoc = choc ? joursEntre(jour, choc.samedi) : -1;
+      if (choc && dansChoc >= 0 && dansChoc <= WEEK_END_CHOC_PREVENIR_JOURS) {
+        aRegarder.push({ niveau: 'arrive', genre: 'week_end_choc', cle: `week_end_choc:${o.plan_id}:${choc.samedi}`, athlete: a.nom,
+          action: 'Lui écrire ›', href: NOLIO, externe: true,
+          texte: `son week-end choc, le ${dateLongue(choc.samedi)} et le ${dateLongue(choc.dimanche)} : préviens-le, sur un terrain le plus proche possible de celui de sa course.` });
       }
       const dans = joursEntre(jour, o.course_date);
       if (dans <= 21 && !a.objectifs.some((x) => x.course_date > o.course_date)) {

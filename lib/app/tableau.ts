@@ -150,9 +150,8 @@ function jalons(trame: LigneTrame[], faits: Realise[], rang: number): Jalon[] {
   ];
 }
 
-// Le week-end choc, annoncé dès le départ (FT1-3 ; décisions coach du 31/10 et du 01/11/2026 : « c'est bien si
-// l'athlète ne l'apprend pas une semaine à l'avance »), sur un terrain le plus proche possible de celui du jour J. Le
-// prochain à venir ; la trame du moteur marque déjà ses semaines (week_end_choc).
+// Le prochain week-end choc à venir, d'après la trame du moteur, qui marque ses semaines (week_end_choc) : le coach est
+// prévenu un mois avant pour l'annoncer à son athlète (FT1-3, décision coach du 01/11/2026).
 export type WeekEndChoc = { samedi: string; dimanche: string };
 export function weekEndChoc(trame: LigneTrame[], aujourdhui: string): WeekEndChoc | null {
   const l = trame.find((x) => x.week_end_choc && x.lundi && ajouterJours(x.lundi, 6) >= aujourdhui);
