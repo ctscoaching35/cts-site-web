@@ -92,8 +92,16 @@ if (process.argv.includes('--verifier')) {
       }
     }
   }
+  const notes = await tous('library/note_frames/');
+  for (const n of catalogue.notes ?? []) {
+    const racine = dossiers.find((x) => x.name === n.dossier && !idDe(x.parent));
+    const y = racine && notes.find((z) => z.name === n.name && idDe(z.category) === racine.id);
+    if (!y) ecarts.push(`NOTE ABSENTE : ${n.dossier} › ${n.name}`);
+    else if (y.note_type !== n.note_type) ecarts.push(`${n.dossier} › ${n.name} : note « ${y.note_type} » au lieu de « ${n.note_type} »`);
+    else justes += 1;
+  }
   console.log(ecarts.join('\n'));
-  console.log(`\n${justes} séances conformes au moteur, ${ecarts.length} écart(s).`);
+  console.log(`\n${justes} séances et notes conformes au moteur, ${ecarts.length} écart(s).`);
   process.exit(0);
 }
 
@@ -137,6 +145,16 @@ for (const d of catalogue.dossiers) {
       }
     }
   }
+}
+
+// Les notes du moteur (le dossier « Repos », décision coach du 02/11/2026) : créées si elles manquent dans leur dossier.
+const notes = await tous('library/note_frames/');
+for (const n of catalogue.notes ?? []) {
+  const { dossier: nom, ...corps } = n;
+  const id = await dossier(nom);
+  if (notes.some((y) => y.name === corps.name && idDe(y.category) === id)) continue;
+  journal.push(`note créée : ${nom} › ${corps.name}`);
+  if (ecrire) notes.push(await nolio('POST', 'library/note_frames/', { ...corps, category: id }));
 }
 
 // Les séances du coach : gardées (déplacées, renommées) ou archivées. Un nom porté par plusieurs séances : gardée, il
