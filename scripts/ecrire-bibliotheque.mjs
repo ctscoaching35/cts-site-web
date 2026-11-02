@@ -22,6 +22,9 @@ const ecrire = process.argv.includes('--ecrire');
 // Les séances déjà écrites ne sont réécrites qu'avec --mettre-a-jour : chaque appel compte dans le quota de
 // l'application Nolio, partagé avec le site (un passage les réécrivait toutes, 270 appels, et Nolio a freiné).
 const mettreAJour = process.argv.includes('--mettre-a-jour');
+// --filtre=texte : avec --mettre-a-jour, seules les séances dont le nom contient ce texte sont réécrites (et leurs
+// sous-dossiers remis en ordre).
+const filtre = process.argv.find((a) => a.startsWith('--filtre='))?.slice('--filtre='.length) ?? null;
 const chemin = process.argv.slice(2).find((a) => !a.startsWith('--'));
 if (!chemin) throw new Error('Le catalogue (JSON de cts_bibliotheque.catalogue) manque.');
 const catalogue = JSON.parse(readFileSync(chemin, 'utf8'));
@@ -131,8 +134,9 @@ for (const d of catalogue.dossiers) {
     for (const x of s.seances) {
       const deja = seances.find((y) => y.name === x.name && idDe(y.category) === id);
       if (deja) {
-        if (!mettreAJour) continue;
+        if (!mettreAJour || (filtre && !x.name.includes(filtre))) continue;
         journal.push(`mise à jour : ${d.nom} › ${s.nom} › ${x.name}`);
+        crees.add(id);
         // Nolio refuse une description en texte brut sur une séance qui en a déjà une (« plain text would erase its
         // formatting ») : la mise à jour l'envoie en HTML, un paragraphe.
         const { description, ...reste } = x;
@@ -280,7 +284,7 @@ for (const d of catalogue.dossiers) {
   const racine = dossiers.find((x) => x.name === d.nom && !idDe(x.parent));
   for (const s of d.sous) {
     const sous = racine && dossiers.find((x) => x.name === s.nom && idDe(x.parent) === racine.id);
-    if (!sous || !ecrire || (!mettreAJour && !crees.has(sous.id))) continue;
+    if (!sous || !ecrire || (!(mettreAJour && !filtre) && !crees.has(sous.id))) continue;
     const presents = [];
     for (const c of COLLECTIONS) presents.push(...(await tous(`library/${c}/?category=${sous.id}`)));
     const rang = new Map(s.seances.map((x, i) => [x.name, i]));
