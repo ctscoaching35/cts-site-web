@@ -141,7 +141,11 @@ for (const d of catalogue.dossiers) {
 
 // Les séances du coach : gardées (déplacées, renommées) ou archivées. Un nom porté par plusieurs séances : gardée, il
 // faut lever le doute à la main ; archivée, toutes partent.
-const archives = Object.values(catalogue.seances_du_coach).some((v) => v === catalogue.archives) ? await dossier(catalogue.archives) : null;
+// Le dossier d'archives, créé seulement s'il faut y ranger une séance ; le dossier à supprimer (catalogue.essais.vers), que
+// le coach vide lui-même : on n'en sort plus rien (le 02/11/2026, ses séances restées sans dossier y attendent).
+let archives = null;
+const versArchives = async () => (archives ??= await dossier(catalogue.archives));
+const aSupprimer = catalogue.essais?.vers ? dossiers.find((x) => x.name === catalogue.essais.vers && !idDe(x.parent)) : null;
 const parNom = (nom) => seances.filter((y) => y.name === nom);
 for (const [nom, sort] of Object.entries(catalogue.seances_du_coach)) {
   const lesquelles = parNom(nom);
@@ -151,10 +155,12 @@ for (const [nom, sort] of Object.entries(catalogue.seances_du_coach)) {
   }
   if (sort === catalogue.archives) {
     for (const y of lesquelles) {
-      if (idDe(y.category) === archives) continue;
+      if (aSupprimer && idDe(y.category) === aSupprimer.id) continue;
+      const vers = await versArchives();
+      if (idDe(y.category) === vers) continue;
       journal.push(`archivée : ${nom}`);
-      if (ecrire) await nolio('PATCH', `library/training_frames/${y.id}/`, { category: archives });
-      y.category = archives;
+      if (ecrire) await nolio('PATCH', `library/training_frames/${y.id}/`, { category: vers });
+      y.category = vers;
     }
     continue;
   }
@@ -223,10 +229,10 @@ if (catalogue.archiver_le_reste) {
     }
     return false;
   };
-  const vers = await dossier(catalogue.archives);
   for (const y of seances) {
     const cat = idDe(y.category);
     if (aLeurPlace.has(`${cat}|${y.name}`) || range(cat)) continue;
+    const vers = await versArchives();
     const ou = dossiers.find((x) => x.id === cat);
     const parent = ou && dossiers.find((x) => x.id === idDe(ou.parent));
     journal.push(`archivée (hors du moteur) : ${parent ? `${parent.name} › ` : ''}${ou ? ou.name : '(sans dossier)'} › ${y.name}`);
