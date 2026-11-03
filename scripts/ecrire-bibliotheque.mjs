@@ -8,7 +8,7 @@
  * dossier d'archives. Rien n'est jamais supprimé.
  *
  *   ./.venv/bin/python3 -c "import json, cts_bibliotheque as b; print(json.dumps(b.catalogue()))" > catalogue.json
- *   node scripts/ecrire-bibliotheque.mjs catalogue.json [--ecrire] [--mettre-a-jour]
+ *   node scripts/ecrire-bibliotheque.mjs catalogue.json [--ecrire] [--mettre-a-jour] [--filtre=texte] [--ordre] [--verifier]
  *
  * Sans --ecrire, rien ne part : il dit ce qu'il ferait. Relancé, il retrouve ce qui existe déjà (un dossier par son nom
  * et son parent, une séance du moteur par son nom dans son dossier) et le met à jour au lieu de le doubler. Lit la clé
@@ -60,6 +60,41 @@ const idDe = (x) => (x && typeof x === 'object' ? x.id : x) ?? null;
 
 const dossiers = await tous('library/categories/');
 const seances = await tous('library/training_frames/');
+
+// L'ordre d'un sous-dossier : celui du catalogue (de la plus facile à la plus exigeante, à la charge de la séance ;
+// décision coach du 03/11/2026), puis ce que le coach y a ajouté, dans leur ordre d'avant. Rend ce qui s'y trouve dans
+// l'ordre lu (champ order) et dans l'ordre voulu.
+const COLLECTIONS = ['training_frames', 'competition_frames', 'note_frames', 'message_trigger_frames', 'quiz_frames'];
+async function ordreDe(s, sous) {
+  const presents = [];
+  for (const c of COLLECTIONS) presents.push(...(await tous(`library/${c}/?category=${sous.id}`)));
+  const lu = [...presents].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const rang = new Map(s.seances.map((x, i) => [x.name, i]));
+  const voulu = [...lu].sort((a, b) => (rang.get(a.name) ?? 1e6) - (rang.get(b.name) ?? 1e6));
+  return { lu, voulu };
+}
+
+// L'ORDRE SEUL (--ordre) : chaque sous-dossier du catalogue remis dans son ordre, sans réécrire les séances (le quota) ;
+// sans --ecrire, la relecture : les sous-dossiers qui n'y sont pas.
+if (process.argv.includes('--ordre')) {
+  const aRanger = [];
+  let dansLOrdre = 0;
+  for (const d of catalogue.dossiers) {
+    const racine = dossiers.find((x) => x.name === d.nom && !idDe(x.parent));
+    for (const s of d.sous) {
+      const sous = racine && dossiers.find((x) => x.name === s.nom && idDe(x.parent) === racine.id);
+      if (!sous) { aRanger.push(`ABSENT : ${d.nom} › ${s.nom}`); continue; }
+      const { lu, voulu } = await ordreDe(s, sous);
+      if (lu.some((x) => typeof x.order !== 'number')) aRanger.push(`sans champ order : ${d.nom} › ${s.nom}`);
+      if (voulu.every((x, i) => x.id === lu[i].id)) { dansLOrdre += 1; continue; }
+      aRanger.push(`${ecrire ? 'rangé' : 'à ranger'} : ${d.nom} › ${s.nom} (${voulu.length})`);
+      if (ecrire) await nolio('POST', `library/categories/${sous.id}/frames/order/`, { ids: voulu.map((x) => x.id) });
+    }
+  }
+  console.log(aRanger.join('\n'));
+  console.log(`\n${dansLOrdre} sous-dossiers déjà dans l'ordre, ${aRanger.length} ${ecrire ? 'rangés' : 'à ranger (rien n’est parti : --ecrire pour les ranger)'}.`);
+  process.exit(0);
+}
 
 // LA VÉRIFICATION (--verifier ; rien n'est écrit) : chaque séance du catalogue relue dans Nolio, à sa place, comparée à
 // ce que le moteur a écrit : la description, puis chaque étape (intensité, durée ou distance, cibles, commentaire, lap).
@@ -278,17 +313,13 @@ for (const d of dossiers) {
   }
 }
 
-// L'ordre de chaque sous-dossier : celui du catalogue (par temps au seuil), puis ce que le coach y a ajouté.
-const COLLECTIONS = ['training_frames', 'competition_frames', 'note_frames', 'message_trigger_frames', 'quiz_frames'];
+// L'ordre de chaque sous-dossier où une séance a été créée ou réécrite (ordreDe).
 for (const d of catalogue.dossiers) {
   const racine = dossiers.find((x) => x.name === d.nom && !idDe(x.parent));
   for (const s of d.sous) {
     const sous = racine && dossiers.find((x) => x.name === s.nom && idDe(x.parent) === racine.id);
     if (!sous || !ecrire || (!(mettreAJour && !filtre) && !crees.has(sous.id))) continue;
-    const presents = [];
-    for (const c of COLLECTIONS) presents.push(...(await tous(`library/${c}/?category=${sous.id}`)));
-    const rang = new Map(s.seances.map((x, i) => [x.name, i]));
-    const ordre = [...presents].sort((a, b) => (rang.get(a.name) ?? 1e6) - (rang.get(b.name) ?? 1e6));
+    const { voulu: ordre } = await ordreDe(s, sous);
     await nolio('POST', `library/categories/${sous.id}/frames/order/`, { ids: ordre.map((x) => x.id) });
     journal.push(`ordre : ${d.nom} › ${s.nom} (${ordre.length})`);
   }
