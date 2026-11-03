@@ -152,7 +152,7 @@ if (process.argv.includes('--verifier')) {
 }
 
 const journal = [];
-// Les sous-dossiers où une séance a été créée : seuls ceux-là sont remis en ordre.
+// Les sous-dossiers où une séance a été créée ou déplacée : seuls ceux-là sont remis en ordre.
 const crees = new Set();
 
 // Un dossier par son nom et son parent ; créé s'il manque.
@@ -167,6 +167,28 @@ async function dossier(nom, parent = null) {
   const d = await nolio('POST', 'library/categories/', { name: nom, type: 'event', ...(parent ? { parent } : {}) });
   dossiers.push(d);
   return d.id;
+}
+
+// LES RENOMMÉES (catalogue.renommees ; la pente en tête du nom des séances en côte, décision coach du 03/11/2026) : une
+// séance du moteur renommée ou changée de sous-dossier garde son identité dans Nolio — renommée et déplacée sur place,
+// jamais recréée puis archivée. Avant les séances du moteur, qui la retrouvent sous son nouveau nom ; sans effet une fois
+// faite. --filtre en limite le lot (le nouveau nom contient l'un des textes).
+for (const r of catalogue.renommees ?? []) {
+  if (filtres && !filtres.some((f) => r.nom.includes(f))) continue;
+  const racine = dossiers.find((x) => x.name === r.dossier && !idDe(x.parent));
+  const avant = racine && dossiers.find((x) => x.name === r.sous_avant && idDe(x.parent) === racine.id);
+  const y = avant && seances.find((z) => z.name === r.nom_avant && idDe(z.category) === avant.id);
+  if (!y) continue;
+  const id = await dossier(r.sous, racine.id);
+  if (seances.some((z) => z.name === r.nom && idDe(z.category) === id)) {
+    journal.push(`renommage laissé (le nouveau nom existe déjà) : ${r.dossier} › ${r.sous} › ${r.nom}`);
+    continue;
+  }
+  journal.push(`renommée : ${r.dossier} › ${r.sous_avant} › ${r.nom_avant} → ${r.sous === r.sous_avant ? '' : `${r.sous} › `}${r.nom}`);
+  const deplacee = id !== avant.id;
+  if (ecrire) await nolio('PATCH', `library/training_frames/${y.id}/`, { name: r.nom, ...(deplacee ? { category: id } : {}) });
+  Object.assign(y, { name: r.nom, category: id });
+  if (deplacee) crees.add(id);
 }
 
 // Les dossiers et les séances du moteur.
