@@ -23,9 +23,12 @@ const ecrire = process.argv.includes('--ecrire');
 // Les séances déjà écrites ne sont réécrites qu'avec --mettre-a-jour : chaque appel compte dans le quota de
 // l'application Nolio, partagé avec le site (un passage les réécrivait toutes, 270 appels, et Nolio a freiné).
 const mettreAJour = process.argv.includes('--mettre-a-jour');
-// --filtre=texte : avec --mettre-a-jour, seules les séances dont le nom contient ce texte sont réécrites (et leurs
-// sous-dossiers remis en ordre).
+// --filtre=texte : avec --mettre-a-jour, seules les séances dont le nom contient ce texte sont réécrites ; plusieurs
+// textes séparés par « | » (les noms ont des virgules : « 20 × 0,4 km »). Une mise à jour garde le nom et le dossier,
+// donc l'ordre : --ordre le range à part (le 03/11/2026, Nolio a freiné après les relectures de la soirée, quota partagé
+// avec le site).
 const filtre = process.argv.find((a) => a.startsWith('--filtre='))?.slice('--filtre='.length) ?? null;
+const filtres = filtre ? filtre.split('|') : null;
 // --dossier=texte : avec --ordre, seuls les dossiers de premier niveau dont le nom contient ce texte (plusieurs : séparés
 // par des virgules) sont relus ou rangés ; les autres, que le coach a pu ranger à la main, ne bougent pas.
 const dossiersVises = process.argv.find((a) => a.startsWith('--dossier='))?.slice('--dossier='.length).split(',') ?? null;
@@ -174,9 +177,8 @@ for (const d of catalogue.dossiers) {
     for (const x of s.seances) {
       const deja = seances.find((y) => y.name === x.name && idDe(y.category) === id);
       if (deja) {
-        if (!mettreAJour || (filtre && !x.name.includes(filtre))) continue;
+        if (!mettreAJour || (filtres && !filtres.some((f) => x.name.includes(f)))) continue;
         journal.push(`mise à jour : ${d.nom} › ${s.nom} › ${x.name}`);
-        crees.add(id);
         // Nolio refuse une description en texte brut sur une séance qui en a déjà une (« plain text would erase its
         // formatting ») : la mise à jour l'envoie en HTML, un paragraphe.
         const { description, ...reste } = x;
