@@ -8,7 +8,8 @@
  * dossier d'archives. Rien n'est jamais supprimé.
  *
  *   ./.venv/bin/python3 -c "import json, cts_bibliotheque as b; print(json.dumps(b.catalogue()))" > catalogue.json
- *   node scripts/ecrire-bibliotheque.mjs catalogue.json [--ecrire] [--mettre-a-jour] [--filtre=texte] [--ordre] [--verifier]
+ *   node scripts/ecrire-bibliotheque.mjs catalogue.json [--ecrire] [--mettre-a-jour] [--filtre=texte] [--ordre]
+ *     [--dossier=texte] [--verifier]
  *
  * Sans --ecrire, rien ne part : il dit ce qu'il ferait. Relancé, il retrouve ce qui existe déjà (un dossier par son nom
  * et son parent, une séance du moteur par son nom dans son dossier) et le met à jour au lieu de le doubler. Lit la clé
@@ -25,6 +26,9 @@ const mettreAJour = process.argv.includes('--mettre-a-jour');
 // --filtre=texte : avec --mettre-a-jour, seules les séances dont le nom contient ce texte sont réécrites (et leurs
 // sous-dossiers remis en ordre).
 const filtre = process.argv.find((a) => a.startsWith('--filtre='))?.slice('--filtre='.length) ?? null;
+// --dossier=texte : avec --ordre, seuls les dossiers de premier niveau dont le nom contient ce texte (plusieurs : séparés
+// par des virgules) sont relus ou rangés ; les autres, que le coach a pu ranger à la main, ne bougent pas.
+const dossiersVises = process.argv.find((a) => a.startsWith('--dossier='))?.slice('--dossier='.length).split(',') ?? null;
 const chemin = process.argv.slice(2).find((a) => !a.startsWith('--'));
 if (!chemin) throw new Error('Le catalogue (JSON de cts_bibliotheque.catalogue) manque.');
 const catalogue = JSON.parse(readFileSync(chemin, 'utf8'));
@@ -80,6 +84,7 @@ if (process.argv.includes('--ordre')) {
   const aRanger = [];
   let dansLOrdre = 0;
   for (const d of catalogue.dossiers) {
+    if (dossiersVises && !dossiersVises.some((t) => d.nom.includes(t))) continue;
     const racine = dossiers.find((x) => x.name === d.nom && !idDe(x.parent));
     for (const s of d.sous) {
       const sous = racine && dossiers.find((x) => x.name === s.nom && idDe(x.parent) === racine.id);
