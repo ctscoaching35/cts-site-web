@@ -28,13 +28,16 @@ export async function changerProgrammation(athleteId: string, programmation: 'au
   revalidatePath('/app', 'layout');
 }
 
-// « Réglé » sur un point d'« À regarder » (décision coach du 24/10/2026) : ce point-là ne revient jamais ; un nouveau
-// point du même genre s'affiche (espaceCoach.ARegarder.cle).
-export async function marquerRegle(cle: string): Promise<void> {
+// « Réglé » sur la carte d'un coaché dans « À regarder » (décision coach du 24/10/2026 ; une carte par coaché, décision
+// coach du 04/11/2026) : ses points-là ne reviennent jamais ; un nouveau point du même genre s'affiche
+// (espaceCoach.ARegarder.cle). Un seul point aussi (« À venir »).
+export async function marquerRegle(cles: string | string[]): Promise<void> {
   const coach = await coachConnecte();
-  if (!coach || !cle) return;
-  const { error } = await clientService().from('a_regarder_regles').upsert({ coach_id: coach.compteId, cle: cle.slice(0, 500) });
-  if (error) console.error(`Point réglé ${cle} :`, error.message);
+  const liste = (Array.isArray(cles) ? cles : [cles]).filter((c) => typeof c === 'string' && c).slice(0, 50);
+  if (!coach || !liste.length) return;
+  const { error } = await clientService().from('a_regarder_regles')
+    .upsert(liste.map((cle) => ({ coach_id: coach.compteId, cle: cle.slice(0, 500) })));
+  if (error) console.error(`Points réglés ${liste.join(', ')} :`, error.message);
   revalidatePath('/app/coach', 'layout');
 }
 
@@ -294,41 +297,4 @@ export async function enregistrerTestVc(athleteId: string, _e: EtatCoach, form: 
   const soucis = o ? await zonesVersNolio(o, { vc_ms, d_prime_m }) : dernier ? [] : await zonesDeLaFicheVersNolio(athleteId);
   const { allure } = await import('./zones');
   return { ok: true, message: `C’est enregistré : vitesse critique à ${allure(vc_ms)}/km. Ses prochaines semaines et ses zones la prennent en repère.${soucis.length ? ` Zones Nolio : ${soucis.join(' ; ')}.` : ''}` };
-}
-
-// Le mode de l'athlète (décision coach du 23/10/2026) : « Passer en coaching » (depuis un plan acheté ou sa fiche en mode
-// plan) et « Passer en plan » (depuis sa fiche), après la semaine en cours (lib/app/modes.ts).
-export type EtatMode = { ok: boolean; message: string; athleteId?: string } | null;
-const enPhrases = (soucis: string[]) => (soucis.length ? ` Dans Nolio, à faire à la main : ${soucis.join(' ; ')}.` : '');
-
-export async function basculerEnCoaching(source: { planId: string } | { athleteId: string }, _e: EtatMode): Promise<EtatMode> {
-  const coach = await coachConnecte();
-  if (!coach) return { ok: false, message: 'Ta session a expiré : reconnecte-toi.' };
-  const { passerEnCoaching } = await import('./modes');
-  try {
-    const { athleteId, soucis } = await passerEnCoaching(coach.compteId, source);
-    revalidatePath('/app/coach');
-    revalidatePath('/app/coach/chiffres');
-    revalidatePath(`/app/coach/athlete/${athleteId}`);
-    return { ok: true, athleteId, message: `C’est fait : mode coaching. Son plan acheté ne s’écrit plus après cette semaine et sa sortie de l’équipe est annulée ; crée son objectif depuis sa fiche.${enPhrases(soucis)}` };
-  } catch (e) {
-    console.error('Passer en coaching :', e instanceof Error ? e.message : e);
-    return { ok: false, message: e instanceof Error && e.message.startsWith('C’est') ? e.message : 'Le passage n’a pas abouti : réessaie dans un moment.' };
-  }
-}
-
-export async function basculerEnPlan(athleteId: string, _e: EtatMode): Promise<EtatMode> {
-  const coach = await coachConnecte();
-  if (!coach) return { ok: false, message: 'Ta session a expiré : reconnecte-toi.' };
-  const { passerEnPlan } = await import('./modes');
-  try {
-    const soucis = await passerEnPlan(coach.compteId, athleteId);
-    revalidatePath('/app/coach');
-    revalidatePath('/app/coach/chiffres');
-    revalidatePath(`/app/coach/athlete/${athleteId}`);
-    return { ok: true, athleteId, message: `C’est fait : mode plan. Son coaching s’arrête après cette semaine ; un plan qu’il a acheté démarre lundi.${enPhrases(soucis)}` };
-  } catch (e) {
-    console.error('Passer en plan :', e instanceof Error ? e.message : e);
-    return { ok: false, message: e instanceof Error && e.message.startsWith('C’est') ? e.message : 'Le passage n’a pas abouti : réessaie dans un moment.' };
-  }
 }

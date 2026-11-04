@@ -6,15 +6,16 @@ import { demonstrationCoachOuverte, jourSimuleEnClair, MOMENTS } from '@/lib/app
 
 // Le cadre de l'espace coach (maquettes validées par le coach le 19/10/2026, puis le 24/10/2026 ; la refonte par exception,
 // EC1, décision coach du 04/11/2026) : un menu à gauche sur ordinateur, au-dessus du contenu sur téléphone. Quatre
-// entrées : Cette semaine (l'accueil, qui réunit « À regarder » et les signaux du Suivi), Dimanche (une seule vue, EC4),
-// Chiffres, Mes athlètes (l'ancien Tableau de bord ; le Suivi des 7 jours est sur la fiche de chaque athlète). Plus de
-// Bibliothèque (décision coach du 20/10/2026 : « ça ne m'apporte rien ») ni de lien « Voir l'app d'un athlète » : chaque
-// version se voit par son propre compte (coach, coaché, acheteur).
+// entrées : Cette semaine (l'accueil, qui réunit « À regarder » et les signaux du soir), Dimanche (une seule vue, EC4),
+// Chiffres, Mes athlètes (l'ancien Tableau de bord ; les 7 jours de chacun sont sur sa fiche, le Suivi des 7 jours est
+// supprimé, décision coach du 04/11/2026). Plus de Bibliothèque (décision coach du 20/10/2026 : « ça ne m'apporte
+// rien ») ni de lien « Voir l'app d'un athlète » : chaque version se voit par son propre compte (coach, coaché, acheteur).
 export type RubriqueCoach = 'semaine' | 'dimanche' | 'chiffres' | 'athletes';
 
-// aRegarder : le nombre de lignes « À regarder » de Cette semaine.
-export default function CadreCoach({ actif, aRegarder = 0, coach, children }: {
-  actif: RubriqueCoach; aRegarder?: number; coach?: string; children: React.ReactNode;
+// aRegarder : le nombre de coachés « À regarder » de Cette semaine (une carte chacun), le même sur chaque page qui le
+// donne. Plus de nom du coach ni de « Nolio relié » en bas du menu (décision coach du 04/11/2026).
+export default function CadreCoach({ actif, aRegarder = 0, children }: {
+  actif: RubriqueCoach; aRegarder?: number; children: React.ReactNode;
 }) {
   const liens: [RubriqueCoach, string, string][] = [
     ['semaine', 'Cette semaine', '/app/coach'],
@@ -48,10 +49,6 @@ export default function CadreCoach({ actif, aRegarder = 0, coach, children }: {
         </nav>
         {/* Changer de compte : coach, coaché ou acheteur, chacun voit sa version par son compte. */}
         <div className="-mt-3"><Deconnexion menu /></div>
-        <div className="hidden lg:flex mt-auto p-3 rounded-xl bg-white/[0.06] flex-col gap-1">
-          {coach && <span className="text-xs font-bold">{coach}</span>}
-          <span className="text-[0.6875rem] text-[#B9B8CC]">Nolio relié par la clé de l’API</span>
-        </div>
       </aside>
       <main className="flex-[999_1_560px] min-w-0 px-4 py-5 sm:px-8 sm:py-8">
         <div className="max-w-5xl space-y-6">{children}</div>

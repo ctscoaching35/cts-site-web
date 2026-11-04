@@ -4,9 +4,11 @@ import { Carte, Surtitre } from './Ui';
 
 // « Son entrée » (décision coach du 22/10/2026) : en tête de sa fiche tant qu'elle n'est pas complète, les étapes dans
 // l'ordre, cochées d'elles-mêmes (lib/app/entree.ts), chacune avec son geste ; le rappel de ses anciennes séries.
-export default function CarteEntree({ entree }: { entree: Entree }) {
+// accordRecu : « Accord reçu », le geste de son accord de lecture (il vivait dans le Suivi des 7 jours, supprimé le
+// 04/11/2026) ; sans compte Nolio associé, pas encore.
+export default function CarteEntree({ entree, accordRecu }: { entree: Entree; accordRecu?: () => Promise<void> }) {
   return (
-    <Carte className="!p-5 space-y-3">
+    <Carte id="son-entree" className="!p-5 space-y-3 scroll-mt-6">
       <div className="flex justify-between items-baseline gap-3">
         <Surtitre>Son entrée</Surtitre>
         <span className="text-[0.8125rem] font-bold text-[#7A520D]">{entree.faites}/{entree.total}</span>
@@ -27,7 +29,13 @@ export default function CarteEntree({ entree }: { entree: Entree }) {
               </span>
               {e.detail && <span className="block mt-0.5 text-[0.8125rem] text-[#4A4866] leading-relaxed">{e.detail}</span>}
             </span>
-            {e.action && (
+            {e.cle === 'accord' && !e.fait && accordRecu ? (
+              <form action={accordRecu}>
+                <button type="submit" className="inline-flex items-center min-h-10 px-3 rounded-[10px] border border-teal text-teal text-[0.8125rem] font-bold whitespace-nowrap">
+                  Accord reçu
+                </button>
+              </form>
+            ) : e.action && (
               <Link href={e.action.href} className="inline-flex items-center min-h-10 px-3 rounded-[10px] border border-teal text-teal text-[0.8125rem] font-bold whitespace-nowrap">
                 {e.action.texte}
               </Link>

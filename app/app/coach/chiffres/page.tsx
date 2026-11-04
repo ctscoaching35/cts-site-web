@@ -2,7 +2,6 @@ import Link from 'next/link';
 import clsx from 'clsx';
 import { notFound } from 'next/navigation';
 import CadreCoach from '@/components/app/CadreCoach';
-import { PasserEnCoaching } from '@/components/app/GestesMode';
 import { chiffresParSemaine } from '@/lib/app/mesure';
 import { acheteursDesPlans } from '@/lib/app/acheteurs';
 import { chiffresDuCoaching, type ChiffresCoaching } from '@/lib/app/chiffresCoaching';
@@ -15,10 +14,11 @@ import { espaceCoachOuvert } from '@/lib/app/supabase';
 // Toujours calculée à la visite : la page lit la session du coach.
 export const dynamic = 'force-dynamic';
 
-// « Chiffres » (maquette validée par le coach le 24/10/2026) : deux onglets. Le coaching individualisé : ses coachés,
-// leurs objectifs en route, et semaine par semaine ce que le moteur a écrit et ajusté, les Hooper reçus. Les plans : le
-// tunnel de la vente (CTS_LANCEMENT_CADRAGE.md dans le dépôt du moteur, L4), semaine par semaine sur 12 semaines, et les
-// acheteurs. Les visites du site et leur provenance : Vercel › Analytics.
+// « Chiffres » (maquette validée par le coach le 24/10/2026 ; décisions coach du 04/11/2026) : deux onglets. Le coaching
+// individualisé : en tête un seul chiffre, la part des semaines envoyées qu'il n'a pas retouchées dans Nolio (4 dernières
+// semaines, et sa tendance), puis ses retouches par semaine et par famille. Les plans : le tunnel de la vente
+// (CTS_LANCEMENT_CADRAGE.md dans le dépôt du moteur, L4), semaine par semaine sur 12 semaines, et les acheteurs. Les
+// visites du site et leur provenance : Vercel › Analytics.
 const COLONNES: [string, string][] = [
   ['offre', 'Page des plans'], ['questionnaire', 'Questionnaires'], ['recap', 'Récapitulatifs'],
   ['paiement', 'Paiements lancés'], ['achats', 'Achats'], ['euros', 'Encaissé'], ['rappels', 'Rappels demandés'],
@@ -45,6 +45,7 @@ const STATUT_NOLIO: Record<string, string> = {
   actif: 'Dans l’équipe Nolio', refuse: 'Invitation sans suite', sorti: 'Sorti de Nolio',
   coaching: 'son plan ne s’écrit pas',
 };
+const pourcent = (x: number) => `${Math.round(100 * x)} %`;
 
 export default async function Chiffres({ searchParams }: { searchParams: Promise<{ partie?: string }> }) {
   if (!espaceCoachOuvert()) notFound();
@@ -76,54 +77,47 @@ export default async function Chiffres({ searchParams }: { searchParams: Promise
 // Le coaching individualisé : rien de Nolio, tout de la base.
 async function PartieCoaching({ coachId }: { coachId: string }) {
   const c = await chiffresDuCoaching(coachId);
-  const [derniere] = c.semaines;
-  const quatre = c.semaines.slice(0, 4);
-  const compteurs: [number, string][] = [
-    [c.coaches, `athlète${c.coaches > 1 ? 's' : ''} coaché${c.coaches > 1 ? 's' : ''}${c.aLaMain ? `, dont ${c.aLaMain} à la main` : ''}`],
-    [c.enRoute, `objectif${c.enRoute > 1 ? 's' : ''} en route dans Nolio`],
-    [quatre.reduce((t, s) => t + s.ecrites, 0), 'semaines écrites par le moteur, 4 dernières semaines'],
-    [quatre.reduce((t, s) => t + s.ajustements, 0), 'ajustements du moteur, 4 dernières semaines'],
-  ];
   return (
     <>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-3">
-        {compteurs.map(([n, texte]) => (
-          <div key={texte} className="bg-white rounded-[14px] border border-indigo/[0.08] p-4">
-            <div className="text-[1.75rem] font-extrabold">{n}</div>
-            <div className="text-[0.78rem] text-[#5E5C78]">{texte}</div>
-          </div>
-        ))}
-      </div>
-      <section className="bg-white rounded-2xl border border-indigo/[0.08] p-5 space-y-2">
-        <h2 className="text-[0.6875rem] font-bold tracking-[0.14em] uppercase text-teal">Semaine par semaine</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[560px] text-sm">
-            <thead>
-              <tr className="text-left text-[0.6875rem] uppercase tracking-[0.08em] text-[#5E5C78]">
-                <th className="py-2.5 pr-3 font-bold">Semaine du</th><th className="py-2.5 px-3 text-right font-bold">Semaines écrites</th>
-                <th className="py-2.5 px-3 text-right font-bold">Ajustements</th><th className="py-2.5 pl-3 text-right font-bold">Hooper reçus</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-indigo/[0.06]">
-              {c.semaines.map((s) => (
-                <tr key={s.lundi}>
-                  <td className="py-3 pr-3 font-semibold whitespace-nowrap">{date(s.lundi)}{s === derniere ? ' (en cours)' : ''}</td>
-                  <td className="py-3 px-3 text-right tabular-nums">{s.ecrites}</td>
-                  <td className="py-3 px-3 text-right tabular-nums">{s.ajustements}</td>
-                  <td className="py-3 pl-3 text-right tabular-nums">{s === derniere ? '—' : s.resumees ? `${s.hooper} / ${s.resumees}` : '0'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <p className="text-[0.8125rem] text-[#5E5C78]">
-          Hooper reçus : sur les semaines résumées de tes coachés (accord de lecture donné). La semaine en cours se résume
-          dimanche.
-        </p>
-      </section>
-      <Retouches r={c.retouches} enCours={derniere.lundi} />
+      <SansRetouche c={c.sansRetouche} />
+      <Retouches r={c.retouches} enCours={c.lundi} />
       <Corrections coachId={coachId} />
     </>
+  );
+}
+
+// Le chiffre de tête : la part des semaines envoyées qu'il n'a pas retouchées dans Nolio, sur les 4 dernières semaines
+// finies, et sa tendance contre les 4 d'avant ; elle doit monter au fil des dimanches.
+function SansRetouche({ c }: { c: ChiffresCoaching['sansRetouche'] }) {
+  const d = c?.dernieres;
+  const avant = c?.avant;
+  const ecart = d?.part !== null && d?.part !== undefined && avant?.part !== null && avant?.part !== undefined ? Math.round(100 * (d.part - avant.part)) : null;
+  return (
+    <section className="bg-white rounded-2xl border border-indigo/[0.08] p-5 space-y-2">
+      <h2 className="text-[0.6875rem] font-bold tracking-[0.14em] uppercase text-teal">Semaines envoyées sans retouche</h2>
+      {!d?.semaines ? (
+        <p className="text-sm text-[#5E5C78]">Rien encore : elles se comptent chaque nuit, sur les semaines écrites par le moteur et envoyées dans Nolio.</p>
+      ) : (
+        <>
+          <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+            <span className="text-[2.5rem] leading-none font-extrabold tabular-nums">{pourcent(d.part as number)}</span>
+            {ecart !== null ? (
+              <span className={clsx('text-sm font-bold', ecart > 0 ? 'text-teal' : ecart < 0 ? 'text-[#8A3326]' : 'text-[#5E5C78]')}>
+                {ecart > 0 ? '↑' : ecart < 0 ? '↓' : '='} {ecart > 0 ? '+' : ecart < 0 ? '−' : ''}{Math.abs(ecart)} point{Math.abs(ecart) > 1 ? 's' : ''}
+                <span className="font-normal text-[#5E5C78]"> contre {pourcent(avant?.part as number)} les 4 semaines d’avant</span>
+              </span>
+            ) : <span className="text-sm text-[#5E5C78]">pas encore de quoi comparer aux 4 semaines d’avant</span>}
+          </div>
+          <p className="text-sm text-[#3B3957]">
+            {d.intactes} semaine{d.intactes > 1 ? 's' : ''} sur {d.semaines} envoyée{d.semaines > 1 ? 's' : ''} ces 4 dernières semaines, sans rien
+            modifié, supprimé ni ajouté dans Nolio. Elle doit monter au fil des dimanches.
+          </p>
+          <p className="text-[0.8125rem] text-[#5E5C78]">
+            Une semaine par athlète et par objectif ; les 4 semaines finies avant celle en cours, qui peut encore se retoucher.
+          </p>
+        </>
+      )}
+    </section>
   );
 }
 
@@ -172,17 +166,18 @@ function Retouches({ r, enCours }: { r: ChiffresCoaching['retouches']; enCours: 
       ) : (
         <>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[620px] text-sm">
+            <table className="w-full min-w-[720px] text-sm">
               <thead>
                 <tr className="text-left text-[0.6875rem] uppercase tracking-[0.08em] text-[#5E5C78]">
-                  <th className="py-2.5 pr-3 font-bold">Semaine du</th><th className={th}>Envoyées</th><th className={th}>Modifiées</th>
-                  <th className={th}>Supprimées</th><th className={th}>Part retouchée</th><th className={clsx(th, 'pr-0')}>Ajoutées</th>
+                  <th className="py-2.5 pr-3 font-bold">Semaine du</th><th className={th}>Semaines sans retouche</th><th className={th}>Séances envoyées</th>
+                  <th className={th}>Modifiées</th><th className={th}>Supprimées</th><th className={th}>Part retouchée</th><th className={clsx(th, 'pr-0')}>Ajoutées</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-indigo/[0.06]">
                 {r.semaines.map((s) => (
                   <tr key={s.lundi}>
                     <td className="py-3 pr-3 font-semibold whitespace-nowrap">{date(s.lundi)}{s.lundi === enCours ? ' (en cours)' : ''}</td>
+                    <td className={td}>{s.semaines ? `${s.intactes} / ${s.semaines}` : '—'}</td>
                     <td className={td}>{s.envoyees}</td><td className={td}>{s.modifiees}</td><td className={td}>{s.supprimees}</td>
                     <td className={clsx(td, 'font-bold')}>{part(s.modifiees + s.supprimees, s.envoyees)}</td>
                     <td className={clsx(td, 'pr-0')}>{s.ajoutees}</td>
@@ -215,7 +210,8 @@ function Retouches({ r, enCours }: { r: ChiffresCoaching['retouches']; enCours: 
         </>
       )}
       <p className="text-[0.8125rem] text-[#5E5C78]">
-        Comptées chaque nuit sur la semaine en cours et la précédente. Modifiée : son contenu changé dans Nolio (un
+        Comptées chaque nuit sur la semaine en cours et la précédente. Semaines sans retouche : les semaines envoyées où
+        rien n’a été modifié, supprimé ni ajouté. Modifiée : son contenu changé dans Nolio (un
         changement de jour ne compte pas). Ajoutées : les séances de course que tu as posées dans une semaine écrite par
         le moteur. Durée des modifiées : leur durée dans Nolio par rapport à la durée prévue (−15 % : tu les raccourcis).
       </p>
@@ -318,7 +314,6 @@ async function PartiePlans() {
               <li key={a.id} className="flex flex-wrap justify-between gap-x-3 gap-y-1 py-2 text-sm">
                 <span className="text-indigo"><strong>{a.nom}</strong> · {a.course}{a.date ? `, le ${date(a.date)}` : ''}</span>
                 <span className="text-indigo/70">
-                  {a.statut === 'coaching' ? 'Mode : Coaching' : 'Mode : Plan'}{' · '}
                   {STATUT_NOLIO[a.statut ?? ''] ?? 'Nolio'}{a.statut === 'actif' ? (a.demarre ? `, démarré le ${date(a.demarre)}` : ', pas encore démarré') : ''}
                   {' · '}{a.accord ? 'accord donné' : 'sans accord'}
                 </span>
@@ -328,10 +323,6 @@ async function PartiePlans() {
                   <Link href={`/app/coach/nouveau?modifier=${a.id}`} className="basis-full inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">
                     Modifier l’objectif ›
                   </Link>
-                )}
-                {/* Passer en coaching (décision coach du 23/10/2026) : une fois dans l'équipe. */}
-                {a.usr && a.statut !== 'coaching' && a.date >= jour && (
-                  <span className="basis-full"><PasserEnCoaching planId={a.id} nom={a.nom.split(' ')[0]} /></span>
                 )}
               </li>
             ))}

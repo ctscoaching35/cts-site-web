@@ -9,6 +9,8 @@ import { dose, enClair, FAMILLE, reponsesDuSamedi } from '@/lib/app/journalEnCla
 import PourquoiSemaine from '@/components/app/PourquoiSemaine';
 import { exigerCoach } from '@/lib/app/nolio';
 import { dateLongue, jourMois } from '@/lib/app/plan';
+import { enHeures } from '@/lib/app/tableau';
+import type { Realise } from '@/lib/app/ecriture';
 import { espaceCoachOuvert } from '@/lib/app/supabase';
 import { CorrigerSemaine } from '@/components/app/GestesEcriture';
 import { choixDeLaSemaine, CORRECTIONS_ACTIVES } from '@/lib/app/corrections';
@@ -18,7 +20,21 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 // L'aperçu du dimanche (lib/app/ecriture.apercuDuDimanche) : ce que le passage du dimanche ferait maintenant de cet
-// objectif ; rien n'est envoyé.
+// objectif ; rien n'est envoyé. Par exception (décisions coach du 04/11/2026) : « Ce que le moteur change » en premier,
+// avec la note « Ta semaine », puis la semaine ; « Pourquoi cette semaine » et « Ce qu'il a lu » repliés. La semaine
+// écoulée se dit une fois, dans « Ce qu'il a lu », en charge tenue (la mesure de « Mes athlètes ») : le moteur la disait
+// aussi dans son pourquoi, en charge faite.
+
+// La semaine écoulée en une phrase : séances, charge tenue, séances clés, sortie longue.
+function semaineEcoulee(r: Realise): string {
+  const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`;
+  return [
+    `${pluriel(r.seances_faites, 'séance')} faite${r.seances_faites > 1 ? 's' : ''} sur ${r.seances_prevues}`,
+    r.charge_prevue ? `charge tenue : ${Math.round((100 * r.charge_tenue) / r.charge_prevue)} % de la prévue` : null,
+    r.cles_prevues ? `${pluriel(r.cles_reussies, 'séance')} clé${r.cles_reussies > 1 ? 's' : ''} réussie${r.cles_reussies > 1 ? 's' : ''} au bon effort sur ${r.cles_prevues}` : null,
+    r.sl_prevue_min ? `sortie longue ${r.sl_faite_min ? `de ${enHeures(r.sl_faite_min)}` : 'pas faite'} pour ${enHeures(r.sl_prevue_min)} prévue` : null,
+  ].filter(Boolean).join(' ; ');
+}
 export default async function ApercuDimanche({ params }: { params: Promise<{ id: string }> }) {
   if (!espaceCoachOuvert()) notFound();
   const coach = await exigerCoach();
@@ -61,6 +77,20 @@ export default async function ApercuDimanche({ params }: { params: Promise<{ id:
       {a && !sortie && <Carte className="!p-5"><p className="text-sm font-semibold">{a.quoi}</p></Carte>}
       {sortie && (
         <>
+          <Carte className="!p-5 space-y-2">
+            <Surtitre>Ce que le moteur change</Surtitre>
+            {sortie.journal.length ? (
+              <ul className="space-y-1.5 text-sm leading-relaxed text-[#3B3957] list-disc pl-5">
+                {sortie.journal.flatMap((e, i) => enClair(e, seancesSemaine).map((t, k) => <li key={`${i}-${k}`}>{t}</li>))}
+              </ul>
+            ) : <p className="text-sm text-[#3B3957]">Rien : la semaine suit le plan.</p>}
+            {textes.length > 0 && (
+              <div className="pt-2">
+                <p className="text-[0.8125rem] font-bold">La note « Ta semaine » qu’il lira</p>
+                <p className="mt-1 text-sm leading-relaxed text-[#3B3957] whitespace-pre-line">{textes.join(' ')}</p>
+              </div>
+            )}
+          </Carte>
           <Carte className="!p-5 space-y-3">
             <Surtitre>{a?.quoi === 'Semaine' ? 'La semaine qui partira' : a?.quoi}</Surtitre>
             <BanniereSemaine semaine={sortie.semaine} course={o.plan.fond ? prochain?.course_date : o.plan.course.date}
@@ -90,61 +120,50 @@ export default async function ApercuDimanche({ params }: { params: Promise<{ id:
             </Carte>
           )}
           {sortie.pourquoi && <PourquoiSemaine pourquoi={sortie.pourquoi} />}
-          <Carte className="!p-5 space-y-2">
-            <Surtitre>Ce que le moteur change</Surtitre>
-            {sortie.journal.length ? (
-              <ul className="space-y-1.5 text-sm leading-relaxed text-[#3B3957] list-disc pl-5">
-                {sortie.journal.flatMap((e, i) => enClair(e, seancesSemaine).map((t, k) => <li key={`${i}-${k}`}>{t}</li>))}
-              </ul>
-            ) : <p className="text-sm text-[#3B3957]">Rien : la semaine suit le plan.</p>}
-            {textes.length > 0 && (
-              <div className="pt-2">
-                <p className="text-[0.8125rem] font-bold">La note « Ta semaine » qu’il lira</p>
-                <p className="mt-1 text-sm leading-relaxed text-[#3B3957] whitespace-pre-line">{textes.join(' ')}</p>
-              </div>
-            )}
-          </Carte>
-          <Carte className="!p-5 space-y-2">
-            <Surtitre>Ce qu’il a lu</Surtitre>
-            {a?.retours && <p className="text-sm text-[#3B3957]">{reponsesDuSamedi(a.retours.questionnaire)}</p>}
-            {r && (
-              <p className="text-sm text-[#3B3957]">
-                Semaine écoulée : {r.seances_faites} séance{r.seances_faites > 1 ? 's' : ''} faite{r.seances_faites > 1 ? 's' : ''} sur {r.seances_prevues}
-                {r.charge_prevue ? `, ${Math.round((100 * r.charge_tenue) / r.charge_prevue)} % de la charge prévue` : ''}
-                {r.rpe_lu ? '' : ' (sans RPE lu : la charge faite compte le RPE prévu)'}.
-              </p>
-            )}
-            {lues === undefined ? (
-              <p className="text-sm text-[#3B3957]">{a?.retours === null ? 'Première semaine : rien n’est lu.' : 'Ses séances de qualité n’ont pas pu être lues : la marche suit le plan.'}</p>
-            ) : lues.length === 0 ? (
-              <p className="text-sm text-[#3B3957]">Aucune séance de qualité faite sur les 4 dernières semaines.</p>
-            ) : (
-              <>
-                <p className="text-[0.8125rem] text-[#5E5C78]">Ses séances de qualité faites des 4 dernières semaines, classées par leur structure. La dernière de chaque famille, quand c’est la tienne, fixe la marche.</p>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-left text-[0.72rem] uppercase tracking-[0.08em] text-[#5E5C78]">
-                        <th className="py-1.5 pr-3 font-bold">Date</th><th className="py-1.5 pr-3 font-bold">Famille</th>
-                        <th className="py-1.5 pr-3 font-bold">Qualité</th><th className="py-1.5 pr-3 font-bold">RPE</th><th className="py-1.5 font-bold">Écrite par</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-indigo/10">
-                      {[...lues].sort((x, y) => y.date.localeCompare(x.date)).map((l, i) => (
-                        <tr key={`${l.date}-${i}`}>
-                          <td className="py-1.5 pr-3 whitespace-nowrap">{jourMois(l.date)}</td>
-                          <td className="py-1.5 pr-3">{FAMILLE[l.famille]}</td>
-                          <td className="py-1.5 pr-3 whitespace-nowrap">{dose(l)}</td>
-                          <td className="py-1.5 pr-3 whitespace-nowrap">{l.rpe ?? '—'} pour {l.rpe_prevu ?? '—'}</td>
-                          <td className="py-1.5">{l.moteur ? 'le moteur' : 'toi'}</td>
+          <details className="group bg-white rounded-2xl border border-indigo/[0.08] p-5">
+            <summary className="cursor-pointer list-none min-h-8 flex items-center justify-between gap-3">
+              <Surtitre as="div">Ce qu’il a lu</Surtitre>
+              <span className="text-xs text-[#5E5C78]">Ouvrir <span aria-hidden className="inline-block group-open:rotate-90">›</span></span>
+            </summary>
+            <div className="mt-3 space-y-2">
+              {a?.retours && <p className="text-sm text-[#3B3957]">{reponsesDuSamedi(a.retours.questionnaire)}</p>}
+              {r && (
+                <p className="text-sm text-[#3B3957]">
+                  Semaine écoulée : {semaineEcoulee(r)}{r.rpe_lu ? '' : ' (sans RPE lu : la charge compte le RPE prévu)'}.
+                </p>
+              )}
+              {lues === undefined ? (
+                <p className="text-sm text-[#3B3957]">{a?.retours === null ? 'Première semaine : rien n’est lu.' : 'Ses séances de qualité n’ont pas pu être lues : la marche suit le plan.'}</p>
+              ) : lues.length === 0 ? (
+                <p className="text-sm text-[#3B3957]">Aucune séance de qualité faite sur les 4 dernières semaines.</p>
+              ) : (
+                <>
+                  <p className="text-[0.8125rem] text-[#5E5C78]">Ses séances de qualité faites des 4 dernières semaines, classées par leur structure. La dernière de chaque famille, quand c’est la tienne, fixe la marche.</p>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-[0.72rem] uppercase tracking-[0.08em] text-[#5E5C78]">
+                          <th className="py-1.5 pr-3 font-bold">Date</th><th className="py-1.5 pr-3 font-bold">Famille</th>
+                          <th className="py-1.5 pr-3 font-bold">Qualité</th><th className="py-1.5 pr-3 font-bold">RPE</th><th className="py-1.5 font-bold">Écrite par</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
-          </Carte>
+                      </thead>
+                      <tbody className="divide-y divide-indigo/10">
+                        {[...lues].sort((x, y) => y.date.localeCompare(x.date)).map((l, i) => (
+                          <tr key={`${l.date}-${i}`}>
+                            <td className="py-1.5 pr-3 whitespace-nowrap">{jourMois(l.date)}</td>
+                            <td className="py-1.5 pr-3">{FAMILLE[l.famille]}</td>
+                            <td className="py-1.5 pr-3 whitespace-nowrap">{dose(l)}</td>
+                            <td className="py-1.5 pr-3 whitespace-nowrap">{l.rpe ?? '—'} pour {l.rpe_prevu ?? '—'}</td>
+                            <td className="py-1.5">{l.moteur ? 'le moteur' : 'toi'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </div>
+          </details>
         </>
       )}
     </CadreCoach>

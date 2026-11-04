@@ -2,6 +2,7 @@ import Link from 'next/link';
 import clsx from 'clsx';
 import { Carte, Surtitre } from './Ui';
 import type { LigneAthlete } from '@/lib/app/espaceCoach';
+import type { SignalAthlete } from '@/lib/app/cetteSemaine';
 import { jMoins } from '@/lib/app/plan';
 
 // Les pastilles et le signal de chaque ligne (maquette validée par le coach le 24/10/2026).
@@ -16,21 +17,21 @@ const dateCourte = (iso: string, jour: string) => new Intl.DateTimeFormat('fr-FR
   day: 'numeric', month: 'short', ...(iso.slice(0, 4) !== jour.slice(0, 4) ? { year: 'numeric' } : {}), timeZone: 'UTC',
 }).format(new Date(`${iso}T12:00:00Z`));
 
-// Les filtres du tableau : en route (démarré dans Nolio), à démarrer (écrit, pas encore parti), sans objectif à venir,
-// en mode plan.
-export type Filtre = 'tous' | 'route' | 'demarrer' | 'sans' | 'plan';
-const FILTRES: [Filtre, string][] = [['tous', 'Tous'], ['route', 'En route'], ['demarrer', 'À démarrer'], ['sans', 'Sans objectif'], ['plan', 'Mode plan']];
+// Les filtres du tableau : en route (démarré dans Nolio), à démarrer (écrit, pas encore parti), sans objectif à venir.
+// Plus de « Mode plan » (décision coach du 04/11/2026 : le mode est retiré de l'interface).
+export type Filtre = 'tous' | 'route' | 'demarrer' | 'sans';
+const FILTRES: [Filtre, string][] = [['tous', 'Tous'], ['route', 'En route'], ['demarrer', 'À démarrer'], ['sans', 'Sans objectif']];
 export const filtreDe = (demande?: string): Filtre => FILTRES.find(([cle]) => cle === demande)?.[0] ?? 'tous';
 function categorie(a: LigneAthlete, jour: string): Exclude<Filtre, 'tous'> {
-  if (a.mode === 'plan') return 'plan';
   const o = a.objectif;
   if (!o || o.course_date < jour) return 'sans';
   return o.demarre ? 'route' : 'demarrer';
 }
 
-// « Tes athlètes » du tableau de bord : les filtres (un lien chacun, ?filtre=), puis une ligne par athlète.
-export default function TableauAthletes({ athletes, jour, filtre, base = '/app/coach/mes-athletes' }: {
-  athletes: LigneAthlete[]; jour: string; filtre: Filtre; base?: string;
+// « Tes athlètes » du tableau de bord : les filtres (un lien chacun, ?filtre=), puis une ligne par athlète ; signalDe, le
+// signal de chacun sur « Cette semaine ».
+export default function TableauAthletes({ athletes, signalDe, jour, filtre, base = '/app/coach/mes-athletes' }: {
+  athletes: LigneAthlete[]; signalDe: Map<string, SignalAthlete>; jour: string; filtre: Filtre; base?: string;
 }) {
   const parCategorie = (f: Filtre) => f === 'tous' ? athletes.length : athletes.filter((a) => categorie(a, jour) === f).length;
   const lignes = athletes.filter((a) => filtre === 'tous' || categorie(a, jour) === filtre);
@@ -59,9 +60,9 @@ export default function TableauAthletes({ athletes, jour, filtre, base = '/app/c
               <span>Athlète</span><span>Objectif</span><span>Sa semaine</span><span>Séances</span><span>Charge tenue</span><span>Hooper</span><span>Signal</span>
             </div>
             <p className="py-1.5 text-[0.72rem] text-[#5E5C78] border-b border-indigo/[0.06]">
-              Séances, charge tenue et Hooper : sa semaine passée. La semaine en cours est dans « Suivi des 7 jours ».
+              Séances, charge tenue et Hooper : sa semaine passée. La semaine en cours est sur sa fiche, « Ses 7 jours ».
             </p>
-            {lignes.map((a) => <Ligne key={a.id} a={a} jour={jour} />)}
+            {lignes.map((a) => <Ligne key={a.id} a={a} signal={signalDe.get(a.nom) ?? RIEN} jour={jour} />)}
           </div>
         </div>
       )}
@@ -69,18 +70,19 @@ export default function TableauAthletes({ athletes, jour, filtre, base = '/app/c
   );
 }
 
+const RIEN: SignalAthlete = { texte: 'Rien à signaler', niveau: 'ok' };
+
 // Une ligne du tableau : toute la ligne ouvre sa fiche.
-function Ligne({ a, jour }: { a: LigneAthlete; jour: string }) {
+function Ligne({ a, signal, jour }: { a: LigneAthlete; signal: SignalAthlete; jour: string }) {
   const o = a.objectif;
   const avenir = Boolean(o && o.course_date >= jour);
   const sous = 'block text-[0.72rem] text-[#5E5C78] mt-0.5';
   const pastille = 'inline-block text-[0.66rem] font-bold px-2 py-0.5 rounded-full whitespace-nowrap';
-  const mode = a.mode === 'plan' ? ['Mode plan', PASTILLE.neutre] : a.aLaMain ? ['À la main', PASTILLE.warn] : ['Coaching', PASTILLE.ok];
-  const manque = [!a.nolio && 'Nolio à associer', a.nolio && !a.accord && 'sans accord', !a.app && 'app à inviter'].filter(Boolean) as string[];
+  // Ce qui lui manque (« app à inviter » reste sur sa fiche, décision coach du 04/11/2026).
+  const manque = [!a.nolio && 'Nolio à associer', a.nolio && !a.accord && 'sans accord'].filter(Boolean) as string[];
   // Sa semaine : sa place dans le plan, sinon où en est son objectif.
-  const [semaine, bloc] = a.mode === 'plan' ? ['—', 'Rien ne s’écrit ici']
-    // La saison de fond (décisions coach du 24/10/2026) : le thème de la semaine.
-    : o?.fond && avenir ? [o.cours?.type === 'Assimilation' ? 'Semaine allégée' : o.fond.theme ? `Bloc ${o.fond.theme}` : 'Saison de fond',
+  // La saison de fond (décisions coach du 24/10/2026) : le thème de la semaine.
+  const [semaine, bloc] = o?.fond && avenir ? [o.cours?.type === 'Assimilation' ? 'Semaine allégée' : o.fond.theme ? `Bloc ${o.fond.theme}` : 'Saison de fond',
       o.fond.tests_dans ? `tests dans ${o.fond.tests_dans} sem.` : 'semaine de tests']
     : !o || !avenir ? [a.aLaMain ? 'Programmé à la main' : 'Sans objectif', '']
       : o.cours && o.demarre ? [`${o.cours.numero} / ${o.total ?? '?'} · ${o.cours.type}`, o.cours.bloc]
@@ -94,9 +96,9 @@ function Ligne({ a, jour }: { a: LigneAthlete; jour: string }) {
       <span className="min-w-0">
         <span className="block font-bold">{a.nom}</span>
         <span className="mt-1 flex flex-wrap gap-1">
-          <span className={clsx(pastille, mode[1])}>{mode[0]}</span>
+          {a.aLaMain && <span className={clsx(pastille, PASTILLE.warn)}>À la main</span>}
           {a.entree && <span className={clsx(pastille, PASTILLE.warn)}>Entrée {a.entree.faites}/{a.entree.total}</span>}
-          {a.mode !== 'plan' && manque.length > 0 && <span className={clsx(pastille, PASTILLE.neutre)}>{manque.join(' · ')}</span>}
+          {a.coache && manque.length > 0 && <span className={clsx(pastille, PASTILLE.neutre)}>{manque.join(' · ')}</span>}
         </span>
       </span>
       <span className={o ? '' : 'text-[#5E5C78]'}>
@@ -123,7 +125,7 @@ function Ligne({ a, jour }: { a: LigneAthlete; jour: string }) {
       <span className={a.hooper ? '' : 'text-[#5E5C78]'}>
         {a.hooper ? `${a.hooper.valeur}${a.hooper.tendance ? ` · ${TENDANCE[a.hooper.tendance]}` : ''}` : '—'}
       </span>
-      <span><span className={clsx('inline-block text-[0.75rem] font-bold px-2.5 py-1 rounded-full', PASTILLE[a.signal.niveau])}>{a.signal.texte}</span></span>
+      <span><span className={clsx('inline-block text-[0.75rem] font-bold px-2.5 py-1 rounded-full', PASTILLE[signal.niveau])}>{signal.texte}</span></span>
     </Link>
   );
 }

@@ -24,9 +24,11 @@ export function entreeDe(x: {
   const parti = Boolean(o && (!o.ecrit || o.demarre || o.prevu));
   const etapes: EtapeEntree[] = [
     { cle: 'nolio', titre: 'Relié à Nolio', fait: nolio, action: nolio ? undefined : { texte: 'Associer ›', href: '#son-nolio' } },
+    // « Accord reçu » se coche ici, sur sa fiche (CarteEntree ; le Suivi des 7 jours est supprimé, 04/11/2026).
     { cle: 'accord', titre: 'Son accord de lecture', fait: accord,
-      detail: accord ? undefined : 'Envoie-lui le message d’accord dans Nolio : ses séances faites, son RPE et son Hooper remontent alors.',
-      action: accord ? undefined : { texte: 'Le message ›', href: '/app/coach/suivi#sans-accord' } },
+      detail: accord ? undefined : nolio
+        ? 'Envoie-lui le message d’accord dans Nolio : ses séances faites, son RPE et son Hooper remontent alors. Quand il répond oui, coche « Accord reçu » : sa réponse écrite reste ta preuve.'
+        : 'Une fois son compte Nolio associé, envoie-lui le message d’accord dans Nolio.' },
     main
       ? { cle: 'objectif', titre: 'Programmé à la main', fait: true, detail: 'Tu écris ses séances dans Nolio : rien à écrire ici.' }
       : { cle: 'objectif', titre: 'Son objectif', fait: Boolean(o),

@@ -152,17 +152,31 @@ function signauxDuSoir(maintenant: number): Ligne[] {
   });
 }
 
-// Tes retouches dans Nolio, comptées chaque nuit (lib/app/retouches.ts) : des chiffres inventés, sur 8 semaines.
+// Tes retouches dans Nolio, comptées chaque nuit (lib/app/retouches.ts) : des chiffres inventés, une ligne par semaine
+// écrite et envoyée de chaque objectif (comme la table), sur 9 semaines. Plus elles sont récentes, moins elles sont
+// retouchées : la part des semaines envoyées sans retouche monte au fil des dimanches (« Chiffres »).
 function retouches(lundi: string): Ligne[] {
-  return Array.from({ length: 8 }, (_, i) => {
-    const l = ajouterJours(lundi, -7 * i);
-    const f = (envoyees: number, modifiees: number, supprimees: number, min: number, ecart: number) =>
-      ({ envoyees, modifiees, supprimees, min_avant: min, min_apres: Math.round(min * (1 + ecart)) });
-    return {
-      coach_id: COACH, lundi: l, ajoutees: i % 3 === 0 ? 2 : 1, _des: `${ajouterJours(l, 1)}T02:00:00.000Z`,
-      familles: { ef: f(28 - (i % 3), 2 + (i % 2), 1, 1260, -0.08), seuil2: f(5, i % 2, 0, 210, -0.12), vo2max: f(4, 1, 0, 160, -0.15),
-        sl: f(9, 2, i === 2 ? 1 : 0, 1450, -0.1), mecanique: f(6, 0, 1, 300, 0), seuil1: f(4, 0, 0, 200, 0) },
+  const d = donnees();
+  const lundis = Array.from({ length: 9 }, (_, i) => ajouterJours(lundi, -7 * i));
+  const plans = d.plans.map((p) => String(p.id));
+  const f = (envoyees: number, modifiees = 0, supprimees = 0, min = 0, ecart = 0) =>
+    ({ envoyees, modifiees, supprimees, min_avant: modifiees ? min : 0, min_apres: modifiees ? Math.round(min * (1 + ecart)) : 0 });
+  return d.semaines_ecrites.flatMap((e) => {
+    const l = String((e.donnees as Ligne | null)?.lundi ?? '');
+    const i = lundis.indexOf(l);
+    if (i < 0) return [];
+    const k = plans.indexOf(String(e.plan_id));
+    // Retouchée : une sur deux il y a 5 à 8 semaines, une sur quatre ces 4 dernières, une sur cinq cette semaine.
+    const retouchee = i >= 5 ? (k + i) % 2 === 0 : i >= 1 ? (k + i) % 4 === 0 : k % 5 === 0;
+    const genre = (k + i) % 3;
+    const familles = {
+      ef: retouchee && genre === 0 ? f(3, 1, 0, 50, -0.12) : f(3),
+      sl: retouchee && genre === 1 ? f(1, 1, 0, 120, -0.15) : f(1),
+      [k % 2 ? 'seuil2' : 'vo2max']: retouchee && genre === 2 ? f(1, 0, 1) : f(1),
+      renfo: f(1),
     };
+    return [{ plan_id: e.plan_id, semaine: e.numero, coach_id: COACH, lundi: l, familles, ajoutees: retouchee && genre === 0 && i % 2 ? 1 : 0,
+      _des: [String(e.ecrite_le), `${ajouterJours(l, 1)}T02:00:00.000Z`].sort().pop() }];
   });
 }
 

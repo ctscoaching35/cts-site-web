@@ -60,7 +60,7 @@ export async function annulerSemaine(planId: string, numero: string, _e: EtatGes
   try {
     await annulerAjustements(planId, numero);
     revalidatePath(`/app/coach/plan/${planId}`);
-    revalidatePath('/app/coach/suivi');
+    revalidatePath('/app/coach');
     return { ok: true, message: `Semaine ${numero.replace('S', '')} réécrite sans ses ajustements, et mise à jour dans Nolio.` };
   } catch (e) {
     console.error(`Annulation ${planId} ${numero} :`, e instanceof Error ? e.message : e);

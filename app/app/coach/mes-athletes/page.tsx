@@ -1,33 +1,36 @@
 import Link from 'next/link';
-import clsx from 'clsx';
 import { notFound } from 'next/navigation';
 import CadreCoach from '@/components/app/CadreCoach';
 import { Carte, Surtitre } from '@/components/app/Ui';
 import TableauAthletes, { filtreDe } from '@/components/app/TableauAthletes';
 import { equipeNolio, vueDuCoach } from '@/lib/app/espaceCoach';
+import { cetteSemaine } from '@/lib/app/cetteSemaine';
 import { creerFicheDepuisNolio } from '@/lib/app/actionsCoaching';
 import { usrAcheteurs } from '@/lib/app/acheteurs';
 import { dateLongue } from '@/lib/app/plan';
-import { clientService, espaceCoachOuvert } from '@/lib/app/supabase';
+import { espaceCoachOuvert } from '@/lib/app/supabase';
 import { exigerCoach, nolioConfigure } from '@/lib/app/nolio';
 
 // Toujours calculée à la visite : la page lit la session du coach.
 export const dynamic = 'force-dynamic';
 
 // « Mes athlètes » (l'ancien « Tableau de bord », CTS_NOLIO_CADRAGE.md, N2 ; maquette validée par le coach le 24/10/2026 ;
-// renommé par la refonte par exception, EC1, décision coach du 04/11/2026) : réservé aux comptes de CTS_COACHS. Quatre
-// compteurs, puis tous ses athlètes d'un coup d'œil, filtrables : son mode, son objectif, sa semaine dans le plan, sa
-// semaine passée (séances, charge tenue), son Hooper, son signal. Ce qui attend un geste du coach est sur « Cette
-// semaine », l'accueil ; en bas, ceux de Nolio qui n'ont pas encore de fiche. Pour l'ordinateur d'abord (EC5).
+// renommé par la refonte par exception, EC1, décision coach du 04/11/2026) : réservé aux comptes de CTS_COACHS. Tous ses
+// athlètes d'un coup d'œil, filtrables : son objectif, sa semaine dans le plan, sa semaine passée (séances, charge
+// tenue), son Hooper, son signal, le même que sur « Cette semaine » (cetteSemaine.ts), qui a ce qui attend un geste du
+// coach ; en bas, ceux de Nolio qui n'ont pas encore de fiche. Sans compteurs ni mode (décisions coach du 04/11/2026).
+// Pour l'ordinateur d'abord (EC5).
 export default async function MesAthletes({ searchParams }: { searchParams: Promise<{ filtre?: string }> }) {
   if (!espaceCoachOuvert()) notFound();
   const coach = await exigerCoach();
   const { filtre: demande } = await searchParams;
   const filtre = filtreDe(demande);
-  const { data: compte } = await clientService().from('comptes').select('nom').eq('id', coach.compteId).maybeSingle();
   const { nolio, erreur } = await equipeNolio();
   // L'équipe Nolio, pour dire qui l'a quittée ; sans réponse de Nolio, personne.
-  const vue = await vueDuCoach(coach.compteId, nolio ? new Set(nolio.map((x) => x.id)) : null);
+  const membres = nolio ? new Set(nolio.map((x) => x.id)) : null;
+  const vue = await vueDuCoach(coach.compteId, membres);
+  // Le signal de chacun et le nombre du menu : ceux de « Cette semaine ».
+  const semaine = await cetteSemaine(coach.compteId, membres, vue);
   // Les athlètes de Nolio qui n'ont pas encore de fiche (le coach lui-même, « (toi) », à part).
   const relies = new Set(vue.athletes.map((a) => a.usr).filter(Boolean));
   // Sans les acheteurs de plans (décision coach du 22/10/2026) : ils sont dans « Chiffres ».
@@ -36,16 +39,8 @@ export default async function MesAthletes({ searchParams }: { searchParams: Prom
   // Le coach lui-même (décision coach du 24/10/2026) : sa fiche de test, pour vivre l'app d'un coaché sur son Nolio.
   const toi = (nolio ?? []).find((x) => x.name.endsWith('(toi)') && !relies.has(x.id));
   const jour = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
-  const coaches = vue.athletes.filter((a) => a.mode === 'coaching').length;
-  const compteurs: { n: number; texte: string; ton: string; href?: string }[] = [
-    { n: coaches, texte: `athlète${coaches > 1 ? 's' : ''} coaché${coaches > 1 ? 's' : ''}`, ton: 'text-indigo' },
-    { n: vue.enRoute, texte: `objectif${vue.enRoute > 1 ? 's' : ''} en route dans Nolio`, ton: 'text-indigo' },
-    { n: vue.aRegarder.length, texte: 'à regarder ›', ton: vue.aRegarder.length ? 'text-[#8A3326]' : 'text-indigo', href: '/app/coach' },
-    { n: vue.demandes.length, texte: `objectif${vue.demandes.length > 1 ? 's' : ''} demandé${vue.demandes.length > 1 ? 's' : ''} ›`,
-      ton: vue.demandes.length ? 'text-[#6E4A0C]' : 'text-indigo', href: '/app/coach' },
-  ];
   return (
-    <CadreCoach actif="athletes" coach={String(compte?.nom ?? '')}>
+    <CadreCoach actif="athletes" aRegarder={semaine.cartes.length}>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-[1.75rem] font-extrabold tracking-tight">Mes athlètes</h1>
@@ -56,16 +51,7 @@ export default async function MesAthletes({ searchParams }: { searchParams: Prom
         </Link>
       </div>
 
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3">
-        {compteurs.map((c) => {
-          const contenu = (<><div className={clsx('text-[1.75rem] font-extrabold', c.ton)}>{c.n}</div><div className="text-[0.78rem] text-[#5E5C78]">{c.texte}</div></>);
-          return c.href
-            ? <Link key={c.texte} href={c.href} className="bg-white rounded-[14px] border border-indigo/[0.08] p-4 hover:border-teal/40">{contenu}</Link>
-            : <div key={c.texte} className="bg-white rounded-[14px] border border-indigo/[0.08] p-4">{contenu}</div>;
-        })}
-      </div>
-
-      <TableauAthletes athletes={vue.athletes} jour={jour} filtre={filtre} />
+      <TableauAthletes athletes={vue.athletes} signalDe={semaine.signalDe} jour={jour} filtre={filtre} />
 
       <Carte className="!p-5 space-y-2">
         <Surtitre>Dans Nolio</Surtitre>

@@ -1,19 +1,17 @@
 /**
  * Le suivi des athlètes coachés, côté serveur (CTS_NOLIO_CADRAGE.md dans le dépôt du moteur, T1 à T4, décisions coach
- * du 13/10/2026) : le tableau de bord lit dans Nolio, à son ouverture, les séances prévues et réalisées et l'indice
- * Hooper des seuls athlètes qui ont donné leur accord (T3), et n'en garde rien. Il signale ce qui mérite le regard du
- * coach ; le détail reste dans Nolio. Les seuils viennent du moteur (cts_suivi, /v1/config) : l'app ne fait que
- * comparer (D3).
+ * du 13/10/2026) : les séances prévues et réalisées et l'indice Hooper des seuls athlètes qui ont donné leur accord (T3),
+ * lus dans Nolio chaque soir (ou par « Relire maintenant »), dont seuls les signaux sont gardés (EC2,
+ * signauxGardes.ts) ; le détail reste dans Nolio. Les seuils viennent du moteur (cts_suivi, /v1/config) : l'app ne fait
+ * que comparer (D3). L'écran « Suivi des 7 jours », qui les lisait à son ouverture, est supprimé (décision coach du
+ * 04/11/2026).
  */
 import { API_URL } from '@/lib/plan';
 import { demonstrationCoachOuverte, seuilsDemonstration } from './demonstrationCoach';
 import { ajouterJours } from './plan';
 import { listeNolio } from './nolio';
 import { aujourdhuiParis, signaux, type Prevue, type Realisee, type Seuils, type Suivi, type ValeurHooper } from './signauxSuivi';
-import { athletesCoaches } from './coaching';
-import type { Statut } from './prevision';
 import { derniereActivite, garderLesSignaux } from './signauxGardes';
-import { clientService } from './supabase';
 
 export { aujourdhuiParis, type GenreSignal, type Seuils, type Signal, type Suivi } from './signauxSuivi';
 
@@ -39,11 +37,6 @@ function indiceHooper(): Promise<string | null> {
   return hooperId;
 }
 
-// Ce que le tableau lit d'un athlète : le strict nécessaire (champs choisis), en mémoire le temps de la page.
-export async function lireSuivi(usr: string, moi: boolean, s: Seuils, aujourdhui: string): Promise<Suivi> {
-  return (await lire(usr, moi, s, aujourdhui)).suivi;
-}
-
 // « Relire maintenant » (EC2, décision coach du 04/11/2026) : ses signaux lus dans Nolio à la demande, puis gardés comme
 // ceux du soir (lib/app/signauxGardes.ts) ; pour un athlète sans objectif en route, que le passage du soir ne lit pas.
 export async function relireEtGarder(coachId: string, usr: string, moi: boolean, s: Seuils, aujourdhui: string): Promise<Suivi> {
@@ -65,32 +58,4 @@ async function lire(usr: string, moi: boolean, s: Seuils, aujourdhui: string): P
       : Promise.resolve([] as ValeurHooper[]),
   ]);
   return { suivi: signaux(prevues, realisees, valeurs, s, aujourdhui), realisees };
-}
-
-// Les athlètes qui ont donné leur accord (T3) : { usr : date }.
-export async function accords(coachId: string): Promise<Map<string, string>> {
-  const { data } = await clientService().from('nolio_accords').select('nolio_athlete_id, accord_le').eq('coach_id', coachId);
-  return new Map((data ?? []).map((a) => [a.nolio_athlete_id as string, a.accord_le as string]));
-}
-
-// Pour « Dimanche, le moteur prévoit » (décision coach du 24/10/2026) : de chaque coaché relié à Nolio, sa fiche, son
-// prochain objectif, et si le moteur écrit ses semaines (objectif à venir démarré, programmé automatiquement) ou le coach ;
-// sinon, pourquoi pas encore (ni objectif ni saison, ou le départ programmé de son objectif).
-export type StatutSuivi = Statut & { fiche: string; objectif: string | null };
-export async function statutsDuSuivi(coachId: string): Promise<Map<string, StatutSuivi>> {
-  const jour = aujourdhuiParis();
-  const fiches = (await athletesCoaches(coachId)).filter((a) => a.nolio_athlete_id && a.mode === 'coaching');
-  const prochains = new Map(fiches.map((a) => [a.id, a.objectifs.find((o) => o.course_date >= jour) ?? null]));
-  const ids = [...prochains.values()].filter(Boolean).map((o) => o!.plan_id);
-  const { data: plans } = ids.length
-    ? await clientService().from('plans').select('id, demarre_le, depart_prevu, parametres').in('id', ids)
-    : { data: [] };
-  const ecrits = new Set((plans ?? []).filter((p) => p.demarre_le && p.parametres).map((p) => p.id as string));
-  const departs = new Map((plans ?? []).map((p) => [p.id as string, (p.depart_prevu as string | null) ?? null]));
-  return new Map(fiches.map((a) => {
-    const o = prochains.get(a.id);
-    const ecrit = Boolean(o && ecrits.has(o.plan_id));
-    return [a.nolio_athlete_id as string, { fiche: a.id, objectif: o?.course_nom ?? null, aLaMain: a.programmation === 'main',
-      ecrit, ...(ecrit ? {} : { pasParti: { objectif: Boolean(o), depart: o ? departs.get(o.plan_id) ?? null : null } }) }];
-  }));
 }

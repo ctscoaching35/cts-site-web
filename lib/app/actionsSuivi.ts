@@ -2,7 +2,8 @@
 /**
  * L'accord d'un athlète pour le suivi (CTS_NOLIO_CADRAGE.md, T3) : le coach coche « Accord reçu » quand l'athlète a
  * répondu oui dans la messagerie Nolio (sa réponse fait preuve) ; « Retirer l'accord » efface la ligne et l'app ne lit
- * plus ses données. Le même accord couvre ses repères (FC aux seuils, allures) sur sa fiche (E3, décision coach du
+ * plus ses données. Les deux sur sa fiche (« Son entrée », « Réglages ») depuis la suppression du Suivi des 7 jours
+ * (décision coach du 04/11/2026). Le même accord couvre ses repères (FC aux seuils, allures) sur sa fiche (E3, décision coach du
  * 15/10/2026) : le retirer les efface. Chaque geste revérifie le coach.
  */
 import { revalidatePath } from 'next/cache';
@@ -17,7 +18,7 @@ export async function accordRecu(usr: string, nom: string): Promise<void> {
   const coach = await coachConnecte();
   if (!coach || !USR.test(usr)) return;
   await clientService().from('nolio_accords').upsert({ coach_id: coach.compteId, nolio_athlete_id: usr, nom: nom.slice(0, 120) });
-  revalidatePath('/app/coach/suivi');
+  revalidatePath('/app/coach', 'layout');
 }
 
 export async function retirerAccord(usr: string): Promise<void> {
@@ -40,8 +41,7 @@ export async function retirerAccord(usr: string): Promise<void> {
   if (fiches?.length) await clientService().from('semaines_athlete').delete().in('athlete_id', fiches.map((f) => f.id));
   // Et ses signaux gardés (EC2).
   await effacerSignaux(coach.compteId, usr);
-  revalidatePath('/app/coach/suivi');
-  revalidatePath('/app/coach');
+  revalidatePath('/app/coach', 'layout');
 }
 
 // « Relire maintenant » (EC2) : ses signaux de la semaine, lus dans Nolio à la demande et gardés ; avec son accord

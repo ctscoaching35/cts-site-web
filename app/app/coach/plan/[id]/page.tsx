@@ -126,7 +126,7 @@ export default async function ObjectifCoache({ params, searchParams }: {
             {course.temps_cible ? ` · chrono visé ${course.temps_cible}` : ''}{course.date >= jour ? ` · ${jMoins(jour, course.date)}` : ''}
           </p>
           <p className="mt-1 text-[0.8125rem] text-[#5E5C78]">
-            {nolio ? 'Associé à Nolio.' : 'Pas encore associé à Nolio : choisis son nom sur sa fiche.'} {valeurs ? `Cibles : ${valeurs}.` : 'Sans valeurs : cibles au RPE.'}
+            {nolio ? '' : 'Pas encore associé à Nolio : choisis son nom sur sa fiche. '}{valeurs ? `Cibles : ${valeurs}.` : 'Sans valeurs : cibles au RPE.'}
           </p>
         </div>
         <div className="flex flex-wrap gap-2.5">
@@ -178,7 +178,7 @@ export default async function ObjectifCoache({ params, searchParams }: {
                     <div className="flex gap-3.5 p-3.5 rounded-xl border border-dashed border-indigo/[0.22]">
                       <span className="w-12 text-[0.8125rem] font-extrabold text-[#5E5C78]">{jourMois(prochaine.lundi)}</span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold">S’écrit dimanche {dateLongue(ajouterJours(prochaine.lundi, -1), true)}, vers 18 h</p>
+                        <p className="text-sm font-bold">S’écrit le {dateLongue(ajouterJours(prochaine.lundi, -1), true)}, vers 18 h</p>
                         <p className="mt-1 text-[0.8125rem] text-[#4A4866] leading-relaxed">
                           D’après sa semaine et son questionnaire du matin. {prochaine.type}
                           {prochaine.seances_cles.length ? ` · ${prochaine.seances_cles.map((c) => c.seance.split(' — ')[0]).join(' · ')}` : ''}
@@ -190,32 +190,38 @@ export default async function ObjectifCoache({ params, searchParams }: {
                       </div>
                     </div>
                   )}
-                  {ecritesTriees.map((w) => {
-                    const journal = ((w.journal ?? []) as { regle?: string }[]).filter((j) => j.regle !== 'COACH');
-                    const r = w.realise as Realise | null;
-                    const ajuste = journal.length > 0 && !w.sans_ajustement;
-                    const lus = (tests ?? []).filter((t) => String(t.jour_id).startsWith(`${w.numero}-`) || String(t.jour_id).startsWith(`${w.numero}:`));
-                    return (
-                      <div key={w.numero} className={clsx('flex gap-3.5 p-3.5 rounded-xl', ajuste ? 'bg-[#FBF3F5] border border-[#EBC9D3]' : 'bg-sand')}>
-                        <span className={clsx('w-12 text-[0.8125rem] font-extrabold', ajuste ? 'text-[#8A2E4A]' : 'text-teal')}>
-                          {/* Une semaine de récupération, après la course, n'est pas dans la trame : son lundi est le sien. */}
-                          {lundiDe.get(String(w.numero)) ?? w.lundi ? jourMois((lundiDe.get(String(w.numero)) ?? w.lundi) as string) : w.numero}
-                        </span>
-                        <div className="flex-1 min-w-0 space-y-2">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-sm font-bold">
-                              {r ? `Faite · ${r.seances_faites} séance${r.seances_faites > 1 ? 's' : ''} sur ${r.seances_prevues}` : `Écrite le ${dateLongue(String(w.ecrite_le).slice(0, 10), true)}`}
-                            </span>
-                            {ajuste && <span className="text-[0.72rem] font-bold px-2 py-0.5 rounded-xl bg-[#F6E3E8] text-[#8A2E4A]">{journal.length} ajustement{journal.length > 1 ? 's' : ''}</span>}
-                          </div>
+                  {/* Une ligne par semaine écrite (décision coach du 04/11/2026) : son lundi, faite x/y, sa charge, sa sortie
+                      longue, son Hooper, ses ajustements ; sa note « Ta semaine » s'ouvre au clic. */}
+                  <ul className="space-y-1.5">
+                    {ecritesTriees.map((w) => {
+                      const journal = ((w.journal ?? []) as { regle?: string }[]).filter((j) => j.regle !== 'COACH');
+                      const r = w.realise as Realise | null;
+                      const ajuste = journal.length > 0 && !w.sans_ajustement;
+                      const lus = (tests ?? []).filter((t) => String(t.jour_id).startsWith(`${w.numero}-`) || String(t.jour_id).startsWith(`${w.numero}:`));
+                      // Une semaine de récupération, après la course, n'est pas dans la trame : son lundi est le sien.
+                      const lundiW = (lundiDe.get(String(w.numero)) ?? w.lundi) as string | null;
+                      const ligne = (
+                        <span className="w-full flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.8125rem]">
+                          <span className={clsx('w-12 font-extrabold', ajuste ? 'text-[#8A2E4A]' : 'text-teal')}>{lundiW ? jourMois(lundiW) : w.numero}</span>
+                          <span className="font-bold">{r ? `Faite · ${r.seances_faites}/${r.seances_prevues}` : `Écrite le ${dateLongue(String(w.ecrite_le).slice(0, 10), true)}`}</span>
                           {r && (
-                            <p className="text-[0.8125rem] text-[#4A4866]">
-                              {[r.rpe_lu && r.charge_faite ? `Charge ${Math.round(r.charge_faite).toLocaleString('fr-FR')}` : null,
-                                r.duree_faite_min !== null ? `${enHeures(r.duree_faite_min)} courues sur ${enHeures(r.duree_prevue_min)}` : null,
+                            <span className="text-[#4A4866]">
+                              {[r.rpe_lu && r.charge_faite ? `charge ${Math.round(r.charge_faite).toLocaleString('fr-FR')}` : null,
                                 r.sl_faite_min ? `sortie longue ${enHeures(r.sl_faite_min)}` : null, r.hooper !== null ? `Hooper ${r.hooper}` : null].filter(Boolean).join(' · ')}
-                            </p>
+                            </span>
                           )}
-                          {w.bilan && <p className="text-[0.8125rem] leading-relaxed text-[#3B3957] whitespace-pre-line">{w.bilan}</p>}
+                          {ajuste && <span className="text-[0.72rem] font-bold px-2 py-0.5 rounded-xl bg-[#F6E3E8] text-[#8A2E4A]">{journal.length} ajustement{journal.length > 1 ? 's' : ''}</span>}
+                          {w.bilan && <span aria-hidden className="ml-auto text-[#5E5C78] group-open:rotate-90">›</span>}
+                        </span>
+                      );
+                      return (
+                        <li key={w.numero} className={clsx('px-3.5 py-2.5 rounded-xl space-y-1.5', ajuste ? 'bg-[#FBF3F5] border border-[#EBC9D3]' : 'bg-sand')}>
+                          {w.bilan ? (
+                            <details className="group">
+                              <summary className="cursor-pointer list-none min-h-8 flex items-center">{ligne}</summary>
+                              <p className="mt-1.5 text-[0.8125rem] leading-relaxed text-[#3B3957] whitespace-pre-line">{w.bilan}</p>
+                            </details>
+                          ) : <div className="min-h-8 flex items-center">{ligne}</div>}
                           {w.sans_ajustement && <p className="text-xs text-[#5E5C78]">Ajustements annulés.</p>}
                           {lus.map((t) => (
                             <p key={t.jour_id} className="flex items-start gap-2 p-2.5 rounded-[10px] bg-white text-[0.8rem] leading-relaxed text-[#3B3957]">
@@ -225,10 +231,10 @@ export default async function ObjectifCoache({ params, searchParams }: {
                           ))}
                           {/* B-EC-1 : seulement la dernière semaine écrite ; une plus ancienne ferait reculer sa préparation. */}
                           {ajuste && w.numero === ecritesTriees.find((x) => /^S\d+$/.test(String(x.numero)))?.numero && <AnnulerSemaine planId={id} numero={w.numero} />}
-                        </div>
-                      </div>
-                    );
-                  })}
+                        </li>
+                      );
+                    })}
+                  </ul>
                 </>
               )}
             </Carte>

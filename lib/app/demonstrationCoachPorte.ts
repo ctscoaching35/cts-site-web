@@ -18,6 +18,7 @@ export const JOUR_PAR_DEFAUT = '2026-11-11T10:00';
 export const MOMENTS: [string, string][] = [
   ['2026-11-11T10:00', 'Mercredi 11, la semaine en cours'],
   ['2026-11-14T10:00', 'Samedi 14, avant dimanche'],
+  ['2026-11-15T10:00', 'Dimanche 15, avant le passage'],
   ['2026-11-15T20:30', 'Dimanche 15, après le passage'],
   ['2026-11-16T09:00', 'Lundi 16, ce qui est parti'],
 ];
