@@ -110,25 +110,34 @@ export default async function Confidentialite() {
               Nous ne voyons jamais tes numéros de carte.
             </li>
             <li>
-              <strong>Les e-mails</strong> (bienvenue, codes de connexion, rappel si tu l’as demandé, avertissement avant suppression)
-              partent par Brevo.
+              <strong>Les e-mails</strong> (bienvenue, codes de connexion, rappel si tu l’as demandé, relance de ton invitation
+              Nolio ou de ta confirmation, avertissement avant suppression) partent par Brevo.
             </li>
           </Liste>
         </Section>
 
-        {/* Le texte de CTS_TEXTES_A_VALIDER.md (§B2), mis à jour le 04/11/2026 : l'adresse donnée à Nolio (B-PL-68),
-            l'invitation la veille d'une préparation lointaine (PL4), la sortie après la récupération (PL5), l'accord de
-            lecture juste (PL7). BROUILLON, à valider par le coach. */}
+        {/* Le texte de CTS_TEXTES_A_VALIDER.md (§B2), mis à jour le 04/11/2026 : l'adresse donnée à Nolio (B-PL-68), la
+            sortie après la récupération (PL5), l'accord de lecture juste (PL7). Validé par le coach le 04/11/2026 au soir,
+            avec l'invitation le lundi de la semaine qui précède le départ (lib/app/invitation.ts), la confirmation de
+            charge avant un départ éloigné, et trois corrections : Nolio est la plateforme que nous utilisons, pas la
+            nôtre ; seule l'adresse Nolio donnée en plus est effacée après l'invitation (nolio_email remis à null,
+            inviterAcheteur), celle de l'achat est celle du compte ; les commentaires dans Nolio « ne sont pas suivis ». */}
         <Section titre={no('Tes séances dans Nolio')}>
           <p>
-            Ta préparation vit dans Nolio, la plateforme d’entraînement de CTS (France). Quand elle commence (le jour de ton
-            achat, ou la veille de son premier lundi si elle commence plus tard), nous transmettons à Nolio l’adresse e-mail
-            que tu nous as donnée (celle de ton achat, ou celle de ton compte Nolio), pour t’inviter dans l’équipe CTS ou te
-            créer un compte ; puis nous effaçons cette adresse de notre côté. Tu restes dans l’équipe jusqu’à la fin de ta
-            récupération après ta course ; ton compte Nolio et tes séances restent à toi, sous la politique de
+            Ta préparation vit dans Nolio, la plateforme d’entraînement que nous utilisons (une société française). Le lundi
+            de la semaine qui précède ton départ (ou dès ton achat, si ta préparation commence dans les 7 jours), nous
+            transmettons à Nolio l’adresse e-mail de ton achat, ou celle de ton compte Nolio si tu nous en as donné une
+            autre, pour t’inviter dans l’équipe CTS ou te créer un compte. Cette autre adresse, nous l’effaçons de notre côté
+            une fois l’invitation partie ; celle de ton achat reste celle de ton compte CTS. Tu restes dans l’équipe jusqu’à
+            la fin de ta récupération après ta course ; ton compte Nolio et tes séances restent à toi, sous la politique de
             confidentialité de Nolio.
           </p>
           <Liste>
+            <li>
+              <strong>Si ton achat date de plus de 3 semaines</strong> au moment de ton invitation, ton app CTS te demande
+              si ce que tu cours a changé (ton volume par semaine, ta plus longue sortie, un arrêt récent) : ta réponse
+              rejoint celles de ton achat, et ta première semaine s’écrit dessus.
+            </li>
             <li>
               <strong>Chaque dimanche</strong>, ta semaine suivante s’écrit d’après tes réponses au questionnaire du samedi,
               et tes séances faites ou manquées et leur durée, que nous lisons dans Nolio.
@@ -144,8 +153,8 @@ export default async function Confidentialite() {
             </li>
           </Liste>
           <p>
-            Retirer ton accord, dans ton Compte, arrête la lecture de ces données et efface ces chiffres. Personne ne lit tes
-            commentaires dans Nolio : pour une question, écris-nous.
+            Retirer ton accord, dans ton Compte, arrête la lecture de ces données et efface ces chiffres. Tes commentaires
+            dans Nolio ne sont pas suivis : pour une question, écris-nous.
           </p>
         </Section>
 

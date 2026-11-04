@@ -195,7 +195,10 @@ export const footer = {
  * L2, décision coach du 13/10/2026). Réécrite sur le vrai parcours le 04/11/2026 (PL1, « A » ; audit de l'app plan du
  * 03/11/2026, V1) : les séances dans Nolio, l'app tableau de bord, la semaine écrite chaque dimanche ; un seul nom,
  * « Préparation CTS » (décision coach du 04/11/2026). Rien n'y est promis que le parcours ne fasse aujourd'hui ; les
- * limites sont dites. Les prix viennent de l'API (/v1/config), pas d'ici. BROUILLON : à valider par le coach.
+ * limites sont dites. Les prix viennent de l'API (/v1/config), pas d'ici. Validée par le coach le 04/11/2026 au soir,
+ * avec trois retouches : la durée choisie et son jour de début à la fin de l'étape 1, l'invitation Nolio la semaine
+ * avant le départ (lib/app/invitation.ts), et « Déplace-la d'abord dans ton calendrier Nolio » (Nolio ne relie une
+ * activité à sa séance que le même jour).
  */
 export const plansOffre = {
   hero: {
@@ -213,12 +216,12 @@ export const plansOffre = {
       {
         titre: 'Tu réponds au questionnaire',
         texte:
-          'Une dizaine de minutes : ta course (distance, dénivelé, trace GPX si tu l’as), ton niveau, ce que tu cours en ce moment, ton terrain d’entraînement et tes jours disponibles. Avant de payer, tu vois le jour de ta première séance.',
+          'Une dizaine de minutes : ta course (distance, dénivelé, trace GPX si tu l’as), ton niveau, ce que tu cours en ce moment, ton terrain d’entraînement et tes jours disponibles. Puis tu choisis la durée de ta préparation, et tu vois le jour où elle commence.',
       },
       {
         titre: 'Tu rejoins l’équipe CTS sur Nolio',
         texte:
-          'Nolio est l’application d’entraînement, gratuite, que nous utilisons avec tous nos athlètes. Quand ta préparation commence, il t’invite dans l’équipe CTS, ou te crée un compte. Tes séances arrivent dans son calendrier, et sur ta montre.',
+          'Nolio est l’application d’entraînement, gratuite, que nous utilisons avec tous nos athlètes. La semaine avant ton départ, Nolio t’invite dans l’équipe CTS, ou te crée un compte. Tes séances arrivent dans son calendrier, et sur ta montre.',
       },
       {
         titre: 'Ta semaine s’écrit chaque dimanche',
@@ -278,11 +281,11 @@ export const plansOffre = {
       },
       {
         q: 'Ma course est plus proche que la durée de la formule.',
-        r: 'Le questionnaire te conseille la formule qui commence en entier dans les 14 jours. Sinon, tu rejoins une formule déjà commencée à la semaine en cours : ses semaines passées sont sautées. Avant de payer, tu vois le jour de ta première séance.',
+        r: 'Le questionnaire te conseille la formule qui commence en entier dans les 14 jours. Sinon, tu rejoins une formule déjà commencée à la semaine en cours : ses semaines passées sont sautées. Avant de payer, tu vois le jour où elle commence.',
       },
       {
         q: 'J’ai déjà un compte Nolio.',
-        r: 'Donne son adresse au questionnaire : tu reçois une invitation à rejoindre l’équipe CTS, à accepter. Sans compte, Nolio t’en crée un, gratuit, déjà dans l’équipe.',
+        r: 'Donne son adresse au questionnaire : la semaine avant ton départ, tu reçois une invitation à rejoindre l’équipe CTS, à accepter. Sans compte, Nolio t’en crée un, gratuit, déjà dans l’équipe.',
       },
       {
         q: 'Que se passe-t-il si je rate une séance ?',
@@ -290,7 +293,7 @@ export const plansOffre = {
       },
       {
         q: 'Je ne peux pas courir le jour prévu.',
-        r: 'Chaque samedi, le questionnaire de Nolio te demande tes jours disponibles de la semaine qui vient : elle s’écrit dessus. Dans la semaine, tu peux déplacer une séance dans ton calendrier Nolio.',
+        r: 'Chaque samedi, le questionnaire de Nolio te demande tes jours disponibles de la semaine qui vient : elle s’écrit dessus. Tu cours une séance un autre jour ? Déplace-la d’abord dans ton calendrier Nolio.',
       },
       {
         q: 'Ma course change de date.',
