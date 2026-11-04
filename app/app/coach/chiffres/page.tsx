@@ -274,7 +274,8 @@ async function PartiePlans() {
       <section className="bg-white rounded-2xl border border-indigo/[0.08] p-4 space-y-2">
         <h2 className="eyebrow text-indigo/60">Les acheteurs ({acheteurs.length})</h2>
         <p className="text-sm text-indigo/70">
-          Leurs séances partent toutes seules dans Nolio. Leur accord de lecture, ils le donnent eux-mêmes dans l’app.
+          Leurs séances partent toutes seules dans Nolio. Leur accord de lecture, ils le donnent eux-mêmes dans l’app. Une
+          course qui change de date avant son départ : « Modifier l’objectif ».
         </p>
         {acheteurs.length > 0 && (
           <ul className="divide-y divide-indigo/10">
@@ -286,6 +287,13 @@ async function PartiePlans() {
                   {STATUT_NOLIO[a.statut ?? ''] ?? 'Nolio'}{a.statut === 'actif' ? (a.demarre ? `, démarré le ${date(a.demarre)}` : ', pas encore démarré') : ''}
                   {' · '}{a.accord ? 'accord donné' : 'sans accord'}
                 </span>
+                {/* « Modifier l'objectif » (PL6, décision coach du 04/11/2026 au soir) : avant son départ seulement ; une fois
+                    parti, rien de nouveau, tu vois au cas par cas. */}
+                {!a.demarre && a.statut !== 'coaching' && a.date >= jour && (
+                  <Link href={`/app/coach/nouveau?modifier=${a.id}`} className="basis-full inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">
+                    Modifier l’objectif ›
+                  </Link>
+                )}
                 {/* Passer en coaching (décision coach du 23/10/2026) : une fois dans l'équipe. */}
                 {a.usr && a.statut !== 'coaching' && a.date >= jour && (
                   <span className="basis-full"><PasserEnCoaching planId={a.id} nom={a.nom.split(' ')[0]} /></span>

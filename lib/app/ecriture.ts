@@ -1837,7 +1837,7 @@ export function finDeLaPreparation(q: { course_date: string; intake: unknown }):
   const intake = (q.intake ?? {}) as Record<string, unknown>;
   return debutApres({ course_date: q.course_date, temps_h: heures(intake.temps_cible), format: String(intake.format ?? '') });
 }
-async function reprogrammerSortie(usr: string) {
+export async function reprogrammerSortie(usr: string) {
   const equipeId = await equipeDuCoach();
   if (!equipeId) return;
   const { data: plans } = await clientService().from('plans').select('course_date, intake')

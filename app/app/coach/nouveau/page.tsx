@@ -3,6 +3,7 @@ import { formatRouteDe } from '@/lib/app/route';
 import CadreCoach from '@/components/app/CadreCoach';
 import ProfilAthlete from '@/components/app/ProfilAthlete';
 import Questionnaire from '@/components/plan/Questionnaire';
+import { planAchete } from '@/lib/app/acheteurs';
 import { exigerCoach } from '@/lib/app/nolio';
 import { questionnairePrerempli, reponsesDe } from '@/lib/app/coaching';
 import { demandeDuCoach } from '@/lib/app/demandes';
@@ -29,10 +30,14 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
   const court = Boolean(suite?.profilConnu);
   // « Modifier l'objectif » (décision coach du 22/10/2026) : ses réponses à lui, sa course comprise ; celles que le moteur
   // tient à jour (parametres.champs : sa charge relue au départ) l'emportent sur celles de la création.
-  const aModifier = suite && !demande && typeof r.modifier === 'string' && suite.athlete.objectifs.some((o) => o.plan_id === r.modifier)
+  // Un plan acheté (PL6, décision coach du 04/11/2026 au soir, « A ») : depuis « Chiffres › Plans », avant son départ ;
+  // sans fiche, le questionnaire entier, ses réponses à lui ; sa formule reste celle de son achat.
+  const achete = !suite && typeof r.modifier === 'string' ? await planAchete(r.modifier) : null;
+  const aModifier = achete ?? (suite && !demande && typeof r.modifier === 'string' && suite.athlete.objectifs.some((o) => o.plan_id === r.modifier)
     ? (await clientService().from('plans').select('id, intake, parametres, demarre_le, course_nom').eq('id', r.modifier)
       .eq('compte_id', coach.compteId).maybeSingle()).data
-    : null;
+    : null);
+  const dureeAchetee = achete ? String({ ...achete.intake, ...((achete.parametres.champs ?? {}) as Record<string, unknown>) }.duree_mois ?? '') : '';
   const pm = (aModifier?.parametres ?? null) as Record<string, unknown> | null;
   // Son profil de coureur, modifiable ici (décision coach du 23/10/2026) ; « Modifier l'objectif » le donne à sa
   // préparation en cours, dès la semaine suivante.
@@ -58,14 +63,18 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
   return (
     <CadreCoach actif="tableau">
       <div className="max-w-3xl">
-        <Link href={aModifier ? `/app/coach/plan/${aModifier.id}` : suite ? `/app/coach/athlete/${suite.athlete.id}` : '/app/coach'} className="inline-flex items-center min-h-9 text-[0.8125rem] font-bold text-teal">
-          ‹ {aModifier ? String(aModifier.course_nom) : suite ? suite.athlete.nom : 'Tableau de bord'}
+        <Link href={achete ? '/app/coach/chiffres?partie=plans' : aModifier ? `/app/coach/plan/${aModifier.id}` : suite ? `/app/coach/athlete/${suite.athlete.id}` : '/app/coach'} className="inline-flex items-center min-h-9 text-[0.8125rem] font-bold text-teal">
+          ‹ {achete ? 'Les acheteurs' : aModifier ? String(aModifier.course_nom) : suite ? suite.athlete.nom : 'Tableau de bord'}
         </Link>
         <div className="my-6 px-2">
-          <div className="eyebrow text-teal mb-3">Athlète coaché</div>
+          <div className="eyebrow text-teal mb-3">{achete ? `Plan acheté${achete.nom ? ` · ${achete.nom}` : ''}` : 'Athlète coaché'}</div>
           <h1 className="text-3xl sm:text-4xl text-indigo leading-tight">{aModifier ? `Modifier ${aModifier.course_nom}` : suite ? `Nouvel objectif ${route ? 'route' : 'trail'} pour ${suite.athlete.nom}` : 'Ajouter un athlète'}</h1>
           <p className="text-indigo/70 mt-2">
-            {aModifier
+            {achete
+              ? achete.demarre_le
+                ? 'Sa préparation est partie dans Nolio : ce plan acheté ne se modifie plus ici (ni sa date ni sa distance). Vois avec lui au cas par cas.'
+                : `Plan acheté, pas encore parti : tout se modifie, comme pour un coaché avant son départ. Sa formule${dureeAchetee ? ` de ${dureeAchetee} mois` : ''} reste celle de son achat. Son invitation dans Nolio et son départ suivent la nouvelle date, tout seuls.${traceDonnee ? ' Sa trace est gardée si tu n’en donnes pas d’autre.' : ''}`
+              : aModifier
               ? !aModifier.parametres
                 ? 'Ancien format, envoyé en entier : à l’enregistrement, il passe au format semaine par semaine, et tout se modifie comme pour les autres. Ses semaines déjà dans Nolio restent ; démarre-le ensuite dans Nolio.'
               : `${aModifier.demarre_le
@@ -113,7 +122,7 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
             </details>
           </div>
         )}
-        {suite && !court && !aModifier ? (
+        {achete?.demarre_le ? null : suite && !court && !aModifier ? (
           <div className="mx-2 bg-white rounded-2xl border border-indigo/[0.08] p-5">
             <ProfilAthlete athleteId={suite.athlete.id} rafraichir
               profil={demande ? Object.fromEntries(Object.entries(demande.champs).filter(([k]) => ['terrain', 'jours_disponibles', 'jour_sl', 'freq_hebdo'].includes(k))) as Record<string, string | string[]> : {}} />
@@ -121,7 +130,8 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
         ) : <Questionnaire key={JSON.stringify(suite?.profil ?? {})} coach court={court} emailCoach={coach.email} athleteId={suite?.athlete.id} demandeId={demande?.id}
           modification={aModifier ? { planId: String(aModifier.id), trace: traceDonnee } : undefined}
           vcMs={suite?.athlete.vc_ms ?? null} discipline={discipline} noteCharge={aModifier ? null : suite?.noteCharge ?? null}
-          initial={aModifier ? { ...reponsesDe(aModifier.intake), ...reponsesDe(pm?.champs), ...suite?.profil, nom: suite?.athlete.nom ?? '' }
+          initial={achete ? { ...reponsesDe(achete.intake), ...reponsesDe(pm?.champs), nom: achete.nom || String(achete.intake.nom ?? '') }
+            : aModifier ? { ...reponsesDe(aModifier.intake), ...reponsesDe(pm?.champs), ...suite?.profil, nom: suite?.athlete.nom ?? '' }
             : demande ? { ...demande.champs, ...suite?.profil, nom: suite?.athlete.nom ?? '' }
               : deNolio ? { ...suite?.initial, ...deNolio, ...(routeNolio ? { format: routeNolio } : {}) } : suite?.initial} />}
       </div>

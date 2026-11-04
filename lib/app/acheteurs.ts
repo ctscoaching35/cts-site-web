@@ -39,3 +39,27 @@ export async function usrAcheteurs(coachId: string): Promise<Set<string>> {
   const coaches = new Set((fiches ?? []).filter((f) => f.mode !== 'plan').map((f) => String(f.nolio_athlete_id)));
   return new Set((plans ?? []).map((p) => String(p.nolio_athlete_id)).filter((u) => u && !coaches.has(u)));
 }
+
+// « MODIFIER L'OBJECTIF » D'UN PLAN ACHETÉ (PL6, décision coach du 04/11/2026 au soir, « A ») : la règle des coachés
+// (décision coach du 22/10/2026) : tout se modifie avant le départ ; une fois parti, ni la date ni la distance, et rien
+// de nouveau ici (le coach voit au cas par cas). Le plan d'un acheteur : écrit semaine par semaine, invité dans l'équipe
+// (nolio_statut), sans fiche de coaché ; null sinon. Le coach y entre depuis « Chiffres › Plans › Les acheteurs ».
+export type PlanAchete = {
+  id: string; course_nom: string; intake: Record<string, unknown>; parametres: Record<string, unknown>; demarre_le: string | null;
+  nolio_statut: string; nolio_athlete_id: string | null; nom: string;
+};
+export async function planAchete(planId: string): Promise<PlanAchete | null> {
+  const service = clientService();
+  const { data: p } = await service.from('plans')
+    .select('id, course_nom, intake, parametres, demarre_le, nolio_statut, nolio_athlete_id, nom:donnees->athlete->>nom')
+    .eq('id', planId).not('nolio_statut', 'is', null).not('parametres', 'is', null).maybeSingle();
+  if (!p || p.nolio_statut === 'coaching') return null;
+  const { data: c } = await service.from('coaching').select('plan_id').eq('plan_id', planId).maybeSingle();
+  if (c) return null;
+  return {
+    id: String(p.id), course_nom: String(p.course_nom ?? ''), intake: (p.intake ?? {}) as Record<string, unknown>,
+    parametres: (p.parametres ?? {}) as Record<string, unknown>, demarre_le: (p.demarre_le as string | null) ?? null,
+    nolio_statut: String(p.nolio_statut), nolio_athlete_id: (p.nolio_athlete_id as string | null) ?? null,
+    nom: String(p.nom ?? '').trim(),
+  };
+}

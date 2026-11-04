@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { API_URL } from '@/lib/plan';
 import type { Plan } from '@/lib/app/plan';
+import { planAchete } from '@/lib/app/acheteurs';
+import { reprogrammerSortie } from '@/lib/app/ecriture';
 import { coachConnecte } from '@/lib/app/nolio';
 import { clientService } from '@/lib/app/supabase';
 
@@ -13,7 +15,7 @@ export async function POST(request: NextRequest) {
   const cle = process.env.CTS_CLE_COACH;
   if (!coach) return NextResponse.json({ message: 'Réservé au coach.' }, { status: 403 });
   if (!cle) return NextResponse.json({ message: 'Le code du coach (CTS_CLE_COACH) manque dans Vercel.' }, { status: 500 });
-  const enTete = { 'X-CTS-Coach': cle };
+  const enTete: Record<string, string> = { 'X-CTS-Coach': cle };
   const formulaire = await request.formData();
   const athleteDemande = String(formulaire.get('athlete_id') ?? '');
   // OM1 : un objectif demandé par le coaché ; sa trace, gardée avec la demande, part si le coach n'en donne pas d'autre.
@@ -33,8 +35,27 @@ export async function POST(request: NextRequest) {
     ? await service0.from('plans').select('id, parametres, demarre_le').eq('id', planModifie).eq('compte_id', coach.compteId)
       .maybeSingle()
     : { data: null };
-  if (planModifie && !ancien) return NextResponse.json({ message: 'Cet objectif ne se modifie pas.' }, { status: 404 });
-  const anciensParametres = (ancien?.parametres ?? {}) as Record<string, unknown>;
+  // UN PLAN ACHETÉ (PL6, décision coach du 04/11/2026 au soir, « A ») : la règle des coachés, tout se modifie avant son
+  // départ ; une fois parti, rien ici (le coach voit au cas par cas). Il garde la formule de son achat (sa durée) et son
+  // coach de rattachement ; le moteur le refait comme un acheteur (la simulation d'achat du coach : ses gardes, ni
+  // durée « auto » ni marqueur du coaching).
+  const achete = planModifie && !ancien ? await planAchete(planModifie) : null;
+  if (planModifie && !ancien && !achete) return NextResponse.json({ message: 'Cet objectif ne se modifie pas.' }, { status: 404 });
+  if (achete?.demarre_le) {
+    return NextResponse.json({ message: 'Sa préparation est partie dans Nolio : ce plan acheté ne se modifie plus ici. Vois avec lui au cas par cas.' }, { status: 422 });
+  }
+  if (achete) {
+    let champs: Record<string, unknown>;
+    try {
+      champs = JSON.parse(String(formulaire.get('intake') ?? ''));
+    } catch {
+      return NextResponse.json({ message: 'Le formulaire n’a pas pu être lu. Recharge la page et recommence.' }, { status: 400 });
+    }
+    const avant = { ...achete.intake, ...((achete.parametres.champs ?? {}) as Record<string, unknown>) };
+    formulaire.set('intake', JSON.stringify({ ...champs, duree_mois: avant.duree_mois }));
+    enTete['X-CTS-Simulation'] = '1';
+  }
+  const anciensParametres = ((ancien ?? achete)?.parametres ?? {}) as Record<string, unknown>;
   if (ancien?.demarre_le) {
     const avant = (anciensParametres.champs ?? {}) as Record<string, unknown>;
     let champs: Record<string, unknown>;
@@ -98,6 +119,38 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Les modifications n’ont pas pu être enregistrées. Réessaie.' }, { status: 500 });
     }
     return NextResponse.json({ page: `/app/coach/plan/${ancien.id}` });
+  }
+  if (achete) {
+    // Comme un coaché avant son départ : tout est refait, sa trace gardée sans nouvelle trace. Son départ programmé
+    // s'annule et le passage quotidien le reprogramme sur la nouvelle date ; pas encore invité, son invitation suit la
+    // nouvelle date (lib/app/invitation.ts) ; déjà dans l'équipe, sa sortie suit la nouvelle course.
+    const nouveaux = (c2.parametres ?? {}) as Record<string, unknown>;
+    const parametres = {
+      ...anciensParametres, ...nouveaux,
+      plage_dominante: nouveaux.plage_dominante ?? anciensParametres.plage_dominante ?? null,
+      bande_majeure: nouveaux.bande_majeure ?? anciensParametres.bande_majeure ?? null,
+    };
+    const r3 = await fetch(`${API_URL}/v1/trame`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ parametres }), cache: 'no-store',
+    });
+    if (!r3.ok) {
+      const c3 = await r3.json().catch(() => null);
+      return NextResponse.json({ message: c3?.message || 'Le moteur n’a pas accepté ces modifications.' }, { status: 422 });
+    }
+    const { error } = await service.from('plans').update({
+      course_nom: donnees.course.nom, course_date: donnees.course.date, debut_plan: donnees.course.date_debut_plan,
+      schema: donnees.schema, version_moteur: donnees.version_moteur, donnees, intake: c2.intake ?? {}, parametres, trame: null,
+      depart_prevu: null,
+    }).eq('id', achete.id).is('demarre_le', null);
+    if (error) {
+      console.error('Plan acheté modifié :', error.message);
+      return NextResponse.json({ message: 'Les modifications n’ont pas pu être enregistrées. Réessaie.' }, { status: 500 });
+    }
+    if (achete.nolio_athlete_id) {
+      await reprogrammerSortie(achete.nolio_athlete_id)
+        .catch((e) => console.error(`Sortie de l’équipe du plan ${achete.id} :`, e instanceof Error ? e.message : e));
+    }
+    return NextResponse.json({ page: '/app/coach/chiffres?partie=plans' });
   }
   const { data: plan, error } = await service.from('plans').insert({
     compte_id: coach.compteId, course_nom: donnees.course.nom, course_date: donnees.course.date,
