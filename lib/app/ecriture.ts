@@ -33,6 +33,8 @@ import { allure, coefficientRiegel, kmh, PROFIL_VIDE } from './zones';
 import { reperesDeBase } from './reperes';
 import { ecrireZonesNolio } from './zonesNolio';
 import { allureViseeKmh, ecrireAllureVisee } from './metriquesNolio';
+import { chargeChangee, chargeDe, jourDInvitation } from './invitation';
+import { lireConfirmation, rappelerLesConfirmations } from './confirmation';
 import { CONTINUITE_ACTIVE, lireLesRetouches, seancesLues, type SeanceLue } from './continuite';
 import { relierAuxPrevues } from './relier';
 import type { FamilleLue, ProfilLu } from './classement';
@@ -720,6 +722,10 @@ export async function demarrerObjectif(planId: string, { prevenir = true, lundi,
     else if (o.coache && !o.envois.length && String(o.parametres.declaree_le ?? '') < ajouterJours(premier, -28)) {
       await recalerSurNolio(o, premier).catch((e) => console.error(`Recalage de ${planId} :`, e instanceof Error ? e.message : e));
     }
+    // Un acheteur qui a corrigé sa charge sur la carte de son app (décision coach du 04/11/2026 au soir).
+    else if (!o.coache && !o.envois.length) {
+      await recalerSurLaConfirmation(o, premier).catch((e) => console.error(`Confirmation de ${planId} :`, e instanceof Error ? e.message : e));
+    }
     if (o.coache && !o.envois.length) {
       await ancrerAuDepart(o, premier).catch((e) => console.error(`Ancrage de ${planId} :`, e instanceof Error ? e.message : e));
     }
@@ -763,6 +769,26 @@ async function recalerSurNolio(o: Objectif, lundi: string) {
   if (!charge?.volume_hebdo_actuel) return;
   const champs = { ...((o.parametres.champs ?? {}) as Record<string, unknown>), ...charge };
   const parametres = { ...o.parametres, champs, declaree_le: lundi };
+  try {
+    await moteur('/v1/trame', { parametres });
+  } catch {
+    return;
+  }
+  await clientService().from('plans').update({ parametres, trame: null }).eq('id', o.planId);
+  o.parametres = parametres;
+}
+
+// LA CHARGE CONFIRMÉE PAR L'ACHETEUR (décision coach du 04/11/2026 au soir, « A » ; lib/app/confirmation.ts) : un achat
+// fait plus de 3 semaines avant son invitation, et l'acheteur a corrigé sur la carte de son app son volume, sa plus
+// longue sortie ou un arrêt récent. Sa première semaine part de ces réponses, comme le recalage d'un coaché : les champs
+// changés, déclarés au lundi du départ, relus par le moteur, la trame remise à zéro. « Oui », sans réponse, ou refusé par
+// le moteur : ses réponses de l'achat restent.
+async function recalerSurLaConfirmation(o: Objectif, lundi: string) {
+  const { reponse } = await lireConfirmation(o.planId);
+  if (reponse?.reponse !== 'corrige') return;
+  const avant = (o.parametres.champs ?? {}) as Record<string, unknown>;
+  if (!chargeChangee(chargeDe(avant), reponse.charge)) return;
+  const parametres = { ...o.parametres, champs: { ...avant, ...reponse.charge }, declaree_le: lundi };
   try {
     await moteur('/v1/trame', { parametres });
   } catch {
@@ -1840,14 +1866,11 @@ export async function prevenirCoach(sujet: string, texte: string, coachId: strin
   }).catch((e) => console.error('E-mail au coach :', e instanceof Error ? e.message : e));
 }
 
-// L'INVITATION À LA VEILLE DU DÉPART (décision coach du 04/11/2026, PL4 « A ») : un achat dont la préparation commence
-// plus tard (une course lointaine) n'entre dans l'équipe que la veille de son premier lundi ; d'ici là, il reste « à
-// inviter », et le passage quotidien l'invite le jour venu (reinviter). Le jour de son invitation : celui de l'achat, ou
-// cette veille s'il est plus tard. Ses relances comptent à partir de ce jour.
-export function jourDInvitation(debutPlan: string | null | undefined, jourAchat: string): string {
-  const veille = debutPlan ? ajouterJours(String(debutPlan).slice(0, 10), -1) : null;
-  return veille && veille > jourAchat ? veille : jourAchat;
-}
+// L'INVITATION LA SEMAINE AVANT LE DÉPART (décision coach du 04/11/2026 au soir, à la place de « la veille du premier
+// lundi » du matin) : un achat n'entre dans l'équipe que le lundi de la semaine qui précède son départ (J-7), ou tout de
+// suite si son départ tombe dans les 7 jours qui suivent l'achat ; d'ici là, il reste « à inviter », et le passage
+// quotidien l'invite le jour venu (reinviter). Ses relances comptent à partir de ce jour (lib/app/invitation.ts).
+export { jourDInvitation };
 
 // L'invitation de l'acheteur dans l'équipe, au paiement (P1) : l'adresse Nolio qu'il a donnée, sinon celle de l'achat.
 // Un compte existant reçoit l'invitation de Nolio ; une adresse inconnue reçoit un compte créé, déjà dans l'équipe :
@@ -1892,7 +1915,7 @@ export async function inviterAcheteur(planId: string, emailAchat: string, { prev
     await demarrerObjectif(planId);
     return 'actif';
   }
-  // PL4 : pas avant la veille de son départ ; le passage quotidien l'invitera ce jour-là.
+  // Pas avant le lundi de la semaine qui précède son départ ; le passage quotidien l'invitera ce jour-là.
   if (jourDInvitation(p.debut_plan as string | null, aujourdhuiParis()) > aujourdhuiParis()) {
     await service.from('plans').update({ nolio_statut: 'a_inviter' }).eq('id', planId).eq('nolio_statut', 'en_cours');
     return 'attente';
@@ -1935,8 +1958,8 @@ export async function inviterAcheteur(planId: string, emailAchat: string, { prev
   return statut;
 }
 
-// Les invitations restées à faire (équipe pleine, Nolio indisponible), et celles qui attendaient la veille du départ
-// (PL4) : un essai chaque jour. Le coach est prévenu le jour où l'invitation devait partir, pas les jours suivants.
+// Les invitations restées à faire (équipe pleine, Nolio indisponible), et celles qui attendaient la semaine d'avant le
+// départ : un essai chaque jour. Le coach est prévenu le jour où l'invitation devait partir, pas les jours suivants.
 // B-PL-30 : une invitation restée « en cours » plus d'une heure après l'achat (une coupure pendant l'appel) se reprend.
 const UNE_HEURE_MS = 3600_000;
 export async function reinviter(): Promise<Compte[]> {
@@ -1961,7 +1984,7 @@ export async function reinviter(): Promise<Compte[]> {
 const jourParis = (horodatage: string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date(horodatage));
 
 // Une invitation envoyée et jamais acceptée (décision coach du 21/10/2026 : « relance puis alerte ») : 3 jours après
-// l'achat, un e-mail à l'acheteur ; 7 jours après, un e-mail au coach, avec son adresse. Le passage tourne une fois par
+// l'invitation, un e-mail à l'acheteur ; 7 jours après, un e-mail au coach, avec son adresse. Le passage tourne une fois par
 // jour : chaque envoi tombe un seul jour, sans rien garder.
 export const JOURS_RELANCE = 3;
 export const JOURS_ALERTE = 7;
@@ -1972,7 +1995,7 @@ export async function relancerInvitations(): Promise<Compte[]> {
     .eq('nolio_statut', 'invite').gte('course_date', aujourdhui);
   const comptes: Compte[] = [];
   for (const p of data ?? []) {
-    // Les jours depuis l'invitation (PL4 : la veille du départ pour une course lointaine), plus depuis l'achat.
+    // Les jours depuis l'invitation (la semaine d'avant le départ pour une course lointaine), plus depuis l'achat.
     const depuis = joursEntre(jourDInvitation(p.debut_plan as string | null, jourParis(p.cree_le as string)), aujourdhui);
     if (depuis !== JOURS_RELANCE && depuis !== JOURS_ALERTE) continue;
     try {
@@ -1985,7 +2008,7 @@ export async function relancerInvitations(): Promise<Compte[]> {
       } else {
         await prevenirCoach('Plan CTS : invitation Nolio toujours en attente',
           `L’acheteur du plan « ${p.course_nom} » n’a toujours pas accepté l’invitation dans ton équipe Nolio, `
-          + `${JOURS_ALERTE} jours après son achat : ses séances ne peuvent pas lui arriver. Il a été relancé par e-mail `
+          + `${JOURS_ALERTE} jours après son invitation : ses séances ne peuvent pas lui arriver. Il a été relancé par e-mail `
           + `au bout de ${JOURS_RELANCE} jours. Son adresse : ${email}.`);
         comptes.push({ plan: p.id as string, quoi: 'coach prévenu (invitation en attente)' });
       }
@@ -2021,6 +2044,8 @@ export async function passageQuotidien(): Promise<Compte[]> {
   }
   comptes.push(...await reinviter());
   comptes.push(...await relancerInvitations());
+  // Le samedi, la confirmation de charge restée sans réponse (décision coach du 04/11/2026 au soir).
+  comptes.push(...await rappelerLesConfirmations().catch((e) => [{ plan: '', quoi: 'confirmations non rappelées', erreur: e instanceof Error ? e.message : String(e) }]));
   comptes.push(...await departsDuJour());
   await resumeAuCoach(comptes.filter((c) => c.coache && c.journal?.length), tests.filter((t) => t.coache));
   return comptes;

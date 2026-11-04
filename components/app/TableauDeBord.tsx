@@ -21,15 +21,18 @@ const NOLIO = 'https://www.nolio.io/';
 // Les deux réponses de Nolio à l'invitation (décision coach du 20/10/2026) : un compte existant l'accepte (« invite »),
 // une adresse inconnue reçoit un compte créé, déjà dans l'équipe (« actif » d'emblée).
 const ARRIVE = 'Nolio t’écrit dans quelques minutes : une invitation à rejoindre l’équipe CTS si tu as déjà un compte '
-  + 'Nolio, sinon les identifiants de ton nouveau compte. Tes séances s’y installent aussitôt.';
-// inviteLe : une préparation qui commence plus tard, invitée la veille de son premier lundi (PL4, décision coach du
-// 04/11/2026) ; avantCourse : sorti de l'équipe avant sa course (B-PL-41), il peut la rejoindre.
-export function CarteNolio({ etat, inviteLe = null, avantCourse = false }: { etat: EtatNolio; inviteLe?: string | null; avantCourse?: boolean }) {
+  + 'Nolio, sinon les identifiants de ton nouveau compte. Ta première semaine s’y installe la veille de son début.';
+// inviteLe : une préparation qui commence plus tard, invitée le lundi de la semaine qui précède son départ (décision coach
+// du 04/11/2026 au soir, lib/app/invitation.ts) ; confirmer : ce jour-là, l'app lui demandera si sa charge a changé ;
+// avantCourse : sorti de l'équipe avant sa course (B-PL-41), il peut la rejoindre.
+export function CarteNolio({ etat, inviteLe = null, confirmer = false, avantCourse = false }: {
+  etat: EtatNolio; inviteLe?: string | null; confirmer?: boolean; avantCourse?: boolean;
+}) {
   if (!etat || etat === 'actif' || etat === 'coache') return null;
   const textes: Record<'a_inviter' | 'en_cours' | 'invite' | 'refuse' | 'sorti' | 'coaching', { titre: string; texte: string; bouton: boolean }> = {
     a_inviter: inviteLe
-      ? { titre: 'Ton accès Nolio arrive la veille de ta préparation', bouton: false,
-        texte: `Nolio t’écrira le ${dateLongue(inviteLe)} : une invitation à rejoindre l’équipe CTS si tu as déjà un compte Nolio, sinon les identifiants de ton nouveau compte. Ta première semaine s’y installe aussitôt.` }
+      ? { titre: 'Ton accès Nolio arrive une semaine avant ta préparation', bouton: false,
+        texte: `Nolio t’écrira le ${dateLongue(inviteLe)} : une invitation à rejoindre l’équipe CTS si tu as déjà un compte Nolio, sinon les identifiants de ton nouveau compte. Ta première semaine s’y installe la veille de son début.${confirmer ? ' Ce jour-là, ton app te demande aussi si ce que tu cours a changé depuis ton achat.' : ''}` }
       : { titre: 'Ton accès Nolio arrive', bouton: false, texte: ARRIVE },
     en_cours: { titre: 'Ton accès Nolio arrive', bouton: false, texte: ARRIVE },
     invite: { titre: 'Accepte ton invitation Nolio', bouton: false,

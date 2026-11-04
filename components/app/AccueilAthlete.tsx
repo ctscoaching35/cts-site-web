@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { CarteNouveauBadge } from './Badges';
+import ConfirmationCharge from './ConfirmationCharge';
 import EnTeteApp from './EnTeteApp';
 import PourBienDemarrer from './PourBienDemarrer';
 import {
@@ -8,6 +9,8 @@ import {
 import { Carte, CarteSombre, Surtitre } from './Ui';
 import { CarteSaison } from './SaisonDeFond';
 import { nouveauxBadges } from '@/lib/app/badges';
+import { carteDeConfirmation, confirmationAVenir, type CarteConfirmation } from '@/lib/app/confirmation';
+import { carteOuverte, invitationAVenir } from '@/lib/app/invitation';
 import { mesBadges } from '@/lib/app/badgesNolio';
 import { monProfilDEntrainement } from '@/lib/app/profilEntrainement';
 import { lien, prenom, recuperationDuCoache, type Contexte, type Recuperation } from '@/lib/app/contexte';
@@ -96,10 +99,13 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
   // Une course de préparation s'ajoute dans l'objectif, tant que la course est à venir et le plan écrit semaine par
   // semaine.
   const ajout = d.ecrit && !ctx.demonstration && plan.course.date >= jour ? `${lien('/app/plan', ctx)}#ajouter-course` : null;
-  // PL4 (décision coach du 04/11/2026) : une préparation lointaine d'acheteur est invitée dans Nolio la veille de son
-  // premier lundi.
-  const veilleDepart = plan.course.date_debut_plan ? ajouterJours(plan.course.date_debut_plan, -1) : null;
-  const inviteLe = !ctx.coache && veilleDepart && veilleDepart > jour ? veilleDepart : null;
+  // L'invitation d'un acheteur dans Nolio, le lundi de la semaine qui précède son départ (décision coach du 04/11/2026 au
+  // soir, lib/app/invitation.ts) ; confirmer : ce jour-là, son app lui demandera si sa charge a changé (un achat fait
+  // plus de 3 semaines avant). La carte de cette confirmation, de l'invitation à la veille du départ.
+  const inviteLe = ctx.coache ? null : invitationAVenir(plan.course.date_debut_plan, jour);
+  const confirmer = Boolean(inviteLe && (ctx.demonstration || await confirmationAVenir(ctx.cle).catch(() => false)));
+  const confirmation = ctx.coache || etape !== 'avant' ? null : ctx.demonstration ? confirmationDeDemonstration(ctx)
+    : await carteDeConfirmation(ctx.cle, jour).catch(() => null);
   // L'entre-deux d'un coaché (décision coach du 20/10/2026) : sa dernière course passée, aucun objectif à venir. Son
   // prochain se prépare avec son coach ; sa semaine se lit dans Nolio (les séances que son coach lui pose à la main).
   const entreDeux = ctx.coache && etape === 'apres' && (ctx.demonstration || !(await aVenir()));
@@ -144,11 +150,15 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
           <h1 className="mt-1 text-[1.625rem] font-extrabold text-indigo tracking-tight">{nom ? `Bonjour ${nom}` : 'Bonjour'}</h1>
         </div>
 
+        {confirmation && (
+          <ConfirmationCharge planId={confirmation.planId} achat={confirmation.achat} reponse={confirmation.reponse}
+            dimanche={dateLongue(confirmation.dimanche)} demonstration={ctx.demonstration} />
+        )}
         {/* Sa liste dit où en est l'invitation Nolio ; masquée, la carte Nolio le redit. */}
         {etape !== 'apres' && demarrage && d.nolio !== 'sorti' && d.nolio !== 'coaching' && (
           <PourBienDemarrer acheteur={!ctx.coache} nolio={d.nolio} accord={d.accord} questionnaire={d.ecrit && !ctx.aLaMain} installer={installer}
             profil={profil} lienProfil={lienProfil} seanceFaite={d.realises.some((r) => r.seances_faites > 0)}
-            inviteLe={inviteLe ? dateLongue(inviteLe) : null} />
+            inviteLe={inviteLe ? dateLongue(inviteLe) : null} confirmer={confirmer} />
         )}
         {/* AT4 : la récupération du coaché, même quand son objectif suivant est déjà là. */}
         {recup && <CarteRecuperation recup={recup} ctx={ctx} prochain={plan.course.date > recup.date && !plan.fond ? lundiApres(recup.jusqua) : null} />}
@@ -168,7 +178,7 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
           <CetteSemaine semaine={null} ligne={null} questionnaire nolio={nolio} raison={lecture?.raison ?? null} coache
             lundi={lundiCourant} hooper={d.accord} />
         )}
-        {etape !== 'apres' && (!demarrage || d.nolio === 'sorti') && <CarteNolio etat={d.nolio} inviteLe={inviteLe} avantCourse={plan.course.date >= jour} />}
+        {etape !== 'apres' && (!demarrage || d.nolio === 'sorti') && <CarteNolio etat={d.nolio} inviteLe={inviteLe} confirmer={confirmer} avantCourse={plan.course.date >= jour} />}
 
         {etape !== 'apres' && restants <= 7 && !plan.fond && (
           <Link href={lien('/app/plan/jour-j', ctx)} className="block bg-teal text-white rounded-2xl p-[18px]">
@@ -185,6 +195,15 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
       </main>
     </>
   );
+}
+
+// La carte de confirmation en démonstration (développement, sans Supabase) : un achat simulé deux mois avant le départ, et
+// des réponses d'exemple ; elle s'affiche la semaine qui précède le départ (?jour=).
+function confirmationDeDemonstration(ctx: Contexte): CarteConfirmation | null {
+  const debut = ctx.plan.course.date_debut_plan;
+  if (!debut || !carteOuverte(debut, ajouterJours(debut, -60), ctx.jour)) return null;
+  return { planId: ctx.cle, reponse: null, dimanche: ajouterJours(debut, -1),
+    achat: { volume_hebdo_actuel: '5h', sortie_longue_actuelle: '2h', coupure: 'non' } };
 }
 
 // Le lundi qui suit une date : celui où démarre l'objectif suivant, après la récupération.

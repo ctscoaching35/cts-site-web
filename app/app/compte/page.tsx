@@ -91,6 +91,9 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
                 <p className="text-sm font-bold text-indigo">Nolio</p>
                 <p className="mt-0.5 text-[0.8rem] text-[#4A4866] leading-relaxed">
                   {ctx.aLaMain ? 'Ton coach y écrit tes séances.' : 'Tes séances s’y écrivent chaque dimanche soir, d’après ta semaine et ton questionnaire.'}
+                  {/* Nolio ne relie une activité à sa séance que le même jour (décision coach du 04/11/2026 au soir) : la
+                      phrase de l'acheteur et du coaché, ici et dans l'e-mail de bienvenue. */}
+                  {' Tu cours une séance un autre jour ? Déplace-la d’abord dans ton calendrier Nolio.'}
                 </p>
               </div>
             </div>

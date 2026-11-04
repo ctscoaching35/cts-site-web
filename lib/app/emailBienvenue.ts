@@ -11,6 +11,7 @@
  * dans Nolio, l'invitation part à part, l'app devient son tableau de bord. BROUILLON, à valider par le coach. Sans PDF
  * (décision coach du 21/10/2026 : la préparation est vivante, l'app en montre tout à jour).
  */
+import { chargeEnClair, confirmationDemandee, invitationAVenir, type Charge } from './invitation';
 import type { Plan } from './plan';
 
 // L'adresse d'envoi : une adresse du domaine cts-coaching.com, authentifié dans Brevo (CTS_EMAIL_EXPEDITEUR dans
@@ -29,14 +30,16 @@ const echapper = (texte: string) =>
 const enLettres = (iso: string) => new Intl.DateTimeFormat('fr-FR', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' })
   .format(new Date(`${iso}T12:00:00Z`));
 const lendemain = (iso: string) => new Date(Date.parse(`${iso}T12:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
-const veille = (iso: string) => new Date(Date.parse(`${iso}T12:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
 
 // nolio : l'adresse où part l'invitation Nolio, pour un plan écrit semaine par semaine ; null pour un plan d'avant.
 // aujourdhui : le jour de l'achat (Paris).
 // L'e-mail juste (V3, audit de l'app plan du 03/11/2026) : « Bonjour » au prénom, une seule fois « Ta préparation », et
 // la date de sa première séance (le lendemain de l'achat, C9, ou le premier lundi d'une préparation qui commence plus
-// tard) à la place de « a commencé tout de suite ». Une préparation lointaine : l'invitation Nolio part la veille de son
-// premier lundi (PL4, décision coach du 04/11/2026). Une course reportée : il répond à cet e-mail (PL6).
+// tard) à la place de « a commencé tout de suite ». L'invitation Nolio part le lundi de la semaine qui précède le départ,
+// ou tout de suite s'il tombe dans les 7 jours (décision coach du 04/11/2026 au soir, lib/app/invitation.ts) ; un achat
+// fait plus de 3 semaines avant elle : ce jour-là, l'app lui demande si sa charge a changé. « Déplace-la d'abord dans ton
+// calendrier Nolio » (même décision : Nolio ne relie une activité à sa séance que le même jour). Une course reportée : il
+// répond à cet e-mail (PL6).
 export function contenuBienvenue(plan: Plan, lienApp: string, nolio: { adresse: string } | null = null,
   aujourdhui = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date())) {
   const nom = plan.athlete.nom.trim();
@@ -44,7 +47,8 @@ export function contenuBienvenue(plan: Plan, lienApp: string, nolio: { adresse: 
   const { course } = plan;
   const debutPlan = course.date_debut_plan ?? '';
   const premiereSeance = debutPlan > lendemain(aujourdhui) ? debutPlan : lendemain(aujourdhui);
-  const inviteLe = nolio && debutPlan && veille(debutPlan) > aujourdhui ? veille(debutPlan) : null;
+  const inviteLe = nolio ? invitationAVenir(debutPlan, aujourdhui) : null;
+  const confirmer = Boolean(nolio && confirmationDemandee(debutPlan, aujourdhui));
   const connexion = 'Sur un autre appareil, l’app te demande l’adresse e-mail qui reçoit ce message, puis t’y ' +
     'envoie un code à 6 chiffres pour te connecter.';
   const paragraphes = [
@@ -53,10 +57,14 @@ export function contenuBienvenue(plan: Plan, lienApp: string, nolio: { adresse: 
       'Tes séances vivent dans Nolio, l’application d’entraînement que nous utilisons avec tous nos athlètes. ' +
         // Les deux réponses de Nolio à l'invitation (décision coach du 20/10/2026) : un compte existant l'accepte, une
         // adresse inconnue reçoit un compte créé, déjà dans l'équipe.
-        `Nolio t’écrira ${inviteLe ? `le ${enLettres(inviteLe)}, la veille de ta première semaine, ` : ''}à ${nolio.adresse} (pense à regarder dans tes indésirables) : si tu as déjà un compte Nolio, une ` +
+        `Nolio t’écrira ${inviteLe ? `le ${enLettres(inviteLe)}, une semaine avant ta première semaine, ` : ''}à ${nolio.adresse} (pense à regarder dans tes indésirables) : si tu as déjà un compte Nolio, une ` +
         'invitation à rejoindre l’équipe CTS, à accepter ; sinon, les identifiants du compte qu’il vient de te créer, déjà ' +
-        'dans l’équipe. Ta préparation s’installe alors dans ton calendrier Nolio. Chaque samedi, Nolio te pose ' +
-        'quelques questions sur ta semaine à venir, et la semaine suivante s’écrit le dimanche soir d’après tes réponses et ta semaine écoulée.',
+        'dans l’équipe. Ta première semaine s’installe dans ton calendrier Nolio la veille de son début.' +
+        (confirmer ? ' Le jour de ton invitation, ton app CTS te demandera aussi si ce que tu cours a changé depuis ton achat ' +
+          '(ton volume par semaine, ta plus longue sortie, un arrêt récent) : ta première semaine s’écrira sur ta réponse.' : '') +
+        ' Chaque samedi, Nolio te pose quelques questions sur ta semaine à venir, et la semaine suivante s’écrit le dimanche ' +
+        'soir d’après tes réponses et ta semaine écoulée. Tu cours une séance un autre jour ? Déplace-la d’abord dans ton ' +
+        'calendrier Nolio.',
       'L’app CTS est ton tableau de bord : ta course et le compte à rebours, la vue d’ensemble de ta préparation, ta fiche ' +
         'de course et les fiches de la bibliothèque. Pour y revenir facilement, ajoute-la à l’écran d’accueil de ton ' +
         `téléphone : elle te montre comment à la première ouverture. ${connexion}`,
@@ -159,6 +167,50 @@ export async function envoyerRelanceInvitation(email: string, nom: string, lienA
     return;
   }
   const { sujet, texte, html } = contenuRelanceInvitation(nom, lienApp);
+  const reponse = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: { 'api-key': cle, 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({
+      sender: EXPEDITEUR, replyTo: REPONSE, to: [{ email, name: nom.trim() || email }],
+      subject: sujet, textContent: texte, htmlContent: html,
+    }),
+    cache: 'no-store',
+  });
+  if (!reponse.ok) throw new Error(`Brevo ${reponse.status} : ${await reponse.text()}`);
+}
+
+// LE RAPPEL DE LA CONFIRMATION DE CHARGE (décision coach du 04/11/2026 au soir, « A » ; lib/app/confirmation.ts) : le
+// samedi qui précède le départ, à l'acheteur qui n'a pas répondu à la carte de son app. Sans réponse, rien ne bloque.
+// BROUILLON, à valider par le coach.
+export function contenuRappelConfirmation(nom: string, lienApp: string, charge: Charge) {
+  const prenom = nom.trim().split(/\s+/)[0] ?? '';
+  const paragraphes = [
+    `Ta préparation commence lundi. À ton achat, tu nous disais ${chargeEnClair(charge)}. C’est toujours vrai ?`,
+    'Réponds dans ton app CTS d’ici dimanche 18 h : « Oui », ou corrige en quelques secondes. Ta première semaine '
+      + 's’écrit dimanche soir sur ta réponse ; sans réponse, elle part de tes réponses de l’achat.',
+  ];
+  const signature = 'Juliette et Romain — CTS Coaching';
+  const bouton = 'Répondre dans mon app';
+  const bonjour = prenom ? `Bonjour ${prenom},` : 'Bonjour,';
+  const texte = [bonjour, ...paragraphes, `${bouton} : ${lienApp}`, signature].join('\n\n');
+  const p = (contenu: string) => `<p style="margin:0 0 16px;line-height:1.55">${contenu}</p>`;
+  const html = `<!doctype html><html lang="fr"><body style="margin:0;padding:24px 12px;background:#F3F7F0">
+<div style="max-width:560px;margin:0 auto;background:#ffffff;padding:32px 28px;font-family:Helvetica,Arial,sans-serif;font-size:16px;color:#2F2D4E">
+${p(echapper(bonjour))}
+${paragraphes.map((x) => p(echapper(x))).join('\n')}
+<p style="margin:24px 0"><a href="${echapper(lienApp)}" style="display:inline-block;background:#0C6E5F;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 24px">${bouton}</a></p>
+<p style="margin:24px 0 0;line-height:1.55;font-weight:bold">${signature}</p>
+</div></body></html>`;
+  return { sujet: 'Avant ta première semaine : ce que tu cours a-t-il changé ?', texte, html };
+}
+
+export async function envoyerRappelConfirmation(email: string, nom: string, lienApp: string, charge: Charge) {
+  const cle = process.env.BREVO_API_KEY?.trim();
+  if (!cle) {
+    console.warn('Rappel de la confirmation non envoyé : BREVO_API_KEY absente.');
+    return;
+  }
+  const { sujet, texte, html } = contenuRappelConfirmation(nom, lienApp, charge);
   const reponse = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: { 'api-key': cle, 'Content-Type': 'application/json', Accept: 'application/json' },

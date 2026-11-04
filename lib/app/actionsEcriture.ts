@@ -10,6 +10,7 @@ import {
   annulerAjustements, demarrerObjectif, donnerAccordLecture, fichesDesPreparations, objectifEcrit, plansALaMain, poserCourse, prevenirCoach, rattraperLaSemaine,
   retirerAccordLecture, retirerCourseDeNolio, type Course,
 } from './ecriture';
+import { enregistrerConfirmation } from './confirmation';
 import { coachConnecte } from './nolio';
 import { clientServeur, clientService } from './supabase';
 
@@ -292,5 +293,26 @@ export async function retirerMonAccord(planId: string, _e: EtatGeste): Promise<E
   } catch (e) {
     console.error(`Retrait de l'accord ${planId} :`, e instanceof Error ? e.message : e);
     return { ok: false, message: 'Le retrait n’a pas abouti : réessaie dans un moment.' };
+  }
+}
+
+// LA CONFIRMATION DE CHARGE (décision coach du 04/11/2026 au soir, « A » ; lib/app/confirmation.ts) : la réponse de
+// l'acheteur sur la carte de son accueil, « Oui » ou sa charge corrigée. Son plan à lui seulement.
+export async function confirmerMaCharge(planId: string, _e: EtatGeste, form: FormData): Promise<EtatGeste> {
+  const { compteId } = await qui();
+  const o = await objectifEcrit(planId);
+  if (!o || !compteId || o.compteId !== compteId || o.coache) return { ok: false, message: 'Plan introuvable.' };
+  const lu = (cle: string) => String(form.get(cle) ?? '').trim().slice(0, 40);
+  const charge = form.get('reponse') === 'oui' ? null : {
+    volume_hebdo_actuel: lu('volume_hebdo_actuel'), sortie_longue_actuelle: lu('sortie_longue_actuelle'),
+    coupure: lu('coupure') === 'oui' ? 'oui' : 'non',
+  };
+  try {
+    const r = await enregistrerConfirmation(planId, charge);
+    if (r.ok) revalidatePath('/app');
+    return r;
+  } catch (e) {
+    console.error(`Confirmation de ${planId} :`, e instanceof Error ? e.message : e);
+    return { ok: false, message: 'Ta réponse n’a pas pu être enregistrée : réessaie dans un moment.' };
   }
 }
