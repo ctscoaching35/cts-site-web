@@ -16,7 +16,7 @@ import { demandesDuCoach, estRetrait, type Demande } from './demandes';
 import { coursesGardees, pasEncoreIci, type CourseNolio } from './coursesNolio';
 import { entreeDe } from './entree';
 import { achatsEnAttente } from './modes';
-import { plansALaMain, type LigneTrame, type Realise } from './ecriture';
+import { cleLaissee, plansALaMain, type LigneTrame, type Realise } from './ecriture';
 import { ajouterJours, dateLongue, jourMois, joursEntre, type Semaine } from './plan';
 import { athletesNolio, ErreurNolio, nolioConfigure, type AthleteNolio } from './nolio';
 import { clientService } from './supabase';
@@ -112,6 +112,11 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     : { data: [] };
   const aLaMain = await plansALaMain();
   const lundi = lundiDe(jour);
+  // Les semaines que le passage a laissées au coach, ses séances posées avant lui (B-EC-5) : pas « pas parties ».
+  const { data: laissees } = ids.length
+    ? await service.from('nolio_envois').select('plan_id').in('plan_id', ids).eq('semaine', cleLaissee(lundi))
+    : { data: [] };
+  const laisseesAuCoach = new Set((laissees ?? []).map((x) => x.plan_id as string));
   const usrs = fiches.map((a) => a.nolio_athlete_id).filter((x): x is string => Boolean(x));
   const { data: accords } = usrs.length
     ? await service.from('nolio_accords').select('nolio_athlete_id').eq('coach_id', coachId).in('nolio_athlete_id', usrs)
@@ -277,7 +282,7 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     // La semaine en cours pas partie dans Nolio (le passage du dimanche en échec, même après ses reprises). La première
     // d'une saison de fond aussi (25/10/2026 : sans semaine écrite avant, elle passait inaperçue).
     const premiereDeSaison = Boolean(infosFond && p?.demarre_le && String(p.demarre_le) <= lundi);
-    if (o && avenir && ecrit && demarre && !aLaMain.has(o.plan_id) && o.course_date >= lundi
+    if (o && avenir && ecrit && demarre && !aLaMain.has(o.plan_id) && o.course_date >= lundi && !laisseesAuCoach.has(o.plan_id)
         && !semaines.some((l) => (l.donnees as Semaine | null)?.lundi === lundi)
         && (premiereDeSaison || semaines.some((l) => String((l.donnees as Semaine | null)?.lundi ?? '') < lundi))) {
       aRegarder.push({ niveau: 'bloque', genre: 'semaine', cle: `semaine:${o.plan_id}:${lundi}`, athlete: a.nom, action: 'Réessayer ›', href: hrefPlan, planId: o.plan_id,

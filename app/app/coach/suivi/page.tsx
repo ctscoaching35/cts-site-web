@@ -112,7 +112,7 @@ export default async function SuiviCoach() {
                     <span className="font-normal text-indigo/60"> · {a.lundi ? `semaine du ${jourMois(a.lundi)}` : `semaine ${a.numero.slice(1)}`}{a.raisons.length > 0 && ` · ${a.raisons.join(', ')}`}</span>
                   </div>
                   {a.bilan && <p className="text-indigo/75 whitespace-pre-line">{a.bilan}</p>}
-                  {a.raisons.length > 0 && <AnnulerSemaine planId={a.planId} numero={a.numero} />}
+                  {a.raisons.length > 0 && a.annulable && <AnnulerSemaine planId={a.planId} numero={a.numero} />}
                   {a.allegees.map((j) => (
                     <p key={j.id} className="text-indigo/75">
                       {j.nom} allégée en EF (fatigue franche) ·{' '}
@@ -153,9 +153,19 @@ export default async function SuiviCoach() {
                         {statut ? <Link href={`/app/coach/athlete/${statut.fiche}`} className="font-bold text-indigo hover:underline">{athlete.name}</Link>
                           : <span className="font-bold">{athlete.name}</span>}
                         <span className="block text-xs text-[#5E5C78] mt-0.5">{statut?.objectif ?? (statut ? 'Sans objectif à venir' : 'Sans fiche ici')}</span>
-                        <form action={retirerAccord.bind(null, athlete.id)}>
-                          <button type="submit" className="mt-1 text-xs text-indigo/50 underline underline-offset-2">Retirer l’accord</button>
-                        </form>
+                        {/* B-EC-3 (audit du 03/11/2026) : une confirmation d'abord, qui dit ce qui s'efface. */}
+                        <details className="mt-1 text-xs">
+                          <summary className="cursor-pointer text-indigo/50 underline underline-offset-2">Retirer l’accord</summary>
+                          <form action={retirerAccord.bind(null, athlete.id)} className="mt-1.5 space-y-1.5 max-w-[16rem]">
+                            <p className="text-[#4A4866] leading-relaxed">
+                              L’app ne lira plus ses séances, et ce qu’elle en a gardé s’efface : ses repères (FC, allures), ses badges, les chiffres
+                              de ses semaines. Rien ne se récupère.
+                            </p>
+                            <button type="submit" className="min-h-9 px-3 rounded-[10px] border border-[#8A3326]/40 bg-white text-[#8A3326] font-bold">
+                              Retirer l’accord de {athlete.name}
+                            </button>
+                          </form>
+                        </details>
                       </td>
                       <td className="py-3 px-3 tabular-nums whitespace-nowrap">{suivi ? `${suivi.faites} / ${suivi.prevues}` : '—'}</td>
                       <td className="py-3 px-3 whitespace-nowrap">

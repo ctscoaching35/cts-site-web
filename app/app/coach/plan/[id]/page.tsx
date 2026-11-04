@@ -223,7 +223,8 @@ export default async function ObjectifCoache({ params, searchParams }: {
                               <span>{TESTS[t.cle] ?? 'Test'} : {t.statut === 'lu' ? `${resultatTest(t.resultat as Record<string, unknown>)}${SAISI[String((t.resultat as Record<string, unknown>)?.saisi)] ?? ''}. Ses cibles et ses zones ont suivi.` : STATUTS[t.statut] ?? t.statut}</span>
                             </p>
                           ))}
-                          {ajuste && <AnnulerSemaine planId={id} numero={w.numero} />}
+                          {/* B-EC-1 : seulement la dernière semaine écrite ; une plus ancienne ferait reculer sa préparation. */}
+                          {ajuste && w.numero === ecritesTriees.find((x) => /^S\d+$/.test(String(x.numero)))?.numero && <AnnulerSemaine planId={id} numero={w.numero} />}
                         </div>
                       </div>
                     );

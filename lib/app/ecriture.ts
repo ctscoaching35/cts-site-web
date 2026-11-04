@@ -345,12 +345,23 @@ export async function rattraperLaSemaine(planId: string): Promise<string> {
   const lundi = ajouterJours(aujourdhui, -((new Date(`${aujourdhui}T12:00:00Z`).getUTCDay() + 6) % 7));
   const s = semaineDu(o.plan, lundi);
   if (!s) throw new Error('Pas de semaine de préparation cette semaine.');
-  if (o.envois.some((e) => e.semaine === s.numero)) return s.numero;
+  const reservation = await etatDeLaReservation(o, s.numero);
+  if (reservation === 'finie') return s.numero;
+  if (reservation === 'en_cours') throw new Error('Cette semaine est en train de partir : regarde dans une minute.');
+  // B-EC-5 : des séances de course déjà dans son Nolio cette semaine (les tiennes, laissées dimanche) restent : rien ne
+  // s'écrit par-dessus.
+  if (o.envois.some((e) => e.semaine === cleLaissee(lundi)) || await seancesDejaPosees(o, lundi, ajouterJours(lundi, 6))) {
+    throw new Error('Des séances que tu as posées sont déjà dans son Nolio cette semaine : elles restent les tiennes, rien ne s’écrit par-dessus.');
+  }
   const service = clientService();
-  const { data: prise } = await service.from('nolio_envois')
-    .upsert({ plan_id: planId, semaine: s.numero, coach_id: o.coachId, seances: [] }, { onConflict: 'plan_id,semaine', ignoreDuplicates: true })
-    .select('plan_id');
-  if (!prise?.length) throw new Error('Cette semaine est déjà en train de partir : regarde dans une minute.');
+  if (reservation === 'orpheline') {
+    if (!await reprendreLaReservation(planId, s.numero)) throw new Error('Cette semaine est en train de partir : regarde dans une minute.');
+  } else {
+    const { data: prise } = await service.from('nolio_envois')
+      .upsert({ plan_id: planId, semaine: s.numero, coach_id: o.coachId, seances: [] }, { onConflict: 'plan_id,semaine', ignoreDuplicates: true })
+      .select('plan_id');
+    if (!prise?.length) throw new Error('Cette semaine est déjà en train de partir : regarde dans une minute.');
+  }
   try {
     // La première semaine d'une saison de fond, sans retours, comme le dimanche.
     const premiere = Boolean((o.parametres as { fond?: unknown }).fond) && !o.envois.some((e) => /^S\d+$/.test(e.semaine));
@@ -972,6 +983,40 @@ async function plansEnRecuperation(): Promise<string[]> {
 
 export type Compte = { plan: string; quoi: string; erreur?: string; coache?: boolean; journal?: Record<string, unknown>[] };
 
+// B-EC-5 (audit du 03/11/2026, décision coach du 04/11/2026) : une semaine laissée au coach, ses séances posées avant
+// le passage, se note (une ligne « laissee:<lundi> » de nolio_envois, sans séance) : « À regarder » ne la dit plus « pas
+// partie », et « Réessayer » n'écrit jamais par-dessus.
+export const cleLaissee = (lundi: string) => `laissee:${lundi}`;
+async function noterLaissee(o: Objectif, lundi: string) {
+  const { error } = await clientService().from('nolio_envois')
+    .upsert({ plan_id: o.planId, semaine: cleLaissee(lundi), coach_id: o.coachId, seances: [] }, { onConflict: 'plan_id,semaine', ignoreDuplicates: true });
+  if (error) console.error(`Semaine laissée de ${o.planId} :`, error.message);
+}
+
+// B-EC-2 (audit du 03/11/2026, décision coach du 04/11/2026) : une semaine réservée (sa ligne de nolio_envois) dont
+// l'écriture a été coupée en route (les 300 s, un plantage, une mise en ligne) n'a pas de semaine écrite. Chaque séance
+// créée se note au fil de l'envoi (lib/app/coaching.ts) : au-delà de 10 minutes sans rien de nouveau, la réservation est
+// tenue pour libre, et le passage suivant ou « Réessayer » la reprend ; la mise à jour crée ce qui manque, sans rien
+// doubler. Seulement une réservation de moins de 8 jours : un envoi plus ancien (un plan passé au format semaine par
+// semaine, ses semaines déjà dans Nolio) reste tel quel.
+const ORPHELINE_MS = 10 * 60_000;
+type Reservation = 'libre' | 'finie' | 'en_cours' | 'orpheline';
+async function etatDeLaReservation(o: Objectif, numero: string): Promise<Reservation> {
+  const envoi = o.envois.find((e) => e.semaine === numero);
+  if (!envoi) return 'libre';
+  const { data: ecrite } = await clientService().from('semaines_ecrites').select('numero').eq('plan_id', o.planId).eq('numero', numero).maybeSingle();
+  if (ecrite) return 'finie';
+  const age = Date.now() - new Date(envoi.envoye_le).getTime();
+  return age < ORPHELINE_MS ? 'en_cours' : age < 8 * 86400_000 ? 'orpheline' : 'finie';
+}
+
+// Reprendre une réservation orpheline : un seul preneur, la date de la ligne servant de verrou.
+async function reprendreLaReservation(planId: string, numero: string): Promise<boolean> {
+  const { data } = await clientService().from('nolio_envois').update({ envoye_le: new Date().toISOString() })
+    .eq('plan_id', planId).eq('semaine', numero).lt('envoye_le', new Date(Date.now() - ORPHELINE_MS).toISOString()).select('plan_id');
+  return Boolean(data?.length);
+}
+
 // Chaque dimanche soir : la semaine suivante de chaque plan actif, écrite d'après la semaine écoulée. Un budget de temps
 // (la fonction est coupée à 300 s) : au-delà, les plans restants sont remis aux reprises du soir (vercel.json), qui ne
 // font que ce qui manque. Un verrou par semaine : le passage la réserve (une ligne vide de nolio_envois, unique par plan
@@ -998,9 +1043,12 @@ export async function passageDuDimanche(budgetMs = 240_000): Promise<Compte[]> {
       const s = semaineDu(o.plan, lundi);
       const recuperation = s ? null : semaineDeRecuperation(o, lundi);
       const numero = s?.numero ?? recuperation?.numero;
-      if (!numero || o.envois.some((e) => e.semaine === numero)) continue;
+      if (!numero) continue;
+      const reservation = await etatDeLaReservation(o, numero);
+      if (reservation === 'finie' || reservation === 'en_cours') continue;
       // PC1 pour la récupération : une séance de course que le coach a posée cette semaine-là, et elle reste la sienne.
       if (recuperation && await seancesDejaPosees(o, lundi, ajouterJours(lundi, 6))) {
+        await noterLaissee(o, lundi);
         comptes.push({ plan: planId, quoi: `${numero} : récupération laissée, séances du coach gardées`, coache: true });
         continue;
       }
@@ -1022,23 +1070,29 @@ export async function passageDuDimanche(budgetMs = 240_000): Promise<Compte[]> {
       // comme au départ, en récupération et en saison de fond. Avant, une semaine de préparation s'écrivait par-dessus et
       // ses séances se doublaient dans Nolio.
       if (s && await seancesDejaPosees(o, lundi, ajouterJours(lundi, 6))) {
+        await noterLaissee(o, lundi);
         comptes.push({ plan: planId, quoi: `${numero} : ${fond ? 'saison de fond' : 'semaine'} laissée, séances du coach gardées`,
           coache: true });
         continue;
       }
-      if (o.coache && !fond && s) {
+      if (o.coache && !fond && s && reservation === 'libre') {
         await completerLeDepart(o, s).catch((e) => console.error(`Départ complété de ${planId} :`, e instanceof Error ? e.message : e));
       }
-      const { data: prise } = await service.from('nolio_envois')
-        .upsert({ plan_id: planId, semaine: numero, coach_id: o.coachId, seances: [] }, { onConflict: 'plan_id,semaine', ignoreDuplicates: true })
-        .select('plan_id');
-      if (!prise?.length) continue;
+      if (reservation === 'orpheline') {
+        if (!await reprendreLaReservation(planId, numero)) continue;
+      } else {
+        const { data: prise } = await service.from('nolio_envois')
+          .upsert({ plan_id: planId, semaine: numero, coach_id: o.coachId, seances: [] }, { onConflict: 'plan_id,semaine', ignoreDuplicates: true })
+          .select('plan_id');
+        if (!prise?.length) continue;
+      }
       reservee = numero;
       const retours = fond && !o.envois.some((e) => /^S\d+$/.test(e.semaine)) ? null : await lireRetours(o, ajouterJours(lundi, -35), aujourdhui);
       const sortie = recuperation
         ? await ecrireLaRecuperation(o, numero, recuperation.jusqua, retours)
         : await ecrireEtEnvoyer(o, numero, retours);
-      comptes.push({ plan: planId, quoi: `${numero} écrite${recuperation ? ' (récupération)' : ''}`, coache: o.coache, journal: sortie.journal });
+      comptes.push({ plan: planId, quoi: `${numero} écrite${recuperation ? ' (récupération)' : ''}${reservation === 'orpheline' ? ', reprise d’une écriture coupée' : ''}`,
+        coache: o.coache, journal: sortie.journal });
     } catch (e) {
       if (reservee) {
         // Rien de créé dans Nolio : la semaine se libère pour la reprise. Sinon, ce qui est créé reste noté (pas de doublon).
@@ -1078,7 +1132,9 @@ export async function apercuDuDimanche(planId: string): Promise<Apercu> {
   const recuperation = s ? null : semaineDeRecuperation(o, lundi);
   const numero = s?.numero ?? recuperation?.numero ?? null;
   if (!numero) return rien('Pas de semaine à écrire lundi.');
-  if (o.envois.some((e) => e.semaine === numero)) return rien('Déjà partie dans Nolio.', numero);
+  const reservation = await etatDeLaReservation(o, numero);
+  if (reservation === 'orpheline') return rien('Coupée en cours d’écriture : elle se complète au prochain passage, ou par « Réessayer ».', numero);
+  if (reservation !== 'libre') return rien('Déjà partie dans Nolio.', numero);
   const posees = await seancesDejaPosees(o, lundi, ajouterJours(lundi, 6));
   if (recuperation && posees) return rien('Récupération laissée : tu as déjà posé des séances cette semaine-là, elles restent les tiennes.', numero);
   const fond = Boolean((o.parametres as { fond?: unknown }).fond);
@@ -1185,11 +1241,22 @@ export async function garderSeanceOrigine(planId: string, seance: string, compte
 
 // Le coach annule les ajustements d'une semaine (« Annuler » dans le Suivi) : elle se réécrit sans les règles du
 // dimanche, à partir de l'état d'avant, et se met à jour dans Nolio (ses retouches gardées).
+// B-EC-1 (audit du 03/11/2026, décision coach du 04/11/2026) : seulement la dernière semaine écrite. Une plus ancienne
+// repartirait de son état d'avant et l'écrirait sur le plan : la suite de sa préparation reculerait.
+export async function derniereSemaineEcrite(planId: string): Promise<string | null> {
+  const { data } = await clientService().from('semaines_ecrites').select('numero').eq('plan_id', planId);
+  return (data ?? []).map((x) => String(x.numero)).filter((n) => /^S\d+$/.test(n))
+    .sort((a, b) => Number(b.slice(1)) - Number(a.slice(1)))[0] ?? null;
+}
+
 export async function annulerAjustements(planId: string, numero: string): Promise<void> {
   const o = await objectifEcrit(planId);
   if (!o) throw new Error('Plan introuvable');
   const { data: ecrite } = await clientService().from('semaines_ecrites').select('etat_avant').eq('plan_id', planId).eq('numero', numero).maybeSingle();
   if (!ecrite) throw new Error('Semaine pas encore écrite');
+  if (numero !== await derniereSemaineEcrite(planId)) {
+    throw new Error('Seule la dernière semaine écrite s’annule : annuler une semaine plus ancienne ferait reculer sa préparation.');
+  }
   o.etat = (ecrite.etat_avant ?? null) as Etat | null;
   await ecrireEtEnvoyer(o, numero, null, { sansAjustement: true });
 }
@@ -1819,7 +1886,9 @@ const REGLES_EN_CLAIR: Record<string, string> = {
 
 // Le Suivi du coach (décision 8 du document des règles) : les ajustements de ses coachés écrits ces 8 derniers jours,
 // chacun avec son geste : « Annuler » pour ceux du dimanche, « Garder la séance d'origine » pour une séance allégée.
-export type Ajustement = { planId: string; nom: string; numero: string; lundi: string | null; raisons: string[]; bilan: string | null; allegees: { id: string; nom: string }[] };
+// annulable : la dernière semaine écrite de son objectif (B-EC-1) ; « Annuler » ne s'offre que là.
+export type Ajustement = { planId: string; nom: string; numero: string; lundi: string | null; raisons: string[]; bilan: string | null;
+  allegees: { id: string; nom: string }[]; annulable: boolean };
 export async function ajustementsDuCoach(coachId: string): Promise<Ajustement[]> {
   const service = clientService();
   const { data: coaching } = await service.from('coaching').select('plan_id, athlete_nom').eq('coach_id', coachId);
@@ -1828,6 +1897,13 @@ export async function ajustementsDuCoach(coachId: string): Promise<Ajustement[]>
   const depuis = new Date(Date.now() - 8 * 86400_000).toISOString();
   const { data: ecrites } = await service.from('semaines_ecrites').select('plan_id, numero, journal, bilan, donnees, sans_ajustement')
     .in('plan_id', [...nomDe.keys()]).gte('ecrite_le', depuis);
+  const { data: numeros } = await service.from('semaines_ecrites').select('plan_id, numero').in('plan_id', [...nomDe.keys()]);
+  const derniere = new Map<string, number>();
+  for (const x of numeros ?? []) {
+    if (!/^S\d+$/.test(String(x.numero))) continue;
+    const n = Number(String(x.numero).slice(1));
+    if (n > (derniere.get(x.plan_id as string) ?? -1)) derniere.set(x.plan_id as string, n);
+  }
   const liste: Ajustement[] = [];
   for (const e of ecrites ?? []) {
     const journal = e.sans_ajustement ? [] : ((e.journal ?? []) as { regle?: string }[]);
@@ -1838,6 +1914,7 @@ export async function ajustementsDuCoach(coachId: string): Promise<Ajustement[]>
       planId: e.plan_id as string, nom: nomDe.get(e.plan_id as string) ?? '', numero: e.numero as string,
       lundi: (e.donnees as Semaine | null)?.lundi ?? null,
       raisons: [...new Set(journal.map((j) => REGLES_EN_CLAIR[j.regle ?? ''] ?? j.regle ?? ''))], bilan: e.bilan as string | null, allegees,
+      annulable: derniere.get(e.plan_id as string) === Number(String(e.numero).slice(1)),
     });
   }
   return liste.sort((a, b) => a.nom.localeCompare(b.nom, 'fr') || a.numero.localeCompare(b.numero, 'fr', { numeric: true }));

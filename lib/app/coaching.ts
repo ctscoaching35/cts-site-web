@@ -424,6 +424,7 @@ export async function envoyerSemaineCible(c: Cible, numero: string, semaineEcrit
     if (cree.deja) bandeau = ' ; ton bandeau déjà posé sur cette semaine est gardé';
     else {
       crees.push(cree);
+      await garderEnvoi(coachId, planId, numero, crees);
       bandeau = ` et le bandeau « ${String(cycle.name)} »`;
     }
   }
@@ -437,6 +438,9 @@ export async function envoyerSemaineCible(c: Cible, numero: string, semaineEcrit
       throw new Error(cree.erreur);
     }
     crees.push(cree);
+    // Chaque séance notée dès sa création (B-EC-2, audit du 03/11/2026) : une écriture coupée en route (les 300 s, une
+    // mise en ligne) ne perd rien de ce qu'elle a créé, et sa reprise complète la semaine sans la doubler.
+    await garderEnvoi(coachId, planId, numero, crees);
   }
   await garderEnvoi(coachId, planId, numero, crees);
   const fiches = crees.filter((c) => c.jour_id.startsWith('fiche:')).length;
@@ -649,6 +653,8 @@ export async function mettreAJourSemaineCible(c: Cible, numero: string, semaineE
       return;
     }
     garde.push(cree);
+    // Noté dès sa création (B-EC-2) : une mise à jour coupée en route ne le recrée pas à sa reprise.
+    await garderEnvoi(coachId, planId, numero, [...garde, ...parJour.values()]);
     if (genre === 'seance') bilan.ajoutees += 1;
     else if (genre === 'note' && !j.id.startsWith('fiche:')) bilan.notes += 1;
     else bilan.bandeau = String(corps.name);

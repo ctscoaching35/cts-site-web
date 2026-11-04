@@ -4,9 +4,11 @@
  * donne sa famille et sa dose, quel qu'en soit l'auteur ou le nom. Chaque étape de travail prend la cible la plus
  * précise qu'elle porte : l'allure visée, le % de la vitesse critique (ou une allure en clair rapportée à la VC de
  * l'athlète), le % de la FC aux seuils (ou des pulsations en clair rapportées à ses seuils), la zone (l'échelle commune,
- * aux numéros du coach), le RPE à défaut ; une montée ou une descente sans autre cible est de la mécanique. Fonctions
- * pures : aucune lecture ici (lib/app/continuite.ts lit Nolio).
+ * aux numéros du coach), le RPE à défaut ; une montée ou une descente sans autre cible est de la mécanique. Une séance
+ * de la barre latérale a sa famille par son nom (C1, classerSeanceNommee). Fonctions pures : aucune lecture ici
+ * (lib/app/continuite.ts lit Nolio).
  */
+import { FAMILLES_DE_LA_BARRE } from './barreFamilles';
 
 export type CibleNolio = {
   type: string; metric?: string; percent?: number; percent_max?: number; zone?: number; stream?: string;
@@ -59,7 +61,9 @@ export function familleDuPas(pas: NoeudNolio, profil: ProfilLu): { famille: Fami
     if (c.type === 'metric' && typeof c.percent === 'number' && (c.metric === 'FCSEUIL2' || c.metric === 'FCSEUIL1'
       || c.metric === 'VITESSESEUIL1RUNNING')) {
       const p = milieu(c.percent, c.percent_max) / 100;
-      if (c.metric === 'FCSEUIL2') return { famille: p >= 0.95 ? 'seuil2' : p >= 0.9 ? 'tempo' : 'ef' };
+      // Les cibles de la barre (C1, audit du 03/11/2026) : Seuil 2 à 95-100 % (milieu 97,5), Tempo à 93-97 % (milieu
+      // 95), VO2max au-delà de 100 %. À 95 %, le Tempo se lisait Seuil 2 et la VO2max aussi.
+      if (c.metric === 'FCSEUIL2') return { famille: p >= 1.0 ? 'vo2max' : p >= 0.965 ? 'seuil2' : p >= 0.9 ? 'tempo' : 'ef' };
       return { famille: p >= 0.97 ? (p >= 1.05 ? 'tempo' : 'seuil1') : 'ef' };
     }
     if (c.type === 'raw' && c.unit === 'bpm' && typeof c.value === 'number') {
@@ -92,11 +96,8 @@ function minutesDuPas(pas: NoeudNolio, vitesse: number | undefined, profil: Prof
 
 const QUALITES: FamilleLue[] = ['seuil1', 'tempo', 'seuil2', 'vo2max', 'allure', 'sprint', 'mecanique'];
 
-// La famille d'une séance et sa dose : la qualité où elle passe le plus de temps, ses minutes, ses répétitions et la
-// durée moyenne de ses blocs ; null pour une séance d'endurance (ou sans structure lisible). rpePrevu : le RPE de la
-// séance, quand ses étapes n'en disent rien.
-export function classerSeance(workout: NoeudNolio[] | null | undefined, profil: ProfilLu, rpePrevu?: number | null,
-  dureeMin?: number | null): Classement | null {
+// Les minutes et les répétitions de chaque famille dans les étapes d'une séance.
+function parFamille(workout: NoeudNolio[], profil: ProfilLu) {
   const minutes = new Map<FamilleLue, number>();
   const reps = new Map<FamilleLue, number>();
   const parcourir = (noeuds: NoeudNolio[], fois: number) => {
@@ -111,7 +112,18 @@ export function classerSeance(workout: NoeudNolio[] | null | undefined, profil: 
       reps.set(f.famille, (reps.get(f.famille) ?? 0) + fois);
     }
   };
-  parcourir(workout ?? [], 1);
+  parcourir(workout, 1);
+  return { minutes, reps };
+}
+
+const arrondi = (x: number) => Math.round(x * 10) / 10;
+
+// La famille d'une séance et sa dose : la qualité où elle passe le plus de temps, ses minutes, ses répétitions et la
+// durée moyenne de ses blocs ; null pour une séance d'endurance (ou sans structure lisible). rpePrevu : le RPE de la
+// séance, quand ses étapes n'en disent rien.
+export function classerSeance(workout: NoeudNolio[] | null | undefined, profil: ProfilLu, rpePrevu?: number | null,
+  dureeMin?: number | null): Classement | null {
+  const { minutes, reps } = parFamille(workout ?? [], profil);
   const qualites = QUALITES.filter((f) => (minutes.get(f) ?? 0) > 0);
   if (!qualites.length) {
     // Sans structure lisible : le RPE de la séance, sur sa durée moins l'échauffement et le retour.
@@ -122,10 +134,30 @@ export function classerSeance(workout: NoeudNolio[] | null | undefined, profil: 
     return null;
   }
   const famille = qualites.reduce((a, b) => ((minutes.get(b) ?? 0) > (minutes.get(a) ?? 0) ? b : a));
-  const m = Math.round((minutes.get(famille) ?? 0) * 10) / 10;
+  const m = arrondi(minutes.get(famille) ?? 0);
   // Des lignes droites ou quelques accélérations au bout d'une EF (moins de 5 min, après au moins 15 min d'endurance) :
   // la séance reste une EF.
   if (m < 5 && (minutes.get('ef') ?? 0) >= 15) return null;
   const r = reps.get(famille) ?? 1;
-  return { famille, minutes: m, reps: r, bloc_min: Math.round((m / r) * 10) / 10 };
+  return { famille, minutes: m, reps: r, bloc_min: arrondi(m / r) };
+}
+
+export const nomNormal = (nom: string) => nom.normalize('NFC').replace(/\s+/g, ' ').trim();
+
+// C1 (décision coach du 04/11/2026, « A ») : une séance de la barre latérale (son nom, lib/app/barreFamilles.ts) a sa
+// famille par son nom, sûre ; sa structure donne la dose, toutes ses étapes de qualité comptées (un Tempo dont la FC
+// se lirait Seuil 2, un sprint en côte trop court pour sortir d'une EF). Hors de la barre, la structure seule.
+export function classerSeanceNommee(nom: string | null | undefined, workout: NoeudNolio[] | null | undefined, profil: ProfilLu,
+  rpePrevu?: number | null, dureeMin?: number | null): Classement | null {
+  const c = classerSeance(workout, profil, rpePrevu, dureeMin);
+  const famille = nom ? FAMILLES_DE_LA_BARRE[nomNormal(nom)] : undefined;
+  if (!famille) return c;
+  const { minutes, reps } = parFamille(workout ?? [], profil);
+  const travail = QUALITES.reduce((t, f) => t + (minutes.get(f) ?? 0), 0);
+  if (travail > 0) {
+    const r = QUALITES.reduce((t, f) => t + (reps.get(f) ?? 0), 0) || 1;
+    const m = arrondi(travail);
+    return { famille, minutes: m, reps: r, bloc_min: arrondi(m / r) };
+  }
+  return c ? { ...c, famille } : null;
 }
