@@ -1915,8 +1915,9 @@ export async function inviterAcheteur(planId: string, emailAchat: string, { prev
   const p = pris?.[0];
   if (!p) return 'deja';
   // Un athlète qui a une fiche de coaché (décision coach du 23/10/2026) est déjà dans l'équipe : son compte Nolio est
-  // celui de sa fiche. En mode coaching, son plan attend le bouton de son coach (« Passer en plan »), qui est prévenu ;
-  // en mode plan, il démarre.
+  // celui de sa fiche. En coaching, son plan attend ; son coach est prévenu et voit avec lui au cas par cas (décision
+  // coach du 04/11/2026 au soir, « A » : le bouton « Passer en plan » n'existe plus). Une fiche passée en mode plan
+  // avant le 04/11/2026 : il démarre.
   const { data: fiches } = await service.from('athletes_coaches').select('*').eq('compte_id', p.compte_id)
     .not('nolio_athlete_id', 'is', null).limit(1);
   const fiche = fiches?.[0];
@@ -1926,8 +1927,8 @@ export async function inviterAcheteur(planId: string, emailAchat: string, { prev
       .eq('id', planId);
     if (enCoaching) {
       await prevenirCoach(`Plan CTS : ${fiche.nom} a acheté un plan pendant son coaching`,
-        `${fiche.nom} a acheté le plan « ${p.course_nom ?? ''} » alors qu'il est en mode coaching. Son plan attend : `
-        + 'sur sa fiche, « Passer en plan » arrête son coaching après la semaine en cours et démarre son plan le lundi qui suit.');
+        `${fiche.nom} a acheté le plan « ${p.course_nom ?? ''} » pendant son coaching. Son plan reste en attente : rien `
+        + `n’en part dans Nolio. C’est à voir au cas par cas avec ${String(fiche.nom).split(' ')[0]}.`);
       return 'coaching';
     }
     await demarrerObjectif(planId);
