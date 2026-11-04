@@ -260,7 +260,7 @@ function lireQuestionnaire(items: { question: string; value: unknown }[]): Quest
 // son état (la plus longue sortie courue, le volume fait).
 // garder : ce qui a été lu, tel quel (les séances prévues, les activités, le Hooper), pour les signaux gardés du soir
 // (EC2, lib/app/signauxGardes.ts) : aucun appel de plus à Nolio.
-export type LuDansNolio = { planifiees: { id: string; name?: string; date_start: string; sport?: string | null; rpe?: number | null }[];
+export type LuDansNolio = { planifiees: { id: string; name?: string | null; date_start: string; sport?: string | null; rpe?: number | null }[];
   reels: { id: string; date_start: string; planned?: string | null; debrief?: { rpe?: number | null; feeling?: number | null; comment?: string | null } | null }[];
   hooper: { id: string; date_start: string; value: number | null }[] };
 export async function lireRetours(o: Objectif, du: string, au: string, garder?: (lu: LuDansNolio) => void): Promise<Retours> {
