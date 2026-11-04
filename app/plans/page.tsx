@@ -11,9 +11,9 @@ import { planOuvert } from '@/lib/planAcces';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Plan d’entraînement trail sur mesure — CTS Coaching',
+  title: 'Préparation CTS : ta préparation trail sur mesure — CTS Coaching',
   description:
-    'Un plan trail construit sur ta course, ton niveau, ton terrain et tes disponibilités, dans une app, par la méthode de deux kinésithérapeutes du sport. Achat unique.',
+    'Une préparation trail construite sur ta course, ton niveau, ton terrain et tes disponibilités, écrite chaque semaine dans Nolio, par la méthode de deux kinésithérapeutes du sport. Achat unique.',
 };
 
 async function prixParMois(): Promise<Record<string, number> | null> {
@@ -154,6 +154,13 @@ export default async function PagePlans() {
           <h2 className="text-3xl sm:text-4xl font-extrabold text-indigo mb-8">{t.fin.title}</h2>
           <a href="/plan" className={BOUTON}>{t.fin.cta}</a>
         </section>
+
+        {/* Les liens légaux sur la page de vente (B-PL-8, audit du 03/11/2026 : les mentions accessibles de chaque page). */}
+        <nav aria-label="Informations légales" className="mx-auto max-w-4xl px-6 pb-12 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-indigo/60">
+          <a href="/mentions-legales" className="underline underline-offset-4">Mentions légales</a>
+          <a href="/cgv" className="underline underline-offset-4">Conditions générales de vente</a>
+          <a href="/confidentialite" className="underline underline-offset-4">Confidentialité</a>
+        </nav>
       </main>
     </div>
   );

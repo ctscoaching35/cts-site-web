@@ -72,10 +72,11 @@ export default async function CGV() {
           </li>
           <li>
             une invitation dans l’équipe CTS sur Nolio, la plateforme d’entraînement que nous utilisons (un compte
-            d’athlète gratuit, créé à ton adresse si tu n’en as pas) : tes séances détaillées y sont écrites chaque
+            d’athlète gratuit, créé à ton adresse si tu n’en as pas), envoyée à ton paiement, ou la veille de ton premier
+            lundi si ta préparation commence plus tard : tes séances détaillées y sont écrites chaque
             dimanche pour la semaine suivante, d’après ta semaine écoulée, tes réponses au questionnaire du samedi et,
-            si tu l’acceptes, ton effort ressenti et ton Hooper ; tu quittes l’équipe une semaine après ta course, ton
-            compte Nolio et tes séances restent à toi ;
+            si tu l’acceptes, ton effort ressenti et ton Hooper ; après ta course, ta récupération y est écrite aussi,
+            puis tu quittes l’équipe, ton compte Nolio et tes séances restent à toi ;
           </li>
           <li>
             l’accès à l’app CTS, ton tableau de bord : ta course, ta trame, ta jauge de préparation et tes graphiques, ta
@@ -165,7 +166,8 @@ export default async function CGV() {
       <Section titre="8. Début de ta préparation et droit de rétractation">
         <p>
           Ta préparation commence dès ton paiement confirmé : ton plan s’affiche dans l’app, ton compte est créé, l’e-mail
-          de bienvenue t’est envoyé et Nolio t’invite dans l’équipe CTS ; tes séances s’y écrivent
+          de bienvenue t’est envoyé et Nolio t’invite dans l’équipe CTS (la veille de ton premier lundi, si ta préparation
+          commence plus tard) ; tes séances s’y écrivent
           ensuite chaque dimanche, jusqu’à ta course. Si ton plan n’a pas pu être construit, la page te le dit :
           écris-nous, nous te le livrons ou, si nous ne le pouvons pas, nous te remboursons intégralement.
         </p>

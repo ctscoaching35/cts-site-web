@@ -191,17 +191,19 @@ export const footer = {
 };
 
 /**
- * La page des plans clé en main (/plans) et son bloc sur l'accueil (CTS_LANCEMENT_CADRAGE.md dans le dépôt du
- * moteur, L2, décision coach du 13/10/2026). Rien n'y est promis que l'app ne fasse aujourd'hui ; les limites
- * sont dites. Les prix viennent de l'API (/v1/config), pas d'ici.
+ * La page de la Préparation CTS (/plans) et son bloc sur l'accueil (CTS_LANCEMENT_CADRAGE.md dans le dépôt du moteur,
+ * L2, décision coach du 13/10/2026). Réécrite sur le vrai parcours le 04/11/2026 (PL1, « A » ; audit de l'app plan du
+ * 03/11/2026, V1) : les séances dans Nolio, l'app tableau de bord, la semaine écrite chaque dimanche ; un seul nom,
+ * « Préparation CTS » (décision coach du 04/11/2026). Rien n'y est promis que le parcours ne fasse aujourd'hui ; les
+ * limites sont dites. Les prix viennent de l'API (/v1/config), pas d'ici. BROUILLON : à valider par le coach.
  */
 export const plansOffre = {
   hero: {
-    eyebrow: 'Plan d’entraînement trail',
-    title: 'Ton plan, construit sur ta course.',
+    eyebrow: 'Préparation CTS · trail',
+    title: 'Ta préparation, construite sur ta course.',
     subtitle:
-      'Ta course, ton niveau, ton terrain et tes jours disponibles : ton plan se construit sur tes réponses, semaine par semaine, jusqu’au jour J. Pensé par deux kinésithérapeutes du sport, il vit dans une app qui te suit tout au long de ta préparation.',
-    cta: 'Construire mon plan',
+      'Ta course, ton niveau, ton terrain et tes jours disponibles : ta préparation se construit sur tes réponses et s’écrit semaine après semaine dans Nolio, jusqu’au jour J et à ta récupération. Pensée par deux kinésithérapeutes du sport. Ton app CTS est ton tableau de bord.',
+    cta: 'Construire ma préparation',
     note: 'Achat unique, sans abonnement.',
   },
   etapes: {
@@ -211,29 +213,30 @@ export const plansOffre = {
       {
         titre: 'Tu réponds au questionnaire',
         texte:
-          'Une dizaine de minutes : ta course (distance, dénivelé, trace GPX si tu l’as), ton niveau, ce que tu cours en ce moment, ton terrain d’entraînement et tes jours disponibles.',
+          'Une dizaine de minutes : ta course (distance, dénivelé, trace GPX si tu l’as), ton niveau, ce que tu cours en ce moment, ton terrain d’entraînement et tes jours disponibles. Avant de payer, tu vois le jour de ta première séance.',
       },
       {
-        titre: 'Ton plan est construit',
+        titre: 'Tu rejoins l’équipe CTS sur Nolio',
         texte:
-          'Dès le paiement : la progression de tes sorties longues, tes séances de qualité, le travail en côte et en descente, l’affûtage, calés sur la date de ta course.',
+          'Nolio est l’application d’entraînement, gratuite, que nous utilisons avec tous nos athlètes. Quand ta préparation commence, il t’invite dans l’équipe CTS, ou te crée un compte. Tes séances arrivent dans son calendrier, et sur ta montre.',
       },
       {
-        titre: 'Tu t’entraînes avec l’app',
+        titre: 'Ta semaine s’écrit chaque dimanche',
         texte:
-          'La séance du jour, détaillée à l’effort ; ton journal ; un plan qui s’ajuste quand une séance saute ou quand la fatigue s’installe.',
+          'Chaque samedi, Nolio te demande tes jours disponibles de la semaine qui vient ; le dimanche soir, elle s’écrit d’après tes réponses et ta semaine écoulée. Ton app CTS te montre ta course, ta préparation, tes données et tes fiches.',
       },
     ],
   },
   contenu: {
-    eyebrow: 'Ce que contient ton plan',
+    eyebrow: 'Ce que contient ta préparation',
     title: 'Tout ce qu’il faut, rien de trop',
     items: [
-      'Chaque séance détaillée : échauffement, corps de séance, retour au calme, avec l’effort à viser sur l’échelle RPE.',
+      'Chaque séance détaillée dans Nolio : échauffement, corps de séance, retour au calme, avec l’effort à viser sur l’échelle RPE, et tes repères de fréquence cardiaque ou d’allure quand tu les as.',
       'Des sorties longues qui progressent par paliers, et le terrain de ta course : côtes, descentes, navettes.',
-      'Tes zones : avec ta fréquence cardiaque ou ta vitesse critique, mesurées par des tests simples, tes repères de FC et d’allure sur chaque séance.',
-      'Un plan qui s’adapte : séance manquée, fatigue, sensations notées dans ton journal, la suite s’ajuste sans saut de charge.',
-      'Une séance à déplacer dans la semaine ? L’app te montre les jours qui conviennent le mieux.',
+      'Une séance de renforcement par semaine de charge, ses exercices en vidéo dans Nolio.',
+      'Une semaine qui s’ajuste chaque dimanche : une séance manquée, tes disponibilités, et, avec ton accord de lecture, ta fatigue.',
+      'Tes zones, mesurées par des tests simples, et ta fiche de course pour le jour J.',
+      'Ta récupération après la course, écrite elle aussi.',
       'La bibliothèque CTS : 22 fiches (nutrition, récupération, renforcement, descente…) et les calculateurs.',
     ],
   },
@@ -241,12 +244,12 @@ export const plansOffre = {
     eyebrow: 'Qui est derrière',
     title: 'Deux kinés du sport, une méthode',
     texte:
-      'Juliette (Annecy) et Romain (Rennes) sont kinésithérapeutes du sport et coachs trail depuis plus de 10 ans, kinés sur l’UTMB Mont-Blanc. La méthode de leurs coachings individualisés, appuyée sur les données actuelles des sciences de l’entraînement, construit ton plan.',
+      'Juliette (Annecy) et Romain (Rennes) sont kinésithérapeutes du sport et coachs trail depuis plus de 10 ans, kinés sur l’UTMB Mont-Blanc. La méthode de leurs coachings individualisés, appuyée sur les données actuelles des sciences de l’entraînement, construit ta préparation.',
   },
   prix: {
     eyebrow: 'Les prix',
     title: 'Un prix selon la durée de ta préparation',
-    note: 'Le questionnaire te propose les durées qui conviennent à ta course. Achat unique, sans abonnement.',
+    note: 'Le questionnaire te propose les durées qui conviennent à ta course, avec la date de début de chacune. Achat unique, sans abonnement.',
     durees: [
       { mois: 3, semaines: 12 },
       { mois: 4, semaines: 16 },
@@ -255,12 +258,13 @@ export const plansOffre = {
   },
   limites: {
     eyebrow: 'À savoir',
-    title: 'Ce que le plan ne fait pas',
+    title: 'Ce que la préparation ne fait pas',
     items: [
-      'Pas d’envoi sur ta montre pour l’instant : tes séances sont dans l’app.',
-      'Pas de coach qui te répond : le plan est construit à partir de tes réponses. Pour un suivi par Juliette ou Romain, il y a le coaching individualisé.',
+      'Elle se suit dans Nolio : il te faut un compte Nolio, gratuit (Nolio te le crée si tu n’en as pas), et son appli sur ton téléphone.',
+      'Pas de coach qui suit ta préparation : elle se construit et s’ajuste d’après tes réponses et ce que tu cours. Pour un suivi par Juliette ou Romain, il y a le coaching individualisé.',
       'Les formats ouverts dépendent de ton niveau : un débutant prépare un Trail Court ou un Trail Marathon ; au-delà de 10 h de course, il faut avoir déjà terminé une course d’au moins la moitié de sa taille.',
-      'Il ne remplace pas un avis médical.',
+      'Une course à moins de 4 semaines ne se prépare plus : notre check-list avant course est gratuite.',
+      'Elle ne remplace pas un avis médical.',
     ],
     lienCoaching: { label: 'Découvrir le coaching individualisé', href: '/#offre' },
   },
@@ -273,38 +277,50 @@ export const plansOffre = {
         r: 'Le questionnaire te donne des repères de chrono pour ta course, selon sa distance et son dénivelé. Mets le temps qui te semble le plus probable.',
       },
       {
-        q: 'Ma course est plus proche que la durée du plan.',
-        r: 'Tu reçois quand même le plan entier, et tu le rejoins à la semaine en cours.',
+        q: 'Ma course est plus proche que la durée de la formule.',
+        r: 'Le questionnaire te conseille la formule qui commence en entier dans les 14 jours. Sinon, tu rejoins une formule déjà commencée à la semaine en cours : ses semaines passées sont sautées. Avant de payer, tu vois le jour de ta première séance.',
+      },
+      {
+        q: 'J’ai déjà un compte Nolio.',
+        r: 'Donne son adresse au questionnaire : tu reçois une invitation à rejoindre l’équipe CTS, à accepter. Sans compte, Nolio t’en crée un, gratuit, déjà dans l’équipe.',
       },
       {
         q: 'Que se passe-t-il si je rate une séance ?',
-        r: 'Tu l’indiques dans ton journal : l’app ajuste la suite pour éviter un saut de charge.',
+        r: 'Nolio fait foi : ta semaine suivante s’écrit d’après ce que tu as vraiment couru, sans saut de charge.',
       },
       {
         q: 'Je ne peux pas courir le jour prévu.',
-        r: 'Tu peux déplacer une séance dans la même semaine. L’app te signale les jours moins propices, sans te les interdire.',
+        r: 'Chaque samedi, le questionnaire de Nolio te demande tes jours disponibles de la semaine qui vient : elle s’écrit dessus. Dans la semaine, tu peux déplacer une séance dans ton calendrier Nolio.',
+      },
+      {
+        q: 'Ma course change de date.',
+        r: 'Réponds à ton e-mail de bienvenue avec la nouvelle date : nous voyons avec toi comment ta préparation suit.',
       },
       {
         q: 'J’ai une douleur ou une blessure.',
-        r: 'Le plan ne remplace pas un avis médical : adapte ou interromps la séance, et consulte un professionnel de santé.',
+        r: 'La préparation ne remplace pas un avis médical : adapte ou interromps la séance, et consulte un professionnel de santé.',
       },
       {
         q: 'Je prépare plusieurs courses.',
-        r: 'Un plan par course : pour une autre course, un nouveau plan, rangé dans le même compte.',
+        r: 'Pour un autre objectif majeur, une nouvelle préparation, rangée dans le même compte. Une course de préparation sur la route de ton objectif s’ajoute gratuitement, dans l’app.',
+      },
+      {
+        q: 'Et après ma course ?',
+        r: 'Ta récupération s’écrit dans Nolio, puis tu quittes l’équipe CTS. Ton compte Nolio et tes séances restent à toi.',
       },
     ],
   },
   fin: {
-    title: 'Prêt ? Construis ton plan.',
-    cta: 'Construire mon plan',
+    title: 'Prêt ? Construis ta préparation.',
+    cta: 'Construire ma préparation',
   },
   // Le bloc de l'accueil, sous l'offre de coaching.
   blocAccueil: {
     eyebrow: 'Pas besoin d’un suivi ?',
-    title: 'Le plan clé en main',
+    title: 'La Préparation CTS',
     texte:
-      'Ton plan d’entraînement construit sur ta course, dans une app, par la méthode CTS. Achat unique, dès 39 €.',
-    cta: 'Découvrir le plan',
+      'Ta préparation construite sur ta course, écrite chaque semaine dans Nolio, par la méthode CTS. Achat unique, dès 39 €.',
+    cta: 'Découvrir la Préparation CTS',
     href: '/plans',
   },
 };

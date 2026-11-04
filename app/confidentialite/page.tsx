@@ -71,8 +71,8 @@ export default async function Confidentialite() {
           <Liste>
             <li>
               <strong>Tes réponses en cours.</strong> Tant que tu n’as pas payé, tes réponses au questionnaire restent dans
-              ton navigateur, pour que tu puisses reprendre plus tard ; elles sont effacées au paiement. Tu peux aussi les
-              effacer en supprimant les données du site dans ton navigateur.
+              ton navigateur, pour que tu puisses reprendre plus tard ; elles sont effacées à ton retour sur le site après le
+              paiement. Tu peux aussi les effacer en supprimant les données du site dans ton navigateur.
             </li>
             <li>
               <strong>Les questions sur une blessure et sur ton cœur</strong> ne quittent jamais ton appareil : elles servent
@@ -116,7 +116,40 @@ export default async function Confidentialite() {
           </Liste>
         </Section>
 
-        <Section titre={no('Dans l’app : tes zones et ton journal')}>
+        {/* Le texte de CTS_TEXTES_A_VALIDER.md (§B2), mis à jour le 04/11/2026 : l'adresse donnée à Nolio (B-PL-68),
+            l'invitation la veille d'une préparation lointaine (PL4), la sortie après la récupération (PL5), l'accord de
+            lecture juste (PL7). BROUILLON, à valider par le coach. */}
+        <Section titre={no('Tes séances dans Nolio')}>
+          <p>
+            Ta préparation vit dans Nolio, la plateforme d’entraînement de CTS (France). Quand elle commence (le jour de ton
+            achat, ou la veille de son premier lundi si elle commence plus tard), nous transmettons à Nolio l’adresse e-mail
+            que tu nous as donnée (celle de ton achat, ou celle de ton compte Nolio), pour t’inviter dans l’équipe CTS ou te
+            créer un compte ; puis nous effaçons cette adresse de notre côté. Tu restes dans l’équipe jusqu’à la fin de ta
+            récupération après ta course ; ton compte Nolio et tes séances restent à toi, sous la politique de
+            confidentialité de Nolio.
+          </p>
+          <Liste>
+            <li>
+              <strong>Chaque dimanche</strong>, ta semaine suivante s’écrit d’après tes réponses au questionnaire du samedi,
+              et tes séances faites ou manquées et leur durée, que nous lisons dans Nolio.
+            </li>
+            <li>
+              <strong>Avec ton accord de lecture</strong> (une case facultative, recommandée), nous lisons aussi ton effort
+              ressenti (RPE), ton ressenti, ton Hooper et la trace de tes séances test (distance, fréquence cardiaque), pour
+              ajuster ta semaine à ta fatigue et en tirer tes repères.
+            </li>
+            <li>
+              <strong>Nous gardons</strong>, pour chaque semaine écrite, ce qui a été décidé et un résumé chiffré (charge
+              faite, séances faites, plus longue sortie, Hooper), pour ta jauge et tes graphiques.
+            </li>
+          </Liste>
+          <p>
+            Retirer ton accord, dans ton Compte, arrête la lecture de ces données et efface ces chiffres. Personne ne lit tes
+            commentaires dans Nolio : pour une question, écris-nous.
+          </p>
+        </Section>
+
+        <Section titre={no('Dans l’app : tes zones')}>
           <p>
             Ces données touchent à ta condition physique : nous ne les gardons qu’avec ton accord exprès, donné par une case
             à cocher la première fois (ton consentement explicite).
@@ -126,14 +159,10 @@ export default async function Confidentialite() {
               <strong>Tes zones</strong> : ta fréquence cardiaque aux seuils, ta vitesse critique, tes allures. Elles servent
               seulement à régler tes séances. Tu les effaces quand tu veux (« Effacer mes valeurs »).
             </li>
-            <li>
-              <strong>Ton journal</strong> : séance faite ou non, effort ressenti (RPE), sensations. Il sert seulement à
-              suivre et à ajuster ton plan. Tu l’effaces quand tu veux, en tout ou séance par séance.
-            </li>
           </Liste>
           <p>
-            Elles ne sont montrées à personne d’autre que toi et partent avec ton compte. Nous ne gardons ni ta réponse sur
-            une blessure ni tes douleurs : le lien « J’ai une douleur » n’enregistre rien.
+            Elles ne sont montrées à personne d’autre que toi et partent avec ton compte. Nous ne gardons pas ta réponse sur
+            une blessure.
           </p>
         </Section>
         </>
@@ -193,7 +222,7 @@ export default async function Confidentialite() {
           <li>Brevo : l’envoi des e-mails (France) ;</li>
           <li>Formspree : le formulaire de contact (États-Unis) ;</li>
           <li>Google : notre messagerie Gmail (États-Unis) ;</li>
-          <li>Nolio : la plateforme d’entraînement des athlètes coachés (France).</li>
+          <li>Nolio : la plateforme d’entraînement où arrivent tes séances (France).</li>
         </Liste>
         <p>
           Vercel, Supabase, Render, Formspree et Google sont des sociétés américaines. Quand des données peuvent être
@@ -215,8 +244,9 @@ export default async function Confidentialite() {
               <li>« cts_invitation » : ton lien d’invitation, quand la vente se fait sur invitation (90 jours) ;</li>
               <li>« cts_plan » : le plan affiché quand tu en as plusieurs (400 jours) ;</li>
               <li>« cts_bienvenue » : l’écran de bienvenue déjà vu (400 jours) ;</li>
-              <li>« cts_hier_ignore » : une question sur la séance de la veille, mise de côté (3 jours) ;</li>
+              <li>« cts_demarrage » : la liste « Pour bien démarrer » masquée (400 jours) ;</li>
               <li>tes réponses en cours au questionnaire, jusqu’au paiement (stockage local) ;</li>
+              <li>« cts-mesure-… » : l’étape du questionnaire déjà comptée, sans identifiant, le temps de l’onglet (stockage de session) ;</li>
               <li>les pages de l’app gardées pour s’ouvrir sans connexion, effacées à la déconnexion.</li>
             </Liste>
           </>
@@ -233,7 +263,7 @@ export default async function Confidentialite() {
           recevoir dans un format lisible pour les emporter ailleurs, retirer à tout moment un consentement donné, et
           dire ce qu’elles deviennent après ton décès. Écris-nous à <a href={`mailto:${vendeur.email}`}>{vendeur.email}</a>{' '}
           ou au {vendeur.adresse} : nous répondons sous un mois.
-          {plans && ' Beaucoup se font directement dans l’app : effacer tes zones, ton journal ou ton compte.'}
+          {plans && ' Beaucoup se font directement dans l’app : effacer tes zones, retirer ton accord de lecture ou supprimer ton compte.'}
         </p>
         <p>
           Si tu penses que tes droits ne sont pas respectés, tu peux saisir la CNIL, 3 place de Fontenoy, TSA 80715, 75334
