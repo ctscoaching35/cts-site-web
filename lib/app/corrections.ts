@@ -9,9 +9,11 @@
 import { CORRECTIONS, RAISONS, type Choix, type Correction, type Raison } from './correctionsTextes';
 import { clientService } from './supabase';
 
-// L'interrupteur : allumé avec le moteur 8.446, qui lit « corrections » sur POST /v1/semaine (CONTRAT_API_CTS.md, « Les
-// ajustements »). Éteint, ni les boutons ni l'envoi : l'aperçu et le dimanche marchent comme avant.
-export const CORRECTIONS_ACTIVES = true;
+// L'interrupteur : le moteur lit « corrections » depuis 8.446 (CONTRAT_API_CTS.md, « Les ajustements » ; vérifié contre
+// 8.447 : le champ, ses 400, le journal « COACH » et son « applique ») ; ÉTEINT jusqu'à ce que le coach valide les
+// réglages par défaut (sortie longue à 75 %, jamais sous 45 min ; décalage au jour libre le plus proche). Éteint, ni les
+// boutons ni l'envoi : l'aperçu et le dimanche marchent comme avant.
+export const CORRECTIONS_ACTIVES = false;
 
 export { CORRECTIONS, RAISONS, type Choix, type Correction, type Raison } from './correctionsTextes';
 
