@@ -191,7 +191,7 @@ export default async function ObjectifCoache({ params, searchParams }: {
                     </div>
                   )}
                   {ecritesTriees.map((w) => {
-                    const journal = (w.journal ?? []) as unknown[];
+                    const journal = ((w.journal ?? []) as { regle?: string }[]).filter((j) => j.regle !== 'COACH');
                     const r = w.realise as Realise | null;
                     const ajuste = journal.length > 0 && !w.sans_ajustement;
                     const lus = (tests ?? []).filter((t) => String(t.jour_id).startsWith(`${w.numero}-`) || String(t.jour_id).startsWith(`${w.numero}:`));

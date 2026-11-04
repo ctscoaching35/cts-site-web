@@ -1,5 +1,6 @@
 // Le journal du moteur en clair pour le coach (les règles du dimanche, cts_ajustements), et les doses lues : partagés par
 // l'aperçu du dimanche et le rapport du dimanche.
+import { CORRECTIONS, type Correction } from './correctionsTextes';
 import type { FamilleLue } from './classement';
 import type { Questionnaire } from './ecriture';
 import { jourMois } from './plan';
@@ -54,6 +55,14 @@ export function enClair(e: Entree, seances?: string[]): string[] {
           : `Ta séance de ${jourDeLaSeance(e.seance)} n’a pas été faite : elle revient sous une autre forme.`];
     case 'D6': return ['Ta semaine posée dans Nolio est lue comme une semaine écrite : sa plus longue sortie, son volume, ses séances clés.'];
     case 'C5': return ['Ta seconde course arrive pendant ta récupération : semaine de course, sans séance dure.'];
+    // EC3 (moteur 8.446) : les corrections du coach sur l'aperçu, appliquées ou non, et la marche refaite la semaine d'après.
+    case 'COACH': {
+      const quoi = CORRECTIONS[String(e.correction) as Correction] ?? String(e.correction ?? '');
+      const texte = String(effet ?? '').replace(/^correction du coach : /, '');
+      if (!String(effet ?? '').startsWith('correction du coach')) return [`Ta correction « ${quoi.toLowerCase()} » de la semaine passée : ${texte}.`];
+      const decale = e.depuis && e.vers ? ` (du ${String(e.depuis)} au ${String(e.vers)})` : '';
+      return [e.applique === false ? `Ta correction « ${quoi.toLowerCase()} » : rien n’a changé, ${texte}.` : `Ta correction « ${quoi.toLowerCase()} » : ${texte}${decale}.`];
+    }
     case 'C1':
       if (e.doses && typeof e.doses === 'object') {
         return Object.entries(e.doses as Record<string, Dose>)

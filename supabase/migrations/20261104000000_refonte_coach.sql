@@ -43,6 +43,8 @@ create table if not exists public.corrections_semaine (
   raison text,
   choisi_le timestamptz not null default now(),
   appliquee_le timestamptz,
+  -- Celles qui ont changé la semaine, d'après le journal du moteur (« correction du coach », applique) : ce qui se compte.
+  appliquees text[],
   primary key (plan_id, lundi)
 );
 alter table public.corrections_semaine enable row level security;

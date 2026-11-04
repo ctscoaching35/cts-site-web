@@ -463,7 +463,7 @@ async function semaineDuMoteur(o: Objectif, numero: string, retours: Retours | n
   const lundi = o.plan.semaines.find((x) => x.numero === numero)?.lundi;
   const faits = await testsFaitsSansValeur(o.planId, lundi).catch(() => new Set<string>());
   // EC3 : les corrections que le coach a choisies sur l'aperçu, derrière leur interrupteur (lib/app/corrections.ts).
-  const corrections = await correctionsAEnvoyer(o.planId, lundi);
+  const corrections = await correctionsAEnvoyer(o.planId, lundi, Boolean(options.sansAjustement));
   return moteur<SortieMoteur>('/v1/semaine', {
     ...(corrections.length ? { corrections } : {}),
     parametres: glucides ? { ...o.parametres, glucides_cible: glucides } : o.parametres, numero, etat: o.etat, retours,
@@ -1202,7 +1202,7 @@ export async function passageDuDimanche(budgetMs = 240_000): Promise<Compte[]> {
         ? await ecrireLaRecuperation(o, numero, recuperation.jusqua, retours)
         : await ecrireEtEnvoyer(o, numero, retours);
       // EC3 : les corrections de cette semaine, envoyées, se comptent (« Chiffres »).
-      if (s && CORRECTIONS_ACTIVES) await marquerAppliquees(planId, lundi).catch(() => null);
+      if (s && CORRECTIONS_ACTIVES) await marquerAppliquees(planId, lundi, sortie.journal ?? []).catch(() => null);
       comptes.push({ plan: planId, quoi: `${numero} écrite${recuperation ? ' (récupération)' : ''}${reservation === 'orpheline' ? ', reprise d’une écriture coupée' : ''}`,
         coache: o.coache, journal: sortie.journal });
     } catch (e) {
@@ -2081,6 +2081,7 @@ export async function passageQuotidien(): Promise<Compte[]> {
 const REGLES_EN_CLAIR: Record<string, string> = {
   R1: 'semaine en grande partie manquée', R2: 'séance clé trop dure ou écourtée', R3: 'fatigue', R4: 'arrêt',
   R8: 'séance clé pas faite, refaite sous une autre forme', C5: 'semaine de course juste après la récupération, sans séance dure',
+  COACH: 'ta correction avant l’envoi',
   R5: 'disponibilités', R7: 'séance en plus', O3: 'course secondaire', CH: 'charge reprise après une semaine légère',
 };
 
@@ -2106,7 +2107,8 @@ export async function ajustementsDuCoach(coachId: string): Promise<Ajustement[]>
   }
   const liste: Ajustement[] = [];
   for (const e of ecrites ?? []) {
-    const journal = e.sans_ajustement ? [] : ((e.journal ?? []) as { regle?: string }[]);
+    // Les corrections du coach (EC3, « COACH ») sont les siennes, pas des ajustements du moteur.
+    const journal = e.sans_ajustement ? [] : ((e.journal ?? []) as { regle?: string }[]).filter((j) => j.regle !== 'COACH');
     const jours = ((e.donnees as Semaine | null)?.jours ?? []) as (Semaine['jours'][number] & { origine?: { seance?: string } })[];
     const allegees = jours.filter((j) => j.origine).map((j) => ({ id: j.id, nom: j.origine?.seance ?? j.id }));
     if (!journal.length && !allegees.length) continue;
@@ -2132,7 +2134,7 @@ async function resumeAuCoach(fatigues: Compte[], tests: TestLu[] = []) {
   const lignes: string[] = [];
   for (const e of ecrites ?? []) {
     const nom = nomDe.get(e.plan_id as string);
-    const journal = (e.journal ?? []) as { regle?: string }[];
+    const journal = ((e.journal ?? []) as { regle?: string }[]).filter((j) => j.regle !== 'COACH');
     if (!nom || !journal.length || e.sans_ajustement) continue;
     lignes.push(`${nom}, ${e.numero} : ${[...new Set(journal.map((j) => REGLES_EN_CLAIR[j.regle ?? ''] ?? j.regle))].join(', ')}.`);
   }

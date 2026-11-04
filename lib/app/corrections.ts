@@ -9,9 +9,9 @@
 import { CORRECTIONS, RAISONS, type Choix, type Correction, type Raison } from './correctionsTextes';
 import { clientService } from './supabase';
 
-// L'interrupteur : éteint tant que le moteur ne lit pas « corrections » (une tâche du moteur l'ajoute ; à allumer avec
-// sa version). Éteint, ni les boutons ni l'envoi : l'aperçu et le dimanche marchent comme avant.
-export const CORRECTIONS_ACTIVES = false;
+// L'interrupteur : allumé avec le moteur 8.446, qui lit « corrections » sur POST /v1/semaine (CONTRAT_API_CTS.md, « Les
+// ajustements »). Éteint, ni les boutons ni l'envoi : l'aperçu et le dimanche marchent comme avant.
+export const CORRECTIONS_ACTIVES = true;
 
 export { CORRECTIONS, RAISONS, type Choix, type Correction, type Raison } from './correctionsTextes';
 
@@ -28,14 +28,23 @@ export async function choixDeLaSemaine(planId: string, lundi: string): Promise<C
 }
 
 // Ce que le passage envoie au moteur : les corrections d'une semaine pas encore appliquées ; [] sinon, ou éteint.
-export async function correctionsAEnvoyer(planId: string, lundi: string | null | undefined): Promise<Correction[]> {
+// memeAppliquees : la semaine se réécrit (« Annuler les ajustements ») ; les corrections du coach restent les siennes.
+export async function correctionsAEnvoyer(planId: string, lundi: string | null | undefined, memeAppliquees = false): Promise<Correction[]> {
   if (!CORRECTIONS_ACTIVES || !lundi) return [];
   const choix = await choixDeLaSemaine(planId, lundi).catch(() => null);
-  return choix && !choix.appliquee ? choix.corrections : [];
+  return choix && (memeAppliquees || !choix.appliquee) ? choix.corrections : [];
 }
 
-export async function marquerAppliquees(planId: string, lundi: string): Promise<void> {
-  await clientService().from('corrections_semaine').update({ appliquee_le: new Date().toISOString() })
+// Le journal du moteur dit, pour chaque correction demandée, si elle a changé la semaine (« correction du coach : … »,
+// applique) ; seules celles-là se comptent. L'entrée « la marche … se refait », la semaine d'après un « sans qualité »,
+// n'est pas une correction de plus.
+type EntreeJournal = { regle?: unknown; correction?: unknown; applique?: unknown; effet?: unknown };
+export const appliqueesDuJournal = (journal: EntreeJournal[]): Correction[] => journal
+  .filter((e) => e.regle === 'COACH' && e.applique !== false && String(e.effet ?? '').startsWith('correction du coach'))
+  .map((e) => String(e.correction)).filter((c): c is Correction => c in CORRECTIONS);
+
+export async function marquerAppliquees(planId: string, lundi: string, journal: EntreeJournal[]): Promise<void> {
+  await clientService().from('corrections_semaine').update({ appliquee_le: new Date().toISOString(), appliquees: appliqueesDuJournal(journal) })
     .eq('plan_id', planId).eq('lundi', lundi).is('appliquee_le', null);
 }
 
@@ -54,14 +63,16 @@ export async function annulerLeChoix(planId: string, lundi: string) {
 // migration.
 export async function correctionsComptees(coachId: string, depuis: string): Promise<{ parCorrection: Record<string, number>;
   parRaison: Record<string, number>; semaines: number } | null> {
-  const { data, error } = await clientService().from('corrections_semaine').select('corrections, raison')
+  const { data, error } = await clientService().from('corrections_semaine').select('corrections, appliquees, raison')
     .eq('coach_id', coachId).not('appliquee_le', 'is', null).gte('lundi', depuis);
   if (error) return null;
   const parCorrection: Record<string, number> = {};
   const parRaison: Record<string, number> = {};
   for (const l of data ?? []) {
     const c = lire(l);
-    for (const x of c.corrections) parCorrection[x] = (parCorrection[x] ?? 0) + 1;
+    // Celles qui ont changé la semaine (le journal du moteur) ; une ligne d'avant la colonne : celles demandées.
+    const comptees = Array.isArray(l.appliquees) ? (l.appliquees as string[]).filter((x) => x in CORRECTIONS) : c.corrections;
+    for (const x of comptees) parCorrection[x] = (parCorrection[x] ?? 0) + 1;
     const r = c.raison ?? 'sans';
     parRaison[r] = (parRaison[r] ?? 0) + 1;
   }

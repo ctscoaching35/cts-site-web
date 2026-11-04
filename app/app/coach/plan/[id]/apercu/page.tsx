@@ -82,7 +82,9 @@ export default async function ApercuDimanche({ params }: { params: Promise<{ id:
               <Surtitre>Corriger avant l’envoi</Surtitre>
               <p className="text-sm text-[#4A4866]">
                 Ce que tu corrigerais dans Nolio, choisi ici : le moteur l’applique dimanche soir, et ta raison se compte dans
-                « Chiffres ». Tu peux le retirer jusque-là.
+                « Chiffres ». Tu peux le retirer jusque-là. Sortie longue plus courte : 75 %, jamais sous 45 min ; décaler : au
+                jour libre le plus proche, jamais à côté de la sortie longue ni d’une séance dure. Aucune note n’est ajoutée
+                dans Nolio : ton athlète ne voit pas pourquoi, dis-le-lui si besoin.
               </p>
               <CorrigerSemaine planId={id} lundi={a.lundi} choix={choix} />
             </Carte>
