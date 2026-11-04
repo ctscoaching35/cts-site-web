@@ -14,7 +14,7 @@
  */
 import { cache } from 'react';
 import { site } from '@/lib/content';
-import { API_URL, joursRecuperation, lireTemps } from '@/lib/plan';
+import { API_URL, dureeConseillee, dureesPossibles, joursRecuperation, lireTemps, type Champs, type ConfigPlan } from '@/lib/plan';
 import {
   chargeDepuisNolio, creer, destinataire, envoyerSemaineCible, ficheAthlete, garderEnvoi, mettreAJourSemaineCible, profilDe, seancesDuMoteur,
   volumeDuMoment,
@@ -25,7 +25,7 @@ import { lienFicheCourse } from './ficheCourse';
 import { glucidesDeLaStrategie } from './strategie';
 import { dateDe } from './trameNolio';
 import { appelNolio, coachs, listeNolio, refusNolio, sansVitesseImpossible, SPORTS_COURSE } from './nolio';
-import { ajouterJours, joursEntre, type Plan, type Semaine } from './plan';
+import { ajouterJours, joursEntre, SCHEMA_PLAN, type Plan, type Semaine } from './plan';
 import { clientService } from './supabase';
 import type { Fiche } from './tableau';
 import { fcSeuil2DuTest, lireParole, vcDuTest, type Flux, type Tour } from './tests';
@@ -34,6 +34,7 @@ import { reperesDeBase } from './reperes';
 import { ecrireZonesNolio } from './zonesNolio';
 import { allureViseeKmh, ecrireAllureVisee } from './metriquesNolio';
 import { CONTINUITE_ACTIVE, seancesLues, type SeanceLue } from './continuite';
+import { relierAuxPrevues } from './relier';
 import type { ProfilLu } from './classement';
 
 export type Etat = Record<string, unknown>;
@@ -255,9 +256,17 @@ export async function lireRetours(o: Objectif, du: string, au: string): Promise<
   type Reel = { id: string; date_start: string; sport?: string | null; duration?: { value: number } | null; planned?: string | null;
     elevation_gain?: { value: number } | null; distance?: { value?: number; unit?: string } | number | null;
     debrief?: { rpe?: number | null; feeling?: number | null } | null };
-  const reels = (await listeNolio<Reel>(
+  // « Nolio fait foi » : les séances prévues de ces semaines, une semaine de marge de chaque côté (une séance déplacée
+  // juste à côté reste la sienne).
+  type Prevue = { id: string; date_start: string; sport?: string | null; duration?: { value?: number } | null; rpe?: number | null };
+  // Avec la continuité, la révision de chaque séance (une séance du moteur retouchée par le coach devient la sienne).
+  const planifiees = await listeNolio<Prevue>(`planned/trainings/?date_from=${ajouterJours(du, -7)}&date_to=${ajouterJours(au, 7)}${qui}`
+    + (CONTINUITE_ACTIVE ? '&with_revision=true' : ''));
+  const jours = new Set([o.plan.course.date, ...((o.parametres.courses_secondaires ?? []) as Course[]).map((c) => c.date)]);
+  // C2 : une activité courue un autre jour que sa séance, que Nolio n'a pas reliée, se relie à elle (lib/app/relier.ts).
+  const reels = relierAuxPrevues((await listeNolio<Reel>(
     `real/trainings/?date_from=${du}&date_to=${au}&fields=id,date_start,sport,duration,distance,elevation_gain,planned,debrief${qui}`))
-    .map(sansVitesseImpossible);
+    .map(sansVitesseImpossible), planifiees, SPORTS_COURSE, jours);
   const seances: RetourSeance[] = reels.filter((r) => r.planned && parNolio.has(r.planned)).map((r) => ({
     id: parNolio.get(r.planned as string) as string, date: r.date_start.slice(0, 10), faite: true,
     duree_min: r.duration?.value ? Math.round(r.duration.value / 60) : null,
@@ -277,15 +286,8 @@ export async function lireRetours(o: Objectif, du: string, au: string): Promise<
   const resultats = (await listeNolio<{ id: string; name?: string; date_start: string; is_confirmed?: boolean; items: { question: string; value: unknown }[] }>(
     `real/quiz_results/?date_from=${ajouterJours(au, -6)}&date_to=${au}${qui}`).catch(() => [])).filter((r) => r.is_confirmed !== false);
   const dernier = resultats.filter((r) => r.name === QUESTIONNAIRE_SEMAINE.name).sort((a, b) => b.date_start.localeCompare(a.date_start))[0];
-  // « Nolio fait foi » : les séances prévues de ces semaines, une semaine de marge de chaque côté (une séance déplacée
-  // juste à côté reste la sienne).
-  type Prevue = { id: string; date_start: string; sport?: string | null; duration?: { value?: number } | null; rpe?: number | null };
-  // Avec la continuité, la révision de chaque séance (une séance du moteur retouchée par le coach devient la sienne).
-  const planifiees = await listeNolio<Prevue>(`planned/trainings/?date_from=${ajouterJours(du, -7)}&date_to=${ajouterJours(au, 7)}${qui}`
-    + (CONTINUITE_ACTIVE ? '&with_revision=true' : ''));
   const minutes = (d: { value?: number } | null | undefined) => (typeof d?.value === 'number' ? Math.round(d.value / 60) : null);
   const rpe = (x: unknown) => (typeof x === 'number' ? x : null);
-  const jours = new Set([o.plan.course.date, ...((o.parametres.courses_secondaires ?? []) as Course[]).map((c) => c.date)]);
   // Course ou trail, dans la période, hors jours de course (la course n'est pas une charge d'entraînement).
   const deCourse = (sport: unknown, date: string) =>
     SPORTS_COURSE.includes(String(sport)) && date.slice(0, 10) >= du && date.slice(0, 10) <= au && !jours.has(date.slice(0, 10));
@@ -663,8 +665,14 @@ export async function demarrerObjectif(planId: string, { prevenir = true, lundi,
     await clientService().from('plans').update({ depart_prevu: prevu.prevu }).eq('id', planId);
     return prevu;
   }
+  // C4 : la préparation qui suit un autre objectif prend sa durée à son départ réel.
+  if (o.coache && apres && !o.envois.some((e) => /^S\d+$/.test(e.semaine))) {
+    await dureeAuDepart(o, prevu ? prevu.prevu : aujourdhui)
+      .catch((e) => console.error(`Durée au départ de ${planId} :`, e instanceof Error ? e.message : e));
+  }
   // La première semaine : celle d'aujourd'hui, ou, partie la veille, la première à partir du lundi qui vient.
-  const premiere = prevu ? o.plan.semaines.find((s) => s.lundi && ajouterJours(s.lundi, 6) >= prevu.prevu) : debut;
+  const debutReel = o.plan.semaines.find((s) => s.lundi && ajouterJours(s.lundi, 6) >= aujourdhui) ?? debut;
+  const premiere = prevu ? o.plan.semaines.find((s) => s.lundi && ajouterJours(s.lundi, 6) >= prevu.prevu) : debutReel;
   if (!premiere?.lundi) throw new Error('La course est passée.');
   const depart = prevu ? prevu.prevu : aujourdhui;
   // La reprise allégée : la première semaine écrite suit de près la récupération (pas une préparation qui commence des
@@ -858,6 +866,29 @@ async function recalerSurLePrecedent(o: Objectif, precedentId: string, lundi: st
   }
   await service.from('plans').update({ parametres, trame: null }).eq('id', o.planId);
   o.parametres = parametres;
+}
+
+// C4 (audit du 03/11/2026, décision coach du 04/11/2026, « A ») : la préparation d'un objectif qui suit un autre prend sa
+// durée à son départ réel, le lundi après la récupération, et non au jour de sa saisie : la plus courte formule qui
+// couvre le temps restant, la même lecture qu'à la saisie (lib/plan.ts, dureeConseillee). Saisie tôt, la formule la plus
+// longue, rejointe tard, servait jusqu'à 10 semaines de spécifique d'affilée juste après une course, sans développement.
+// Le plan se refait par le moteur (POST /v1/donnees) avant sa première semaine ; une durée inchangée ne touche à rien.
+async function dureeAuDepart(o: Objectif, depart: string) {
+  const champs = (o.parametres.champs ?? {}) as Record<string, unknown>;
+  const config = await fetch(`${API_URL}/v1/config`, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)) as ConfigPlan | null;
+  if (!config?.semaines_par_formule) return;
+  const c = champs as unknown as Champs;
+  const veille = new Date(`${ajouterJours(depart, -1)}T12:00:00Z`);
+  const duree = dureeConseillee(c, config, dureesPossibles(c, config), veille);
+  if (!duree || String(duree) === String(champs.duree_mois ?? '')) return;
+  const parametres = { ...o.parametres, champs: { ...champs, duree_mois: String(duree) } };
+  const donnees = await moteur<Plan>('/v1/donnees', { parametres, donnees_avant: o.plan });
+  if (donnees.schema !== SCHEMA_PLAN) return;
+  const { error } = await clientService().from('plans')
+    .update({ parametres, donnees, version_moteur: donnees.version_moteur, schema: donnees.schema, trame: null }).eq('id', o.planId);
+  if (error) throw new Error(error.message);
+  o.parametres = parametres;
+  o.plan = donnees;
 }
 
 // Les autres objectifs écrits semaine par semaine du même athlète (sa fiche de coaché, ou son compte d'acheteur).

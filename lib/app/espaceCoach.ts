@@ -5,7 +5,7 @@
  * ce qui demande son intervention, classé par urgence, chaque ligne avec son geste — ce qui bloque (objectif demandé,
  * Nolio à associer ou quitté, accord manquant, objectif pas démarré, semaine pas partie), la santé (arrêt, fatigue
  * franche, RPE à revoir, sans retour, sous le plan), les décisions du moteur (semaine manquée, séance trop dure), ce qui arrive (course de
- * préparation, objectif sans suite, test illisible, course A de Nolio sans objectif). Les choix de l'athlète
+ * préparation, objectif sans suite, test illisible, course A de Nolio sans objectif, deux courses trop proches). Les choix de l'athlète
  * (disponibilités, séance en plus) n'y sont pas : son objectif les montre. Tout vient de la base, sauf l'équipe Nolio
  * que la page lit déjà et les courses A de Nolio, lues une fois par heure : les signaux de chaque séance restent dans
  * « Suivi des 7 jours ». Côté serveur seulement.
@@ -16,7 +16,8 @@ import { demandesDuCoach, estRetrait, type Demande } from './demandes';
 import { coursesGardees, pasEncoreIci, type CourseNolio } from './coursesNolio';
 import { entreeDe } from './entree';
 import { achatsEnAttente } from './modes';
-import { cleLaissee, plansALaMain, type LigneTrame, type Realise } from './ecriture';
+import { cleLaissee, debutApres, plansALaMain, type LigneTrame, type Realise } from './ecriture';
+import { lireTemps } from '@/lib/plan';
 import { ajouterJours, dateLongue, jourMois, joursEntre, type Semaine } from './plan';
 import { athletesNolio, ErreurNolio, nolioConfigure, type AthleteNolio } from './nolio';
 import { clientService } from './supabase';
@@ -75,7 +76,7 @@ const SIGNAL: Record<string, string> = {
   ajustement: 'Semaine ajustée', mot: 'Un mot pour toi', rpe: 'RPE à revoir', retour: 'Sans retour', sous_plan: 'Sous le plan', demarrer: 'À démarrer', nolio: 'Nolio à associer',
   equipe: 'Hors de l’équipe Nolio', accord: 'Sans accord de lecture', semaine: 'Semaine pas partie', chrono_route: 'Chrono à revoir',
   prerequis: 'Prérequis à voir', course_nolio: 'Course A dans Nolio', preparation: 'Course de préparation', suite: 'Rien après',
-  test: 'Test à revoir', profil: 'Profil à remplir', week_end_choc: 'Week-end choc à annoncer',
+  test: 'Test à revoir', profil: 'Profil à remplir', week_end_choc: 'Week-end choc à annoncer', courses_proches: 'Courses trop proches',
 };
 
 // L'équipe Nolio du coach, que le tableau de bord et « À regarder » lisent à l'ouverture ; sans réponse de Nolio,
@@ -359,6 +360,28 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
       signal: { texte: ensuite.texte, niveau: ensuite.ton === 'alerte' ? 'warn' : ensuite.ton === 'action' ? 'neutre' : 'ok' },
     };
   });
+  // C5 (audit du 03/11/2026, décision coach du 04/11/2026) : une course qui tombe dans la récupération de la précédente
+  // (deux jours par heure de course, jusqu'au lundi qui suit) n'a pas de préparation possible entre les deux : le coach
+  // le voit dès la saisie, calculé ici sur les dates.
+  const recents = fiches.map((a) => ({ a, objectifs: a.objectifs.filter((x) => x.course_date >= ajouterJours(jour, -42))
+    .sort((x, y) => x.course_date.localeCompare(y.course_date)) })).filter((x) => x.objectifs.length > 1);
+  const avantIds = [...new Set(recents.flatMap((x) => x.objectifs.slice(0, -1).map((o) => o.plan_id)))];
+  const { data: precedents } = avantIds.length ? await service.from('plans').select('id, intake, parametres').in('id', avantIds) : { data: [] };
+  const parPrecedent = new Map((precedents ?? []).map((p) => [p.id as string, p]));
+  for (const { a, objectifs } of recents) {
+    for (let i = 1; i < objectifs.length; i += 1) {
+      const avant = objectifs[i - 1], apres = objectifs[i];
+      const p = parPrecedent.get(avant.plan_id);
+      const temps = lireTemps(String((p?.intake as Record<string, unknown> | null)?.temps_cible ?? ''));
+      if (!p || temps === null || apres.course_date < jour) continue;
+      const format = String((((p.parametres as { champs?: Record<string, unknown> } | null)?.champs) ?? {}).format ?? '');
+      const reprise = debutApres({ course_date: avant.course_date, temps_h: temps, format });
+      if (apres.course_date >= reprise) continue;
+      aRegarder.push({ niveau: 'arrive', genre: 'courses_proches', cle: `courses_proches:${avant.plan_id}:${apres.plan_id}:${apres.course_date}`,
+        athlete: a.nom, action: 'Voir ›', href: `/app/coach/plan/${apres.plan_id}`,
+        texte: `${apres.course_nom}, le ${dateLongue(apres.course_date, true)}, tombe dans la récupération de ${avant.course_nom} (reprise le ${dateLongue(reprise, true)}) : pas de préparation possible entre les deux, à voir avec lui.` });
+    }
+  }
   // Les points que le coach a réglés (décision coach du 24/10/2026) : ce point-là ne revient jamais. Sans la migration,
   // rien n'est retenu.
   const { data: regles } = await service.from('a_regarder_regles').select('cle').eq('coach_id', coachId);
