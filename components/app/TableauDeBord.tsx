@@ -22,16 +22,24 @@ const NOLIO = 'https://www.nolio.io/';
 // une adresse inconnue reçoit un compte créé, déjà dans l'équipe (« actif » d'emblée).
 const ARRIVE = 'Nolio t’écrit dans quelques minutes : une invitation à rejoindre l’équipe CTS si tu as déjà un compte '
   + 'Nolio, sinon les identifiants de ton nouveau compte. Tes séances s’y installent aussitôt.';
-export function CarteNolio({ etat }: { etat: EtatNolio }) {
+// inviteLe : une préparation qui commence plus tard, invitée la veille de son premier lundi (PL4, décision coach du
+// 04/11/2026) ; avantCourse : sorti de l'équipe avant sa course (B-PL-41), il peut la rejoindre.
+export function CarteNolio({ etat, inviteLe = null, avantCourse = false }: { etat: EtatNolio; inviteLe?: string | null; avantCourse?: boolean }) {
   if (!etat || etat === 'actif' || etat === 'coache') return null;
   const textes: Record<'a_inviter' | 'en_cours' | 'invite' | 'refuse' | 'sorti' | 'coaching', { titre: string; texte: string; bouton: boolean }> = {
-    a_inviter: { titre: 'Ton accès Nolio arrive', bouton: false, texte: ARRIVE },
+    a_inviter: inviteLe
+      ? { titre: 'Ton accès Nolio arrive la veille de ta préparation', bouton: false,
+        texte: `Nolio t’écrira le ${dateLongue(inviteLe)} : une invitation à rejoindre l’équipe CTS si tu as déjà un compte Nolio, sinon les identifiants de ton nouveau compte. Ta première semaine s’y installe aussitôt.` }
+      : { titre: 'Ton accès Nolio arrive', bouton: false, texte: ARRIVE },
     en_cours: { titre: 'Ton accès Nolio arrive', bouton: false, texte: ARRIVE },
     invite: { titre: 'Accepte ton invitation Nolio', bouton: false,
       texte: 'Nolio t’a envoyé par e-mail une invitation à rejoindre l’équipe CTS (pense à regarder dans tes indésirables). Dès que tu l’acceptes, tes séances s’installent dans ton calendrier Nolio.' },
     refuse: { titre: 'Ton invitation Nolio n’a pas abouti', bouton: false,
       texte: 'Réponds simplement à ton e-mail de bienvenue : nous t’en renvoyons une.' },
-    sorti: { titre: 'Ta préparation est terminée dans Nolio', bouton: true, texte: 'Ton compte Nolio et tes séances restent à toi.' },
+    sorti: avantCourse
+      ? { titre: 'Tu as quitté l’équipe CTS dans Nolio', bouton: false,
+        texte: 'Tes séances ne t’arrivent plus. Pour rejoindre l’équipe, réponds simplement à ton e-mail de bienvenue : nous t’envoyons une nouvelle invitation.' }
+      : { titre: 'Ta préparation est terminée dans Nolio', bouton: true, texte: 'Ton compte Nolio et tes séances restent à toi.' },
     // Un plan acheté, l'athlète en coaching (décision coach du 23/10/2026).
     coaching: { titre: 'Ce plan ne s’écrit pas dans Nolio', bouton: false,
       texte: 'Tu es en coaching : ton coach écrit ta préparation. Ce plan reste lisible ici ; s’il doit reprendre, ton coach le relance.' },

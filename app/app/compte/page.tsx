@@ -100,14 +100,28 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
                     ? (d.accord
                       ? 'Ton coach et l’app lisent dans Nolio tes séances faites, ton RPE, ton ressenti et ton Hooper, seulement pour ajuster ta préparation et afficher tes graphiques.'
                       : 'Sans ton accord dans Nolio, ta préparation suit sa trame, ton questionnaire et tes séances faites ou manquées.')
+                    // L'accord de lecture de l'acheteur (PL7, décision coach du 04/11/2026) : facultatif, recommandé, et juste
+                    // sur ce qui est lu (les séances faites et leur durée, dans tous les cas).
                     : affiche?.accord_lecture_le
-                      ? `Depuis le ${dateLongue(String(affiche.accord_lecture_le).slice(0, 10), true)}, l’app lit dans Nolio tes séances faites, ton RPE, ton ressenti et ton Hooper, et la trace de tes séances test pour en tirer tes repères, seulement pour ajuster ton plan et afficher tes graphiques. Sans cet accord, ton plan suit sa trame, ton questionnaire du samedi et tes séances faites ou manquées, et tu donnes toi-même tes repères.`
-                      : 'Sans accord de lecture, ta préparation suit sa trame, ton questionnaire du samedi et tes séances faites ou manquées, et tu donnes toi-même tes repères.'}
+                      ? `Depuis le ${dateLongue(String(affiche.accord_lecture_le).slice(0, 10), true)}, l’app lit aussi dans Nolio ton RPE, ton ressenti, ton Hooper et la trace de tes séances test, pour ajuster ton plan à ta fatigue et en tirer tes repères. Tes séances faites ou manquées et leur durée sont lues dans tous les cas.`
+                      : 'Sans accord de lecture, l’app lit seulement tes séances faites ou manquées et leur durée : ton plan suit sa trame et ton questionnaire du samedi, sans s’ajuster à ta fatigue, et tu donnes toi-même tes repères. L’accord est recommandé.'}
                 </p>
                 {!ctx.coache && affiche?.parametres && affiche.accord_lecture_le && <RetirerAccord planId={ctx.cle} />}
                 {!ctx.coache && affiche?.parametres && !affiche.accord_lecture_le && <DonnerAccord planId={ctx.cle} />}
               </div>
             </div>
+            {/* Une course reportée (PL6, décision coach du 04/11/2026) : il répond à son e-mail de bienvenue. */}
+            {!ctx.coache && (
+              <div className="flex gap-3 py-3.5">
+                <span className="w-2.5 h-2.5 mt-1.5 rounded-full bg-teal shrink-0" aria-hidden />
+                <div>
+                  <p className="text-sm font-bold text-indigo">Ta course change de date ?</p>
+                  <p className="mt-0.5 text-[0.8rem] text-[#4A4866] leading-relaxed">
+                    Réponds simplement à ton e-mail de bienvenue, avec la nouvelle date : nous voyons avec toi comment ta préparation suit.
+                  </p>
+                </div>
+              </div>
+            )}
           </Carte>
         )}
 

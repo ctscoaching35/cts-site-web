@@ -258,9 +258,16 @@ export async function seancesDuMoteur(plan: Plan, planId: string, semaine: Semai
   avecTrame = true, coache = false, avecApp = true) {
   // La place de la semaine dans son bloc : la dose du renfo monte à partir de la troisième. Et parmi ses semaines de
   // charge : les deux séances de renfo du bloc alternent sans se répéter après une assimilation (RF5).
-  const duBloc = plan.semaines.filter((s) => s.bloc === semaine.bloc);
+  // UN PLAN REJOINT EN ROUTE (C8, audit de l'app plan du 03/11/2026) : les semaines passées avant sa semaine rejointe ne
+  // comptent pas, et son premier bloc est le sien (« apprendre » d'abord, premier_bloc, même hors des fondations).
+  // Avant, un débutant rejoint au développement faisait sa toute première séance de renfo à l'étape 3. Un acheteur : un
+  // coaché garde le rang de son plan (son départ individualisé).
+  const rejoint = coache ? null : plan.course.rejoint?.lundi ?? null;
+  const duBloc = plan.semaines.filter((s) => s.bloc === semaine.bloc && (!rejoint || !s.lundi || s.lundi >= rejoint));
   const rang = duBloc.findIndex((s) => s.numero === semaine.numero) + 1;
   const rangCharge = duBloc.slice(0, rang).filter((s) => s.type === 'Charge').length;
+  const blocRejoint = rejoint ? plan.semaines.find((s) => s.lundi && s.lundi >= rejoint)?.bloc ?? null : null;
+  const premierBloc = Boolean(blocRejoint && blocRejoint === semaine.bloc && blocRejoint !== 'Bloc fondations');
   // Le calendrier du plan, pour les fiches au bon moment (F1) et la fiche de course (F2).
   const lundiDu = (bloc: string) => plan.semaines.find((s) => s.bloc === bloc)?.lundi ?? null;
   const calendrier = {
@@ -272,7 +279,7 @@ export async function seancesDuMoteur(plan: Plan, planId: string, semaine: Semai
     body: JSON.stringify({ jours: semaine.jours, profil, niveau, calendrier,
       // Sa place et les qualités de son bloc : la description du bandeau (décision coach du 21/10/2026).
       semaine: { type: semaine.type, bloc: semaine.bloc, lundi: semaine.lundi, rang_bloc: rang || 1,
-        rang_charge: rangCharge || null, numero: semaine.numero,
+        rang_charge: rangCharge || null, numero: semaine.numero, ...(premierBloc ? { premier_bloc: true } : {}),
         // Un coaché : le compte à rebours de l'app dans son bandeau (décision coach du 22/10/2026).
         compte_a_rebours: coache && semaine.lundi && !plan.fond ? jMoins(semaine.lundi, plan.course.date) : null,
         total: plan.semaines.length, ...qualitesDuBloc(plan, semaine.bloc),

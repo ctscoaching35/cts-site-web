@@ -24,7 +24,7 @@ import { envoyerRelanceInvitation, EXPEDITEUR } from './emailBienvenue';
 import { lienFicheCourse } from './ficheCourse';
 import { glucidesDeLaStrategie } from './strategie';
 import { dateDe } from './trameNolio';
-import { appelNolio, coachs, listeNolio, refusNolio, sansVitesseImpossible, SPORTS_COURSE } from './nolio';
+import { appelNolio, coachs, listeNolio, refusNolio, sansVitesseImpossible, SPORTS_COURSE, type ReponseNolio } from './nolio';
 import { ajouterJours, joursEntre, SCHEMA_PLAN, type Plan, type Semaine } from './plan';
 import { clientService } from './supabase';
 import type { Fiche } from './tableau';
@@ -454,13 +454,14 @@ export async function ecrireEtEnvoyer(o: Objectif, numero: string, retours: Reto
   return envoyerEtRanger(o, numero, await semaineDuMoteur(o, numero, retours, options), options);
 }
 
-// LA RÉCUPÉRATION APRÈS LA COURSE (décision coach du 23/10/2026) : pour un coaché, les semaines entre celle de sa course
+// LA RÉCUPÉRATION APRÈS LA COURSE (décision coach du 23/10/2026 ; pour l'acheteur aussi depuis le 04/11/2026, PL5
+// « A » : il quitte l'équipe à la fin de celle-ci) : pour un coaché ou un acheteur, les semaines entre celle de sa course
 // et son lundi de reprise (debutApres : deux jours sans séance dure par heure de course, 3 à 21, jusqu'au lundi
 // qui suit), numérotées à la suite du plan ; le moteur les écrit (repos les 2 jours d'après la course, puis une EF
 // courte un jour disponible sur deux) et elles partent dans Nolio comme les autres. null hors de cette fenêtre.
 export function semaineDeRecuperation(o: Pick<Objectif, 'coache' | 'plan' | 'tempsH' | 'parametres'>, lundi: string): { numero: string; jusqua: string } | null {
   const derniere = [...o.plan.semaines].reverse().find((s) => s.lundi);
-  if (!o.coache || !derniere?.lundi || lundi <= derniere.lundi) return null;
+  if (!derniere?.lundi || lundi <= derniere.lundi) return null;
   const jusqua = debutApres({ course_date: o.plan.course.date, temps_h: o.tempsH, format: formatDe(o) });
   if (lundi >= jusqua) return null;
   return { numero: `S${o.plan.semaines.length + Math.round(joursEntre(derniere.lundi, lundi) / 7)}`, jusqua };
@@ -623,7 +624,11 @@ export async function demarrerObjectif(planId: string, { prevenir = true, lundi,
     throw new Error('Tu programmes cet athlète à la main : rien ne s’écrit dans son Nolio. Passe sa fiche en automatique pour lancer l’objectif.');
   if (!o.nolioAthlete) throw new Error('L’athlète n’a pas encore de compte Nolio relié.');
   const aujourdhui = aujourdhuiParis();
-  const debut = o.plan.semaines.find((s) => s.lundi && ajouterJours(s.lundi, 6) >= aujourdhui);
+  // LA PREMIÈRE SÉANCE D'UN ACHETEUR, LE LENDEMAIN (C9, audit de l'app plan du 03/11/2026) : sa première semaine part
+  // du lendemain de son achat, plus du jour même (un Seuil 2 le soir de l'achat) ; acheté un dimanche, c'est la semaine
+  // du lendemain qui part (B-PL-34). Un coaché garde le jour même : son coach le lance.
+  const jourDeDepart = o.coache ? aujourdhui : ajouterJours(aujourdhui, 1);
+  const debut = o.plan.semaines.find((s) => s.lundi && ajouterJours(s.lundi, 6) >= jourDeDepart);
   if (!debut?.lundi) throw new Error('La course est passée.');
   // OM4 : un objectif majeur à la fois, dans l'ordre des dates. Un objectif déjà en route dont la course vient après et
   // dont la préparation commence avant que celui-ci soit fini (sa récupération, puis la semaine qui serait sa reprise) :
@@ -647,7 +652,7 @@ export async function demarrerObjectif(planId: string, { prevenir = true, lundi,
     .map((x) => (o.plan.course.date < x.lundi ? { ...x, lundi: lundiCourse } : x))[0];
   // PC1 : les séances que le coach a déjà posées restent ; l'écriture attend le lundi qui suit la dernière.
   const posees = await seancesDejaPosees(o, aujourdhui);
-  const premierJour = debut.lundi > aujourdhui ? debut.lundi : aujourdhui;
+  const premierJour = debut.lundi > jourDeDepart ? debut.lundi : jourDeDepart;
   const derniere = [...o.plan.semaines].reverse().find((s) => s.lundi)?.lundi;
   if (aPartirDu && derniere && aPartirDu > derniere) throw new Error('Choisis un lundi avant la semaine de sa course.');
   const calcule = apres && apres.lundi > aujourdhui && (!posees || apres.lundi >= posees.lundi)
@@ -676,10 +681,10 @@ export async function demarrerObjectif(planId: string, { prevenir = true, lundi,
       .catch((e) => console.error(`Durée au départ de ${planId} :`, e instanceof Error ? e.message : e));
   }
   // La première semaine : celle d'aujourd'hui, ou, partie la veille, la première à partir du lundi qui vient.
-  const debutReel = o.plan.semaines.find((s) => s.lundi && ajouterJours(s.lundi, 6) >= aujourdhui) ?? debut;
+  const debutReel = o.plan.semaines.find((s) => s.lundi && ajouterJours(s.lundi, 6) >= jourDeDepart) ?? debut;
   const premiere = prevu ? o.plan.semaines.find((s) => s.lundi && ajouterJours(s.lundi, 6) >= prevu.prevu) : debutReel;
   if (!premiere?.lundi) throw new Error('La course est passée.');
-  const depart = prevu ? prevu.prevu : aujourdhui;
+  const depart = prevu ? prevu.prevu : jourDeDepart;
   // La reprise allégée : la première semaine écrite suit de près la récupération (pas une préparation qui commence des
   // semaines plus tard, QD2).
   const premier = premiere.lundi > depart ? premiere.lundi : depart;
@@ -1012,12 +1017,13 @@ async function plansActifs(): Promise<string[]> {
     .map((p) => p.id as string);
 }
 
-// Les objectifs de coachés dont la course est passée depuis moins de 6 semaines, démarrés, en programmation automatique :
-// leurs semaines de récupération s'écrivent le dimanche (semaineDeRecuperation, décision coach du 23/10/2026).
+// Les objectifs de coachés dont la course est passée depuis moins de 6 semaines, démarrés, en programmation automatique,
+// et ceux des acheteurs encore dans l'équipe (PL5, décision coach du 04/11/2026) : leurs semaines de récupération
+// s'écrivent le dimanche (semaineDeRecuperation, décision coach du 23/10/2026).
 async function plansEnRecuperation(): Promise<string[]> {
   const service = clientService();
   const aujourdhui = aujourdhuiParis();
-  const { data: tous } = await service.from('plans').select('id, parametres').not('parametres', 'is', null).not('demarre_le', 'is', null)
+  const { data: tous } = await service.from('plans').select('id, parametres, nolio_statut').not('parametres', 'is', null).not('demarre_le', 'is', null)
     .lt('course_date', aujourdhui).gte('course_date', ajouterJours(aujourdhui, -42));
   // Une saison de fond n'a pas de course : rien à récupérer (décisions coach du 24/10/2026).
   const data = (tous ?? []).filter((p) => !(p.parametres as { fond?: unknown } | null)?.fond);
@@ -1025,7 +1031,8 @@ async function plansEnRecuperation(): Promise<string[]> {
   const { data: coaches } = await service.from('coaching').select('plan_id');
   const coachesIds = new Set((coaches ?? []).map((c) => c.plan_id as string));
   const aLaMain = await plansALaMain();
-  return data.map((p) => p.id as string).filter((id) => coachesIds.has(id) && !aLaMain.has(id));
+  return data.filter((p) => (coachesIds.has(p.id as string) || p.nolio_statut === 'actif') && !aLaMain.has(p.id as string))
+    .map((p) => p.id as string);
 }
 
 export type Compte = { plan: string; quoi: string; erreur?: string; coache?: boolean; journal?: Record<string, unknown>[] };
@@ -1777,13 +1784,35 @@ async function groupePlans(equipeId: string): Promise<string | null> {
   return r.statut === 201 || r.statut === 200 ? String(r.corps?.id ?? '') || null : null;
 }
 
-// Le groupe « Plans CTS » (P2) et la sortie de l'équipe une semaine après la course (P3) : posés au départ.
+// Le groupe « Plans CTS » (P2) et la sortie de l'équipe (P3) : posés au départ.
 async function rangerAcheteur(o: Objectif) {
   const equipeId = await equipeDuCoach();
   if (!equipeId || !o.nolioAthlete) return;
   const groupe = await groupePlans(equipeId);
   if (groupe) await appelNolio('POST', `team/groups/${groupe}/members/`, { user: o.nolioAthlete, role: 'athlete' });
-  await appelNolio('POST', `team/teams/${equipeId}/expirations/`, { user: o.nolioAthlete, date_leaving: ajouterJours(o.plan.course.date, 7) });
+  await reprogrammerSortie(o.nolioAthlete);
+}
+
+// LA SORTIE DE L'ÉQUIPE D'UN ACHETEUR (P3 ; PL5 et B-PL-33, décision coach du 04/11/2026) : à la fin de la récupération
+// de sa dernière course achetée (son lundi de reprise, debutApres), qui lui est désormais écrite comme à un coaché ; et
+// refaite à chaque achat, avant même son départ : un deuxième plan programmé après la récupération du premier ne part
+// plus avec lui, à la course 1 + 7 jours. Ses anciennes dates sont retirées avant de poser la nouvelle.
+export function finDeLaPreparation(q: { course_date: string; intake: unknown }): string {
+  const intake = (q.intake ?? {}) as Record<string, unknown>;
+  return debutApres({ course_date: q.course_date, temps_h: heures(intake.temps_cible), format: String(intake.format ?? '') });
+}
+async function reprogrammerSortie(usr: string) {
+  const equipeId = await equipeDuCoach();
+  if (!equipeId) return;
+  const { data: plans } = await clientService().from('plans').select('course_date, intake')
+    .eq('nolio_athlete_id', usr).in('nolio_statut', ['actif', 'invite']).not('parametres', 'is', null);
+  const date = (plans ?? []).map((p) => finDeLaPreparation(p as { course_date: string; intake: unknown })).sort().pop();
+  if (!date) return;
+  const sorties = await listeNolio<{ id: string; user?: string; date_leaving?: string }>(`team/teams/${equipeId}/expirations/`);
+  const siennes = sorties.filter((x) => x.user === usr);
+  if (siennes.length === 1 && siennes[0].date_leaving?.slice(0, 10) === date) return;
+  for (const x of siennes) await appelNolio('DELETE', `team/teams/${equipeId}/expirations/${x.id}/`);
+  await appelNolio('POST', `team/teams/${equipeId}/expirations/`, { user: usr, date_leaving: date });
 }
 
 // Prévenir le coach (P4) : un court e-mail, à son adresse de contact.
@@ -1796,14 +1825,25 @@ export async function prevenirCoach(sujet: string, texte: string) {
   }).catch((e) => console.error('E-mail au coach :', e instanceof Error ? e.message : e));
 }
 
+// L'INVITATION À LA VEILLE DU DÉPART (décision coach du 04/11/2026, PL4 « A ») : un achat dont la préparation commence
+// plus tard (une course lointaine) n'entre dans l'équipe que la veille de son premier lundi ; d'ici là, il reste « à
+// inviter », et le passage quotidien l'invite le jour venu (reinviter). Le jour de son invitation : celui de l'achat, ou
+// cette veille s'il est plus tard. Ses relances comptent à partir de ce jour.
+export function jourDInvitation(debutPlan: string | null | undefined, jourAchat: string): string {
+  const veille = debutPlan ? ajouterJours(String(debutPlan).slice(0, 10), -1) : null;
+  return veille && veille > jourAchat ? veille : jourAchat;
+}
+
 // L'invitation de l'acheteur dans l'équipe, au paiement (P1) : l'adresse Nolio qu'il a donnée, sinon celle de l'achat.
 // Un compte existant reçoit l'invitation de Nolio ; une adresse inconnue reçoit un compte créé, déjà dans l'équipe :
-// son plan part tout de suite. Équipe pleine ou Nolio indisponible : nouvel essai chaque jour, le coach prévenu.
-export async function inviterAcheteur(planId: string, emailAchat: string): Promise<string> {
+// son plan part tout de suite. Refusée ou Nolio indisponible : nouvel essai chaque jour, le coach prévenu une fois
+// (prevenir : false pour les reprises), avec le vrai refus de Nolio (C6, B-PL-32 : un 400 n'est plus lu « équipe
+// pleine »). Une erreur ou une coupure pendant l'appel la remet « à inviter » (B-PL-30) : elle ne reste plus « en cours ».
+export async function inviterAcheteur(planId: string, emailAchat: string, { prevenir = true }: { prevenir?: boolean } = {}): Promise<string> {
   const service = clientService();
   // Une seule invitation à la fois (le webhook de Stripe et le retour de paiement arrivent ensemble).
   const { data: pris } = await service.from('plans').update({ nolio_statut: 'en_cours' })
-    .eq('id', planId).eq('nolio_statut', 'a_inviter').select('nolio_email, course_nom, compte_id');
+    .eq('id', planId).eq('nolio_statut', 'a_inviter').select('nolio_email, course_nom, compte_id, debut_plan');
   const p = pris?.[0];
   if (!p) return 'deja';
   // Un athlète qui a une fiche de coaché (décision coach du 23/10/2026) est déjà dans l'équipe : son compte Nolio est
@@ -1831,43 +1871,79 @@ export async function inviterAcheteur(planId: string, emailAchat: string): Promi
     .eq('nolio_statut', 'actif').not('nolio_athlete_id', 'is', null).neq('id', planId).limit(1);
   if (membre?.[0]?.nolio_athlete_id) {
     await service.from('plans').update({ nolio_athlete_id: membre[0].nolio_athlete_id, nolio_statut: 'actif', nolio_email: null }).eq('id', planId);
+    // B-PL-33 : sa sortie de l'équipe suit dès maintenant sa nouvelle course, avant son départ programmé.
+    await reprogrammerSortie(String(membre[0].nolio_athlete_id))
+      .catch((e) => console.error(`Sortie de l’équipe du plan ${planId} :`, e instanceof Error ? e.message : e));
     await demarrerObjectif(planId);
     return 'actif';
   }
-  const equipeId = await equipeDuCoach();
+  // PL4 : pas avant la veille de son départ ; le passage quotidien l'invitera ce jour-là.
+  if (jourDInvitation(p.debut_plan as string | null, aujourdhuiParis()) > aujourdhuiParis()) {
+    await service.from('plans').update({ nolio_statut: 'a_inviter' }).eq('id', planId).eq('nolio_statut', 'en_cours');
+    return 'attente';
+  }
   const email = String(p?.nolio_email || emailAchat).trim();
-  const r = equipeId ? await appelNolio('POST', `team/teams/${equipeId}/invitations/`, { email, role: 'athlete' }) : null;
+  let r: ReponseNolio | null;
+  let equipeId: string | null;
+  try {
+    equipeId = await equipeDuCoach();
+    r = equipeId ? await appelNolio('POST', `team/teams/${equipeId}/invitations/`, { email, role: 'athlete' }) : null;
+  } catch (e) {
+    // B-PL-30 : Nolio muet, ou la fonction coupée ici : l'invitation se refait, rien ne reste « en cours ».
+    await service.from('plans').update({ nolio_statut: 'a_inviter' }).eq('id', planId).eq('nolio_statut', 'en_cours');
+    console.error(`Invitation Nolio du plan ${planId} :`, e instanceof Error ? e.message : e);
+    if (prevenir) {
+      await prevenirCoach('Plan CTS : invitation Nolio à refaire',
+        `Nolio n’a pas répondu à l’invitation de l’acheteur du plan « ${p?.course_nom ?? ''} » `
+        + `(${e instanceof Error ? e.message : String(e)}). Le site réessaie chaque jour à 18 h 30 UTC.`);
+    }
+    return 'a_inviter';
+  }
   if (!r || (r.statut !== 201 && r.statut !== 200)) {
-    const pleine = r?.statut === 400;
     await service.from('plans').update({ nolio_statut: 'a_inviter' }).eq('id', planId);
-    console.error(`Invitation Nolio du plan ${planId} :`, r ? refusNolio(r, 'l’invitation') : 'équipe introuvable');
-    await prevenirCoach(pleine ? 'Plan CTS : ton équipe Nolio est pleine' : 'Plan CTS : invitation Nolio à refaire',
-      `${pleine ? 'Ton équipe Nolio est pleine' : 'Nolio n’a pas répondu'} pour l’acheteur du plan « ${p?.course_nom ?? ''} ». `
-      + 'Le site réessaie chaque jour ; libère une place ou vérifie ton offre Nolio.');
+    const raison = r ? refusNolio(r, 'l’invitation') : 'Ton équipe Nolio est introuvable avec la clé de l’API.';
+    console.error(`Invitation Nolio du plan ${planId} :`, raison);
+    if (prevenir) {
+      await prevenirCoach('Plan CTS : invitation Nolio à refaire',
+        `L’invitation dans ton équipe Nolio de l’acheteur du plan « ${p?.course_nom ?? ''} » (${email}) n’est pas partie : `
+        + `${raison} Le site réessaie chaque jour à 18 h 30 UTC ; si ton équipe est pleine, libère une place.`);
+    }
     return 'a_inviter';
   }
   const statut = r.corps?.status === 'active' ? 'actif' : 'invite';
   await service.from('plans').update({ nolio_athlete_id: String(r.corps?.user ?? ''), nolio_statut: statut, nolio_email: null }).eq('id', planId);
   if (equipeId) {
     const groupe = await groupePlans(equipeId).catch(() => null);
-    if (groupe) await appelNolio('POST', `team/groups/${groupe}/members/`, { user: String(r.corps?.user ?? ''), role: 'athlete' });
+    if (groupe) await appelNolio('POST', `team/groups/${groupe}/members/`, { user: String(r.corps?.user ?? ''), role: 'athlete' }).catch(() => null);
   }
   if (statut === 'actif') await demarrerObjectif(planId);
   return statut;
 }
 
-// Les invitations restées à faire (équipe pleine, Nolio indisponible) : un nouvel essai chaque jour.
+// Les invitations restées à faire (équipe pleine, Nolio indisponible), et celles qui attendaient la veille du départ
+// (PL4) : un essai chaque jour. Le coach est prévenu le jour où l'invitation devait partir, pas les jours suivants.
+// B-PL-30 : une invitation restée « en cours » plus d'une heure après l'achat (une coupure pendant l'appel) se reprend.
+const UNE_HEURE_MS = 3600_000;
 export async function reinviter(): Promise<Compte[]> {
   const service = clientService();
-  const { data } = await service.from('plans').select('id, compte_id').eq('nolio_statut', 'a_inviter').gte('course_date', aujourdhuiParis());
+  const aujourdhui = aujourdhuiParis();
+  await service.from('plans').update({ nolio_statut: 'a_inviter' }).eq('nolio_statut', 'en_cours')
+    .lt('cree_le', new Date(Date.now() - UNE_HEURE_MS).toISOString());
+  const { data } = await service.from('plans').select('id, compte_id, debut_plan, cree_le').eq('nolio_statut', 'a_inviter')
+    .gte('course_date', aujourdhui);
   const comptes: Compte[] = [];
   for (const p of data ?? []) {
+    const jour = jourDInvitation(p.debut_plan as string | null, jourParis(p.cree_le as string));
+    if (jour > aujourdhui) continue;
     const { data: u } = await service.auth.admin.getUserById(p.compte_id as string);
     if (!u?.user?.email) continue;
-    comptes.push({ plan: p.id as string, quoi: `invitation : ${await inviterAcheteur(p.id as string, u.user.email).catch((e) => `échec (${e instanceof Error ? e.message : e})`)}` });
+    const quoi = await inviterAcheteur(p.id as string, u.user.email, { prevenir: jour === aujourdhui })
+      .catch((e) => `échec (${e instanceof Error ? e.message : e})`);
+    comptes.push({ plan: p.id as string, quoi: `invitation : ${quoi}` });
   }
   return comptes;
 }
+const jourParis = (horodatage: string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date(horodatage));
 
 // Une invitation envoyée et jamais acceptée (décision coach du 21/10/2026 : « relance puis alerte ») : 3 jours après
 // l'achat, un e-mail à l'acheteur ; 7 jours après, un e-mail au coach, avec son adresse. Le passage tourne une fois par
@@ -1877,11 +1953,12 @@ export const JOURS_ALERTE = 7;
 export async function relancerInvitations(): Promise<Compte[]> {
   const service = clientService();
   const aujourdhui = aujourdhuiParis();
-  const { data } = await service.from('plans').select('id, compte_id, course_nom, cree_le, nom:donnees->athlete->>nom')
+  const { data } = await service.from('plans').select('id, compte_id, course_nom, cree_le, debut_plan, nom:donnees->athlete->>nom')
     .eq('nolio_statut', 'invite').gte('course_date', aujourdhui);
   const comptes: Compte[] = [];
   for (const p of data ?? []) {
-    const depuis = joursEntre(new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date(p.cree_le as string)), aujourdhui);
+    // Les jours depuis l'invitation (PL4 : la veille du départ pour une course lointaine), plus depuis l'achat.
+    const depuis = joursEntre(jourDInvitation(p.debut_plan as string | null, jourParis(p.cree_le as string)), aujourdhui);
     if (depuis !== JOURS_RELANCE && depuis !== JOURS_ALERTE) continue;
     try {
       const { data: u } = await service.auth.admin.getUserById(p.compte_id as string);

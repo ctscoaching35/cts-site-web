@@ -83,16 +83,28 @@ export async function coachConnecte(): Promise<{ compteId: string; email: string
 export type ReponseNolio = { statut: number; corps: Record<string, unknown> | null };
 
 // Un appel à l'API v2. Les erreurs ont toutes la même forme : {"error": {"code", "message"}}.
+// 15 s au plus par appel (audits du 03/11/2026, C6 et P1) : un Nolio muet ne bloque plus une page ni un passage ; il
+// devient une erreur dite, que l'appelant traite comme une autre.
+export const DELAI_NOLIO_MS = 15_000;
 export async function appelNolio(methode: string, chemin: string, corps?: unknown, entetes: Record<string, string> = {}): Promise<ReponseNolio> {
-  const reponse = await fetch(`${NOLIO}/${chemin}`, {
-    method: methode,
-    headers: {
-      Authorization: `Bearer ${cle()}`, 'Accept-Language': 'fr',
-      ...(corps === undefined ? {} : { 'Content-Type': 'application/json' }), ...entetes,
-    },
-    body: corps === undefined ? undefined : JSON.stringify(corps),
-    cache: 'no-store',
-  });
+  let reponse: Response;
+  try {
+    reponse = await fetch(`${NOLIO}/${chemin}`, {
+      method: methode,
+      headers: {
+        Authorization: `Bearer ${cle()}`, 'Accept-Language': 'fr',
+        ...(corps === undefined ? {} : { 'Content-Type': 'application/json' }), ...entetes,
+      },
+      body: corps === undefined ? undefined : JSON.stringify(corps),
+      cache: 'no-store',
+      signal: AbortSignal.timeout(DELAI_NOLIO_MS),
+    });
+  } catch (e) {
+    if (e instanceof Error && (e.name === 'TimeoutError' || e.name === 'AbortError')) {
+      throw new ErreurNolio(`Nolio n’a pas répondu en ${DELAI_NOLIO_MS / 1000} s : réessaie dans un moment.`);
+    }
+    throw e;
+  }
   return { statut: reponse.status, corps: reponse.status === 204 ? null : await reponse.json().catch(() => null) };
 }
 

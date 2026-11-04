@@ -4,6 +4,7 @@ import Installation from '@/components/app/Installation';
 import { Carte, Surtitre } from '@/components/app/Ui';
 import { entrerDansLePlan } from '@/lib/app/actionsBienvenue';
 import { contexte, lien, prenom, type Recherche } from '@/lib/app/contexte';
+import { ajouterJours, dateLongue } from '@/lib/app/plan';
 
 // L'écran de bienvenue (cadrage, 2.6), à la première ouverture sur un appareil : la course et
 // la date de départ, sur quoi le plan se construit (la couverture du PDF), l'installation sur
@@ -21,6 +22,8 @@ export default async function Bienvenue({ searchParams }: { searchParams: Recher
   // l'installation, l'avertissement santé à lire, « Entrer ». Plus de « fondements » à la première ouverture.
   const nom = prenom(plan.athlete.nom);
   const c = plan.couverture;
+  const veilleDepart = plan.course.date_debut_plan ? ajouterJours(plan.course.date_debut_plan, -1) : null;
+  const inviteLe = veilleDepart && veilleDepart > ctx.jour ? veilleDepart : null;
   return (
     <main className="mx-auto max-w-md px-4 py-8 space-y-4">
       <div className="text-center space-y-2">
@@ -48,6 +51,12 @@ export default async function Bienvenue({ searchParams }: { searchParams: Recher
       <Carte className="text-[0.8125rem] text-[#4A4866] leading-relaxed space-y-1">
         <p><strong className="text-indigo">Nolio</strong> : tes séances, au jour le jour, jusqu’à ta montre.</p>
         <p><strong className="text-indigo">L’app CTS</strong> : ta course, ta préparation, tes données et tes fiches.</p>
+        {/* B-PL-45 : l'invitation à accepter, dite dès la première ouverture ; la veille du départ pour une préparation
+            lointaine (PL4, décision coach du 04/11/2026). */}
+        <p className="pt-1">
+          {inviteLe ? `Nolio t’écrira le ${dateLongue(inviteLe)}, la veille de ta première semaine` : 'Nolio t’écrit dans quelques minutes'} :
+          accepte son invitation dans l’équipe CTS, ou connecte-toi avec les identifiants reçus. Pense à regarder dans tes indésirables.
+        </p>
       </Carte>
 
       <Carte className="space-y-2.5">

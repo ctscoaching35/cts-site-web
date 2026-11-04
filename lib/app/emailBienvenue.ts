@@ -26,19 +26,34 @@ const sansBalises = (texte: string) => texte.replace(/<[^>]+>/g, '');
 const echapper = (texte: string) =>
   texte.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
+const enLettres = (iso: string) => new Intl.DateTimeFormat('fr-FR', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' })
+  .format(new Date(`${iso}T12:00:00Z`));
+const lendemain = (iso: string) => new Date(Date.parse(`${iso}T12:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+const veille = (iso: string) => new Date(Date.parse(`${iso}T12:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
+
 // nolio : l'adresse où part l'invitation Nolio, pour un plan écrit semaine par semaine ; null pour un plan d'avant.
-export function contenuBienvenue(plan: Plan, lienApp: string, nolio: { adresse: string } | null = null) {
+// aujourdhui : le jour de l'achat (Paris).
+// L'e-mail juste (V3, audit de l'app plan du 03/11/2026) : « Bonjour » au prénom, une seule fois « Ta préparation », et
+// la date de sa première séance (le lendemain de l'achat, C9, ou le premier lundi d'une préparation qui commence plus
+// tard) à la place de « a commencé tout de suite ». Une préparation lointaine : l'invitation Nolio part la veille de son
+// premier lundi (PL4, décision coach du 04/11/2026). Une course reportée : il répond à cet e-mail (PL6).
+export function contenuBienvenue(plan: Plan, lienApp: string, nolio: { adresse: string } | null = null,
+  aujourdhui = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date())) {
   const nom = plan.athlete.nom.trim();
+  const prenom = nom.split(/\s+/)[0] ?? '';
   const { course } = plan;
+  const debutPlan = course.date_debut_plan ?? '';
+  const premiereSeance = debutPlan > lendemain(aujourdhui) ? debutPlan : lendemain(aujourdhui);
+  const inviteLe = nolio && debutPlan && veille(debutPlan) > aujourdhui ? veille(debutPlan) : null;
   const connexion = 'Sur un autre appareil, l’app te demande l’adresse e-mail qui reçoit ce message, puis t’y ' +
     'envoie un code à 6 chiffres pour te connecter.';
   const paragraphes = [
-    `Ta préparation pour ${course.nom}, le ${course.date_lettres}, est prête. ${sansBalises(plan.couverture.debut)}`,
+    `Tout est prêt pour ${course.nom}, le ${course.date_lettres}. ${sansBalises(plan.couverture.debut)}`,
     ...(nolio ? [
       'Tes séances vivent dans Nolio, l’application d’entraînement que nous utilisons avec tous nos athlètes. ' +
         // Les deux réponses de Nolio à l'invitation (décision coach du 20/10/2026) : un compte existant l'accepte, une
         // adresse inconnue reçoit un compte créé, déjà dans l'équipe.
-        `Nolio t’écrit à ${nolio.adresse} (pense à regarder dans tes indésirables) : si tu as déjà un compte Nolio, une ` +
+        `Nolio t’écrira ${inviteLe ? `le ${enLettres(inviteLe)}, la veille de ta première semaine, ` : ''}à ${nolio.adresse} (pense à regarder dans tes indésirables) : si tu as déjà un compte Nolio, une ` +
         'invitation à rejoindre l’équipe CTS, à accepter ; sinon, les identifiants du compte qu’il vient de te créer, déjà ' +
         'dans l’équipe. Ta préparation s’installe alors dans ton calendrier Nolio. Chaque samedi, Nolio te pose ' +
         'quelques questions sur ta semaine à venir, et la semaine suivante s’écrit le dimanche soir d’après tes réponses et ta semaine écoulée.',
@@ -51,19 +66,20 @@ export function contenuBienvenue(plan: Plan, lienApp: string, nolio: { adresse: 
         `la première ouverture. ${connexion}`,
     ]),
     ...(nolio ? [] : ['Ta préparation est aussi jointe en PDF, à garder ou à imprimer.']),
-    'Une question sur ta préparation ? Réponds simplement à cet e-mail.',
+    'Ta course change de date, ou une question sur le service ? Réponds simplement à cet e-mail.',
     // La confirmation de l'achat sur un support durable, avec la demande de début immédiat que l'acheteur a cochée
     // avant de payer et son droit de rétractation (Code de la consommation, art. L221-13 et L221-25 ; décision coach du
     // 19/10/2026 : un service, rétractable 14 jours au prorata).
-    'Comme tu l’as demandé avant ton paiement, ta préparation a commencé tout de suite. Tu peux te rétracter pendant ' +
+    `Comme tu l’as demandé avant ton paiement, ton accès a commencé tout de suite ; ta première séance est le ${enLettres(premiereSeance)}. Tu peux te rétracter pendant ` +
       '14 jours à compter de ton paiement, en répondant simplement à cet e-mail : nous te remboursons le prix, moins la ' +
       'part des jours de préparation déjà écoulés (article L221-25 du Code de la consommation). Le formulaire de ' +
       'rétractation est dans nos conditions de vente.',
   ];
   const signature = 'Juliette et Romain — CTS Coaching';
   const bouton = nolio ? 'Ouvrir mon tableau de bord' : 'Ouvrir ma préparation';
+  const bonjour = prenom ? `Bonjour ${prenom},` : 'Bonjour,';
   const texte = [
-    `Bonjour ${nom},`,
+    bonjour,
     paragraphes[0],
     `${bouton} : ${lienApp}`,
     ...paragraphes.slice(1),
@@ -72,7 +88,7 @@ export function contenuBienvenue(plan: Plan, lienApp: string, nolio: { adresse: 
   const p = (contenu: string) => `<p style="margin:0 0 16px;line-height:1.55">${contenu}</p>`;
   const html = `<!doctype html><html lang="fr"><body style="margin:0;padding:24px 12px;background:#F3F7F0">
 <div style="max-width:560px;margin:0 auto;background:#ffffff;padding:32px 28px;font-family:Helvetica,Arial,sans-serif;font-size:16px;color:#2F2D4E">
-${p(`Bonjour ${echapper(nom)},`)}
+${p(echapper(bonjour))}
 ${p(echapper(paragraphes[0]))}
 <p style="margin:24px 0"><a href="${echapper(lienApp)}" style="display:inline-block;background:#0C6E5F;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 24px">${bouton}</a></p>
 ${paragraphes.slice(1).map((x) => p(echapper(x))).join('\n')}

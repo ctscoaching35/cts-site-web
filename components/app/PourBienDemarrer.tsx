@@ -21,9 +21,11 @@ type Etape = { fait: boolean; titre: string; texte?: React.ReactNode };
 
 // seanceFaite : une séance faite remontée de Nolio (avec son accord de lecture) ; elle coche l'appli Nolio et la montre
 // (décision coach du 23/10/2026).
-export default function PourBienDemarrer({ acheteur, nolio, accord, questionnaire, installer, profil = true, lienProfil = '', seanceFaite = false }: {
+// inviteLe : une préparation qui commence plus tard, invitée dans Nolio la veille de son premier lundi (PL4, décision
+// coach du 04/11/2026), en « 7 novembre » déjà écrit.
+export default function PourBienDemarrer({ acheteur, nolio, accord, questionnaire, installer, profil = true, lienProfil = '', seanceFaite = false, inviteLe = null }: {
   acheteur: boolean; nolio: EtatNolio; accord: boolean; questionnaire: boolean; installer: string; profil?: boolean; lienProfil?: string;
-  seanceFaite?: boolean;
+  seanceFaite?: boolean; inviteLe?: string | null;
 }) {
   const [installee, setInstallee] = useState(false);
   const [masquee, setMasquee] = useState(false);
@@ -47,7 +49,7 @@ export default function PourBienDemarrer({ acheteur, nolio, accord, questionnair
       ? { fait: true, titre: 'Tu es dans l’équipe CTS sur Nolio' }
       : { fait: false, titre: 'Rejoins l’équipe CTS dans Nolio', texte: nolio === 'refuse'
         ? 'Ton invitation n’a pas abouti : réponds simplement à ton e-mail de bienvenue, nous t’en renvoyons une.'
-        : 'Nolio t’écrit à l’adresse de ton achat (ou de ton compte Nolio) : accepte l’invitation, ou connecte-toi avec les '
+        : `Nolio t’écrit${inviteLe && nolio === 'a_inviter' ? ` le ${inviteLe}, la veille de ta première semaine,` : ''} à l’adresse de ton achat (ou de ton compte Nolio) : accepte l’invitation, ou connecte-toi avec les `
           + 'identifiants reçus. Regarde aussi dans tes indésirables.' },
     seanceFaite
       ? { fait: true, titre: 'L’appli Nolio et ta montre sont reliées' }

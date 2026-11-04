@@ -89,6 +89,10 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
   // Une course de préparation s'ajoute dans l'objectif, tant que la course est à venir et le plan écrit semaine par
   // semaine.
   const ajout = d.ecrit && !ctx.demonstration && plan.course.date >= jour ? `${lien('/app/plan', ctx)}#ajouter-course` : null;
+  // PL4 (décision coach du 04/11/2026) : une préparation lointaine d'acheteur est invitée dans Nolio la veille de son
+  // premier lundi.
+  const veilleDepart = plan.course.date_debut_plan ? ajouterJours(plan.course.date_debut_plan, -1) : null;
+  const inviteLe = !ctx.coache && veilleDepart && veilleDepart > jour ? veilleDepart : null;
   // L'entre-deux d'un coaché (décision coach du 20/10/2026) : sa dernière course passée, aucun objectif à venir. Son
   // prochain se prépare avec son coach ; sa semaine se lit dans Nolio (les séances que son coach lui pose à la main).
   const entreDeux = ctx.coache && etape === 'apres' && (ctx.demonstration || !(await aVenir()));
@@ -132,7 +136,8 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
         {/* Sa liste dit où en est l'invitation Nolio ; masquée, la carte Nolio le redit. */}
         {etape !== 'apres' && demarrage && d.nolio !== 'sorti' && d.nolio !== 'coaching' && (
           <PourBienDemarrer acheteur={!ctx.coache} nolio={d.nolio} accord={d.accord} questionnaire={d.ecrit && !ctx.aLaMain} installer={installer}
-            profil={profil} lienProfil={lienProfil} seanceFaite={d.realises.some((r) => r.seances_faites > 0)} />
+            profil={profil} lienProfil={lienProfil} seanceFaite={d.realises.some((r) => r.seances_faites > 0)}
+            inviteLe={inviteLe ? dateLongue(inviteLe) : null} />
         )}
         {/* La saison de fond (décisions coach du 24/10/2026) : le bloc et le compte à rebours des tests. */}
         {plan.fond ? <CarteSaison plan={plan} ligne={ligne} jour={jour} href={lien('/app/plan', ctx)} /> : (
@@ -140,7 +145,7 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
             surtitre={!ctx.coache ? 'Ton objectif' : etape === 'apres' ? 'Ton dernier objectif majeur' : 'Ton prochain objectif majeur'}
             coache={Boolean(ctx.coache)} />
         )}
-        {etape !== 'apres' && (!demarrage || d.nolio === 'sorti') && <CarteNolio etat={d.nolio} />}
+        {etape !== 'apres' && (!demarrage || d.nolio === 'sorti') && <CarteNolio etat={d.nolio} inviteLe={inviteLe} avantCourse={plan.course.date >= jour} />}
         <CarteNouveauBadge badges={nouveaux} href={`${lien('/app/profil', ctx)}#badges`} />
 
         {etape !== 'apres' && restants <= 7 && !plan.fond && (
@@ -167,20 +172,23 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
 // Après sa course, un acheteur (décision coach du 20/10/2026, les nuances des plans, point 4) : d'abord récupérer
 // (lib/plan.ts, joursRecuperation : deux jours par heure de course, 3 à 21, 14 après un marathon sur route), avec la
 // fiche Récupération ; ensuite son prochain objectif majeur, par l'aiguillage.
+// La récupération, seulement pendant ses jours (B-PL-44 : elle s'affichait encore deux mois après la course) ; elle est
+// écrite dans Nolio pour l'acheteur aussi depuis le 04/11/2026 (PL5).
 function EtMaintenant({ ctx }: { ctx: Contexte }) {
   const heures = lireTemps(ctx.plan.course.temps_cible ?? '');
   const jours = joursRecuperation(heures ?? 2, ctx.plan.course.format);
+  const enRecuperation = joursEntre(ctx.plan.course.date, ctx.jour) <= jours;
   return (
     <Carte className="space-y-3">
       <Surtitre>Et maintenant ?</Surtitre>
-      <div className="space-y-1">
+      {enRecuperation && <div className="space-y-1">
         <p className="text-[0.875rem] text-[#4A4866] leading-relaxed">
-          D’abord, récupère : {jours} jours sans séance dure, puis reprends en douceur.
+          D’abord, récupère : {jours} jours sans séance dure, puis reprends en douceur. Tes séances de récupération sont dans Nolio.
         </p>
         <Link href={lien('/app/bibliotheque/recuperation', ctx)} className="inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">
           Lire la fiche Récupération ›
         </Link>
-      </div>
+      </div>}
       <p className="text-[0.875rem] text-[#4A4866] leading-relaxed">
         Ton prochain objectif majeur ? Une nouvelle préparation, construite pour lui.
       </p>

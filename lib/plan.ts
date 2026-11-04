@@ -120,14 +120,16 @@ export const textes = {
     coupure: 'As-tu arrêté de courir plus de 4 semaines au cours des 2 derniers mois ?',
   },
   gpx:
-    'Le profil réel du parcours (répartition des pentes) affine tout le plan. Sans trace, le plan est construit sur le D+/D− déclaré ci-dessus, et le PDF n’affiche pas de profil.',
+    'Le profil réel du parcours (répartition des pentes) affine tout le plan. Sans trace, le plan est construit sur le D+/D− déclaré ci-dessus, et ta fiche de course n’aura pas de profil.',
   tempsCible: 'Même une estimation large vaut mieux que rien — c’est ce qui calibre l’intensité de tout le plan.',
   // Sans paragraphe d'aide (décision coach du 07/10/2026 : « ça n'apporte rien ») : les quatre
   // descriptions disent la longueur de côte.
   terrain: {
     options: [
       { valeur: 'vallonne', titre: 'Vallonné', description: 'Côtes courtes, jusqu’à 1min30 de montée.' },
-      { valeur: 'intermediaire', titre: 'Intermédiaire', description: 'Côtes de 2 à 5 min de montée.' },
+      // « Côtes moyennes » (décision coach du 04/11/2026, « 9 A ») : « Intermédiaire » se confondait avec le niveau ; la
+      // valeur envoyée au moteur ne change pas.
+      { valeur: 'intermediaire', titre: 'Côtes moyennes', description: 'Côtes de 2 à 5 min de montée.' },
       { valeur: 'pentu', titre: 'Pentu', description: 'Côtes de 5 à 10 min de montée.' },
       { valeur: 'tres_pentu', titre: 'Très pentu', description: 'Côtes de plus de 10 min de montée.' },
     ],
@@ -190,7 +192,7 @@ export function avertissements(c: Champs, config: ConfigPlan, aujourdhui = new D
       const ilYa = Math.round((jour.getTime() - lundiS1.getTime()) / (7 * 86400000));
       const semaines = (n: number) => (n === 0 ? 'moins d’une semaine' : `${n} semaine${n > 1 ? 's' : ''}`);
       out.push(
-        `Ta course est dans ${semaines(dans)} : ton plan de ${c.duree_mois} mois a commencé le ${lundiS1.toLocaleDateString('fr-FR')}, il y a ${semaines(ilYa)}. Tu le reçois en entier et tu le rejoins cette semaine : ta sortie longue repart de ta plus longue sortie récente, sans jamais la dépasser de plus d’une petite marche.`
+        `Ta course est dans ${semaines(dans)} : ton plan de ${c.duree_mois} mois a commencé le ${lundiS1.toLocaleDateString('fr-FR')}, il y a ${semaines(ilYa)}. Tu le rejoins cette semaine, les semaines déjà passées sont sautées : ta sortie longue repart de ta plus longue sortie récente, sans jamais la dépasser de plus d’une petite marche.`
       );
     }
   }
@@ -338,6 +340,54 @@ export function dureesProposees(c: Champs, config: ConfigPlan, aujourdhui = new 
   const possibles = dureesPossibles(c, config);
   const colle = dureeConseillee(c, config, possibles, aujourdhui);
   return colle === null ? possibles : possibles.filter((m) => m <= colle);
+}
+
+const JOUR_MS = 86_400_000;
+const isoUtc = (d: Date) => d.toISOString().slice(0, 10);
+const midiUtc = (iso: string) => new Date(`${iso}T12:00:00Z`);
+// Aujourd'hui à Paris, le jour qui compte pour l'acheteur.
+const aujourdhuiIso = (aujourdhui: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(aujourdhui);
+
+// LA DATE DE DÉBUT DE CHAQUE FORMULE (audit de l'app plan du 03/11/2026, C1 ; décision coach du 04/11/2026) : le lundi
+// de sa semaine 1, et la semaine que l'acheteur rejoindrait. Ses séances partent du lendemain de son achat (C9) : une
+// formule déjà commencée se rejoint à la semaine qui contient ce lendemain ; rejointe null : il la commence entière,
+// premierJour compris. null sans date ni durée connue.
+export type DebutFormule = { debut: string; premierJour: string; rejointe: number | null; semaines: number };
+export function debutFormule(c: Champs, config: ConfigPlan, mois: number, aujourdhui = new Date()): DebutFormule | null {
+  const semaines = config.semaines_par_formule[`${c.format}-${mois}`];
+  if (!semaines || !/^\d{4}-\d{2}-\d{2}$/.test(c.date_course ?? '')) return null;
+  const course = midiUtc(c.date_course);
+  const debut = isoUtc(new Date(course.getTime() - ((semaines - 1) * 7 + ((course.getUTCDay() + 6) % 7)) * JOUR_MS));
+  const demain = isoUtc(new Date(midiUtc(aujourdhuiIso(aujourdhui)).getTime() + JOUR_MS));
+  if (debut >= demain) return { debut, premierJour: debut, rejointe: null, semaines };
+  const rejointe = Math.floor((midiUtc(demain).getTime() - midiUtc(debut).getTime()) / (7 * JOUR_MS)) + 1;
+  return { debut, premierJour: demain, rejointe: rejointe <= 1 ? null : rejointe, semaines };
+}
+
+// LA FORMULE COCHÉE D'OFFICE (décision coach du 04/11/2026, PL2 « A ») : la formule complète qui commence dans les
+// 14 jours ; sinon, comme avant, celle qui colle à la date de la course. Avant, un débutant à 16 semaines d'un trail
+// marathon se voyait cocher le 6 mois, déjà commencé, et le rejoignait en semaine 7, fondations sautées, pour 10 € de
+// plus que le 4 mois qui commençait entier 13 jours plus tard.
+export const JOURS_FORMULE_COMPLETE = 14;
+export function dureeCocheeDOffice(c: Champs, config: ConfigPlan, durees: number[], aujourdhui = new Date()): number | null {
+  const limite = isoUtc(new Date(midiUtc(aujourdhuiIso(aujourdhui)).getTime() + JOURS_FORMULE_COMPLETE * JOUR_MS));
+  const complete = [...durees].sort((x, y) => y - x).find((m) => {
+    const f = debutFormule(c, config, m, aujourdhui);
+    return f !== null && f.rejointe === null && f.premierJour <= limite;
+  });
+  return complete ?? dureeConseillee(c, config, durees, aujourdhui);
+}
+
+// UNE COURSE TROP PROCHE (décision coach du 04/11/2026, PL3 « A ») : à moins de 4 semaines, il n'y a plus de
+// préparation à vendre, comme pour une course passée. Ce n'est pas une porte de plus au sens de la règle du 01/11 : un
+// service qu'on ne peut plus rendre. Le moteur refuse aussi (sa vérification et son checkout). Pas pour le coach.
+export const JOURS_MIN_AVANT_COURSE = 28;
+export const MESSAGE_COURSE_TROP_PROCHE = 'Ta course est dans moins de 4 semaines : c’est trop proche pour une préparation. '
+  + 'Pour la courir au mieux, lis notre check-list avant course, gratuite, ou écris-nous pour un coaching individualisé.';
+export function courseTropProche(c: Champs, aujourdhui = new Date()): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(c.date_course ?? '')) return false;
+  const limite = isoUtc(new Date(midiUtc(aujourdhuiIso(aujourdhui)).getTime() + JOURS_MIN_AVANT_COURSE * JOUR_MS));
+  return c.date_course < limite;
 }
 
 // coach : en coaching individualisé, tout format s'ouvre à tout niveau (décision coach du 23/10/2026, « lever la

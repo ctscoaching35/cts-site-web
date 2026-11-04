@@ -16,9 +16,12 @@ export async function POST(request: Request) {
   if (!signatureValide(corps, request.headers.get('stripe-signature'), process.env.STRIPE_WEBHOOK_SECRET ?? '')) {
     return new Response('Signature refusée', { status: 400 });
   }
-  const evenement = JSON.parse(corps) as { type?: string; data?: { object?: { id?: string; payment_status?: string } } };
+  const evenement = JSON.parse(corps) as { type?: string; data?: { object?: { id?: string; payment_status?: string; amount_total?: number } } };
   const session = evenement.data?.object;
-  if (evenement.type !== 'checkout.session.completed' || session?.payment_status !== 'paid' || !session.id) {
+  // Un code promo à 100 % (C5, audit de l'app plan du 03/11/2026) : Stripe finit la session sans paiement
+  // (« no_payment_required ») ; un montant nul vaut un paiement. Le moteur la reconnaît de même.
+  const payee = session?.payment_status === 'paid' || (session?.payment_status === 'no_payment_required' && session.amount_total === 0);
+  if (evenement.type !== 'checkout.session.completed' || !payee || !session?.id) {
     return Response.json({ recu: true });
   }
   try {

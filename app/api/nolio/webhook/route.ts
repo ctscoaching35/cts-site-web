@@ -25,7 +25,9 @@ export async function POST(request: Request) {
   const service = clientService();
   try {
     if (e.type === 'team.member.join' && e.data?.context?.role === 'athlete') {
-      const { data: plans } = await service.from('plans').select('id').eq('nolio_athlete_id', usr).eq('nolio_statut', 'invite');
+      // Une invitation refusée puis renvoyée par le coach depuis Nolio, et acceptée (B-PL-31, audit du 03/11/2026) :
+      // son plan démarre comme les autres ; avant, il restait « refusé » pour toujours.
+      const { data: plans } = await service.from('plans').select('id').eq('nolio_athlete_id', usr).in('nolio_statut', ['invite', 'refuse']);
       for (const p of plans ?? []) {
         await service.from('plans').update({ nolio_statut: 'actif' }).eq('id', p.id);
         // Un départ en échec prévient le coach et se reprend chaque jour (passageQuotidien) : Nolio ne le relance pas, ce
@@ -39,7 +41,8 @@ export async function POST(request: Request) {
         await service.from('plans').update({ nolio_statut: 'refuse' }).eq('id', p.id);
         await prevenirCoach('Plan CTS : invitation Nolio refusée',
           `L’acheteur du plan « ${p.course_nom} » a refusé l’invitation dans ton équipe Nolio : ses séances ne peuvent `
-          + 'pas lui arriver. Reprends contact avec lui depuis ton espace coach.');
+          + 'pas lui arriver. S’il te répond, réinvite son adresse dans ton équipe depuis Nolio : dès qu’il accepte, sa '
+          + 'préparation démarre seule.');
       }
     } else if (e.type === 'team.member.leave' || e.type === 'access.ended') {
       // Plus aucun chemin vers lui : on ne le lit plus, et l'état tiré de Nolio s'efface.

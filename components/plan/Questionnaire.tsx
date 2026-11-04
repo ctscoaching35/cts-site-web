@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { compterEtape, porteDuRefus } from '@/lib/mesure';
 import clsx from 'clsx';
 import { estimerChrono } from '@/lib/app/route';
-import { alerteSortieLongue, API_URL, avertissements, type Champs, champsVides, type ConfigPlan, dureeConseillee, dureesProposees, formatDepuisDistance, formatOuvert, intakePourApi, noteFormat, placementReference, referenceExigee, plancherSeances, reperesChrono, FORMATS_ROUTE, textes, type CourseReference } from '@/lib/plan';
+import { alerteSortieLongue, API_URL, avertissements, type Champs, champsVides, type ConfigPlan, courseTropProche, debutFormule, dureeCocheeDOffice, dureesProposees, formatDepuisDistance, MESSAGE_COURSE_TROP_PROCHE, formatOuvert, intakePourApi, noteFormat, placementReference, referenceExigee, plancherSeances, reperesChrono, FORMATS_ROUTE, textes, type CourseReference } from '@/lib/plan';
 
 const NOMS_JOURS: Record<string, string> = {
   lundi: 'Lundi', mardi: 'Mardi', mercredi: 'Mercredi', jeudi: 'Jeudi',
@@ -22,6 +22,8 @@ const boutonCls = 'inline-flex items-center justify-center min-h-12 px-6 rounded
 const boutonSecondaireCls = 'inline-flex items-center justify-center min-h-11 px-4 rounded-xl border border-indigo/20 text-indigo text-sm font-bold';
 // Nombres à la française dans le récapitulatif : « 13,3 km », « 2 706 m », pas la saisie
 // brute « 13.3 » (audit du 27/09/2026, K1).
+// « lundi 16 novembre » : une date de début, en lettres.
+const jourEnLettres = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 const nombreFr = (v: string) => {
   const n = parseFloat(v.replace(',', '.'));
   return Number.isFinite(n) ? n.toLocaleString('fr-FR', { maximumFractionDigits: 1 }) : v;
@@ -193,14 +195,25 @@ export default function Questionnaire({
 
   // Le format se déduit de la distance (F4) : un format que le niveau n'ouvre pas ne propose
   // aucune durée, et la note sous la distance dit pourquoi.
-  // Seulement les durées que sa course admet, celle qui colle à sa date cochée d'office (décision coach du 20/10/2026).
-  const durees = config && formatOuvert(c, config, coach) ? dureesProposees(c, config) : [];
-  const conseillee = config ? dureeConseillee(c, config, durees) : null;
+  // Seulement les durées que sa course admet (décision coach du 20/10/2026) ; cochée d'office, la formule complète qui
+  // commence dans les 14 jours, sinon celle qui colle à sa date (PL2, décision coach du 04/11/2026).
+  // Une course à moins de 4 semaines (PL3, décision coach du 04/11/2026) : plus de formule, la phrase qui oriente.
+  const tropProche = !coach && courseTropProche(c);
+  const durees = config && !tropProche && formatOuvert(c, config, coach) ? dureesProposees(c, config) : [];
+  const conseillee = config ? dureeCocheeDOffice(c, config, durees) : null;
+  // La date de début de la formule choisie (C1) : dite au choix de la durée et au récapitulatif.
+  const debutChoisi = config && c.duree_mois ? debutFormule(c, config, Number(c.duree_mois)) : null;
+  const quandFormule = (mois: number) => {
+    const f = config ? debutFormule(c, config, mois) : null;
+    if (!f) return null;
+    return f.rejointe ? `Déjà commencée : tu la rejoins en semaine ${f.rejointe} sur ${f.semaines}, dès le ${jourEnLettres(f.premierJour)}.`
+      : `Commence le ${jourEnLettres(f.premierJour)}, en entier (${f.semaines} semaines).`;
+  };
   const notePourFormat = config ? noteFormat(c, config, coach) : null;
   const blocDistance = (
     <div>
       <label className={labelCls} htmlFor="distance">Distance de ta course (km)</label>
-      <input id="distance" type="number" step="0.1" min="0.1" inputMode="decimal" className={inputCls} required value={c.distance_km} onChange={(e) => maj('distance_km')(e.target.value)} />
+      <input id="distance" type="number" step="any" min="0.1" inputMode="decimal" className={inputCls} required value={c.distance_km} onChange={(e) => maj('distance_km')(e.target.value)} />
       <p className="text-sm text-teal mt-2 leading-relaxed">{notePourFormat ?? 'Le format de ta course se déduit de sa distance.'}</p>
     </div>
   );
@@ -244,9 +257,9 @@ export default function Questionnaire({
       }
       // Une durée que la course n'admet plus laisse la place à celle qui colle à sa date ; sans choix, celle-ci d'office.
       if (!coach) {
-        const possibles = formatOuvert(n, config, coach) ? dureesProposees(n, config) : [];
+        const possibles = !courseTropProche(n) && formatOuvert(n, config, coach) ? dureesProposees(n, config) : [];
         if (!n.duree_mois || !possibles.map(String).includes(n.duree_mois)) {
-          const d = dureeConseillee(n, config, possibles);
+          const d = dureeCocheeDOffice(n, config, possibles);
           n.duree_mois = d === null ? '' : String(d);
         }
       }
@@ -381,6 +394,10 @@ export default function Questionnaire({
       ['Nom', c.nom], ...(coach ? [] : [['E-mail', c.email] as [string, string]]), ['Niveau', nomNiveau],
       ['En ce moment', `${c.volume_hebdo_actuel} de course par semaine · plus longue sortie ${c.sortie_longue_actuelle}`],
       ['Formule', coach ? `${nomFormat} — jusqu’à la course` : `${nomFormat} — ${c.duree_mois} mois`],
+      // La date de début, avant de payer (C1, audit de l'app plan du 03/11/2026).
+      ...(!coach && debutChoisi ? [['Début', debutChoisi.rejointe
+        ? `Formule déjà commencée : tu la rejoins en semaine ${debutChoisi.rejointe}, dès le ${jourEnLettres(debutChoisi.premierJour)}`
+        : `Ta préparation commence le ${jourEnLettres(debutChoisi.premierJour)}`] as [string, string]] : []),
       ['Course', `${c.course_nom}, le ${new Date(`${c.date_course}T00:00:00`).toLocaleDateString('fr-FR')}`],
       ['Parcours', infoRoute ? `${infoRoute.nom}${c.premier_marathon === 'oui' ? ' · son premier' : ''}` : `${nombreFr(c.distance_km)} km, ${nombreFr(c.dplus_m)} m D+${c.dmoins_m ? `, ${nombreFr(c.dmoins_m)} m D−` : ''}${gpx ? ` · trace ${gpx.name}` : modification?.trace ? ' · sa trace déjà donnée' : ' · sans trace GPX'}`],
       ...(route ? [['Chrono visé', c.temps_cible] as [string, string]] : [['Temps cible', c.temps_cible] as [string, string], ['Terrain', nomTerrain] as [string, string]]),
@@ -392,6 +409,11 @@ export default function Questionnaire({
     // sa demande coche un avertissement propre au coaching (BROUILLON) ; l'acheteur, celui du plan automatique.
     const sansAvertissement = coach && !demande;
     const bloque = (!sansAvertissement && !confirme) || (!coach && !debutImmediat);
+    // Ce qui manque quand le bouton reste grisé (C2, audit de l'app plan du 03/11/2026) : dit sous le bouton.
+    const manque = [
+      !sansAvertissement && !confirme ? (demande || coach ? 'coche l’avertissement' : 'coche l’avertissement et les conditions de vente') : null,
+      !coach && !debutImmediat ? 'coche le début de ta préparation dès ton paiement' : null,
+    ].filter(Boolean) as string[];
     return (
       <div className="space-y-6">
         <section className="bg-white rounded-2xl border border-indigo/[0.08] p-5 sm:p-6">
@@ -442,7 +464,8 @@ export default function Questionnaire({
               ) : (
                 <>
                   J’ai lu cet avertissement et les{' '}
-                  <a href="/cgv" target="_blank" rel="noopener" className="underline underline-offset-2">conditions générales de vente</a>, et je veux générer mon plan.
+                  <a href="/cgv" target="_blank" rel="noopener" className="underline underline-offset-2">conditions générales de vente</a>, et je veux générer mon plan.{' '}
+                  <span className="text-[0.75rem] font-bold tracking-[0.06em] uppercase text-[#5E5C78]">Obligatoire</span>
                 </>
               )}
             </span>
@@ -450,11 +473,14 @@ export default function Questionnaire({
           {!coach && (
             <label className="flex gap-3 items-start mt-4 cursor-pointer">
               <input type="checkbox" checked={accordLecture} onChange={(e) => setAccordLecture(e.target.checked)} className="mt-1 accent-teal" />
+              {/* L'accord de lecture (PL7, décision coach du 04/11/2026, « A ») : facultatif, court, juste, recommandé. Les
+                  séances faites et leur durée sont lues dans tous les cas (lireRetours) ; l'accord ajoute le reste. */}
               <span className="text-indigo">
-                J’accepte que l’app lise dans Nolio mes séances faites, mon RPE, mon ressenti et mon Hooper, et la trace de
-                mes séances test (distance, FC) pour en tirer mes repères (FC aux seuils, allures) et les garder, seulement
-                pour ajuster mon plan et afficher mes graphiques. Je peux retirer cet accord à tout moment.{' '}
-                <span className="text-indigo/70">Facultatif : sans lui, ton plan suit sa trame, sans ajustement à ta fatigue, et tu donnes toi-même tes repères dans l’app.</span>
+                <span className="text-[0.75rem] font-bold tracking-[0.06em] uppercase text-teal">Recommandé</span>{' '}
+                J’accepte que l’app lise aussi dans Nolio mon RPE, mon ressenti, mon Hooper et la trace de mes séances test
+                (distance, FC), pour ajuster mon plan à ma fatigue et en tirer mes repères. Je peux retirer cet accord à tout
+                moment.{' '}
+                <span className="text-indigo/70">Facultatif : sans lui, l’app lit seulement tes séances faites ou manquées et leur durée ; ton plan ne s’ajuste pas à ta fatigue.</span>
               </span>
             </label>
           )}
@@ -463,6 +489,7 @@ export default function Questionnaire({
               <input type="checkbox" checked={debutImmediat} onChange={(e) => setDebutImmediat(e.target.checked)} className="mt-1 accent-teal" />
               <span className="text-indigo">
                 <span className="font-semibold">Je demande que ma préparation commence dès mon paiement.</span>{' '}
+                <span className="text-[0.75rem] font-bold tracking-[0.06em] uppercase text-[#5E5C78]">Obligatoire</span>{' '}
                 <span className="text-indigo/70">Tu gardes ton droit de rétractation de 14 jours : si tu l’exerces, tu es remboursé du prix, moins la part des jours de préparation déjà écoulés.</span>
               </span>
             </label>
@@ -492,6 +519,9 @@ export default function Questionnaire({
                   : `Payer ${prix} € →`}
           </button>
         </section>
+        {bloque && manque.length > 0 && (
+          <p className="text-[0.8125rem] text-[#4A4866] -mt-3">Pour continuer, {manque.join(', puis ')}.</p>
+        )}
         {simulation && !coach && (
           <div className="flex flex-wrap items-center justify-between gap-3 bg-white rounded-2xl border border-dashed border-indigo/25 p-4">
             <p className="text-[0.8125rem] text-[#4A4866] leading-relaxed flex-[1_1_260px]">
@@ -521,8 +551,8 @@ export default function Questionnaire({
               <label className={labelCls} htmlFor="email">E-mail</label>
               <input id="email" type="email" className={inputCls} required value={c.email} onChange={(e) => maj('email')(e.target.value)} autoComplete="email" />
               <p className={aideCls}>
-                C’est là que part ton plan, et c’est avec elle que tu rejoins Nolio, où arrivent tes séances. Ce que nous
-                gardons :{' '}
+                C’est là que tu reçois ton accès à l’app, et c’est avec elle que tu rejoins Nolio, où arrivent tes séances.
+                Ce que nous gardons :{' '}
                 <a href="/confidentialite" target="_blank" rel="noopener" className="underline underline-offset-2">politique de confidentialité</a>.
               </p>
               <label className="flex gap-3 items-start mt-3 cursor-pointer">
@@ -638,6 +668,13 @@ export default function Questionnaire({
           <div>
             <label className={labelCls} htmlFor="date_course">Date de la course</label>
             <input id="date_course" type="date" className={inputCls} required value={c.date_course} onChange={(e) => maj('date_course')(e.target.value)} />
+            {tropProche && (
+              <p role="alert" className="bg-white rounded-r-xl border-l-4 border-[#E3A23B] px-4 py-3 mt-2 text-[0.8125rem] text-indigo leading-relaxed">
+                {MESSAGE_COURSE_TROP_PROCHE}{' '}
+                <a href="/bibliotheque/checklist.html" className="font-bold text-teal underline underline-offset-2">La check-list avant course ›</a>{' '}
+                <a href="/#offre" className="font-bold text-teal underline underline-offset-2">Le coaching individualisé ›</a>
+              </p>
+            )}
           </div>
         </div>
         {!route && <>
@@ -710,16 +747,20 @@ export default function Questionnaire({
                   <span className="flex items-center gap-3">
                     <input type="radio" name="duree_mois" value={String(d)} checked={c.duree_mois === String(d)} required
                       onChange={() => maj('duree_mois')(String(d))} className="accent-teal" />
-                    <span className="text-indigo font-semibold">{d} mois — {config.prix_eur_par_mois[String(d)]} €</span>
+                    <span>
+                      <span className="block text-indigo font-semibold">{d} mois — {config.prix_eur_par_mois[String(d)]} €</span>
+                      {quandFormule(d) && <span className="block text-[0.8125rem] text-[#5E5C78]">{quandFormule(d)}</span>}
+                    </span>
                   </span>
-                  {d === conseillee && <span className="text-xs font-semibold text-teal">colle à la date de ta course</span>}
+                  {d === conseillee && <span className="text-xs font-semibold text-teal">conseillée</span>}
                 </label>
               ))}
-              <p className={aideCls}>Seules les durées qui conviennent à ta course sont proposées.</p>
+              <p className={aideCls}>Seules les durées qui conviennent à ta course sont proposées. Une formule déjà commencée se rejoint en route : ses semaines passées sont sautées.</p>
             </div>
           ) : (
             <p className="text-sm text-indigo/70 leading-relaxed">
-              {!c.format ? 'Indique d’abord la distance de ta course, plus haut.'
+              {tropProche ? MESSAGE_COURSE_TROP_PROCHE
+                : !c.format ? 'Indique d’abord la distance de ta course, plus haut.'
                 : !formatOuvert(c, config, coach) ? 'Aucune durée : ce format n’est pas ouvert à ton niveau.'
                   : 'Aucune durée ne prépare une course visée en ce temps : vérifie ton temps visé.'}
             </p>
@@ -828,7 +869,7 @@ export default function Questionnaire({
         <p role="alert" className="bg-white rounded-r-xl border-l-4 border-red-400 p-4 text-[0.875rem] text-indigo leading-relaxed">{refus}</p>
       )}
       <div className="flex justify-end">
-        <button type="submit" className={boutonCls} disabled={joursCoches.length === 0 || envoi || (!coach && c.blessure === 'oui')}>
+        <button type="submit" className={boutonCls} disabled={joursCoches.length === 0 || envoi || (!coach && c.blessure === 'oui') || tropProche}>
           {envoi ? 'Vérification…' : 'Vérifier mes réponses →'}
         </button>
       </div>
