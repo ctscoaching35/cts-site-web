@@ -6,7 +6,9 @@
  * 15/10/2026) : le retirer les efface. Chaque geste revérifie le coach.
  */
 import { revalidatePath } from 'next/cache';
-import { coachConnecte } from './nolio';
+import { coachConnecte, moiNolio } from './nolio';
+import { effacerSignaux } from './signauxGardes';
+import { aujourdhuiParis, relireEtGarder, seuilsSuivi } from './suivi';
 import { clientService } from './supabase';
 
 const USR = /^usr_[A-Za-z0-9]+$/;
@@ -36,5 +38,22 @@ export async function retirerAccord(usr: string): Promise<void> {
   }
   // Et les résumés des semaines que le moteur n'a pas écrites (décision coach du 20/10/2026).
   if (fiches?.length) await clientService().from('semaines_athlete').delete().in('athlete_id', fiches.map((f) => f.id));
+  // Et ses signaux gardés (EC2).
+  await effacerSignaux(coach.compteId, usr);
   revalidatePath('/app/coach/suivi');
+  revalidatePath('/app/coach');
+}
+
+// « Relire maintenant » (EC2) : ses signaux de la semaine, lus dans Nolio à la demande et gardés ; avec son accord
+// seulement.
+export async function relireMaintenant(usr: string): Promise<void> {
+  const coach = await coachConnecte();
+  if (!coach || !USR.test(usr)) return;
+  const { data: accord } = await clientService().from('nolio_accords').select('nolio_athlete_id').eq('coach_id', coach.compteId)
+    .eq('nolio_athlete_id', usr).maybeSingle();
+  if (!accord) return;
+  const moi = await moiNolio().catch(() => null);
+  await relireEtGarder(coach.compteId, usr, moi?.id === usr, await seuilsSuivi(), aujourdhuiParis())
+    .catch((e) => console.error(`Relire ${usr} :`, e instanceof Error ? e.message : e));
+  revalidatePath('/app/coach');
 }

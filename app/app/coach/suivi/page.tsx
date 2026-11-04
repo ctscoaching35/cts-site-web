@@ -59,7 +59,7 @@ export default async function SuiviCoach() {
   if (!nolioConfigure()) {
     return (
       <>
-        <CadreCoach actif="suivi"><p className="text-sm text-indigo/75">La clé de l’API Nolio manque dans Vercel (NOLIO_API_KEY).</p></CadreCoach>
+        <CadreCoach actif="athletes"><p className="text-sm text-indigo/75">La clé de l’API Nolio manque dans Vercel (NOLIO_API_KEY).</p></CadreCoach>
       </>
     );
   }
@@ -88,11 +88,12 @@ export default async function SuiviCoach() {
   }
   return (
     <>
-      <CadreCoach actif="suivi">
+      <CadreCoach actif="athletes">
         <div>
           <h1 className="text-[1.75rem] font-extrabold tracking-tight">Suivi des 7 jours</h1>
           <p className="mt-1.5 text-sm text-[#5E5C78] leading-relaxed">
-            Ce que tes athlètes ont fait, lu dans Nolio à l’ouverture de la page (rien n’est gardé), et ce que le moteur
+            Ce que tes athlètes ont fait, lu dans Nolio à l’ouverture de la page (chaque soir, leurs signaux, jamais le
+            contenu d’une séance ni le texte d’un commentaire, sont gardés pour « Cette semaine »), et ce que le moteur
             prévoit dimanche soir à cause des signaux. Seuls les athlètes qui ont donné leur accord sont lus ; le même
             accord garde leurs repères (FC, allures) sur leur fiche, et le retirer les efface.
           </p>

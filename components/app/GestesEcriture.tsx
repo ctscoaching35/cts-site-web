@@ -2,8 +2,9 @@
 
 import { useActionState, useState } from 'react';
 import { formatRouteDe } from '@/lib/app/route';
+import { CORRECTIONS, RAISONS, type Choix } from '@/lib/app/correctionsTextes';
 import {
-  ajouterCourse, annulerSemaine, demarrerDansNolio, donnerMonAccord, modifierCourse, reessayerLaSemaine, retirerCourse, retirerMonAccord,
+  ajouterCourse, annulerCorrections, annulerSemaine, choisirCorrections, demarrerDansNolio, donnerMonAccord, modifierCourse, reessayerLaSemaine, retirerCourse, retirerMonAccord,
   type EtatGeste,
 } from '@/lib/app/actionsEcriture';
 
@@ -199,5 +200,43 @@ export function ReessayerSemaine({ planId }: { planId: string }) {
       </button>
       <Message etat={etat} />
     </form>
+  );
+}
+
+// EC3 (décision coach du 04/11/2026, « A ») : les corrections d'une semaine avant son envoi, sur l'aperçu ; gardées
+// jusqu'au passage du dimanche, annulables d'ici là.
+export function CorrigerSemaine({ planId, lundi, choix }: { planId: string; lundi: string; choix: Choix | null }) {
+  const [etat, action, enCours] = useActionState<EtatGeste, FormData>(choisirCorrections.bind(null, planId, lundi), null);
+  const [etatAnnule, annuler, enAnnulation] = useActionState<EtatGeste, FormData>(annulerCorrections.bind(null, planId, lundi), null);
+  const cochees = new Set(choix && !choix.appliquee ? choix.corrections : []);
+  return (
+    <div className="space-y-3">
+      <form action={action} className="space-y-3">
+        <div className="flex flex-wrap gap-2">
+          {(Object.entries(CORRECTIONS) as [string, string][]).map(([cle, titre]) => (
+            <label key={cle} className="inline-flex items-center gap-2 min-h-11 px-3 rounded-[10px] border border-indigo/20 bg-white text-sm font-semibold">
+              <input type="checkbox" name="correction" value={cle} defaultChecked={cochees.has(cle as never)} className="w-4 h-4 accent-teal" />
+              {titre}
+            </label>
+          ))}
+        </div>
+        <label className="block max-w-md text-xs font-semibold text-indigo">Pourquoi
+          <select name="raison" defaultValue={choix?.raison ?? ''} className="mt-1.5 w-full min-h-11 rounded-[10px] border border-indigo/20 px-3 text-sm font-normal bg-white">
+            <option value="">—</option>
+            {(Object.entries(RAISONS) as [string, string][]).map(([cle, texte]) => <option key={cle} value={cle}>{texte}</option>)}
+          </select>
+        </label>
+        <button type="submit" disabled={enCours} className="btn btn-primary !py-2.5 disabled:opacity-50">{enCours ? 'Enregistrement…' : 'Garder pour dimanche'}</button>
+        <Message etat={etat} />
+      </form>
+      {cochees.size > 0 && (
+        <form action={annuler}>
+          <button type="submit" disabled={enAnnulation} className="text-sm font-semibold text-[#5E5C78] underline underline-offset-2 disabled:opacity-50">
+            {enAnnulation ? 'Retrait…' : 'Retirer mes corrections'}
+          </button>
+          <Message etat={etatAnnule} />
+        </form>
+      )}
+    </div>
   );
 }

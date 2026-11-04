@@ -181,19 +181,27 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     const hooperAvant = resumeDu(ajouterJours(lundi, -14))?.hooper ?? null;
     const hrefPlan = o ? `/app/coach/plan/${o.plan_id}` : `/app/coach/athlete/${a.id}`;
     const num = (n: unknown) => String(n).replace('S', '');
-    // Ce que le moteur a décidé ces 8 derniers jours, une ligne par semaine écrite : l'arrêt et la fatigue d'abord.
+    // Ce que le moteur a décidé ces 8 derniers jours, une ligne par semaine écrite : l'arrêt et la fatigue d'abord. Le
+    // coaching par exception (EC1, décision coach du 04/11/2026) : ce que le moteur règle seul (la fatigue, un arrêt
+    // court) est une de ses décisions, à relire ; un arrêt qui dure, deux semaines de suite (au-delà de 7 jours, point 11),
+    // ou à l'approche de l'objectif, est pour le coach.
+    const arretDe = (l: { journal?: unknown; sans_ajustement?: unknown }) => !l.sans_ajustement && ((l.journal ?? []) as Journal).some((j) => j.regle === 'R4');
     for (const l of semaines) {
       const journal = (l.journal ?? []) as Journal;
       if (!journal.length || l.sans_ajustement || String(l.ecrite_le).slice(0, 10) < ajouterJours(jour, -8)) continue;
       const arret = journal.find((j) => j.regle === 'R4');
       const moteur = [...new Set(journal.map((j) => MOTEUR[j.regle ?? '']).filter(Boolean))];
       if (arret) {
-        aRegarder.push({ niveau: 'sante', genre: 'arret', cle: `arret:${l.plan_id}:${l.numero}`, athlete: a.nom, action: 'Relire ›', href: hrefPlan,
-          texte: String(arret.effet ?? '').startsWith('course proche')
+        const avant = semaines.find((x) => Number(num(x.numero)) === Number(num(l.numero)) - 1);
+        const proche = String(arret.effet ?? '').startsWith('course proche');
+        const dure = Boolean(avant && arretDe(avant));
+        aRegarder.push({ niveau: proche || dure ? 'sante' : 'moteur', genre: 'arret', cle: `arret:${l.plan_id}:${l.numero}`, athlete: a.nom, action: 'Relire ›', href: hrefPlan,
+          texte: proche
             ? `arrêt de course à l’approche de son objectif : rien ne remonte, à toi de voir son objectif avec lui.`
-            : `arrêt de course : ${ARRET[arret.effet ?? ''] ?? 'reprise adaptée'} en semaine ${num(l.numero)}.` });
+            : dure ? `arrêt de course depuis plus de 7 jours, deux semaines de suite : à voir avec lui, sa reprise est en semaine ${num(l.numero)}.`
+              : `arrêt de course : ${ARRET[arret.effet ?? ''] ?? 'reprise adaptée'} en semaine ${num(l.numero)}.` });
       } else if (journal.some((j) => j.regle === 'R3')) {
-        aRegarder.push({ niveau: 'sante', genre: 'fatigue', cle: `fatigue:${l.plan_id}:${l.numero}`, athlete: a.nom, action: 'Relire ›', href: hrefPlan,
+        aRegarder.push({ niveau: 'moteur', genre: 'fatigue', cle: `fatigue:${l.plan_id}:${l.numero}`, athlete: a.nom, action: 'Relire ›', href: hrefPlan,
           texte: `fatigue franche : sa semaine ${num(l.numero)} est allégée.` });
       } else if (moteur.length) {
         aRegarder.push({ niveau: 'moteur', genre: 'ajustement', cle: `ajustement:${l.plan_id}:${l.numero}`, athlete: a.nom, action: 'Relire l’ajustement ›', href: hrefPlan,
@@ -203,7 +211,7 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     // La fatigue de la semaine en cours (R3 en cours de semaine) : la séance passée en EF.
     for (const l of semaines.filter((x) => (x.donnees as Semaine | null)?.lundi === lundi)) {
       for (const j of ((l.donnees as Semaine | null)?.jours ?? []) as (Semaine['jours'][number] & { origine?: { seance?: string } })[]) {
-        if (j.origine) aRegarder.push({ niveau: 'sante', genre: 'fatigue', cle: `fatigue:${l.plan_id}:${l.numero}:${j.jour}`, athlete: a.nom, action: 'Relire ›', href: hrefPlan,
+        if (j.origine) aRegarder.push({ niveau: 'moteur', genre: 'fatigue', cle: `fatigue:${l.plan_id}:${l.numero}:${j.jour}`, athlete: a.nom, action: 'Relire ›', href: hrefPlan,
           texte: `fatigue franche : sa séance ${j.origine.seance ?? ''} de ${j.jour.toLowerCase()} est passée en EF.` });
       }
     }

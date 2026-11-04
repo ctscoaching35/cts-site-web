@@ -11,6 +11,7 @@ import { listeNolio } from './nolio';
 import { aujourdhuiParis, signaux, type Prevue, type Realisee, type Seuils, type Suivi, type ValeurHooper } from './signauxSuivi';
 import { athletesCoaches } from './coaching';
 import type { Statut } from './prevision';
+import { derniereActivite, garderLesSignaux } from './signauxGardes';
 import { clientService } from './supabase';
 
 export { aujourdhuiParis, type GenreSignal, type Seuils, type Signal, type Suivi } from './signauxSuivi';
@@ -37,6 +38,18 @@ function indiceHooper(): Promise<string | null> {
 
 // Ce que le tableau lit d'un athlète : le strict nécessaire (champs choisis), en mémoire le temps de la page.
 export async function lireSuivi(usr: string, moi: boolean, s: Seuils, aujourdhui: string): Promise<Suivi> {
+  return (await lire(usr, moi, s, aujourdhui)).suivi;
+}
+
+// « Relire maintenant » (EC2, décision coach du 04/11/2026) : ses signaux lus dans Nolio à la demande, puis gardés comme
+// ceux du soir (lib/app/signauxGardes.ts) ; pour un athlète sans objectif en route, que le passage du soir ne lit pas.
+export async function relireEtGarder(coachId: string, usr: string, moi: boolean, s: Seuils, aujourdhui: string): Promise<Suivi> {
+  const { suivi, realisees } = await lire(usr, moi, s, aujourdhui);
+  await garderLesSignaux(coachId, usr, suivi, derniereActivite(realisees));
+  return suivi;
+}
+
+async function lire(usr: string, moi: boolean, s: Seuils, aujourdhui: string): Promise<{ suivi: Suivi; realisees: Realisee[] }> {
   const qui = moi ? '' : `&athlete=${usr}`;
   const debut = ajouterJours(aujourdhui, -(s.jours - 1));
   const hooper = await indiceHooper();
@@ -48,7 +61,7 @@ export async function lireSuivi(usr: string, moi: boolean, s: Seuils, aujourdhui
       ? listeNolio<ValeurHooper>(`metrics/values/?item=${hooper}&date_from=${ajouterJours(debut, -(7 * s.hooper_semaines + 3))}&date_to=${aujourdhui}${qui}`)
       : Promise.resolve([] as ValeurHooper[]),
   ]);
-  return signaux(prevues, realisees, valeurs, s, aujourdhui);
+  return { suivi: signaux(prevues, realisees, valeurs, s, aujourdhui), realisees };
 }
 
 // Les athlètes qui ont donné leur accord (T3) : { usr : date }.

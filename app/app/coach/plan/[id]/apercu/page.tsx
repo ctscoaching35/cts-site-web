@@ -10,6 +10,8 @@ import PourquoiSemaine from '@/components/app/PourquoiSemaine';
 import { exigerCoach } from '@/lib/app/nolio';
 import { dateLongue, jourMois } from '@/lib/app/plan';
 import { supabaseConfigure } from '@/lib/app/supabase';
+import { CorrigerSemaine } from '@/components/app/GestesEcriture';
+import { choixDeLaSemaine, CORRECTIONS_ACTIVES } from '@/lib/app/corrections';
 
 // Toujours calculée à la visite : la page lit Nolio et demande la semaine au moteur, sans rien garder.
 export const dynamic = 'force-dynamic';
@@ -42,8 +44,11 @@ export default async function ApercuDimanche({ params }: { params: Promise<{ id:
       .sort((x, y) => x.course_date.localeCompare(y.course_date))[0] ?? null
     : null;
   const seancesSemaine = sortie ? sortie.semaine.jours.map((j) => j.seance) : undefined;
+  // EC3 : les corrections avant l'envoi, sur une semaine de préparation qui partira dimanche (interrupteur éteint : rien).
+  const corrigeable = CORRECTIONS_ACTIVES && a?.quoi === 'Semaine' && Boolean(sortie);
+  const choix = corrigeable && a ? await choixDeLaSemaine(id, a.lundi).catch(() => null) : null;
   return (
-    <CadreCoach actif="tableau">
+    <CadreCoach actif="athletes">
       <Link href={`/app/coach/plan/${id}`} className="inline-flex items-center min-h-9 text-[0.8125rem] font-bold text-teal">‹ {o.athlete.nom}</Link>
       <div className="!mt-2">
         <h1 className="text-[1.75rem] font-extrabold tracking-tight">Aperçu du dimanche</h1>
@@ -72,6 +77,16 @@ export default async function ApercuDimanche({ params }: { params: Promise<{ id:
               ))}
             </ul>
           </Carte>
+          {corrigeable && a && (
+            <Carte className="!p-5 space-y-2">
+              <Surtitre>Corriger avant l’envoi</Surtitre>
+              <p className="text-sm text-[#4A4866]">
+                Ce que tu corrigerais dans Nolio, choisi ici : le moteur l’applique dimanche soir, et ta raison se compte dans
+                « Chiffres ». Tu peux le retirer jusque-là.
+              </p>
+              <CorrigerSemaine planId={id} lundi={a.lundi} choix={choix} />
+            </Carte>
+          )}
           {sortie.pourquoi && <PourquoiSemaine pourquoi={sortie.pourquoi} />}
           <Carte className="!p-5 space-y-2">
             <Surtitre>Ce que le moteur change</Surtitre>

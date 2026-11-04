@@ -11,6 +11,7 @@ import {
   retirerAccordLecture, retirerCourseDeNolio, type Course,
 } from './ecriture';
 import { enregistrerConfirmation } from './confirmation';
+import { annulerLeChoix, CORRECTIONS, CORRECTIONS_ACTIVES, garderLeChoix, RAISONS, type Correction, type Raison } from './corrections';
 import { coachConnecte } from './nolio';
 import { clientServeur, clientService } from './supabase';
 
@@ -315,4 +316,33 @@ export async function confirmerMaCharge(planId: string, _e: EtatGeste, form: For
     console.error(`Confirmation de ${planId} :`, e instanceof Error ? e.message : e);
     return { ok: false, message: 'Ta réponse n’a pas pu être enregistrée : réessaie dans un moment.' };
   }
+}
+
+// EC3 (décision coach du 04/11/2026, « A ») : les corrections d'une semaine avant son envoi, choisies sur l'aperçu,
+// gardées jusqu'au passage du dimanche ; réservé au coach de cet objectif.
+export async function choisirCorrections(planId: string, lundi: string, _e: EtatGeste, form: FormData): Promise<EtatGeste> {
+  const { coachId } = await qui();
+  const o = await objectifEcrit(planId);
+  if (!CORRECTIONS_ACTIVES || !coachId || !o || o.coachId !== coachId || !/^\d{4}-\d{2}-\d{2}$/.test(lundi)) {
+    return { ok: false, message: 'Réservé au coach de cet objectif.' };
+  }
+  const corrections = form.getAll('correction').map(String).filter((c): c is Correction => c in CORRECTIONS);
+  const raison = String(form.get('raison') ?? '');
+  if (!corrections.length) return { ok: false, message: 'Coche au moins une correction.' };
+  try {
+    await garderLeChoix(coachId, planId, lundi, corrections, raison in RAISONS ? (raison as Raison) : null);
+  } catch (e) {
+    return { ok: false, message: e instanceof Error ? e.message : 'Les corrections ne se sont pas enregistrées.' };
+  }
+  revalidatePath(`/app/coach/plan/${planId}/apercu`);
+  return { ok: true, message: `Gardé : ${corrections.map((c) => CORRECTIONS[c].toLowerCase()).join(', ')}. La semaine partira ainsi dimanche soir.` };
+}
+
+export async function annulerCorrections(planId: string, lundi: string, _e: EtatGeste): Promise<EtatGeste> {
+  const { coachId } = await qui();
+  const o = await objectifEcrit(planId);
+  if (!coachId || !o || o.coachId !== coachId) return { ok: false, message: 'Réservé au coach de cet objectif.' };
+  await annulerLeChoix(planId, lundi).catch(() => null);
+  revalidatePath(`/app/coach/plan/${planId}/apercu`);
+  return { ok: true, message: 'Corrections retirées : la semaine partira telle que le moteur l’écrit.' };
 }

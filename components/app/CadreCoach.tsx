@@ -3,22 +3,23 @@ import Link from 'next/link';
 import clsx from 'clsx';
 import { Deconnexion } from './BoutonsCompte';
 
-// Le cadre de l'espace coach (maquettes validées par le coach le 19/10/2026, puis le 24/10/2026) : un menu à gauche sur
-// ordinateur, au-dessus du contenu sur téléphone (Tableau de bord, À regarder, sa propre page, Suivi des 7 jours,
-// Dimanche, l'aperçu des semaines qui s'écrivent dimanche soir, ajouté le 30/10/2026, Chiffres ; plus de Bibliothèque, décision coach du 20/10/2026 : « ça ne m'apporte rien »), le coach. Plus de lien « Voir l'app d'un athlète » (décision coach du 20/10/2026) : il ouvrait l'app du compte coach ;
-// chaque version se voit par son propre compte (coach, coaché, acheteur).
-export type RubriqueCoach = 'tableau' | 'regarder' | 'suivi' | 'dimanche' | 'chiffres';
+// Le cadre de l'espace coach (maquettes validées par le coach le 19/10/2026, puis le 24/10/2026 ; la refonte par exception,
+// EC1, décision coach du 04/11/2026) : un menu à gauche sur ordinateur, au-dessus du contenu sur téléphone. Quatre
+// entrées : Cette semaine (l'accueil, qui réunit « À regarder » et les signaux du Suivi), Dimanche (une seule vue, EC4),
+// Chiffres, Mes athlètes (l'ancien Tableau de bord ; le Suivi des 7 jours est sur la fiche de chaque athlète). Plus de
+// Bibliothèque (décision coach du 20/10/2026 : « ça ne m'apporte rien ») ni de lien « Voir l'app d'un athlète » : chaque
+// version se voit par son propre compte (coach, coaché, acheteur).
+export type RubriqueCoach = 'semaine' | 'dimanche' | 'chiffres' | 'athletes';
 
-// aRegarder : le nombre de lignes de « À regarder », que le tableau de bord et « À regarder » connaissent.
+// aRegarder : le nombre de lignes « À regarder » de Cette semaine.
 export default function CadreCoach({ actif, aRegarder = 0, coach, children }: {
   actif: RubriqueCoach; aRegarder?: number; coach?: string; children: React.ReactNode;
 }) {
   const liens: [RubriqueCoach, string, string][] = [
-    ['tableau', 'Tableau de bord', '/app/coach'],
-    ['regarder', 'À regarder', '/app/coach/a-regarder'],
-    ['suivi', 'Suivi des 7 jours', '/app/coach/suivi'],
+    ['semaine', 'Cette semaine', '/app/coach'],
     ['dimanche', 'Dimanche', '/app/coach/dimanche'],
     ['chiffres', 'Chiffres', '/app/coach/chiffres'],
+    ['athletes', 'Mes athlètes', '/app/coach/mes-athletes'],
   ];
   return (
     <div className="min-h-screen flex flex-wrap bg-sand text-indigo">
@@ -38,7 +39,7 @@ export default function CadreCoach({ actif, aRegarder = 0, coach, children }: {
               className={clsx('flex items-center justify-between gap-2 min-h-11 px-3 rounded-[10px] text-sm',
                 cle === actif ? 'bg-white/10 text-white font-bold' : 'text-[#D6D5E6] font-semibold hover:bg-white/5')}>
               <span>{titre}</span>
-              {cle === 'regarder' && aRegarder > 0 && (
+              {cle === 'semaine' && aRegarder > 0 && (
                 <span className="min-w-[22px] h-[22px] px-1 rounded-full bg-[#2BB39B] text-[#10302B] text-xs font-extrabold inline-flex items-center justify-center">{aRegarder}</span>
               )}
             </Link>

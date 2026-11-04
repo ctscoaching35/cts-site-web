@@ -37,6 +37,10 @@ import { chargeChangee, chargeDe, jourDInvitation } from './invitation';
 import { lireConfirmation, rappelerLesConfirmations } from './confirmation';
 import { CONTINUITE_ACTIVE, lireLesRetouches, seancesLues, type SeanceLue } from './continuite';
 import { relierAuxPrevues } from './relier';
+import { correctionsAEnvoyer, CORRECTIONS_ACTIVES, marquerAppliquees } from './corrections';
+import { derniereActivite, garderLesSignaux } from './signauxGardes';
+import { signaux } from './signauxSuivi';
+import { seuilsSuivi } from './suivi';
 import type { FamilleLue, ProfilLu } from './classement';
 
 export type Etat = Record<string, unknown>;
@@ -251,7 +255,12 @@ function lireQuestionnaire(items: { question: string; value: unknown }[]): Quest
 // Ce que le moteur juge : les séances faites (reliées à leur jour du plan par l'envoi), le Hooper, le questionnaire, et
 // la semaine telle qu'elle est dans Nolio (« Nolio fait foi »). Rien n'est gardé : le moteur en tire ce qu'il garde dans
 // son état (la plus longue sortie courue, le volume fait).
-export async function lireRetours(o: Objectif, du: string, au: string): Promise<Retours> {
+// garder : ce qui a été lu, tel quel (les séances prévues, les activités, le Hooper), pour les signaux gardés du soir
+// (EC2, lib/app/signauxGardes.ts) : aucun appel de plus à Nolio.
+export type LuDansNolio = { planifiees: { id: string; name?: string; date_start: string; sport?: string | null; rpe?: number | null }[];
+  reels: { id: string; date_start: string; planned?: string | null; debrief?: { rpe?: number | null; feeling?: number | null; comment?: string | null } | null }[];
+  hooper: { id: string; date_start: string; value: number | null }[] };
+export async function lireRetours(o: Objectif, du: string, au: string, garder?: (lu: LuDansNolio) => void): Promise<Retours> {
   const qui = await requeteAthlete(o);
   const parNolio = new Map<string, string>();
   for (const e of o.envois) for (const s of e.seances as SeanceEnvoyee[])
@@ -288,13 +297,15 @@ export async function lireRetours(o: Objectif, du: string, au: string): Promise<
     dplus_m: typeof r.elevation_gain?.value === 'number' ? Math.round(r.elevation_gain.value) : null,
   }));
   let hooper: Retours['hooper'] = [];
+  let valeursHooper: LuDansNolio['hooper'] = [];
   const item = o.accordLecture ? await indiceHooper() : null;
   if (item) {
-    const valeurs = await listeNolio<{ id: string; date_start: string; value: number | null }>(
+    valeursHooper = await listeNolio<{ id: string; date_start: string; value: number | null }>(
       `metrics/values/?item=${item}&date_from=${ajouterJours(au, -42)}&date_to=${au}${qui}`);
-    hooper = valeurs.filter((v) => typeof v.value === 'number')
+    hooper = valeursHooper.filter((v) => typeof v.value === 'number')
       .map((v) => ({ date: v.date_start.slice(0, 10), valeur: v.value as number }));
   }
+  garder?.({ planifiees, reels, hooper: valeursHooper });
   // Les réponses envoyées seulement (is_confirmed) : Nolio liste aussi les questionnaires ouverts et pas envoyés, aux
   // valeurs de brouillon (25/10/2026 : un « 3 » lu « −6 » avant l'envoi).
   const resultats = (await listeNolio<{ id: string; name?: string; date_start: string; is_confirmed?: boolean; items: { question: string; value: unknown }[] }>(
@@ -451,7 +462,10 @@ async function semaineDuMoteur(o: Objectif, numero: string, retours: Retours | n
   const glucides = await glucidesDeLaStrategie(o.planId).catch(() => null);
   const lundi = o.plan.semaines.find((x) => x.numero === numero)?.lundi;
   const faits = await testsFaitsSansValeur(o.planId, lundi).catch(() => new Set<string>());
+  // EC3 : les corrections que le coach a choisies sur l'aperçu, derrière leur interrupteur (lib/app/corrections.ts).
+  const corrections = await correctionsAEnvoyer(o.planId, lundi);
   return moteur<SortieMoteur>('/v1/semaine', {
+    ...(corrections.length ? { corrections } : {}),
     parametres: glucides ? { ...o.parametres, glucides_cible: glucides } : o.parametres, numero, etat: o.etat, retours,
     sans_ajustement: Boolean(options.sansAjustement),
     valeurs: valeursConnues(o, lundi, faits), reprise: Boolean(options.reprise),
@@ -1187,6 +1201,8 @@ export async function passageDuDimanche(budgetMs = 240_000): Promise<Compte[]> {
       const sortie = recuperation
         ? await ecrireLaRecuperation(o, numero, recuperation.jusqua, retours)
         : await ecrireEtEnvoyer(o, numero, retours);
+      // EC3 : les corrections de cette semaine, envoyées, se comptent (« Chiffres »).
+      if (s && CORRECTIONS_ACTIVES) await marquerAppliquees(planId, lundi).catch(() => null);
       comptes.push({ plan: planId, quoi: `${numero} écrite${recuperation ? ' (récupération)' : ''}${reservation === 'orpheline' ? ', reprise d’une écriture coupée' : ''}`,
         coache: o.coache, journal: sortie.journal });
     } catch (e) {
@@ -1296,7 +1312,11 @@ export async function fatigueDuJour(planId: string): Promise<Compte | null> {
   const o = await objectifEcrit(planId);
   if (!o?.nolioAthlete || !o.accordLecture || !o.etat) return null;
   const aujourdhui = aujourdhuiParis();
-  const retours = await lireRetours(o, ajouterJours(aujourdhui, -10), aujourdhui);
+  const lecture: { lu?: LuDansNolio } = {};
+  const retours = await lireRetours(o, ajouterJours(aujourdhui, -10), aujourdhui, (lu) => { lecture.lu = lu; });
+  // EC2 : les signaux de la semaine d'un coaché, gardés avec ce qui vient d'être lu, pour l'accueil du coach.
+  if (o.coache && lecture.lu) await garderLesSignauxDuSoir(o, lecture.lu, aujourdhui)
+    .catch((e) => console.error(`Signaux de ${planId} :`, e instanceof Error ? e.message : e));
   const r = await moteur<{ remplacer: string | null; note?: string; journal?: Record<string, unknown>; etat?: Etat }>(
     '/v1/fatigue', { etat: o.etat, retours, aujourdhui });
   if (!r.remplacer || !r.etat) return null;
@@ -1318,6 +1338,13 @@ export async function fatigueDuJour(planId: string): Promise<Compte | null> {
     await garderNote(o, `${r.remplacer}:fatigue`, jour.date_iso, 'Séance allégée', `${r.note} ${suite}`);
   }
   return { plan: planId, quoi: `${r.remplacer} allégée`, coache: o.coache, journal: r.journal ? [r.journal] : [] };
+}
+
+async function garderLesSignauxDuSoir(o: Objectif, lu: LuDansNolio, aujourdhui: string) {
+  if (!o.nolioAthlete) return;
+  const suivi = signaux(lu.planifiees.map((p) => ({ ...p, name: p.name ?? '' })), lu.reels.map((r) => ({ ...r, name: '' })),
+    lu.hooper, await seuilsSuivi(), aujourdhui);
+  await garderLesSignaux(o.coachId, o.nolioAthlete, suivi, derniereActivite(lu.reels));
 }
 
 // Le veto : l'athlète garde sa séance d'origine, celle d'avant l'allègement (gardée dans le jour allégé) ; l'état

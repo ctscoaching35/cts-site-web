@@ -12,6 +12,8 @@ import { lignesDuProfil } from '@/lib/app/profilEntrainement';
 import TestVcCoach from '@/components/app/TestVcCoach';
 import { Carte, PastilleDate, Surtitre } from '@/components/app/Ui';
 import { associerNolio, changerProgrammation, retirerAcces, retirerAthlete } from '@/lib/app/actionsCoaching';
+import { relireMaintenant } from '@/lib/app/actionsSuivi';
+import { signauxGardes } from '@/lib/app/signauxGardes';
 import { adresseDuCompte } from '@/lib/app/espaceAthlete';
 import { ficheAthlete } from '@/lib/app/coaching';
 import { initiales } from '@/lib/app/contexte';
@@ -26,6 +28,11 @@ import type { CourseSecondaire } from '@/lib/app/tableauDuPlan';
 
 // Toujours calculée à la visite : la page lit la session du coach.
 export const dynamic = 'force-dynamic';
+
+const SIGNAL_EN_CLAIR: Record<string, string> = {
+  manquee: 'Séance manquée', plus_dur: 'Plus dur que prévu', sensations: 'Mauvaises sensations', hooper: 'Fatigue qui monte',
+  commentaire: 'Commentaire à lire dans Nolio',
+};
 
 // La fiche d'un athlète coaché (CTS_NOLIO_CADRAGE.md, N8, N9, T6 ; maquette validée par le coach le 19/10/2026) : ses
 // objectifs et leurs courses de préparation, « Nouvel objectif », son accès à l'app ; ses repères, son compte Nolio.
@@ -50,6 +57,9 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
   const { data: accord } = a.nolio_athlete_id
     ? await service.from('nolio_accords').select('accord_le').eq('coach_id', coach.compteId).eq('nolio_athlete_id', a.nolio_athlete_id).maybeSingle()
     : { data: null };
+  // Ses 7 jours (le Suivi sur sa fiche, EC1) : ses signaux gardés du soir (EC2) ; null sans la migration du 04/11/2026.
+  const gardes = accord && a.nolio_athlete_id ? await signauxGardes(coach.compteId).catch(() => null) : null;
+  const septJours = gardes && a.nolio_athlete_id ? gardes.get(a.nolio_athlete_id) ?? null : null;
   const { data: plans } = a.objectifs.length
     ? await service.from('plans').select('id, parametres, demarre_le, depart_prevu, donnees->course->>distance_km, donnees->course->>dplus_m')
       .in('id', a.objectifs.map((o) => o.plan_id))
@@ -108,8 +118,8 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
     [a.compte_id ? 'App : ouverte' : 'App : à inviter', Boolean(a.compte_id)],
   ];
   return (
-    <CadreCoach actif="tableau">
-      <Link href="/app/coach" className="inline-flex items-center min-h-9 text-[0.8125rem] font-bold text-teal">‹ Tableau de bord</Link>
+    <CadreCoach actif="athletes">
+      <Link href="/app/coach/mes-athletes" className="inline-flex items-center min-h-9 text-[0.8125rem] font-bold text-teal">‹ Mes athlètes</Link>
       <div className="flex flex-wrap items-center gap-4 !mt-2">
         <span className="w-14 h-14 rounded-full bg-[#E1EFEA] text-teal-dark flex items-center justify-center text-lg font-extrabold">{initiales(a.nom)}</span>
         <div className="flex-[1_1_240px]">
@@ -124,6 +134,50 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
       </div>
 
       {!entree.complete && <CarteEntree entree={entree} />}
+
+      {accord && a.nolio_athlete_id && (
+        <Carte className="!p-5 space-y-3">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <Surtitre>Ses 7 jours</Surtitre>
+            {septJours && (
+              <span className="text-xs text-[#5E5C78]">
+                Lus le {new Date(septJours.calcule_le).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', weekday: 'long', hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+          </div>
+          {gardes === null ? (
+            <p className="text-sm text-[#4A4866]">Ses signaux ne sont pas encore gardés (la migration du 04/11/2026 est à passer) : le suivi en direct reste ouvert.</p>
+          ) : !septJours ? (
+            <p className="text-sm text-[#4A4866]">Pas encore lus : ils se lisent chaque soir quand un objectif ou une saison est en route. « Relire maintenant » les lit tout de suite.</p>
+          ) : (
+            <>
+              <p className="text-sm text-[#3B3957]">
+                {septJours.faites} séance{septJours.faites > 1 ? 's' : ''} faite{septJours.faites > 1 ? 's' : ''} sur {septJours.prevues}
+                {septJours.hooper ? ` · Hooper ${septJours.hooper.valeur}${septJours.hooper.moyenne !== null ? ` (moyenne ${Math.round(septJours.hooper.moyenne * 10) / 10})` : ''}` : ''}
+                {septJours.derniere_activite ? ` · dernière activité le ${dateLongue(septJours.derniere_activite, true)}` : ''}
+              </p>
+              {septJours.signaux.length === 0 ? <p className="text-sm text-teal font-semibold">Aucun signal.</p> : (
+                <ul className="space-y-1.5 text-sm">
+                  {septJours.signaux.map((x, i) => (
+                    <li key={i} className="flex flex-wrap gap-x-2">
+                      <span className="font-semibold">{SIGNAL_EN_CLAIR[x.genre] ?? x.genre}</span>
+                      <span className="text-[#4A4866]">{dateLongue(x.jour.slice(0, 10), true)} · {x.detail}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
+          )}
+          <div className="flex flex-wrap items-center gap-3">
+            {gardes !== null && (
+              <form action={relireMaintenant.bind(null, a.nolio_athlete_id)}>
+                <button type="submit" className="min-h-10 px-3 rounded-[10px] border border-teal text-teal text-[0.8125rem] font-bold">Relire maintenant</button>
+              </form>
+            )}
+            <Link href="/app/coach/suivi" className="text-[0.8125rem] font-bold text-teal">Le suivi de tous, en direct ›</Link>
+          </div>
+        </Carte>
+      )}
 
       <div className="flex flex-wrap gap-5 items-start">
         <div className="flex-[1_1_380px] min-w-0 space-y-5">

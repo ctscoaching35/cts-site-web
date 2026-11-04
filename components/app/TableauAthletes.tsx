@@ -29,7 +29,7 @@ function categorie(a: LigneAthlete, jour: string): Exclude<Filtre, 'tous'> {
 }
 
 // « Tes athlètes » du tableau de bord : les filtres (un lien chacun, ?filtre=), puis une ligne par athlète.
-export default function TableauAthletes({ athletes, jour, filtre, base = '/app/coach' }: {
+export default function TableauAthletes({ athletes, jour, filtre, base = '/app/coach/mes-athletes' }: {
   athletes: LigneAthlete[]; jour: string; filtre: Filtre; base?: string;
 }) {
   const parCategorie = (f: Filtre) => f === 'tous' ? athletes.length : athletes.filter((a) => categorie(a, jour) === f).length;

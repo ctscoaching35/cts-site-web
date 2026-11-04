@@ -187,9 +187,11 @@ export default async function Confidentialite() {
             séances dans ton calendrier Nolio ;
           </li>
           <li>
-            le tableau de suivi de ton coach lit dans Nolio tes séances prévues et réalisées, avec ton effort ressenti,
-            tes sensations, tes commentaires et ton questionnaire Hooper, au moment où il l’ouvre, sans en garder de
-            copie ;
+            le suivi de ton coach lit dans Nolio tes séances prévues et réalisées, avec ton effort ressenti, tes sensations,
+            tes commentaires et ton questionnaire Hooper ; chaque soir, nous en gardons seulement des signaux pour ton coach
+            (une séance manquée, un effort plus dur que prévu, des sensations ou un Hooper en baisse, un commentaire à lire,
+            le jour de ta dernière activité), jamais le contenu d’une séance ni le texte d’un commentaire, remplacés le soir
+            suivant ;
           </li>
           <li>ton espace CTS t’affiche ta semaine telle qu’elle est dans Nolio, lue au moment où tu l’ouvres, sans en garder de copie ;</li>
           <li>
@@ -211,7 +213,7 @@ export default async function Confidentialite() {
           <li>nous gardons ton nom, ton identifiant Nolio et la date de ton accord.</li>
         </Liste>
         <p>
-          Retirer ton accord efface tes repères, ces résumés et tes badges, et arrête la lecture. Personne d’autre que ton coach et toi
+          Retirer ton accord efface tes repères, ces résumés, ces signaux et tes badges, et arrête la lecture. Personne d’autre que ton coach et toi
           ne voit ces données.
           Les séances écrites dans ton calendrier restent dans Nolio, qui applique sa propre politique de
           confidentialité. Ta fiche de course est une page à lien privé, que seuls ceux qui ont le lien peuvent ouvrir.
