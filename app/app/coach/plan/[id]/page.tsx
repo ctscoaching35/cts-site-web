@@ -191,7 +191,8 @@ export default async function ObjectifCoache({ params, searchParams }: {
                     </div>
                   )}
                   {/* Une ligne par semaine écrite (décision coach du 04/11/2026) : son lundi, faite x/y, sa charge, sa sortie
-                      longue, son Hooper, ses ajustements ; sa note « Ta semaine » s'ouvre au clic. */}
+                      longue, son Hooper, ses ajustements ; sa note « Ta semaine » s'ouvre au clic. Sa charge (décision coach
+                      du 04/11/2026 au soir, « A ») : tenue en %, la mesure de « Mes athlètes » et de l'aperçu, puis faite. */}
                   <ul className="space-y-1.5">
                     {ecritesTriees.map((w) => {
                       const journal = ((w.journal ?? []) as { regle?: string }[]).filter((j) => j.regle !== 'COACH');
@@ -206,7 +207,8 @@ export default async function ObjectifCoache({ params, searchParams }: {
                           <span className="font-bold">{r ? `Faite · ${r.seances_faites}/${r.seances_prevues}` : `Écrite le ${dateLongue(String(w.ecrite_le).slice(0, 10), true)}`}</span>
                           {r && (
                             <span className="text-[#4A4866]">
-                              {[r.rpe_lu && r.charge_faite ? `charge ${Math.round(r.charge_faite).toLocaleString('fr-FR')}` : null,
+                              {[r.charge_prevue > 0 ? `charge tenue ${Math.round((r.charge_tenue / r.charge_prevue) * 100)}\u00a0%` : null,
+                                r.rpe_lu && r.charge_faite ? `charge ${Math.round(r.charge_faite).toLocaleString('fr-FR')}` : null,
                                 r.sl_faite_min ? `sortie longue ${enHeures(r.sl_faite_min)}` : null, r.hooper !== null ? `Hooper ${r.hooper}` : null].filter(Boolean).join(' · ')}
                             </span>
                           )}
