@@ -46,5 +46,5 @@ export async function plansVisibles(): Promise<boolean> {
   }
 }
 
-export const VERSION_CGV = '21 octobre 2026';
-export const VERSION_CONFIDENTIALITE = '21 octobre 2026';
+export const VERSION_CGV = '4 novembre 2026';
+export const VERSION_CONFIDENTIALITE = '4 novembre 2026';
