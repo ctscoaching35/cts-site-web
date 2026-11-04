@@ -96,8 +96,13 @@ function minutesDuPas(pas: NoeudNolio, vitesse: number | undefined, profil: Prof
 
 const QUALITES: FamilleLue[] = ['seuil1', 'tempo', 'seuil2', 'vo2max', 'allure', 'sprint', 'mecanique'];
 
-// Les minutes et les répétitions de chaque famille dans les étapes d'une séance.
-function parFamille(workout: NoeudNolio[], profil: ProfilLu) {
+// Les étapes qui ne sont pas du travail dans une séance en montées répétées (D5, décision coach du 04/11/2026, « A ») :
+// les descentes et les récupérations.
+const HORS_TRAVAIL = new Set(['ramp_down', 'rest']);
+
+// Les minutes et les répétitions de chaque famille dans les étapes d'une séance ; travailSeul : sans les descentes ni les
+// récupérations (HORS_TRAVAIL).
+function parFamille(workout: NoeudNolio[], profil: ProfilLu, travailSeul = false) {
   const minutes = new Map<FamilleLue, number>();
   const reps = new Map<FamilleLue, number>();
   const parcourir = (noeuds: NoeudNolio[], fois: number) => {
@@ -106,6 +111,7 @@ function parFamille(workout: NoeudNolio[], profil: ProfilLu) {
         parcourir(n.steps ?? [], fois * (n.times ?? 1));
         continue;
       }
+      if (travailSeul && HORS_TRAVAIL.has(String(n.intensity))) continue;
       const f = familleDuPas(n, profil);
       if (!f) continue;
       minutes.set(f.famille, (minutes.get(f.famille) ?? 0) + fois * minutesDuPas(n, f.vitesse, profil));
@@ -146,13 +152,15 @@ export const nomNormal = (nom: string) => nom.normalize('NFC').replace(/\s+/g, '
 
 // C1 (décision coach du 04/11/2026, « A ») : une séance de la barre latérale (son nom, lib/app/barreFamilles.ts) a sa
 // famille par son nom, sûre ; sa structure donne la dose, toutes ses étapes de qualité comptées (un Tempo dont la FC
-// se lirait Seuil 2, un sprint en côte trop court pour sortir d'une EF). Hors de la barre, la structure seule.
+// se lirait Seuil 2, un sprint en côte trop court pour sortir d'une EF) — sauf, hors de la mécanique, les descentes et
+// les récupérations d'une séance en montées répétées (D5, 04/11/2026 : « Seuil 1 côte · 30 min — 6 × 5 min » se lisait
+// 42 min, ses descentes comptées). Hors de la barre, la structure seule.
 export function classerSeanceNommee(nom: string | null | undefined, workout: NoeudNolio[] | null | undefined, profil: ProfilLu,
   rpePrevu?: number | null, dureeMin?: number | null): Classement | null {
   const c = classerSeance(workout, profil, rpePrevu, dureeMin);
   const famille = nom ? FAMILLES_DE_LA_BARRE[nomNormal(nom)] : undefined;
   if (!famille) return c;
-  const { minutes, reps } = parFamille(workout ?? [], profil);
+  const { minutes, reps } = parFamille(workout ?? [], profil, famille !== 'mecanique');
   const travail = QUALITES.reduce((t, f) => t + (minutes.get(f) ?? 0), 0);
   if (travail > 0) {
     const r = QUALITES.reduce((t, f) => t + (reps.get(f) ?? 0), 0) || 1;

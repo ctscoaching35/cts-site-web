@@ -33,9 +33,9 @@ import { allure, coefficientRiegel, kmh, PROFIL_VIDE } from './zones';
 import { reperesDeBase } from './reperes';
 import { ecrireZonesNolio } from './zonesNolio';
 import { allureViseeKmh, ecrireAllureVisee } from './metriquesNolio';
-import { CONTINUITE_ACTIVE, seancesLues, type SeanceLue } from './continuite';
+import { CONTINUITE_ACTIVE, lireLesRetouches, seancesLues, type SeanceLue } from './continuite';
 import { relierAuxPrevues } from './relier';
-import type { ProfilLu } from './classement';
+import type { FamilleLue, ProfilLu } from './classement';
 
 export type Etat = Record<string, unknown>;
 // compteAthlete : le compte d'un coaché invité dans l'app (T6) ; ses gestes (une course, le veto) valent comme ceux du
@@ -57,10 +57,11 @@ export type Retours = {
 };
 // « Nolio fait foi » (décisions coach du 20/10/2026) : la semaine telle qu'elle est dans Nolio, que le moteur juge
 // (cts_ajustements.semaine_reelle) : chaque séance qu'il a écrite et qui y est encore, avec sa durée et son RPE (une
-// absente et non faite, le coach l'a supprimée) ; les séances de course et de trail ajoutées, posées par le coach ou
-// courues par l'athlète, hors jours de course.
+// absente et non faite, le coach l'a supprimée) — et, retouchée par le coach (son contenu a changé, D4), la famille
+// qu'elle a dans Nolio (D1, 04/11/2026) ; les séances de course et de trail ajoutées, posées par le coach ou courues par
+// l'athlète, hors jours de course.
 type SemaineNolio = {
-  prevues: Record<string, { duree_min: number | null; rpe: number | null }>;
+  prevues: Record<string, { duree_min: number | null; rpe: number | null; famille?: FamilleLue }>;
   ajoutees: {
     date: string; prevue_min: number | null; rpe_prevu: number | null; faite: boolean; duree_min?: number | null;
     rpe?: number | null; ressenti?: number | null; dplus_m?: number | null;
@@ -253,20 +254,31 @@ export async function lireRetours(o: Objectif, du: string, au: string): Promise<
   const parNolio = new Map<string, string>();
   for (const e of o.envois) for (const s of e.seances as SeanceEnvoyee[])
     if (s.nolio_id && (s.genre ?? 'seance') === 'seance' && !s.jour_id.includes(':')) parNolio.set(String(s.nolio_id), s.jour_id);
-  type Reel = { id: string; date_start: string; sport?: string | null; duration?: { value: number } | null; planned?: string | null;
+  type Reel = { id: string; name?: string | null; date_start: string; sport?: string | null; duration?: { value: number } | null; planned?: string | null;
     elevation_gain?: { value: number } | null; distance?: { value?: number; unit?: string } | number | null;
     debrief?: { rpe?: number | null; feeling?: number | null } | null };
   // « Nolio fait foi » : les séances prévues de ces semaines, une semaine de marge de chaque côté (une séance déplacée
   // juste à côté reste la sienne).
-  type Prevue = { id: string; date_start: string; sport?: string | null; duration?: { value?: number } | null; rpe?: number | null };
+  type Prevue = { id: string; name?: string | null; date_start: string; sport?: string | null; duration?: { value?: number } | null;
+    rpe?: number | null; revision?: string | null };
   // Avec la continuité, la révision de chaque séance (une séance du moteur retouchée par le coach devient la sienne).
   const planifiees = await listeNolio<Prevue>(`planned/trainings/?date_from=${ajouterJours(du, -7)}&date_to=${ajouterJours(au, 7)}${qui}`
     + (CONTINUITE_ACTIVE ? '&with_revision=true' : ''));
   const jours = new Set([o.plan.course.date, ...((o.parametres.courses_secondaires ?? []) as Course[]).map((c) => c.date)]);
-  // C2 : une activité courue un autre jour que sa séance, que Nolio n'a pas reliée, se relie à elle (lib/app/relier.ts).
+  // Q1 : une activité que Nolio n'a pas reliée se relie à la séance du même jour, ou à celle de la semaine dont elle porte
+  // le nom (lancée depuis la montre) ; sinon elle reste une sortie en plus (lib/app/relier.ts). Son nom : `name`.
   const reels = relierAuxPrevues((await listeNolio<Reel>(
-    `real/trainings/?date_from=${du}&date_to=${au}&fields=id,date_start,sport,duration,distance,elevation_gain,planned,debrief${qui}`))
+    `real/trainings/?date_from=${du}&date_to=${au}&fields=id,name,date_start,sport,duration,distance,elevation_gain,planned,debrief${qui}`))
     .map(sansVitesseImpossible), planifiees, SPORTS_COURSE, jours);
+  // D4 et D1 : les retouches du coach, jugées sur le contenu des séances (lib/app/continuite.ts) ; avec la continuité,
+  // une lecture qui échoue n'empêche pas la semaine (la règle de la révision, sans famille).
+  const envoyees = o.envois.flatMap((e) => e.seances as SeanceEnvoyee[]);
+  const d = CONTINUITE_ACTIVE ? await destinataire(o.nolioAthlete).catch(() => null) : null;
+  const retouches = d ? await lireLesRetouches({ planifiees, envoyees, profil: o.profil as ProfilLu,
+    athlete: d.moi ? '' : d.usr, du, au }).catch((e) => {
+    console.error(`Retouches lues de ${o.planId} :`, e instanceof Error ? e.message : e);
+    return null;
+  }) : null;
   const seances: RetourSeance[] = reels.filter((r) => r.planned && parNolio.has(r.planned)).map((r) => ({
     id: parNolio.get(r.planned as string) as string, date: r.date_start.slice(0, 10), faite: true,
     duree_min: r.duration?.value ? Math.round(r.duration.value / 60) : null,
@@ -292,7 +304,8 @@ export async function lireRetours(o: Objectif, du: string, au: string): Promise<
   const deCourse = (sport: unknown, date: string) =>
     SPORTS_COURSE.includes(String(sport)) && date.slice(0, 10) >= du && date.slice(0, 10) <= au && !jours.has(date.slice(0, 10));
   const prevues: SemaineNolio['prevues'] = Object.fromEntries(planifiees.filter((p) => parNolio.has(p.id))
-    .map((p) => [parNolio.get(p.id) as string, { duree_min: minutes(p.duration), rpe: rpe(p.rpe) }]));
+    .map((p) => [parNolio.get(p.id) as string, { duree_min: minutes(p.duration), rpe: rpe(p.rpe),
+      ...(retouches?.familles.has(p.id) ? { famille: retouches.familles.get(p.id) } : {}) }]));
   const posees = new Map(planifiees.filter((p) => !parNolio.has(p.id) && deCourse(p.sport, p.date_start)).map((p) => [p.id, p]));
   const ajoutees: SemaineNolio['ajoutees'] = [];
   for (const r of reels) {
@@ -311,17 +324,14 @@ export async function lireRetours(o: Objectif, du: string, au: string): Promise<
   }
   // LA CONTINUITÉ (décisions coach du 26/10/2026) : ses séances faites, classées par leur structure, quel qu'en soit
   // l'auteur ; derrière son interrupteur (lib/app/continuite.ts), une lecture qui échoue n'empêche pas la semaine.
-  const lues = CONTINUITE_ACTIVE ? await (async () => {
-    const d = await destinataire(o.nolioAthlete);
-    // Une séance du moteur que le coach a retouchée (sa révision Nolio a changé depuis l'envoi, comme les retouches
-    // comptées) est la sienne : sa dose compte.
-    const envoyees = new Map(o.envois.flatMap((e) => e.seances as SeanceEnvoyee[]).filter((x) => x.nolio_id)
-      .map((x) => [String(x.nolio_id), x.revision ?? null]));
-    const intactes = new Set(planifiees.filter((p) => envoyees.has(p.id)
-      && (!envoyees.get(p.id) || !(p as { revision?: string | null }).revision
-        || envoyees.get(p.id) === (p as { revision?: string | null }).revision)).map((p) => p.id));
+  const lues = CONTINUITE_ACTIVE && d ? await (async () => {
+    // Une séance du moteur que le coach a retouchée (son contenu a changé depuis l'envoi, D4) est la sienne : sa dose
+    // compte. Sans la lecture des retouches, la règle de la révision.
+    const revisions = new Map(envoyees.filter((x) => x.nolio_id).map((x) => [String(x.nolio_id), x.revision ?? null]));
+    const intactes = retouches?.intactes ?? new Set(planifiees.filter((p) => revisions.has(p.id)
+      && (!revisions.get(p.id) || !p.revision || revisions.get(p.id) === p.revision)).map((p) => p.id));
     return seancesLues({ planifiees, reelles: reels, moteur: intactes, profil: o.profil as ProfilLu,
-      accordLecture: o.accordLecture, athlete: d.moi ? '' : d.usr, au });
+      accordLecture: o.accordLecture, athlete: d.moi ? '' : d.usr, au, corps: retouches?.corps });
   })().catch((e) => {
     console.error(`Séances lues de ${o.planId} :`, e instanceof Error ? e.message : e);
     return undefined;

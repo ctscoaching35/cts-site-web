@@ -7,7 +7,7 @@
  */
 import { CONTINUITE_ACTIVE } from './continuite';
 import { API_URL } from '@/lib/plan';
-import { actionsTrame, dateDe, empreinte, type Voulu } from './trameNolio';
+import { actionsTrame, dateDe, empreinte, empreinteSeance, type Voulu } from './trameNolio';
 import { noteFicheCourse } from './ficheCourse';
 import { ajouterJours, jMoins, joursEntre, type Plan, type Semaine } from './plan';
 import { qualitesDuBloc } from './tableau';
@@ -45,8 +45,11 @@ export type FicheAthlete = {
 // jour de repos (« pnot_… », V6) ou le bandeau de la semaine (« pcyc_… », jour_id « semaine », V7), dont la révision
 // est l'empreinte de leur contenu (l'API ne leur en donne pas).
 export type Genre = 'seance' | 'note' | 'cycle';
+// contenu : l'empreinte du contenu d'une séance à l'envoi (trameNolio.empreinteSeance, D4 du 04/11/2026) ; une séance
+// seulement déplacée par le coach garde son contenu, et reste celle du moteur.
 export type SeanceEnvoyee = {
   jour_id: string; nolio_id: string | number | null; revision?: string | null; supprimee?: boolean; genre?: Genre;
+  contenu?: string | null;
 };
 export type Envoi = { semaine: string; envoye_le: string; seances: SeanceEnvoyee[] };
 // Ce que la page montre d'une semaine envoyée : combien de ses séances le coach a retouchées ou supprimées.
@@ -394,6 +397,11 @@ async function libererLaSemaine(d: Destinataire, debut: string, fin: string): Pr
   return retires;
 }
 
+// L'empreinte du contenu d'une séance envoyée (D4) : la séance telle que Nolio la rend, ses étapes comprises ; à défaut
+// celle qui est partie.
+const contenuRendu = (rendu: Record<string, unknown> | null | undefined, envoye: Record<string, unknown>) =>
+  empreinteSeance(rendu && Array.isArray(rendu.workout) ? rendu : envoye);
+
 export async function creer(d: Destinataire, jourId: string, corps: Record<string, unknown>, genre: Genre = 'seance'): Promise<SeanceEnvoyee & { erreur?: string; deja?: boolean }> {
   const envoi = () => appelNolio('POST', CHEMINS[genre], d.moi ? corps : { ...corps, athletes: [d.usr] });
   let r = await envoi();
@@ -402,7 +410,7 @@ export async function creer(d: Destinataire, jourId: string, corps: Record<strin
   if (r.statut !== 201 && r.statut !== 200) return { jour_id: jourId, nolio_id: null, erreur: refusNolio(r, `${NOM[genre][0]} ${NOM[genre][1]} du ${String(corps.date_start)}`) };
   const id = String(r.corps?.id ?? '');
   return genre === 'seance'
-    ? { jour_id: jourId, nolio_id: id, revision: (r.corps?.revision as string) ?? null }
+    ? { jour_id: jourId, nolio_id: id, revision: (r.corps?.revision as string) ?? null, contenu: contenuRendu(r.corps, corps) }
     : { jour_id: jourId, nolio_id: id, genre, revision: empreinte(r.corps ?? corps) };
 }
 
@@ -705,7 +713,8 @@ export async function mettreAJourSemaineCible(c: Cible, numero: string, semaineE
         garde.push(ancienne);
         throw await echec(refusNolio(r, `la mise à jour de ${article} ${quoi} du ${date(j.id)}`));
       }
-      garde.push(genre === 'seance' ? { jour_id: j.id, nolio_id: id, revision: (r.corps?.revision as string) ?? null }
+      garde.push(genre === 'seance' ? { jour_id: j.id, nolio_id: id, revision: (r.corps?.revision as string) ?? null,
+        contenu: contenuRendu(r.corps, voulu) }
         : { jour_id: j.id, nolio_id: id, genre, revision: empreinte(r.corps ?? voulu) });
       if (genre === 'seance') bilan.remplacees += 1;
       continue;

@@ -46,7 +46,13 @@ export function enClair(e: Entree, seances?: string[]): string[] {
     case 'R3': return [`Fatigue : ${effet ?? 'semaine allégée'}${Array.isArray(e.signaux) && e.signaux.length ? ` (${(e.signaux as string[]).join(' ; ')})` : ''}.`];
     case 'R4': return [`Arrêt${typeof e.jours === 'number' ? ` de ${e.jours} jours` : ''} : ${effet ?? ''}.`];
     // C3 et C5 (moteur 8.445, décisions coach du 04/11/2026).
-    case 'R8': return [`Ta séance de ${jourDeLaSeance(e.seance)} n’a pas été faite : elle revient sous une autre forme.`];
+    // D1 et D6 (moteur 8.449, décisions coach du 04/11/2026) : retirée, remplacée par une autre famille, ou absente de
+    // la semaine que le coach a posée.
+    case 'R8': return [e.cause === 'retiree' ? `Ta séance de ${jourDeLaSeance(e.seance)} retirée dans Nolio : sa marche se refait, sous une autre forme.`
+      : e.cause === 'remplacee' ? `Ta séance de ${jourDeLaSeance(e.seance)} remplacée par une autre famille : sa marche se refait, sous une autre forme.`
+        : e.cause === 'laissee' ? `Ta semaine posée n’avait pas la séance de ${jourDeLaSeance(e.seance)} de la trame : sa marche se refait, sous une autre forme.`
+          : `Ta séance de ${jourDeLaSeance(e.seance)} n’a pas été faite : elle revient sous une autre forme.`];
+    case 'D6': return ['Ta semaine posée dans Nolio est lue comme une semaine écrite : sa plus longue sortie, son volume, ses séances clés.'];
     case 'C5': return ['Ta seconde course arrive pendant ta récupération : semaine de course, sans séance dure.'];
     case 'C1':
       if (e.doses && typeof e.doses === 'object') {
