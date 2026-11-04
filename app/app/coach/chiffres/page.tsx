@@ -10,7 +10,7 @@ import type { FamilleRetouche } from '@/lib/app/retouches';
 import { exigerCoach } from '@/lib/app/nolio';
 import { CORRECTIONS, CORRECTIONS_ACTIVES, correctionsComptees, RAISONS } from '@/lib/app/corrections';
 import { ajouterJours } from '@/lib/app/plan';
-import { supabaseConfigure } from '@/lib/app/supabase';
+import { espaceCoachOuvert } from '@/lib/app/supabase';
 
 // Toujours calculée à la visite : la page lit la session du coach.
 export const dynamic = 'force-dynamic';
@@ -47,7 +47,7 @@ const STATUT_NOLIO: Record<string, string> = {
 };
 
 export default async function Chiffres({ searchParams }: { searchParams: Promise<{ partie?: string }> }) {
-  if (!supabaseConfigure()) notFound();
+  if (!espaceCoachOuvert()) notFound();
   const coach = await exigerCoach();
   const plans = (await searchParams).partie === 'plans';
   const onglets: [boolean, string, string][] = [[!plans, 'Coaching individualisé', '/app/coach/chiffres'], [plans, 'Plans', '/app/coach/chiffres?partie=plans']];

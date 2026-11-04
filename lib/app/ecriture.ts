@@ -39,6 +39,7 @@ import { CONTINUITE_ACTIVE, lireLesRetouches, seancesLues, type SeanceLue } from
 import { relierAuxPrevues } from './relier';
 import { correctionsAEnvoyer, CORRECTIONS_ACTIVES, marquerAppliquees } from './corrections';
 import { derniereActivite, garderLesSignaux } from './signauxGardes';
+import { demonstrationCoachOuverte, moteurDemonstration } from './demonstrationCoach';
 import { signaux } from './signauxSuivi';
 import { seuilsSuivi } from './suivi';
 import type { FamilleLue, ProfilLu } from './classement';
@@ -183,6 +184,8 @@ export const objectifAffiche = cache(objectifEcrit);
 // ─── Le moteur ────────────────────────────────────────────────────────────
 
 export async function moteur<T>(chemin: string, corps: unknown): Promise<T> {
+  // En démonstration (lib/app/demonstrationCoach.ts) : ce que le moteur a écrit pour elle, rien d'autre.
+  if (demonstrationCoachOuverte()) return moteurDemonstration<T>(chemin, corps);
   const r = await fetch(`${API_URL}${chemin}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corps), cache: 'no-store',
   });

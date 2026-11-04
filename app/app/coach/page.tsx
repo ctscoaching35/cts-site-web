@@ -7,7 +7,7 @@ import { cetteSemaine } from '@/lib/app/cetteSemaine';
 import { equipeNolio, type ARegarder } from '@/lib/app/espaceCoach';
 import { marquerRegle } from '@/lib/app/actionsCoaching';
 import { dateLongue, jourMois } from '@/lib/app/plan';
-import { clientService, supabaseConfigure } from '@/lib/app/supabase';
+import { clientService, espaceCoachOuvert } from '@/lib/app/supabase';
 import { exigerCoach } from '@/lib/app/nolio';
 
 // Toujours calculée à la visite : la page lit la session du coach.
@@ -53,7 +53,7 @@ function Ligne({ r, plein = false }: { r: ARegarder; plein?: boolean }) {
 }
 
 export default async function CetteSemaine() {
-  if (!supabaseConfigure()) notFound();
+  if (!espaceCoachOuvert()) notFound();
   const coach = await exigerCoach();
   const { data: compte } = await clientService().from('comptes').select('nom').eq('id', coach.compteId).maybeSingle();
   const { nolio } = await equipeNolio();

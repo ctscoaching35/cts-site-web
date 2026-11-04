@@ -6,6 +6,7 @@
  */
 import { unstable_cache } from 'next/cache';
 import { destinataire } from './coaching';
+import { demonstrationCoachOuverte } from './demonstrationCoach';
 import { appelNolio, listeNolio } from './nolio';
 
 // type : « a », l'objectif principal dans Nolio ; « b », une course secondaire ; null, sans type.
@@ -38,7 +39,9 @@ export async function coursesDansNolio(usr: string): Promise<CourseNolio[]> {
 }
 
 // Gardées une heure pour « À regarder » : un appel par athlète et par heure, pas à chaque visite de l'espace coach.
-export const coursesGardees = unstable_cache(coursesDansNolio, ['courses-nolio'], { revalidate: 3600 });
+// En démonstration, lues à chaque fois : le jour simulé change, la mémoire d'une heure ne le suivrait pas.
+const coursesDeLHeure = unstable_cache(coursesDansNolio, ['courses-nolio'], { revalidate: 3600 });
+export const coursesGardees = (usr: string) => (demonstrationCoachOuverte() ? coursesDansNolio(usr) : coursesDeLHeure(usr));
 
 // Une compétition, pour préremplir Nouvel objectif ou sa course de préparation ; null si Nolio ne la donne pas.
 export async function courseNolio(usr: string, id: string): Promise<CourseNolio | null> {

@@ -17,7 +17,7 @@ import { exigerCoach } from '@/lib/app/nolio';
 import { ajouterJours, dateLongue, jMoins, jourMois } from '@/lib/app/plan';
 import { aujourdhuiParis } from '@/lib/app/signauxSuivi';
 import { allureDepuisVitesse } from '@/lib/app/allureCoach';
-import { clientService, supabaseConfigure } from '@/lib/app/supabase';
+import { clientService, espaceCoachOuvert } from '@/lib/app/supabase';
 import { enHeures, jaugeDuPlan, momentDe } from '@/lib/app/tableau';
 import { fichesDePreparation, type CourseSecondaire } from '@/lib/app/tableauDuPlan';
 
@@ -44,7 +44,7 @@ function resultatTest(r: Record<string, unknown>): string {
 export default async function ObjectifCoache({ params, searchParams }: {
   params: Promise<{ id: string }>; searchParams: Promise<{ course?: string }>;
 }) {
-  if (!supabaseConfigure()) notFound();
+  if (!espaceCoachOuvert()) notFound();
   const coach = await exigerCoach();
   const { id } = await params;
   const o = await objectifCoache(coach.compteId, id);

@@ -23,7 +23,7 @@ import { athletesNolio, ErreurNolio, exigerCoach, nolioConfigure, type AthleteNo
 import { ajouterJours, dateLongue } from '@/lib/app/plan';
 import { textes } from '@/lib/plan';
 import { allureDepuisVitesse } from '@/lib/app/allureCoach';
-import { clientService, supabaseConfigure } from '@/lib/app/supabase';
+import { clientService, espaceCoachOuvert } from '@/lib/app/supabase';
 import type { CourseSecondaire } from '@/lib/app/tableauDuPlan';
 
 // Toujours calculée à la visite : la page lit la session du coach.
@@ -37,7 +37,7 @@ const SIGNAL_EN_CLAIR: Record<string, string> = {
 // La fiche d'un athlète coaché (CTS_NOLIO_CADRAGE.md, N8, N9, T6 ; maquette validée par le coach le 19/10/2026) : ses
 // objectifs et leurs courses de préparation, « Nouvel objectif », son accès à l'app ; ses repères, son compte Nolio.
 export default async function FicheAthleteCoache({ params }: { params: Promise<{ id: string }> }) {
-  if (!supabaseConfigure()) notFound();
+  if (!espaceCoachOuvert()) notFound();
   const coach = await exigerCoach();
   const { id } = await params;
   const a = await ficheAthlete(coach.compteId, id);

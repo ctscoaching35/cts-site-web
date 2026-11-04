@@ -9,7 +9,7 @@ import { exigerCoach } from '@/lib/app/nolio';
 import { ajouterJours, dateLongue } from '@/lib/app/plan';
 import { prevision, RANG, type Niveau, type Prevision } from '@/lib/app/prevision';
 import { signauxGardes } from '@/lib/app/signauxGardes';
-import { clientService, supabaseConfigure } from '@/lib/app/supabase';
+import { clientService, espaceCoachOuvert } from '@/lib/app/supabase';
 
 // Toujours calculée à la visite : la page lit la session du coach.
 export const dynamic = 'force-dynamic';
@@ -25,7 +25,7 @@ const NIVEAU: Record<Niveau, { libelle: string; classe: string }> = {
 };
 
 export default async function Dimanche() {
-  if (!supabaseConfigure()) notFound();
+  if (!espaceCoachOuvert()) notFound();
   const coach = await exigerCoach();
   const service = clientService();
   const { data: compte } = await service.from('comptes').select('nom').eq('id', coach.compteId).maybeSingle();

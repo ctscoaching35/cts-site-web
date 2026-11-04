@@ -9,7 +9,7 @@ import { dose, enClair, FAMILLE, reponsesDuSamedi } from '@/lib/app/journalEnCla
 import PourquoiSemaine from '@/components/app/PourquoiSemaine';
 import { exigerCoach } from '@/lib/app/nolio';
 import { dateLongue, jourMois } from '@/lib/app/plan';
-import { supabaseConfigure } from '@/lib/app/supabase';
+import { espaceCoachOuvert } from '@/lib/app/supabase';
 import { CorrigerSemaine } from '@/components/app/GestesEcriture';
 import { choixDeLaSemaine, CORRECTIONS_ACTIVES } from '@/lib/app/corrections';
 
@@ -20,7 +20,7 @@ export const maxDuration = 60;
 // L'aperçu du dimanche (lib/app/ecriture.apercuDuDimanche) : ce que le passage du dimanche ferait maintenant de cet
 // objectif ; rien n'est envoyé.
 export default async function ApercuDimanche({ params }: { params: Promise<{ id: string }> }) {
-  if (!supabaseConfigure()) notFound();
+  if (!espaceCoachOuvert()) notFound();
   const coach = await exigerCoach();
   const { id } = await params;
   const o = await objectifCoache(coach.compteId, id);

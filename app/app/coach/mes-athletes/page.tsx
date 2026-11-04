@@ -8,7 +8,7 @@ import { equipeNolio, vueDuCoach } from '@/lib/app/espaceCoach';
 import { creerFicheDepuisNolio } from '@/lib/app/actionsCoaching';
 import { usrAcheteurs } from '@/lib/app/acheteurs';
 import { dateLongue } from '@/lib/app/plan';
-import { clientService, supabaseConfigure } from '@/lib/app/supabase';
+import { clientService, espaceCoachOuvert } from '@/lib/app/supabase';
 import { exigerCoach, nolioConfigure } from '@/lib/app/nolio';
 
 // Toujours calculée à la visite : la page lit la session du coach.
@@ -20,7 +20,7 @@ export const dynamic = 'force-dynamic';
 // semaine passée (séances, charge tenue), son Hooper, son signal. Ce qui attend un geste du coach est sur « Cette
 // semaine », l'accueil ; en bas, ceux de Nolio qui n'ont pas encore de fiche. Pour l'ordinateur d'abord (EC5).
 export default async function MesAthletes({ searchParams }: { searchParams: Promise<{ filtre?: string }> }) {
-  if (!supabaseConfigure()) notFound();
+  if (!espaceCoachOuvert()) notFound();
   const coach = await exigerCoach();
   const { filtre: demande } = await searchParams;
   const filtre = filtreDe(demande);

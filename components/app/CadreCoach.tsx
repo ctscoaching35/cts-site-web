@@ -2,6 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import clsx from 'clsx';
 import { Deconnexion } from './BoutonsCompte';
+import { demonstrationCoachOuverte, jourSimuleEnClair, MOMENTS } from '@/lib/app/demonstrationCoach';
 
 // Le cadre de l'espace coach (maquettes validées par le coach le 19/10/2026, puis le 24/10/2026 ; la refonte par exception,
 // EC1, décision coach du 04/11/2026) : un menu à gauche sur ordinateur, au-dessus du contenu sur téléphone. Quatre
@@ -55,6 +56,23 @@ export default function CadreCoach({ actif, aRegarder = 0, coach, children }: {
       <main className="flex-[999_1_560px] min-w-0 px-4 py-5 sm:px-8 sm:py-8">
         <div className="max-w-5xl space-y-6">{children}</div>
       </main>
+      {demonstrationCoachOuverte() && <Demonstration />}
     </div>
+  );
+}
+
+// La démonstration (lib/app/demonstrationCoach.ts, développement seulement) : posée par-dessus la page, repliée, pour ne
+// rien changer à sa mise en page ; le jour simulé et ses moments.
+function Demonstration() {
+  return (
+    <details className="fixed bottom-3 left-3 z-50 max-w-[calc(100vw-1.5rem)] w-[14.5rem] rounded-xl bg-[#1F1D3A] text-white text-xs shadow-lg ring-1 ring-white/15">
+      <summary className="cursor-pointer list-none px-3 py-2 font-bold">Démonstration · {jourSimuleEnClair()}</summary>
+      <div className="px-3 pb-3 space-y-2 text-[#D6D5E6]">
+        <p>Dix coachés fictifs ; rien ne s’enregistre, rien ne part dans Nolio. Le jour simulé :</p>
+        <ul className="space-y-1">
+          {MOMENTS.map(([jour, texte]) => <li key={jour}><a href={`?jour=${jour}`} className="font-semibold text-[#8FD1C3] underline">{texte}</a></li>)}
+        </ul>
+      </div>
+    </details>
   );
 }

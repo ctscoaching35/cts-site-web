@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { COOKIE_INVITATION, invitationValide } from '@/lib/planAcces';
+import { COOKIE_JOUR, demonstrationCoachOuverte, jourValide } from '@/lib/app/demonstrationCoachPorte';
 
 // Le proxy de Next 16 (l'ancien middleware), avant deux familles de pages.
 export async function proxy(request: NextRequest) {
@@ -25,8 +26,21 @@ function invitation(request: NextRequest) {
   return reponse;
 }
 
+// La démonstration de l'espace coach (lib/app/demonstrationCoach.ts), en développement seulement : ?jour= garde le
+// jour simulé dans un cookie, pour cette page et les suivantes (?jour=reel revient au jour par défaut).
+function jourSimule(request: NextRequest) {
+  const jour = request.nextUrl.searchParams.get('jour');
+  if (!demonstrationCoachOuverte() || jour === null || !request.nextUrl.pathname.startsWith('/app/coach')) return NextResponse.next();
+  if (!jourValide(jour)) request.cookies.delete(COOKIE_JOUR);
+  else request.cookies.set(COOKIE_JOUR, jour);
+  const reponse = NextResponse.next({ request });
+  if (!jourValide(jour)) reponse.cookies.delete(COOKIE_JOUR);
+  else reponse.cookies.set(COOKIE_JOUR, jour, { httpOnly: true, sameSite: 'lax', path: '/app/coach' });
+  return reponse;
+}
+
 // /app : rafraîchit la session Supabase et réécrit ses cookies. Sans Supabase configuré
-// (démonstration), ne fait rien.
+// (démonstration), ne fait rien, sauf le jour simulé de l'espace coach.
 async function session(request: NextRequest) {
   // L'adresse du projet sans chemin derrière (voir origineSupabase, lib/app/supabase.ts).
   let url = '';
@@ -36,7 +50,7 @@ async function session(request: NextRequest) {
     url = '';
   }
   const cle = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !cle) return NextResponse.next();
+  if (!url || !cle) return jourSimule(request);
   let reponse = NextResponse.next({ request });
   const supabase = createServerClient(url, cle, {
     cookies: {

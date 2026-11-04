@@ -5,11 +5,13 @@
  * bibliothèque en lecture. Documentation : www.nolio.io/api/v2/docs/.
  */
 import { notFound, redirect } from 'next/navigation';
+import { COACH_DEMONSTRATION, demonstrationCoachOuverte, nolioDemonstration, poserLeJourSimule } from './demonstrationCoach';
 import { clientServeur } from './supabase';
 
 const NOLIO = 'https://www.nolio.io/api/v2';
 
-export const nolioConfigure = () => Boolean(process.env.NOLIO_API_KEY?.trim());
+// En démonstration (lib/app/demonstrationCoach.ts), le Nolio de la démonstration : jamais la clé du coach.
+export const nolioConfigure = () => demonstrationCoachOuverte() || Boolean(process.env.NOLIO_API_KEY?.trim());
 // « Course à pied » et « Trail » dans le catalogue de Nolio (cts_nolio.SPORT_COURSE, SPORT_TRAIL), et « Course à pied -
 // Tapis » (décision coach du 23/10/2026 : le tapis compte comme de la course).
 export const SPORTS_COURSE = ['spt_kNYHjuEzDJRiYCX', 'spt_YprHS7jgV5vdsz0', 'spt_MN7QZspJBLkSzwy'];
@@ -73,6 +75,11 @@ export async function exigerCoach(): Promise<{ compteId: string; email: string }
 
 // Le coach connecté, ou null : la page coach n'existe pour personne d'autre.
 export async function coachConnecte(): Promise<{ compteId: string; email: string } | null> {
+  // En démonstration, le coach fictif, au jour simulé.
+  if (demonstrationCoachOuverte()) {
+    await poserLeJourSimule();
+    return COACH_DEMONSTRATION;
+  }
   const supabase = await clientServeur();
   const { data } = await supabase.auth.getClaims();
   const email = String(data?.claims?.email ?? '').toLowerCase();
@@ -87,6 +94,11 @@ export type ReponseNolio = { statut: number; corps: Record<string, unknown> | nu
 // devient une erreur dite, que l'appelant traite comme une autre.
 export const DELAI_NOLIO_MS = 15_000;
 export async function appelNolio(methode: string, chemin: string, corps?: unknown, entetes: Record<string, string> = {}): Promise<ReponseNolio> {
+  // En démonstration : ce que Nolio aurait, en lecture ; rien n'y part.
+  if (demonstrationCoachOuverte()) {
+    if (methode !== 'GET') throw new ErreurNolio('Démonstration : rien ne part dans Nolio.');
+    return nolioDemonstration(methode, chemin);
+  }
   let reponse: Response;
   try {
     reponse = await fetch(`${NOLIO}/${chemin}`, {

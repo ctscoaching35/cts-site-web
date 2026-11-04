@@ -10,7 +10,7 @@ import { athletesNolio, ErreurNolio, exigerCoach, moiNolio, nolioConfigure, type
 import { usrAcheteurs } from '@/lib/app/acheteurs';
 import { accords, aujourdhuiParis, lireSuivi, seuilsSuivi, statutsDuSuivi, type GenreSignal, type StatutSuivi, type Suivi } from '@/lib/app/suivi';
 import { prevision, RANG, type Niveau, type Prevision } from '@/lib/app/prevision';
-import { supabaseConfigure } from '@/lib/app/supabase';
+import { espaceCoachOuvert } from '@/lib/app/supabase';
 
 // Toujours calculée à la visite : la page lit la session du coach, puis Nolio, sans rien garder.
 export const dynamic = 'force-dynamic';
@@ -54,7 +54,7 @@ async function lireTous(liste: AthleteNolio[], moi: string, seuils: Awaited<Retu
 const pastille = 'inline-block text-[0.6875rem] font-bold px-2 py-0.5 rounded-full whitespace-nowrap';
 
 export default async function SuiviCoach() {
-  if (!supabaseConfigure()) notFound();
+  if (!espaceCoachOuvert()) notFound();
   const coach = await exigerCoach();
   if (!nolioConfigure()) {
     return (
