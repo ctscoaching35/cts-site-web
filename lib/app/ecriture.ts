@@ -639,7 +639,12 @@ export async function demarrerObjectif(planId: string, { prevenir = true, lundi,
     throw new Error(`Cet objectif tombe avant ${enRoute.course_nom} (${enRoute.course_date}), déjà en route : ajoute-le plutôt comme course de préparation, ou retire l’autre objectif.`);
   }
   const precedents = autres.filter((q) => q.course_date < o.plan.course.date && q.course_date >= ajouterJours(aujourdhui, -60));
-  const apres = precedents.map((q) => ({ q, lundi: debutApres(q) })).sort((a, b) => b.lundi.localeCompare(a.lundi))[0];
+  // C5 (décision coach du 04/11/2026, « A » ; moteur 8.445) : une course qui tombe dans la récupération de la précédente
+  // part au lundi de sa semaine de course, avec la reprise : le moteur écrit cette semaine en semaine de course, sans rien
+  // de dur. Avant, son départ attendait la fin de la récupération, après elle : rien ne s'écrivait pour elle.
+  const lundiCourse = lundiDe(o.plan.course.date);
+  const apres = precedents.map((q) => ({ q, lundi: debutApres(q) })).sort((a, b) => b.lundi.localeCompare(a.lundi))
+    .map((x) => (o.plan.course.date < x.lundi ? { ...x, lundi: lundiCourse } : x))[0];
   // PC1 : les séances que le coach a déjà posées restent ; l'écriture attend le lundi qui suit la dernière.
   const posees = await seancesDejaPosees(o, aujourdhui);
   const premierJour = debut.lundi > aujourdhui ? debut.lundi : aujourdhui;
@@ -936,6 +941,17 @@ export function debutApres(q: Pick<Voisin, 'course_date' | 'temps_h'> & { format
   return ajouterJours(fin, 7 - rang);
 }
 
+// C5 : la course d'un autre objectif du même athlète qui tombe dans la semaine de ce lundi ou avant, pendant la
+// récupération de celui-ci ; son nom, ou null.
+async function courseDansLaRecuperation(o: Objectif, lundi: string): Promise<string | null> {
+  const autres = await autresObjectifs(o);
+  const suivante = autres.filter((q) => q.course_date > o.plan.course.date && lundiDe(q.course_date) <= lundi)
+    .sort((a, b) => a.course_date.localeCompare(b.course_date))[0];
+  return suivante?.course_nom ?? null;
+}
+
+const lundiDe = (jour: string) => ajouterJours(jour, -((new Date(`${jour}T12:00:00Z`).getUTCDay() + 6) % 7));
+
 // Les objectifs programmés (OM4) qui démarrent aujourd'hui, et les départs d'acheteurs restés en échec (décision coach
 // du 20/10/2026), repris en silence : le coach a été prévenu au premier échec. budgetMs (décision coach du 22/10/2026 :
 // tous ses coachés démarrent le même dimanche) : passé ce temps, les départs suivants attendent le passage suivant
@@ -1075,6 +1091,12 @@ export async function passageDuDimanche(budgetMs = 240_000): Promise<Compte[]> {
       const recuperation = s ? null : semaineDeRecuperation(o, lundi);
       const numero = s?.numero ?? recuperation?.numero;
       if (!numero) continue;
+      // C5 : la course suivante tombe dans cette récupération ; sa semaine de course la remplace (son départ, ce soir).
+      const suivante = recuperation ? await courseDansLaRecuperation(o, lundi) : null;
+      if (suivante) {
+        comptes.push({ plan: planId, quoi: `${numero} : récupération arrêtée, ${suivante} prend la semaine`, coache: true });
+        continue;
+      }
       const reservation = await etatDeLaReservation(o, numero);
       if (reservation === 'finie' || reservation === 'en_cours') continue;
       // PC1 pour la récupération : une séance de course que le coach a posée cette semaine-là, et elle reste la sienne.
@@ -1163,6 +1185,8 @@ export async function apercuDuDimanche(planId: string): Promise<Apercu> {
   const recuperation = s ? null : semaineDeRecuperation(o, lundi);
   const numero = s?.numero ?? recuperation?.numero ?? null;
   if (!numero) return rien('Pas de semaine à écrire lundi.');
+  const suivante = recuperation ? await courseDansLaRecuperation(o, lundi) : null;
+  if (suivante) return rien(`Récupération arrêtée : ${suivante} tombe cette semaine, sa semaine de course prend la place.`, numero);
   const reservation = await etatDeLaReservation(o, numero);
   if (reservation === 'orpheline') return rien('Coupée en cours d’écriture : elle se complète au prochain passage, ou par « Réessayer ».', numero);
   if (reservation !== 'libre') return rien('Déjà partie dans Nolio.', numero);
@@ -1912,6 +1936,7 @@ export async function passageQuotidien(): Promise<Compte[]> {
 
 const REGLES_EN_CLAIR: Record<string, string> = {
   R1: 'semaine en grande partie manquée', R2: 'séance clé trop dure ou écourtée', R3: 'fatigue', R4: 'arrêt',
+  R8: 'séance clé pas faite, refaite sous une autre forme', C5: 'semaine de course juste après la récupération, sans séance dure',
   R5: 'disponibilités', R7: 'séance en plus', O3: 'course secondaire', CH: 'charge reprise après une semaine légère',
 };
 

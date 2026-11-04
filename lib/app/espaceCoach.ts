@@ -66,7 +66,8 @@ const ARRET: Record<string, string> = {
   reprendre: 'reprise au niveau de sa dernière semaine courue', reprise: 'une semaine de reprise allégée',
   reconstruire: 'préparation reconstruite sur la moitié de ce qu’il courait avant',
 };
-const MOTEUR: Record<string, string> = { R1: 'semaine en grande partie manquée', R2: 'séance clé trop dure ou écourtée' };
+const MOTEUR: Record<string, string> = { R1: 'semaine en grande partie manquée', R2: 'séance clé trop dure ou écourtée',
+  R8: 'séance clé pas faite, elle revient sous une autre forme', C5: 'seconde course pendant la récupération, semaine de course sans séance dure' };
 const TEST: Record<string, string> = { illisible: 'est illisible dans Nolio', sans_reponse: 'est resté sans réponse au questionnaire du soir', non_fait: 'n’a pas été fait' };
 type Journal = { regle?: string; effet?: string; trop_dur?: boolean }[];
 // Le signal de sa ligne au tableau de bord : le nom court de ce qui est à regarder pour lui (la phrase entière est sur

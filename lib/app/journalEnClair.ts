@@ -32,6 +32,12 @@ export function reponsesDuSamedi(q: Questionnaire | undefined): string {
 // Une ligne du journal du moteur, en clair pour le coach. seances : les noms des séances de la semaine ; la mémoire d'une
 // qualité absente de la semaine n'est pas dite (retour coach du 01/11/2026 : « plus de seuil 2 au final ? »).
 const QUALITES_NOMMEES = new Set(['seuil1', 'tempo', 'seuil2', 'vo2max']);
+// « S5-mer » -> « mercredi » : le jour d'une séance par son identifiant de plan.
+const JOURS: Record<string, string> = { lun: 'lundi', mar: 'mardi', mer: 'mercredi', jeu: 'jeudi', ven: 'vendredi', sam: 'samedi', dim: 'dimanche' };
+const jourDeLaSeance = (id: unknown) => {
+  const j = String(id ?? '').split('-')[1]?.toLowerCase() ?? '';
+  return JOURS[j.slice(0, 3)] ?? (j || 'la semaine');
+};
 export function enClair(e: Entree, seances?: string[]): string[] {
   const effet = typeof e.effet === 'string' ? e.effet : null;
   switch (e.regle) {
@@ -39,6 +45,9 @@ export function enClair(e: Entree, seances?: string[]): string[] {
     case 'R2': return [`Séance ${String(e.seance ?? '')} ${[e.trop_dur && 'plus dure que prévu', e.ecourtee && 'écourtée'].filter(Boolean).join(' et ')} : sa marche est refaite, sous une autre forme.`];
     case 'R3': return [`Fatigue : ${effet ?? 'semaine allégée'}${Array.isArray(e.signaux) && e.signaux.length ? ` (${(e.signaux as string[]).join(' ; ')})` : ''}.`];
     case 'R4': return [`Arrêt${typeof e.jours === 'number' ? ` de ${e.jours} jours` : ''} : ${effet ?? ''}.`];
+    // C3 et C5 (moteur 8.445, décisions coach du 04/11/2026).
+    case 'R8': return [`Ta séance de ${jourDeLaSeance(e.seance)} n’a pas été faite : elle revient sous une autre forme.`];
+    case 'C5': return ['Ta seconde course arrive pendant ta récupération : semaine de course, sans séance dure.'];
     case 'C1':
       if (e.doses && typeof e.doses === 'object') {
         return Object.entries(e.doses as Record<string, Dose>)
