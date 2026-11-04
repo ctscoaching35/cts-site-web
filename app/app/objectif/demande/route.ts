@@ -30,6 +30,6 @@ export async function POST(request: NextRequest) {
   }
   await prevenirCoach(`${fiche.nom} demande un nouvel objectif`,
     `${fiche.nom} a rempli le questionnaire de son prochain objectif : ${String(champs.course_nom ?? '')}, le ${String(champs.date_course ?? '')}.\n\n`
-      + `Relis-le et lance-le depuis ton espace coach : ${site.url}/app/coach`).catch(() => null);
+      + `Relis-le et lance-le depuis ton espace coach : ${site.url}/app/coach`, fiche.coach_id as string).catch(() => null);
   return NextResponse.json({ page: '/app/plan?demande=envoyee' });
 }

@@ -18,14 +18,33 @@ export default function FormulaireConnexion({ suite = '/app' }: { suite?: string
   const [code, setCode] = useState('');
   const [message, setMessage] = useState('');
   const [enCours, setEnCours] = useState(false);
+  const [renvoye, setRenvoye] = useState(false);
+
+  // B-PL-55 (audit du 03/11/2026) : une limite d'envoi atteinte se dit, sans dire si le compte existe (un compte
+  // inconnu ne lève rien de visible ici : shouldCreateUser à faux).
+  async function envoyerCode(): Promise<boolean> {
+    const { error } = await clientNavigateur().auth.signInWithOtp({ email: email.trim(), options: { shouldCreateUser: false } });
+    if (error && (error.status === 429 || /rate|limit|seconds/i.test(error.message))) {
+      setMessage('Trop de codes demandés d’un coup : attends une minute, puis redemande-le.');
+      return false;
+    }
+    return true;
+  }
 
   async function demanderCode(e: React.FormEvent) {
     e.preventDefault();
     setEnCours(true);
     setMessage('');
-    await clientNavigateur().auth.signInWithOtp({ email: email.trim(), options: { shouldCreateUser: false } });
+    const ok = await envoyerCode();
     setEnCours(false);
-    setEtape('code');
+    if (ok) setEtape('code');
+  }
+
+  async function renvoyerCode() {
+    setEnCours(true);
+    setMessage('');
+    if (await envoyerCode()) setRenvoye(true);
+    setEnCours(false);
   }
 
   async function verifierCode(e: React.FormEvent) {
@@ -54,6 +73,7 @@ export default function FormulaireConnexion({ suite = '/app' }: { suite?: string
           onChange={(e) => setEmail(e.target.value)} className={champCls}
         />
       </label>
+      {message && <p className="text-sm text-[#9A3B2C]">{message}</p>}
       <button type="submit" disabled={enCours} className="btn btn-primary w-full disabled:opacity-60">
         Recevoir mon code
       </button>
@@ -77,10 +97,19 @@ export default function FormulaireConnexion({ suite = '/app' }: { suite?: string
       <button type="submit" disabled={enCours} className="btn btn-primary w-full disabled:opacity-60">
         Me connecter
       </button>
-      <button type="button" onClick={() => { setEtape('email'); setCode(''); setMessage(''); }}
-        className="w-full text-sm text-teal font-semibold">
+      {/* §8, point 10 (audit du 03/11/2026) : pas de code reçu. */}
+      <button type="button" onClick={renvoyerCode} disabled={enCours || renvoye}
+        className="w-full min-h-11 text-sm text-teal font-semibold disabled:opacity-60">
+        {renvoye ? 'Code renvoyé : regarde aussi dans tes indésirables' : 'Renvoyer le code'}
+      </button>
+      <button type="button" onClick={() => { setEtape('email'); setCode(''); setMessage(''); setRenvoye(false); }}
+        className="w-full min-h-11 text-sm text-teal font-semibold">
         Changer d’e-mail
       </button>
+      <p className="text-xs text-indigo/60 leading-relaxed">
+        Pas de code ? Pense à tes indésirables. Ton coach t’a invité avec une adresse précise : si ce n’est pas celle-ci,
+        demande-la-lui ; un acheteur, l’adresse de son achat.
+      </p>
     </form>
   );
 }

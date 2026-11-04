@@ -30,7 +30,9 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
     : await clientService().from('plans').select('parametres, accord_lecture_le').eq('id', ctx.cle).maybeSingle();
   // Le coach d'un coaché : son prénom (son compte) et ce qui se dit de lui.
   let coach: { prenom: string; texte: string } | null = null;
-  if (ctx.coache) {
+  // La démonstration n'a pas de base (B10, audit du 03/11/2026 : la page plantait) : un coach d'exemple.
+  if (ctx.coache && ctx.demonstration) coach = { prenom: 'Romain', texte: COACHS.Romain ?? 'Kiné du sport.' };
+  else if (ctx.coache) {
     const service = clientService();
     const { data: c } = ctx.fiche ? { data: { coach_id: ctx.fiche.coach_id } }
       : await service.from('coaching').select('coach_id').eq('plan_id', ctx.cle).maybeSingle();
@@ -66,7 +68,8 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
             <Surtitre ton="clair">Ton coach</Surtitre>
             <p className="text-[1.0625rem] font-bold">{coach.prenom}</p>
             <p className="text-[0.8125rem] leading-relaxed text-[#D6D5E6]">
-              {coach.texte} {ctx.aLaMain ? 'Il écrit tes séances dans Nolio.' : 'Il relit ta préparation et peut reprendre la main sur une semaine à tout moment.'}
+              {/* Le prénom du coach (§8, point 4, audit du 03/11/2026) : « Juliette relit… » pour ses coachés. */}
+              {coach.texte} {ctx.aLaMain ? `${coach.prenom} écrit tes séances dans Nolio.` : `${coach.prenom} relit ta préparation et peut reprendre la main sur une semaine à tout moment.`}
             </p>
             <a href="https://www.nolio.io/" target="_blank" rel="noopener" className="inline-flex items-center min-h-11 px-4 rounded-full bg-white text-indigo text-[0.8125rem] font-bold">
               Lui écrire dans Nolio
@@ -99,7 +102,7 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
                   {ctx.coache
                     ? (d.accord
                       ? 'Ton coach et l’app lisent dans Nolio tes séances faites, ton RPE, ton ressenti et ton Hooper, seulement pour ajuster ta préparation et afficher tes graphiques.'
-                      : 'Sans ton accord dans Nolio, ta préparation suit sa trame, ton questionnaire et tes séances faites ou manquées.')
+                      : 'Sans ton accord, ta préparation suit son plan, ton questionnaire du samedi et tes séances faites ou manquées, et tes séances ne s’affichent pas ici. Pour les voir dans l’app, réponds « oui » au message de ton coach dans Nolio.')
                     // L'accord de lecture de l'acheteur (PL7, décision coach du 04/11/2026) : facultatif, recommandé, et juste
                     // sur ce qui est lu (les séances faites et leur durée, dans tous les cas).
                     : affiche?.accord_lecture_le

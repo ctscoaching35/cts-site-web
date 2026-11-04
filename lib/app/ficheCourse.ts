@@ -32,10 +32,10 @@ export function codeCourt(planId: string): string {
 }
 export const lienCourtFicheCourse = (planId: string) => `${site.url}/c/${codeCourt(planId)}`;
 
-// La note « Ta fiche de course » de Nolio : avec l'app, sans lien (elle y est, onglet « Mon plan ») ; sans l'app, ce
-// qu'elle contient et le lien court.
+// La note « Ta fiche de course » de Nolio : avec l'app, sans lien (elle y est : Accueil › Voir ma préparation ; l'onglet
+// « Mon plan » n'existe plus, B-AT-51) ; sans l'app, ce qu'elle contient et le lien court.
 export function noteFicheCourse(planId: string, avecApp: boolean): string {
-  if (avecApp) return 'Ton affûtage commence : ta fiche de course est prête dans ton app CTS, onglet « Mon plan ».';
+  if (avecApp) return 'Ton affûtage commence : ta fiche de course est prête dans ton app CTS, sur l’accueil : Voir ma préparation › Ta fiche de course.';
   return ['Ton affûtage commence : ta fiche de course est prête.', '· ta course et ton jour J', '· le profil et les tronçons',
     '· ta stratégie nutritionnelle', `Ouvre-la : ${lienCourtFicheCourse(planId)}`].join('\n');
 }

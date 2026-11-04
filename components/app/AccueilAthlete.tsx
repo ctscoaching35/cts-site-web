@@ -10,11 +10,11 @@ import { CarteSaison } from './SaisonDeFond';
 import { nouveauxBadges } from '@/lib/app/badges';
 import { mesBadges } from '@/lib/app/badgesNolio';
 import { monProfilDEntrainement } from '@/lib/app/profilEntrainement';
-import { lien, prenom, type Contexte } from '@/lib/app/contexte';
+import { lien, prenom, recuperationDuCoache, type Contexte, type Recuperation } from '@/lib/app/contexte';
 import { joursRecuperation, lireTemps } from '@/lib/plan';
 import { ajouterJours, dateLongue, joursEntre, moment } from '@/lib/app/plan';
 import { fichesDeLaSemaine, jaugeDuPlan, momentDe } from '@/lib/app/tableau';
-import { donneesTableau, semaineDansNolio, semaineEcrite } from '@/lib/app/tableauDuPlan';
+import { donneesTableau, lireSemaineNolio, semaineEcrite } from '@/lib/app/tableauDuPlan';
 
 // L'accueil de l'athlète (CTS_NOLIO_CADRAGE.md dans le dépôt du moteur, T1, AP1, AP2 ; maquette validée par le coach le
 // 19/10/2026) : les séances vivent dans Nolio ; ici l'objectif et sa montagne, un badge tout neuf (BG3), les piliers,
@@ -38,7 +38,8 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
   if (ctx.sansObjectif) {
     const badges = await mesBadges(ctx);
     const nouveaux = badges.etat ? nouveauxBadges(badges.etat, jour) : [];
-    const semaine = await semaineDansNolio(ctx, lundiCourant);
+    const lecture = await lireSemaineNolio(ctx, lundiCourant);
+    const recup = await recuperationDuCoache(ctx).catch(() => null);
     const nom = prenom(plan.athlete.nom);
     return (
       <>
@@ -52,20 +53,24 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
             <Carte className="text-sm text-indigo"><p role="status">Ta demande est partie chez ton coach : il la relit et lance ta préparation.</p></Carte>
           )}
           {demarrage && <PourBienDemarrer acheteur={false} nolio="coache" accord={Boolean(ctx.fiche?.accord)} questionnaire={false} installer={installer} profil={profil} lienProfil={lienProfil} />}
-          <CetteSemaine semaine={null} ligne={null} questionnaire={false} nolio={semaine} />
+          {recup && <CarteRecuperation recup={recup} ctx={ctx} prochain={null} />}
+          {/* B-AT-2 et §8, point 9 : la carte reste, avec sa raison ; le questionnaire du samedi, qu'il reçoit. */}
+          <CetteSemaine semaine={null} ligne={null} questionnaire nolio={lecture.seances} raison={lecture.raison} coache
+            lundi={lundiCourant} hooper={Boolean(ctx.fiche?.accord)} />
           <CarteNouveauBadge badges={nouveaux} href={`${lien('/app/profil', ctx)}#badges`} />
           <CarteSombre className="space-y-3">
             <Surtitre ton="clair" as="div">Ton prochain objectif</Surtitre>
-            <p className="text-[0.9375rem] font-bold">Un objectif majeur en vue ? Propose-le à ton coach.</p>
+            <p className="text-[0.9375rem] font-bold">Un objectif en vue ? Propose-le à ton coach.</p>
             <Link href="/app/objectif/nouveau" className="inline-flex items-center min-h-11 px-4 rounded-full bg-white text-indigo text-[0.8125rem] font-bold">
-              Proposer un objectif majeur
+              Proposer un objectif
             </Link>
           </CarteSombre>
         </main>
       </>
     );
   }
-  const d = await donneesTableau(ctx);
+  // En parallèle (§8, point 13, audit du 03/11/2026).
+  const [d, badges, recup] = await Promise.all([donneesTableau(ctx), mesBadges(ctx), recuperationDuCoache(ctx).catch(() => null)]);
   const etape = moment(plan, jour);
   const restants = joursEntre(jour, plan.course.date);
   const rang = d.trame.findIndex((l) => l.lundi && momentDe(l.lundi, jour) === 'encours');
@@ -76,15 +81,17 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
   const debut = etape === 'avant' ? d.trame.find((l) => l.lundi && l.lundi > jour)?.lundi ?? null : null;
   // Ce qui est dans Nolio cette semaine, retouches du coach comprises (décision coach du 20/10/2026), une fois la semaine
   // partie dans Nolio ; programmé à la main, la semaine en cours, sans la trame du moteur.
-  const nolio = ctx.aLaMain || (!ligne && etape === 'avant') ? await semaineDansNolio(ctx, lundiCourant)
-    : ligne?.lundi ? await semaineDansNolio(ctx, ligne.lundi, ligne.numero) : null;
-  // Pas encore dans Nolio : la semaine de la préparation, et quand elle y arrive (décision coach du 20/10/2026).
-  const arrivee = nolio || ctx.demonstration || !ligne ? null : !ctx.coache && d.nolio !== 'actif' ? 'invitation' as const : 'bientot' as const;
+  const lecture = ctx.aLaMain || (!ligne && etape === 'avant') ? await lireSemaineNolio(ctx, lundiCourant)
+    : ligne?.lundi ? await lireSemaineNolio(ctx, ligne.lundi, ligne.numero) : null;
+  const nolio = lecture?.seances ?? null;
+  // Pas encore dans Nolio : la semaine de la préparation, et quand elle y arrive (décision coach du 20/10/2026). Sans
+  // accord ou Nolio muet, plus de « bientôt » (AT1, B-AT-1) : la carte le dit autrement.
+  const raison = lecture && (lecture.raison === 'sans_accord' || lecture.raison === 'muet') ? lecture.raison : null;
+  const arrivee = nolio || raison || ctx.demonstration || !ligne ? null : !ctx.coache && d.nolio !== 'actif' ? 'invitation' as const : 'bientot' as const;
   const jauge = jaugeDuPlan(d.trame, d.realises, jour);
   const fiches = fichesDeLaSemaine(d.fiches, jour);
   const nom = prenom(plan.athlete.nom);
   // Un badge débloqué la semaine écoulée (BG3, décision coach du 20/10/2026).
-  const badges = await mesBadges(ctx);
   const nouveaux = badges.etat ? nouveauxBadges(badges.etat, jour) : [];
   // Une course de préparation s'ajoute dans l'objectif, tant que la course est à venir et le plan écrit semaine par
   // semaine.
@@ -96,7 +103,7 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
   // L'entre-deux d'un coaché (décision coach du 20/10/2026) : sa dernière course passée, aucun objectif à venir. Son
   // prochain se prépare avec son coach ; sa semaine se lit dans Nolio (les séances que son coach lui pose à la main).
   const entreDeux = ctx.coache && etape === 'apres' && (ctx.demonstration || !(await aVenir()));
-  const semaineEntreDeux = entreDeux ? await semaineDansNolio(ctx, lundiCourant) : null;
+  const lectureEntreDeux = entreDeux ? await lireSemaineNolio(ctx, lundiCourant) : null;
   if (entreDeux) {
     return (
       <>
@@ -107,19 +114,23 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
             <h1 className="mt-1 text-[1.625rem] font-extrabold text-indigo tracking-tight">{nom ? `Bonjour ${nom}` : 'Bonjour'}</h1>
           </div>
           {demarrage && <PourBienDemarrer acheteur={false} nolio="coache" accord={d.accord} questionnaire={false} installer={installer} profil={profil} lienProfil={lienProfil} />}
-          <CarteSombre className="space-y-3">
-            <Surtitre ton="clair" as="div">Ton prochain objectif</Surtitre>
-            <p className="text-[0.9375rem] font-bold">Il se prépare avec ton coach.</p>
-            <Link href="/app/objectif/nouveau" className="inline-flex items-center min-h-11 px-4 rounded-full bg-white text-indigo text-[0.8125rem] font-bold">
-              Proposer un objectif majeur
-            </Link>
-          </CarteSombre>
+          {recup && <CarteRecuperation recup={recup} ctx={ctx} prochain={null} />}
+          {!recup && (
+            <CarteSombre className="space-y-3">
+              <Surtitre ton="clair" as="div">Ton prochain objectif</Surtitre>
+              <p className="text-[0.9375rem] font-bold">Il se prépare avec ton coach.</p>
+              <Link href="/app/objectif/nouveau" className="inline-flex items-center min-h-11 px-4 rounded-full bg-white text-indigo text-[0.8125rem] font-bold">
+                Proposer un objectif
+              </Link>
+            </CarteSombre>
+          )}
+          <CetteSemaine semaine={null} ligne={null} questionnaire nolio={lectureEntreDeux?.seances ?? null} raison={lectureEntreDeux?.raison ?? null}
+            coache lundi={lundiCourant} hooper={d.accord} />
           <Link href={lien('/app/plan', ctx)} className="block bg-white rounded-2xl border border-indigo/[0.08] p-4 text-sm text-indigo">
             Ta dernière course : <strong>{plan.course.nom}</strong>, {dateLongue(plan.course.date)}
-            <span className="block text-xs text-[#5E5C78] mt-0.5">Bravo pour le chemin ›</span>
+            <span className="block text-xs text-[#5E5C78] mt-0.5">Revoir ta préparation ›</span>
           </Link>
           <CarteNouveauBadge badges={nouveaux} href={`${lien('/app/profil', ctx)}#badges`} />
-          <CetteSemaine semaine={null} ligne={null} questionnaire={false} nolio={semaineEntreDeux} />
         </main>
       </>
     );
@@ -139,14 +150,25 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
             profil={profil} lienProfil={lienProfil} seanceFaite={d.realises.some((r) => r.seances_faites > 0)}
             inviteLe={inviteLe ? dateLongue(inviteLe) : null} />
         )}
+        {/* AT4 : la récupération du coaché, même quand son objectif suivant est déjà là. */}
+        {recup && <CarteRecuperation recup={recup} ctx={ctx} prochain={plan.course.date > recup.date && !plan.fond ? lundiApres(recup.jusqua) : null} />}
+        {/* AT2 (décision coach du 04/11/2026) : l'objectif, puis « Ta semaine », puis le reste. */}
         {/* La saison de fond (décisions coach du 24/10/2026) : le bloc et le compte à rebours des tests. */}
         {plan.fond ? <CarteSaison plan={plan} ligne={ligne} jour={jour} href={lien('/app/plan', ctx)} /> : (
           <CarteObjectif plan={plan} restants={restants} jauge={ctx.aLaMain ? null : jauge} etape={etape} href={lien('/app/plan', ctx)}
-            surtitre={!ctx.coache ? 'Ton objectif' : etape === 'apres' ? 'Ton dernier objectif majeur' : 'Ton prochain objectif majeur'}
-            coache={Boolean(ctx.coache)} />
+            surtitre={etape === 'apres' ? 'Ta dernière course' : 'Ton objectif'}
+            coache={Boolean(ctx.coache)} jour={jour} debut={d.trame.find((l) => l.lundi)?.lundi ?? null} />
+        )}
+        {etape !== 'apres' && !ctx.aLaMain && (
+          <CetteSemaine semaine={semaine} ligne={ligne} questionnaire={d.ecrit && restants > 7} nolio={nolio}
+            arrivee={arrivee} depuis={arrivee ? jour : null} debut={debut} raison={raison} coache={Boolean(ctx.coache)}
+            lundi={ligne?.lundi ?? lundiCourant} hooper={d.accord} />
+        )}
+        {etape !== 'apres' && ctx.aLaMain && (
+          <CetteSemaine semaine={null} ligne={null} questionnaire nolio={nolio} raison={lecture?.raison ?? null} coache
+            lundi={lundiCourant} hooper={d.accord} />
         )}
         {etape !== 'apres' && (!demarrage || d.nolio === 'sorti') && <CarteNolio etat={d.nolio} inviteLe={inviteLe} avantCourse={plan.course.date >= jour} />}
-        <CarteNouveauBadge badges={nouveaux} href={`${lien('/app/profil', ctx)}#badges`} />
 
         {etape !== 'apres' && restants <= 7 && !plan.fond && (
           <Link href={lien('/app/plan/jour-j', ctx)} className="block bg-teal text-white rounded-2xl p-[18px]">
@@ -157,15 +179,39 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
 
         {etape === 'apres' && !ctx.coache && <EtMaintenant ctx={ctx} />}
         {etape !== 'avant' && !ctx.aLaMain && <Piliers jauge={jauge} />}
-        {etape !== 'apres' && !plan.fond && <CoursesPreparation courses={d.courses.filter((c) => c.date >= jour)} ajout={ajout} />}
-        {etape !== 'apres' && !ctx.aLaMain && (
-          <CetteSemaine semaine={semaine} ligne={ligne} questionnaire={d.ecrit && restants > 7} nolio={nolio}
-            arrivee={arrivee} depuis={arrivee ? jour : null} debut={debut} />
-        )}
-        {etape !== 'apres' && ctx.aLaMain && <CetteSemaine semaine={null} ligne={null} questionnaire={false} nolio={nolio} />}
+        <CarteNouveauBadge badges={nouveaux} href={`${lien('/app/profil', ctx)}#badges`} />
+        {etape !== 'apres' && !plan.fond && <CoursesPreparation courses={d.courses.filter((c) => c.date >= jour)} ajout={ajout} aLaMain={ctx.aLaMain} />}
         {etape !== 'apres' && <FichesDeLaSemaine fiches={fiches} ctx={ctx} />}
       </main>
     </>
+  );
+}
+
+// Le lundi qui suit une date : celui où démarre l'objectif suivant, après la récupération.
+const lundiApres = (jour: string) => ajouterJours(jour, 7 - ((new Date(`${jour}T12:00:00Z`).getUTCDay() + 6) % 7));
+
+// LA RÉCUPÉRATION DU COACHÉ (AT4, décision coach du 04/11/2026) : la même carte que l'acheteur, du lendemain de sa course
+// à la fin de sa récupération ; puis son objectif suivant (prochain : son lundi de départ), ou de quoi en proposer un.
+function CarteRecuperation({ recup, ctx, prochain }: { recup: Recuperation; ctx: Contexte; prochain: string | null }) {
+  return (
+    <Carte className="space-y-3">
+      <Surtitre>Après {recup.course}</Surtitre>
+      <div className="space-y-1">
+        <p className="text-[0.875rem] text-[#4A4866] leading-relaxed">
+          D’abord, récupère : {recup.jours} jours sans séance dure, jusqu’au {dateLongue(recup.jusqua)}, puis reprends en douceur. Tes séances de récupération sont dans Nolio.
+        </p>
+        <Link href={lien('/app/bibliotheque/recuperation', ctx)} className="inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">
+          Lire la fiche Récupération ›
+        </Link>
+      </div>
+      {prochain ? (
+        <p className="text-[0.875rem] font-semibold text-indigo">Ton prochain objectif démarre le {dateLongue(prochain)}.</p>
+      ) : (
+        <Link href="/app/objectif/nouveau" className="inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">
+          Proposer un objectif ›
+        </Link>
+      )}
+    </Carte>
   );
 }
 

@@ -162,9 +162,10 @@ export function DonnerAccord({ planId }: { planId: string }) {
   return (
     <form action={action} className="space-y-2">
       <p className="text-[0.8rem] text-[#4A4866] leading-relaxed">
-        J’accepte que l’app lise dans Nolio mes séances faites, mon RPE, mon ressenti et mon Hooper, et la trace de mes
-        séances test (distance, FC) pour en tirer mes repères (FC aux seuils, allures) et les garder, seulement pour ajuster
-        ma préparation et afficher mes graphiques. Je peux retirer cet accord à tout moment.
+        {/* La phrase du questionnaire d'achat (PL7, décision coach du 04/11/2026). */}
+        J’accepte que l’app lise aussi dans Nolio mon RPE, mon ressenti, mon Hooper et la trace de mes séances test
+        (distance, FC), pour ajuster mon plan à ma fatigue et en tirer mes repères. Je peux retirer cet accord à tout
+        moment.
       </p>
       <button type="submit" disabled={enCours} className="btn btn-primary disabled:opacity-50">
         {enCours ? 'Envoi…' : 'Donner mon accord'}

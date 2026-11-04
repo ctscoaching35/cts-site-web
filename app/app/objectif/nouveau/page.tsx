@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import EnTeteSimple from '@/components/app/EnTeteSimple';
 import { notFound, redirect } from 'next/navigation';
 import ProfilAthlete from '@/components/app/ProfilAthlete';
 import Questionnaire from '@/components/plan/Questionnaire';
@@ -50,6 +51,8 @@ export default async function NouvelObjectif({ searchParams }: { searchParams: P
   }
   return (
     <div className="min-h-screen bg-sand">
+      {/* §8, point 12 : la page dans l'app, avec son en-tête. */}
+      <EnTeteSimple />
       <main className="mx-auto max-w-3xl px-4 sm:px-6 py-8 sm:py-12">
         <Link href="/app/plan" className="inline-flex items-center min-h-11 text-teal font-bold text-sm">‹ Ton objectif</Link>
         <div className="my-6 px-2">
@@ -109,6 +112,8 @@ function Aiguillage({ enCours, coache }: { enCours: boolean; coache: boolean }) 
   const bouton = 'flex items-center justify-center min-h-12 px-5 rounded-xl text-sm font-bold';
   return (
     <div className="min-h-screen bg-sand">
+      {/* §8, point 12 : la page dans l'app, avec son en-tête. */}
+      <EnTeteSimple />
       <main className="mx-auto max-w-xl px-4 sm:px-6 py-8 sm:py-12 space-y-5">
         <Link href="/app/plan" className="inline-flex items-center min-h-11 text-teal font-bold text-sm">‹ Ton objectif</Link>
         <div className="px-2">

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import EnTeteCoach from '@/components/app/EnTeteCoach';
+import EnTeteSimple from '@/components/app/EnTeteSimple';
 import { garderSeanceOrigine } from '@/lib/app/ecriture';
 import { clientServeur, supabaseConfigure } from '@/lib/app/supabase';
 
@@ -29,7 +29,7 @@ export default async function Garder({ searchParams }: { searchParams: Recherche
   const valide = plan && seance && /^[0-9a-f-]{36}$/.test(plan) && /^S\d+-[a-z]+$/.test(seance);
   return (
     <>
-      <EnTeteCoach />
+      <EnTeteSimple />
       <main className="mx-auto max-w-xl px-4 py-8 space-y-4">
         <h1 className="text-2xl text-indigo">Ta séance d’origine</h1>
         {!valide && <p className="text-sm text-indigo/75">Ce lien ne correspond à aucune séance.</p>}

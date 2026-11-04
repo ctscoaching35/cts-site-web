@@ -11,7 +11,8 @@ import { ficheDuCompte } from './demandes';
 import { EXEMPLES, jourParDefaut } from './demonstration';
 import { planSansObjectif, reperesDeBase } from './reperes';
 import { COOKIE_PLAN } from './planChoisi';
-import { SCHEMA_PLAN, aujourdhuiIso, type Plan } from './plan';
+import { SCHEMA_PLAN, ajouterJours, aujourdhuiIso, type Plan } from './plan';
+import { joursRecuperation, lireTemps } from '@/lib/plan';
 import { clientServeur, clientService, supabaseConfigure } from './supabase';
 import { PROFIL_VIDE, type Profil } from './zones';
 
@@ -65,6 +66,38 @@ export async function objectifAVenir(): Promise<boolean> {
   const plans = await plansDuCompte(String(id));
   const siens = plans.some((p) => p.coache) ? plans.filter((p) => p.coache) : plans;
   return siens.some((p) => p.course_date >= aujourdhui);
+}
+
+// LA RÉCUPÉRATION D'UN COACHÉ (AT4, décision coach du 04/11/2026) : du lendemain de sa course à la fin de ses jours de
+// récupération (lib/plan.ts, joursRecuperation : deux par heure de course, 3 à 21), même quand son objectif suivant
+// existe déjà (avant, l'app sautait directement à lui, sans un mot). null hors de cette fenêtre. demonstration : tirée du
+// plan affiché.
+export type Recuperation = { course: string; date: string; jours: number; jusqua: string };
+const fenetre = (course: string, date: string, tempsCible: unknown, format: unknown, aujourdhui: string): Recuperation | null => {
+  const jours = joursRecuperation(lireTemps(String(tempsCible ?? '')) ?? 2, String(format ?? ''));
+  const jusqua = ajouterJours(date, jours);
+  return date < aujourdhui && jusqua >= aujourdhui ? { course, date, jours, jusqua } : null;
+};
+export async function recuperationDuCoache(ctx: Contexte): Promise<Recuperation | null> {
+  if (!ctx.coache) return null;
+  if (ctx.demonstration) {
+    return fenetre(ctx.plan.course.nom, ctx.plan.course.date, ctx.plan.course.temps_cible, ctx.plan.course.format, ctx.jour);
+  }
+  const { data } = await (await clientServeur()).auth.getClaims();
+  const id = data?.claims?.sub;
+  if (!id) return null;
+  const aujourdhui = aujourdhuiIso();
+  const passes = (await plansDuCompte(String(id))).filter((p) => p.coache && p.course_date < aujourdhui
+    && p.course_date >= ajouterJours(aujourdhui, -21));
+  if (!passes.length) return null;
+  const { data: lignes } = await clientService().from('plans').select('course_nom, course_date, intake').in('id', passes.map((p) => p.id));
+  return (lignes ?? [])
+    .map((p) => {
+      const intake = (p.intake ?? {}) as Record<string, unknown>;
+      return fenetre(String(p.course_nom), String(p.course_date), intake.temps_cible, intake.format, aujourdhui);
+    })
+    .filter((r): r is Recuperation => r !== null)
+    .sort((a, b) => b.date.localeCompare(a.date))[0] ?? null;
 }
 export type Recherche = Promise<Record<string, string | string[] | undefined>>;
 

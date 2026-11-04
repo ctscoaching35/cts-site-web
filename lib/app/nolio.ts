@@ -138,10 +138,20 @@ export async function listeNolio<T extends { id: string }>(chemin: string): Prom
 export type AthleteNolio = { id: string; name: string };
 
 // Le compte du coach (GET me/) : ses propres séances se créent sans destinataire et se lisent sans ?athlete=.
+// Gardé une heure dans le processus (§8, point 13, audit du 03/11/2026 ; et l'audit de l'app coach) : chaque lecture
+// d'un athlète relisait le compte du coach, un appel à Nolio de plus à chaque fois. Un échec n'est pas gardé.
+const DUREE_MOI_MS = 3600_000;
+let moi: { quand: number; promesse: Promise<AthleteNolio> } | null = null;
 export async function moiNolio(): Promise<AthleteNolio> {
-  const r = await appelNolio('GET', 'me/');
-  if (r.statut !== 200 || typeof r.corps?.id !== 'string') throw new ErreurNolio(refusNolio(r, 'la lecture de ton compte'));
-  return { id: r.corps.id, name: [r.corps.first_name, r.corps.last_name].filter(Boolean).join(' ') || 'Toi' };
+  if (moi && Date.now() - moi.quand < DUREE_MOI_MS) return moi.promesse;
+  const promesse = (async () => {
+    const r = await appelNolio('GET', 'me/');
+    if (r.statut !== 200 || typeof r.corps?.id !== 'string') throw new ErreurNolio(refusNolio(r, 'la lecture de ton compte'));
+    return { id: r.corps.id as string, name: [r.corps.first_name, r.corps.last_name].filter(Boolean).join(' ') || 'Toi' };
+  })();
+  moi = { quand: Date.now(), promesse };
+  promesse.catch(() => { moi = null; });
+  return promesse;
 }
 
 // Les athlètes que le coach suit dans Nolio (GET me/athletes/), puis lui-même, marqué « (toi) », pour un envoi

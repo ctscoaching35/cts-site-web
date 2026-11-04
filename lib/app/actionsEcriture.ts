@@ -7,7 +7,7 @@
 import { revalidatePath } from 'next/cache';
 import { API_URL } from '@/lib/plan';
 import {
-  annulerAjustements, demarrerObjectif, donnerAccordLecture, fichesDesPreparations, objectifEcrit, plansALaMain, poserCourse, rattraperLaSemaine,
+  annulerAjustements, demarrerObjectif, donnerAccordLecture, fichesDesPreparations, objectifEcrit, plansALaMain, poserCourse, prevenirCoach, rattraperLaSemaine,
   retirerAccordLecture, retirerCourseDeNolio, type Course,
 } from './ecriture';
 import { coachConnecte } from './nolio';
@@ -176,6 +176,19 @@ async function enregistrerCourse(planId: string, form: FormData, ancienne: strin
   }
   revalidatePath('/app/plan');
   revalidatePath(`/app/coach/plan/${planId}`);
+  // B-AT-21 et B-AT-22 (audit du 03/11/2026) : une course ajoutée ou modifiée par le coaché prévient son coach tout de
+  // suite (avant, il l'apprenait à J-14 par « À regarder ») ; programmé à la main, rien ne s'ajuste tout seul.
+  const aLaMain = (await plansALaMain()).has(planId);
+  if (o.coache && !coachId) {
+    await prevenirCoach(`Course de préparation ${ancienne !== null ? 'modifiée' : 'ajoutée'} : ${course.nom}`,
+      `Ton athlète ${ancienne !== null ? 'a modifié' : 'a ajouté'} une course de préparation à son objectif « ${o.plan.course.nom} » : `
+      + `${course.nom}, le ${date}, ${course.distance_km} km${course.dplus_m ? `, ${course.dplus_m} m D+` : ''}, ${course.mode === 'a_fond' ? 'à fond' : 'en gestion'}.`
+      + (aLaMain ? ' Tu le programmes à la main : adapte ses semaines autour d’elle.' : ' Ses semaines s’ajustent autour d’elle dans le moteur.'),
+      o.coachId).catch(() => null);
+  }
+  if (aLaMain) {
+    return { ok: true, message: `Course ${ancienne !== null ? 'modifiée' : 'ajoutée'} : ton coach en est prévenu, il adapte tes semaines autour d’elle.` };
+  }
   const surLaFiche = !ficheGardee ? '' : traceDonnee && !fiche?.trace
     ? ' Sa fiche de course est prête, mais sa trace ne s’est pas lue : le profil reste schématique.'
     : !trace && traceAvant
@@ -213,6 +226,12 @@ export async function retirerCourse(planId: string, date: string, _e: EtatGeste)
   await service.storage.from('plans-pdf').remove([cheminTrace(planId, date)]).catch(() => null);
   revalidatePath('/app/plan');
   revalidatePath(`/app/coach/plan/${planId}`);
+  // B-AT-22 : retirée par le coaché, son coach le sait tout de suite.
+  if (o.coache && !coachId) {
+    const nom = (courses.find((c) => c.date === date) as { nom?: string } | undefined)?.nom ?? 'sa course de préparation';
+    await prevenirCoach(`Course de préparation retirée : ${nom}`,
+      `Ton athlète a retiré ${nom}, prévue le ${date}, de son objectif « ${o.plan.course.nom} ».`, o.coachId).catch(() => null);
+  }
   return { ok: true, message: soucis.length
     ? 'Course retirée de ta préparation. Dans Nolio, elle n’a pas pu partir : retire-la à la main.'
     : 'Course retirée : tes prochaines semaines s’écrivent sans elle.' };

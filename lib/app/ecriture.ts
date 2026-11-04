@@ -1815,13 +1815,18 @@ async function reprogrammerSortie(usr: string) {
   await appelNolio('POST', `team/teams/${equipeId}/expirations/`, { user: usr, date_leaving: date });
 }
 
-// Prévenir le coach (P4) : un court e-mail, à son adresse de contact.
-export async function prevenirCoach(sujet: string, texte: string) {
+// Prévenir le coach (P4) : un court e-mail, à son adresse de contact. coachId : celui d'un coaché (B-AT-52, audit du
+// 03/11/2026) : l'e-mail part à l'adresse de son compte (une athlète de Juliette, à Juliette), l'adresse de contact à
+// défaut.
+export async function prevenirCoach(sujet: string, texte: string, coachId: string | null = null) {
   const cle = process.env.BREVO_API_KEY?.trim();
   if (!cle) return;
+  const adresse = coachId
+    ? await clientService().auth.admin.getUserById(coachId).then((r) => r.data?.user?.email ?? null).catch(() => null)
+    : null;
   await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST', headers: { 'api-key': cle, 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ sender: EXPEDITEUR, to: [{ email: site.email }], subject: sujet, textContent: texte }), cache: 'no-store',
+    body: JSON.stringify({ sender: EXPEDITEUR, to: [{ email: adresse || site.email }], subject: sujet, textContent: texte }), cache: 'no-store',
   }).catch((e) => console.error('E-mail au coach :', e instanceof Error ? e.message : e));
 }
 

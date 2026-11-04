@@ -114,7 +114,7 @@ export function jaugeDuPlan(trame: LigneTrame[], realises: Realise[], aujourdhui
   const score = faits.length >= 2 ? moyenne(comptes.map((p) => p.valeur)) : null;
   const verdict: Verdict | null = score === null ? null
     : score >= VERDICT_BIEN ? { libelle: 'Sur la bonne voie', ton: 'bien' }
-      : score >= VERDICT_RETRAIT ? { libelle: 'Un peu en retrait', ton: 'retrait' } : { libelle: 'En retard sur la trame', ton: 'retard' };
+      : score >= VERDICT_RETRAIT ? { libelle: 'Un peu en retrait', ton: 'retrait' } : { libelle: 'En retard sur ton plan', ton: 'retard' };
   return { semaine: rang >= 0 ? rang + 1 : null, total: trame.length, piliers, verdict, score, jalons: jalons(trame, faits, rang) };
 }
 

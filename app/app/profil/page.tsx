@@ -47,7 +47,7 @@ export default async function MonProfil({ searchParams }: { searchParams: Recher
       <EnTeteApp ctx={ctx} />
       <main className="mx-auto max-w-2xl px-4 pt-5 pb-6 space-y-4">
         <div>
-          <h1 className="text-[1.625rem] font-extrabold text-indigo tracking-tight">Mon profil de coureur</h1>
+          <h1 className="text-[1.625rem] font-extrabold text-indigo tracking-tight">Ton profil de coureur</h1>
           <p className="mt-1.5 text-[0.8125rem] text-[#5E5C78] leading-relaxed">
             Tes repères, tirés de tes tests. Ils règlent les cibles de tes séances{d.ecrit ? ' et tes zones dans Nolio' : ''}.
           </p>
@@ -63,6 +63,59 @@ export default async function MonProfil({ searchParams }: { searchParams: Recher
           ))}
         </section>
 
+        {/* AT2 (décision coach du 04/11/2026) : les zones et les tests en haut, sous les repères ; avant, vers 2 500 px,
+            sous les badges. */}
+        {zones && (
+          <Carte className="!pb-2.5">
+            <Surtitre>Tes zones</Surtitre>
+            <div className="mt-2.5 grid grid-cols-[1fr_76px_96px] gap-x-2 pb-2 text-[0.625rem] font-bold tracking-[0.08em] uppercase text-[#5E5C78]">
+              <span>Zone</span><span>FC</span><span>Allure</span>
+            </div>
+            <ul>
+              {lignes.map(([rpe, nom], i) => {
+                const fc = texteFc(zones.tableau.lignes[i]?.fc, profil)?.replace(/^FC /, '') ?? null;
+                const al = texteAllureLigne(zones.tableau.lignes[i], profil, decalage);
+                return (
+                  <li key={nom} className="grid grid-cols-[1fr_76px_96px] gap-x-2 items-center min-h-[46px] border-t border-indigo/[0.06] text-[0.78rem] text-indigo">
+                    <span className="flex items-center gap-2 min-w-0">
+                      <span className="w-2 h-[26px] rounded shrink-0" style={{ backgroundColor: TEINTES[i] ?? '#2F2D4E' }} aria-hidden />
+                      <span className="min-w-0">
+                        <span className="block font-bold leading-tight first-letter:uppercase">{nom.replace(/^Zone \d\+? — /, '')}</span>
+                        <span className="block text-[0.656rem] text-[#5E5C78]">RPE {rpe}</span>
+                      </span>
+                    </span>
+                    <span className={fc ? '' : 'text-[#5E5C78]'}>{fc ?? 'RPE seul'}</span>
+                    <span className={al ? '' : 'text-[#5E5C78]'}>{al?.replace('Plus lent que ', '> ').replace('/km', '') ?? 'RPE seul'}</span>
+                  </li>
+                );
+              })}
+            </ul>
+            <p className="pt-2.5 pb-1.5 text-[0.72rem] text-[#5E5C78] leading-relaxed">
+              Les allures valent sur le plat ; en côte, la FC et le RPE ; en descente, le RPE seul. Le RPE prime toujours.
+            </p>
+          </Carte>
+        )}
+
+        <Carte className="space-y-2.5">
+          <Surtitre>Tes tests</Surtitre>
+          <p className="text-[0.8125rem] text-[#4A4866] leading-relaxed">
+            {d.ecrit && !ctx.aLaMain
+              ? 'Quand un repère manque, ta préparation écrit le test à la place d’une séance ; son résultat se lit dans Nolio.'
+              : 'Trois tests de terrain donnent tes repères : leur protocole, ce qu’ils changent et leurs limites.'}
+          </p>
+          {/* Les tests que « Tes zones » propose, pas d'autres (sans « Tes zones », les fiches de la bibliothèque). */}
+          <ul>
+            {FICHES_TESTS.map(([cle, titre, fiche]) => (zones && !testsProposes(zones).includes(cle as CleTest) ? null : (
+              <li key={cle}>
+                <Link href={saisie ? `${saisie}#${cle}` : lien(`/app/bibliotheque/${fiche}`, ctx)}
+                  className="flex items-center justify-between min-h-11 border-t border-indigo/[0.06] text-[0.8125rem] font-bold text-teal">
+                  <span>{titre}</span><span aria-hidden>›</span>
+                </Link>
+              </li>
+            )))}
+          </ul>
+          {ctx.coache && saisie && <p className="text-xs text-[#5E5C78]">Un test refait de ton côté s’entre ici : tes zones changent dès maintenant, tes séances à partir de la semaine écrite dimanche, et ton coach le voit sur ta fiche.</p>}
+        </Carte>
         {coureur ? (
           <>
             <CarteSombre className="space-y-3">
@@ -126,57 +179,6 @@ export default async function MonProfil({ searchParams }: { searchParams: Recher
         {/* Ses badges (BG1 à BG3, maquette validée par le coach le 20/10/2026). */}
         <TesBadges etat={badges.etat} accord={badges.accord} aujourdhui={ctx.jour} />
 
-        {zones && (
-          <Carte className="!pb-2.5">
-            <Surtitre>Tes zones</Surtitre>
-            <div className="mt-2.5 grid grid-cols-[1fr_76px_96px] gap-x-2 pb-2 text-[0.625rem] font-bold tracking-[0.08em] uppercase text-[#5E5C78]">
-              <span>Zone</span><span>FC</span><span>Allure</span>
-            </div>
-            <ul>
-              {lignes.map(([rpe, nom], i) => {
-                const fc = texteFc(zones.tableau.lignes[i]?.fc, profil)?.replace(/^FC /, '') ?? null;
-                const al = texteAllureLigne(zones.tableau.lignes[i], profil, decalage);
-                return (
-                  <li key={nom} className="grid grid-cols-[1fr_76px_96px] gap-x-2 items-center min-h-[46px] border-t border-indigo/[0.06] text-[0.78rem] text-indigo">
-                    <span className="flex items-center gap-2 min-w-0">
-                      <span className="w-2 h-[26px] rounded shrink-0" style={{ backgroundColor: TEINTES[i] ?? '#2F2D4E' }} aria-hidden />
-                      <span className="min-w-0">
-                        <span className="block font-bold leading-tight first-letter:uppercase">{nom.replace(/^Zone \d — /, '')}</span>
-                        <span className="block text-[0.656rem] text-[#5E5C78]">RPE {rpe}</span>
-                      </span>
-                    </span>
-                    <span className={fc ? '' : 'text-[#5E5C78]'}>{fc ?? 'RPE seul'}</span>
-                    <span className={al ? '' : 'text-[#5E5C78]'}>{al?.replace('Plus lent que ', '> ').replace('/km', '') ?? 'RPE seul'}</span>
-                  </li>
-                );
-              })}
-            </ul>
-            <p className="pt-2.5 pb-1.5 text-[0.72rem] text-[#5E5C78] leading-relaxed">
-              Les allures valent sur le plat ; en côte, la FC et le RPE ; en descente, le RPE seul. Le RPE prime toujours.
-            </p>
-          </Carte>
-        )}
-
-        <Carte className="space-y-2.5">
-          <Surtitre>Tes tests</Surtitre>
-          <p className="text-[0.8125rem] text-[#4A4866] leading-relaxed">
-            {d.ecrit && !ctx.aLaMain
-              ? 'Quand un repère manque, ta préparation écrit le test à la place d’une séance ; son résultat se lit dans Nolio.'
-              : 'Trois tests de terrain donnent tes repères : leur protocole, ce qu’ils changent et leurs limites.'}
-          </p>
-          {/* Les tests que « Tes zones » propose, pas d'autres (sans « Tes zones », les fiches de la bibliothèque). */}
-          <ul>
-            {FICHES_TESTS.map(([cle, titre, fiche]) => (zones && !testsProposes(zones).includes(cle as CleTest) ? null : (
-              <li key={cle}>
-                <Link href={saisie ? `${saisie}#${cle}` : lien(`/app/bibliotheque/${fiche}`, ctx)}
-                  className="flex items-center justify-between min-h-11 border-t border-indigo/[0.06] text-[0.8125rem] font-bold text-teal">
-                  <span>{titre}</span><span aria-hidden>›</span>
-                </Link>
-              </li>
-            )))}
-          </ul>
-          {ctx.coache && saisie && <p className="text-xs text-[#5E5C78]">Un test refait de ton côté s’entre ici : tes zones changent dès maintenant, tes séances à partir de la semaine écrite dimanche, et ton coach le voit sur ta fiche.</p>}
-        </Carte>
       </main>
     </>
   );

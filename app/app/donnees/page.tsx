@@ -32,7 +32,7 @@ export default async function MesDonnees({ searchParams }: { searchParams: Reche
       <EnTeteApp ctx={ctx} />
       <main className="mx-auto max-w-2xl px-4 pt-5 pb-6 space-y-4">
         <div>
-          <h1 className="text-[1.625rem] font-extrabold text-indigo tracking-tight">Mes données</h1>
+          <h1 className="text-[1.625rem] font-extrabold text-indigo tracking-tight">Tes données</h1>
           <p className="mt-1.5 text-[0.8125rem] text-[#5E5C78] leading-relaxed">
             {d.accord ? 'Lues dans Nolio avec ton accord, mises à jour chaque nuit.'
               : 'Tes séances faites ou manquées et leur durée, mises à jour chaque dimanche soir.'}
@@ -40,7 +40,10 @@ export default async function MesDonnees({ searchParams }: { searchParams: Reche
         </div>
         {rien && !d.accord && (
           <Carte className="text-sm text-[#4A4866] leading-relaxed">
-            <p>Tes premières données arrivent le dimanche soir qui suit ta première semaine : ton volume, semaine après semaine.</p>
+            {/* B5 (audit du 03/11/2026) : un coaché à la main ou sans objectif, sans accord, n'a rien qui arrive le dimanche. */}
+            <p>{ctx.coache && (ctx.aLaMain || ctx.sansObjectif)
+              ? 'Tes données arrivent avec ton accord : réponds « oui » au message de ton coach dans Nolio, et ton volume, ta charge et ta forme s’affichent ici.'
+              : 'Tes premières données arrivent le dimanche soir qui suit ta première semaine : ton volume, semaine après semaine.'}</p>
           </Carte>
         )}
         {/* Une semaine se dit par son lundi, pas par son numéro (décision coach du 19/10/2026). */}
@@ -48,7 +51,7 @@ export default async function MesDonnees({ searchParams }: { searchParams: Reche
           : <EnAttente titre="Ta charge d’entraînement" texte="Elle s’affiche après deux semaines faites : ton effort ressenti (RPE) multiplié par la durée de chaque séance, lus dans Nolio le dimanche soir." />)}
         <GraphiqueVolume barres={barres} />
         {d.accord && (hooperPret ? <GraphiqueHooper points={points} />
-          : <EnAttente titre="Ton Hooper du dimanche" texte="Il s’affiche après deux questionnaires du dimanche : ta fatigue, ton sommeil, ton stress et tes courbatures, semaine après semaine." />)}
+          : <EnAttente titre="Ta forme du dimanche (Hooper)" texte="Elle s’affiche après deux dimanches : ta fatigue, ton sommeil, ton stress et tes courbatures, à remplir le dimanche à 8 h dans Nolio." />)}
         {!d.accord && !rien && (
           <Carte className="text-[0.8125rem] text-[#4A4866] leading-relaxed">
             <p>Ta charge et ton Hooper s’affichent avec ton accord de lecture : l’app lit alors dans Nolio ton effort ressenti et ton Hooper.</p>

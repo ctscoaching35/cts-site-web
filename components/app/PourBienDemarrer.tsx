@@ -27,14 +27,11 @@ export default function PourBienDemarrer({ acheteur, nolio, accord, questionnair
   acheteur: boolean; nolio: EtatNolio; accord: boolean; questionnaire: boolean; installer: string; profil?: boolean; lienProfil?: string;
   seanceFaite?: boolean; inviteLe?: string | null;
 }) {
-  const [installee, setInstallee] = useState(false);
   const [masquee, setMasquee] = useState(false);
-  useEffect(() => {
-    setInstallee(window.matchMedia('(display-mode: standalone)').matches
-      || (navigator as Navigator & { standalone?: boolean }).standalone === true);
-  }, []);
-  const dansNolio = acheteur ? nolio === 'actif' : accord;
-  const enPlace = dansNolio && installee && (acheteur || profil);
+  // AT2 (décision coach du 04/11/2026) : la liste se masque d'elle-même une fois ses étapes faites, l'app installée ou
+  // non (avant, sur un ordinateur, elle restait jusqu'au jour J) ; l'installation reste proposée dans Compte. Un
+  // acheteur : dans l'équipe et sa montre reliée (B-PL-46) ; un coaché : son profil rempli et son accord donné.
+  const enPlace = acheteur ? nolio === 'actif' && seanceFaite : accord && profil;
   useEffect(() => {
     if (enPlace) masquerDemarrage().catch(() => {});
   }, [enPlace]);
@@ -69,9 +66,6 @@ export default function PourBienDemarrer({ acheteur, nolio, accord, questionnair
       : { fait: false, titre: 'Donne ton accord à ton coach',
         texte: 'Réponds « oui » à son message dans Nolio : tes séances faites, ton RPE et ton Hooper remontent alors dans l’app.' },
   ];
-  etapes.push(installee
-    ? { fait: true, titre: 'L’app CTS est sur ton écran d’accueil' }
-    : { fait: false, titre: 'Ajoute l’app CTS à ton écran d’accueil', texte: <Link href={installer} className="font-bold text-teal">Comment ›</Link> });
 
   return (
     <Carte className="space-y-3">

@@ -9,7 +9,7 @@ import { contexte, lien, plansDuCompte, type PlanDuCompte, type Recherche } from
 import { annulerDemande, demanderRetrait } from '@/lib/app/actionsObjectifs';
 import { demandesDeLAthlete, estRetrait, ficheDuCompte } from '@/lib/app/demandes';
 import { clientServeur, clientService } from '@/lib/app/supabase';
-import { dateLongue, jMoins } from '@/lib/app/plan';
+import { aujourdhuiIso, dateLongue, jMoins } from '@/lib/app/plan';
 import { blocsDuPlan, jaugeDuPlan } from '@/lib/app/tableau';
 import { donneesTableau, fichesDePreparation, type CourseSecondaire } from '@/lib/app/tableauDuPlan';
 import { BlocsDeLaSaison } from '@/components/app/SaisonDeFond';
@@ -29,7 +29,8 @@ async function mesObjectifs() {
   const saisons = new Set((params ?? []).filter((p) => (p.parametres as { fond?: unknown } | null)?.fond).map((p) => p.id as string));
   const prep = new Map((params ?? []).map((p) => [p.id as string,
     (((p.parametres as Record<string, unknown> | null)?.courses_secondaires ?? []) as CourseSecondaire[]).slice().sort((a, b) => a.date.localeCompare(b.date))]));
-  const aujourdhui = new Date().toISOString().slice(0, 10);
+  // L'heure de Paris, comme le reste de l'app (§8, point 8 : en UTC, l'étiquette se trompait entre minuit et 2 h).
+  const aujourdhui = aujourdhuiIso();
   const fiche = await ficheDuCompte(compteId);
   return {
     liste: liste.filter((p) => !saisons.has(p.id)).map((p: PlanDuCompte) => ({ ...p, preparations: prep.get(p.id) ?? [] })),
@@ -71,7 +72,7 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
           </div>
         ) : (
           <div className="-mt-1">
-            <Surtitre as="div">Objectif principal</Surtitre>
+            <Surtitre as="div">Ton objectif</Surtitre>
             <h1 className="mt-1.5 text-[1.75rem] font-extrabold text-indigo tracking-tight leading-tight">{course.nom}</h1>
             <p className="mt-1.5 text-[0.8125rem] text-[#5E5C78]">
               {dateLongue(course.date)} · {course.format_clair}{course.dplus_m ? ` · ${Math.round(course.distance_km)} km · ${course.dplus_m.toLocaleString('fr-FR')} m D+` : ' sur route'}
@@ -143,11 +144,11 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
                   </span>
                   {b.travail.length > 0 && (
                     <span className="block mt-1 text-[0.78rem] text-[#4A4866] leading-snug">
-                      <span className="font-semibold text-indigo">Tu travailles :</span> {b.travail.join(', ')}
+                      <span className="font-semibold text-indigo">Tu travailles :</span> {b.travail.map(enMotsDeCoureur).join(', ')}
                     </span>
                   )}
                   {b.rappel.length > 0 && (
-                    <span className="block mt-0.5 text-[0.75rem] text-[#5E5C78] leading-snug">En rappel : {b.rappel.join(', ')}</span>
+                    <span className="block mt-0.5 text-[0.75rem] text-[#5E5C78] leading-snug">En rappel : {b.rappel.map(enMotsDeCoureur).join(', ')}</span>
                   )}
                 </span>
               </li>
@@ -214,9 +215,16 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
                         </form>
                       </div>
                     ) : (
-                      <form action={demanderRetrait.bind(null, o.id)}>
-                        <button type="submit" className="min-h-11 text-xs font-semibold text-[#5E5C78] underline underline-offset-2">Demander le retrait de cet objectif</button>
-                      </form>
+                      // Un geste qui demande confirmation (§8, point 11, audit du 03/11/2026).
+                      <details className="text-xs">
+                        <summary className="cursor-pointer min-h-11 flex items-center font-semibold text-[#5E5C78] underline underline-offset-2">Demander le retrait de cet objectif</summary>
+                        <div className="pb-2 space-y-1.5">
+                          <p className="text-[#4A4866]">Ton coach reçoit ta demande et retire l’objectif ; ta préparation s’arrête alors.</p>
+                          <form action={demanderRetrait.bind(null, o.id)}>
+                            <button type="submit" className="min-h-11 px-3 rounded-lg border border-[#E2725B]/50 font-bold text-[#B5462F]">Confirmer la demande de retrait</button>
+                          </form>
+                        </div>
+                      </details>
                     ))}
                   </li>
                 );
@@ -233,10 +241,13 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
                 </li>
               ))}
             </ul>
-            <Link href="/app/objectif/nouveau" className="inline-flex items-center min-h-11 text-sm font-bold text-teal">Nouvel objectif majeur ›</Link>
+            <Link href="/app/objectif/nouveau" className="inline-flex items-center min-h-11 text-sm font-bold text-teal">Nouvel objectif ›</Link>
           </Carte>
         )}
       </main>
     </>
   );
 }
+
+// AT5 (décision coach du 04/11/2026) : « mécanique », une famille de coach, se dit « force et terrain » au coureur.
+const enMotsDeCoureur = (qualite: string) => qualite.replace(/^m[ée]canique/i, (m) => (m[0] === 'M' ? 'Force et terrain' : 'force et terrain'));

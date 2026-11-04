@@ -33,15 +33,18 @@ export async function donneesTableau(ctx: Contexte): Promise<DonneesTableau> {
   }
   if (ctx.demonstration) return demonstration(ctx);
   const service = clientService();
-  const { data: p } = await service.from('plans').select('parametres, nolio_statut, accord_lecture_le').eq('id', ctx.cle).maybeSingle();
-  // Un coaché : ses séances sont dans Nolio, son accord est celui du Suivi de son coach (T5).
-  const accordCoache = ctx.coache ? await accordDuCoache(ctx.cle) : false;
+  // Les lectures de la base en parallèle (§8, point 13, audit du 03/11/2026 : l'accueil les enchaînait en série).
+  const [{ data: p }, accordCoache, trame, { data: lignes }] = await Promise.all([
+    service.from('plans').select('parametres, nolio_statut, accord_lecture_le').eq('id', ctx.cle).maybeSingle(),
+    // Un coaché : ses séances sont dans Nolio, son accord est celui du Suivi de son coach (T5).
+    ctx.coache ? accordDuCoache(ctx.cle) : Promise.resolve(false),
+    trameDuPlan(ctx.cle).catch(() => null),
+    service.from('semaines_ecrites').select('numero, realise').eq('plan_id', ctx.cle).not('realise', 'is', null),
+  ]);
   if (!p?.parametres) {
     return { trame: trameDesDonnees(ctx.plan), realises: [], fiches: [], nolio: ctx.coache ? 'coache' : null, accord: false, ecrit: false,
       courses: [] };
   }
-  const trame = await trameDuPlan(ctx.cle);
-  const { data: lignes } = await service.from('semaines_ecrites').select('numero, realise').eq('plan_id', ctx.cle).not('realise', 'is', null);
   const realises = (lignes ?? []).map((l) => l.realise as Realise)
     .sort((a, b) => Number(a.numero.slice(1)) - Number(b.numero.slice(1)));
   return {
@@ -141,28 +144,46 @@ export async function semaineEcrite(ctx: Contexte, numero: string): Promise<Sema
 // Nolio ne répond pas : la carte montre la semaine écrite par le moteur. numero : une semaine de la préparation, lue
 // dans Nolio une fois qu'elle y est partie (décision coach du 20/10/2026 : avant, la carte montre celle du moteur).
 export type SeanceNolio = { id: string; date: string; nom: string; minutes: number | null; couleur: string | null };
-export async function semaineDansNolio(ctx: Contexte, lundi: string, numero?: string): Promise<SeanceNolio[] | null> {
-  if (ctx.demonstration) return null;
+// La raison d'une semaine non lue (B-AT-1 et B-AT-2, audit du 03/11/2026 ; AT1, décision coach du 04/11/2026) : la
+// carte « Ta semaine » ne confond plus « pas encore partie », « sans accord » et « Nolio muet ».
+export type RaisonNolio = 'lue' | 'sans_accord' | 'pas_partie' | 'muet' | 'sans_nolio' | 'demo';
+export type LectureNolio = { seances: SeanceNolio[] | null; raison: RaisonNolio };
+export async function lireSemaineNolio(ctx: Contexte, lundi: string, numero?: string): Promise<LectureNolio> {
+  if (ctx.demonstration) return { seances: null, raison: 'demo' };
+  let o: { nolioAthlete: string | null; accordLecture: boolean; coache: boolean; envois: { semaine: string }[] } | null;
   try {
     // Un coaché sans objectif : celui de sa fiche, avec son accord.
-    const o = ctx.sansObjectif
-      ? (ctx.fiche?.nolio ? { nolioAthlete: ctx.fiche.nolio, accordLecture: ctx.fiche.accord, coache: true, envois: [] } : null)
+    o = ctx.sansObjectif
+      ? (ctx.fiche?.nolio ? { nolioAthlete: ctx.fiche.nolio, accordLecture: Boolean(ctx.fiche.accord), coache: true, envois: [] } : null)
       : await objectifAffiche(ctx.cle);
-    // Un coaché : sa semaine dans Nolio, quel qu'en soit l'auteur (son coach à la main, décision coach du 20/10/2026) ;
-    // un acheteur : une fois son plan parti dans Nolio.
-    if (!o?.nolioAthlete || !o.accordLecture || (!o.coache && !o.envois.length)) return null;
-    if (numero && !o.envois.some((e) => e.semaine === numero)) return null;
+  } catch {
+    return { seances: null, raison: 'muet' };
+  }
+  // Un coaché : sa semaine dans Nolio, quel qu'en soit l'auteur (son coach à la main, décision coach du 20/10/2026) ;
+  // un acheteur : une fois son plan parti dans Nolio.
+  if (!o?.nolioAthlete) return { seances: null, raison: 'sans_nolio' };
+  if (!o.coache && !o.envois.length) return { seances: null, raison: 'pas_partie' };
+  if (numero && !o.coache && !o.envois.some((e) => e.semaine === numero)) return { seances: null, raison: 'pas_partie' };
+  if (!o.accordLecture) return { seances: null, raison: 'sans_accord' };
+  if (numero && !o.envois.some((e) => e.semaine === numero)) return { seances: null, raison: 'pas_partie' };
+  try {
     const d = await destinataire(o.nolioAthlete);
     type Prevue = { id: string; name?: string; date_start: string; duration?: { value?: number } | null; color?: string | null };
     const prevues = await listeNolio<Prevue>(
       `planned/trainings/?date_from=${lundi}&date_to=${ajouterJours(lundi, 6)}${d.moi ? '' : `&athlete=${d.usr}`}`);
-    return prevues
-      .map((p) => ({ id: p.id, date: p.date_start.slice(0, 10), nom: p.name ?? 'Séance',
-        minutes: p.duration?.value ? Math.round(p.duration.value / 60) : null, couleur: p.color ?? null }))
-      .sort((a, b) => a.date.localeCompare(b.date));
+    return {
+      raison: 'lue',
+      seances: prevues
+        .map((p) => ({ id: p.id, date: p.date_start.slice(0, 10), nom: p.name ?? 'Séance',
+          minutes: p.duration?.value ? Math.round(p.duration.value / 60) : null, couleur: p.color ?? null }))
+        .sort((a, b) => a.date.localeCompare(b.date)),
+    };
   } catch {
-    return null;
+    return { seances: null, raison: 'muet' };
   }
+}
+export async function semaineDansNolio(ctx: Contexte, lundi: string, numero?: string): Promise<SeanceNolio[] | null> {
+  return (await lireSemaineNolio(ctx, lundi, numero)).seances;
 }
 
 // Les courses de préparation qui ont leur fiche de course (PO3), par leur date ; vide avant la migration du 19/10/2026.
