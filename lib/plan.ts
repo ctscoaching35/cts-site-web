@@ -88,7 +88,8 @@ export const textes = {
         titre: 'Débutant',
         description:
           'Je cours depuis moins de deux ans. Je n’ai jamais suivi de plan structuré. Le fractionné ne fait pas partie de mes habitudes. Au-delà d’1h30 de course, je commence à subir.',
-        formats: 'Formats ouverts : Trail Court et Trail Marathon.',
+        // « Au-delà de 10h » depuis S14 (05/11/2026) : la course de référence vaut aussi pour lui.
+        formats: 'Formats ouverts : Trail Court et Trail Marathon. Au-delà de 10h de course, avec une course déjà terminée d’au moins la moitié de sa taille.',
       },
       {
         valeur: 'intermediaire',
@@ -147,6 +148,8 @@ export const textes = {
   sante: {
     blessure: 'Une blessure ou une douleur t’empêche-t-elle de courir normalement en ce moment ?',
     coeur: 'À l’effort, as-tu déjà ressenti une douleur dans la poitrine, un malaise ou un essoufflement inhabituel, ou as-tu une maladie du cœur connue ?',
+    // Le conseil d'un « oui » (P4, 30/10/2026), redit au récapitulatif sans case de plus (J9, audits du 05/11/2026).
+    conseilCoeur: 'Avant de commencer, montre ces signes à ton médecin : ils méritent un avis avant une préparation, et un bilan avec un test d’effort te dira si tu peux t’entraîner sans risque. Tant qu’ils reviennent, arrête-toi et ne force jamais au travers.',
   },
 };
 
@@ -244,6 +247,17 @@ export function reperesChrono(c: Champs, config: ConfigPlan, coach = false): str
     + `${bandes.join(' · ')}. Course technique, chaude ou de nuit : vise plutôt la bande d’en dessous ; très roulante : celle d’au-dessus.${fin}`;
 }
 
+// UN TEMPS DE TÊTE DE COURSE (S13, décision coach du 05/11/2026, « A » ; audit A-9, I5) : un temps visé sous la borne
+// « élite » des repères de chrono (les 10 % les plus rapides des finishers de courses de cette taille) se dit sous le
+// champ, sans case ni refus : la préparation se calibre sur ce temps. Hors route (le coach seul la prépare).
+export const PHRASE_TEMPS_DE_TETE = 'C’est un temps de tête de course : vérifie-le, ta préparation en dépend.';
+export function tempsDeTete(c: Champs): boolean {
+  const ke = kmEffort(c.distance_km, c.dplus_m);
+  const h = lireTemps(c.temps_cible ?? '');
+  if (!c.format || FORMATS_ROUTE.some((f) => f.code === c.format) || !(ke > 0) || h === null || !(h > 0)) return false;
+  return h < ke / (COUPURES[0] * vitesseMediane(ke));
+}
+
 // LA COURSE DE RÉFÉRENCE (décision coach du 23/10/2026, facultative) : une course récente, ramenée à la course visée par
 // la pente des vainqueurs (temps en km-effort à la puissance 1,2, la plus juste pour un même coureur) ; sa bande et un
 // chrono estimé à 6 % près. Réserve quand les deux courses sont très différentes, ou au-delà d'une nuit.
@@ -251,11 +265,14 @@ export type CourseReference = { km: string; dplus: string; temps: string };
 
 // LA PORTE DE L'ULTRA (audit de la programmation trail du 30/10/2026, P2) : l'ultra et le Trail Long de plus de 10 h
 // demandent une course terminée ces deux dernières années, d'au moins la moitié du km-effort visé ; l'API la vérifie.
-// Le minimum en km-effort, ou null quand la course n'en demande pas (et pour le coach, qui juge).
+// S14 (décision coach du 05/11/2026, « A » ; audit G-13) : dès que le temps visé dépasse 10 h, QUEL QUE SOIT LE FORMAT
+// (un Trail Marathon de 15 h d'un débutant compris) ; l'ultra la demande toujours. Le refus est celui du moteur, que le
+// questionnaire affiche tel quel. Le minimum en km-effort, ou null quand la course n'en demande pas (et pour le coach,
+// qui juge).
 export function referenceExigee(c: Champs, config: ConfigPlan, coach = false): number | null {
   const porte = config.porte_ultra;
   const h = lireTemps(c.temps_cible ?? '');
-  if (coach || !porte || !(c.format === 'UT' || (c.format === 'TL' && h !== null && h > porte.temps_tl_h))) return null;
+  if (coach || !porte || !(c.format === 'UT' || (h !== null && h > porte.temps_tl_h))) return null;
   const ke = kmEffort(c.distance_km, c.dplus_m);
   return ke > 0 ? Math.ceil(ke * porte.part_min) : null;
 }
@@ -341,7 +358,26 @@ export function dureeConseillee(c: Champs, config: ConfigPlan, durees: number[],
 export function dureesProposees(c: Champs, config: ConfigPlan, aujourdhui = new Date()): number[] {
   const possibles = dureesPossibles(c, config);
   const colle = dureeConseillee(c, config, possibles, aujourdhui);
-  return colle === null ? possibles : possibles.filter((m) => m <= colle);
+  const proposees = colle === null ? possibles : possibles.filter((m) => m <= colle);
+  return troisMoisEnPlus(c, config, aujourdhui) ? [3, ...proposees.filter((m) => m !== 3)] : proposees;
+}
+
+// LE 3 MOIS POUR UNE COURSE DE 4 À 8 H (S15, décision coach du 05/11/2026, « A » ; audit G-12, I8) : une course de 4 à
+// 8 h ne se prépare pas en 3 mois, sauf quand le 4 mois serait rejoint au-delà de sa semaine 2, c'est-à-dire plus de 14
+// jours de la formule de 4 mois déjà écoulés le jour de l'achat (Paris) : le 3 mois, qui commence alors entier ou presque,
+// est AUSSI proposé, moins cher que le 4 mois rejoint en route. La même règle que le moteur (CONTRAT_API_CTS.md, la
+// vérification et le checkout l'acceptent). Seulement si le format a un 3 mois et que le temps visé admet le 4 mois.
+export const JOURS_ECOULES_TROIS_MOIS = 14;
+export function troisMoisEnPlus(c: Champs, config: ConfigPlan, aujourdhui = new Date()): boolean {
+  const h = lireTemps(c.temps_cible ?? '');
+  const bornes = config.bandes_temps_cible?.bornes_h;
+  if (h === null || !bornes || bornes.length < 3 || !(h >= bornes[1] && h < bornes[2])) return false;
+  const possibles = dureesPossibles(c, config);
+  if (!(config.durees_par_format[c.format] ?? []).includes(3) || possibles.includes(3) || !possibles.includes(4)) return false;
+  const quatre = debutFormule(c, config, 4, aujourdhui);
+  if (!quatre) return false;
+  const ecoules = Math.round((midiUtc(aujourdhuiIso(aujourdhui)).getTime() - midiUtc(quatre.debut).getTime()) / JOUR_MS);
+  return ecoules > JOURS_ECOULES_TROIS_MOIS;
 }
 
 const JOUR_MS = 86_400_000;

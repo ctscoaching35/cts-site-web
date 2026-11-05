@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { compterEtape, porteDuRefus } from '@/lib/mesure';
 import clsx from 'clsx';
 import { estimerChrono } from '@/lib/app/route';
-import { alerteSortieLongue, API_URL, avertissements, type Champs, champsVides, type ConfigPlan, courseTropProche, debutFormule, dureeCocheeDOffice, dureesProposees, formatDepuisDistance, MESSAGE_COURSE_TROP_PROCHE, formatOuvert, intakePourApi, noteFormat, placementReference, referenceExigee, plancherSeances, reperesChrono, FORMATS_ROUTE, textes, type CourseReference } from '@/lib/plan';
+import { alerteSortieLongue, API_URL, avertissements, type Champs, champsVides, type ConfigPlan, courseTropProche, debutFormule, dureeCocheeDOffice, dureesProposees, formatDepuisDistance, MESSAGE_COURSE_TROP_PROCHE, formatOuvert, intakePourApi, noteFormat, PHRASE_TEMPS_DE_TETE, placementReference, referenceExigee, plancherSeances, reperesChrono, FORMATS_ROUTE, tempsDeTete, textes, type CourseReference } from '@/lib/plan';
 
 const NOMS_JOURS: Record<string, string> = {
   lundi: 'Lundi', mardi: 'Mardi', mercredi: 'Mercredi', jeudi: 'Jeudi',
@@ -233,7 +233,10 @@ export default function Questionnaire({
   const avecReference = (x: ReturnType<typeof intakePourApi>) =>
     reference.km.trim() ? { ...x, reference_km: reference.km, reference_dplus: reference.dplus || '0' } : x;
   const alerteSl = config ? alerteSortieLongue(c, config) : null;
-  const alertes = useMemo(() => (config ? avertissements(c, config) : []), [c, config]);
+  // J9 (audits du 05/11/2026, G-14 ; dans l'esprit de P4) : le conseil propre au cœur redit au récapitulatif quand la
+  // réponse est « oui », sans case de plus : un avertissement avec une raison de sécurité. La réponse reste sur la page.
+  const alertes = useMemo(() => (config ? [...(!coach && c.coeur === 'oui' ? [textes.sante.conseilCoeur] : []), ...avertissements(c, config)] : []),
+    [c, config, coach]);
   // Les portes (audit de la programmation trail du 30/10/2026, P6) : celles qui bloquent avant l'envoi, une fois par
   // visite ; pas pour le coach.
   const formatFerme = Boolean(config && c.format && c.niveau && !formatOuvert(c, config, coach));
@@ -704,6 +707,10 @@ export default function Questionnaire({
           <label className={labelCls} htmlFor="temps">{route ? 'Chrono visé' : 'Temps cible'}</label>
           <input id="temps" className={inputCls} required={!chronoEstime}
             placeholder={chronoEstime ? `estimé : ${chronoEstime}` : infoRoute ? `ex. ${infoRoute.exemple}` : 'ex. 5h30'} value={c.temps_cible} onChange={(e) => maj('temps_cible')(e.target.value)} />
+          {/* S13 (décision coach du 05/11/2026) : sous la borne « élite » des repères, une phrase, sans case ni refus. */}
+          {!coach && !route && tempsDeTete(c) && (
+            <p role="status" className="bg-sand rounded-r-xl border-l-4 border-[#E3A23B] px-4 py-3 mt-2 text-[0.8125rem] text-indigo leading-relaxed">{PHRASE_TEMPS_DE_TETE}</p>
+          )}
           {reperes && !route && <p className="text-sm text-teal mt-2 leading-relaxed">{reperes}</p>}
           {!route && (
             <details className="mt-3" open={Boolean(reference.km || reference.temps || refMin)}>
@@ -720,7 +727,7 @@ export default function Questionnaire({
               </div>
               <p className={aideCls}>
                 {refMin
-                  ? `Un ultra ou un trail long de plus de 10 h se prépare après une course plus courte déjà terminée : elle doit valoir au moins ${refMin} km-effort (km + D+/100), la moitié de celle-ci. Elle n’est pas gardée.`
+                  ? `Un ultra, ou une course visée en plus de 10 h, se prépare après une course plus courte déjà terminée : elle doit valoir au moins ${refMin} km-effort (km + D+/100), la moitié de celle-ci. Elle n’est pas gardée.`
                   : 'Elle situe le coureur dans une bande, ramenée à la taille de cette course ; elle n’est pas gardée.'}
               </p>
             </details>
@@ -860,9 +867,7 @@ export default function Questionnaire({
             éducation en ligne avant la course ont réduit de 64 % les incidents graves (SAFER VIII, 153 208 partants). */}
         {c.coeur === 'oui' && (
           <p role="status" className="rounded-r-xl border-l-4 border-teal bg-sand p-4 text-[0.875rem] text-indigo leading-relaxed">
-            Avant de commencer, montre ces signes à ton médecin : ils méritent un avis avant une préparation, et un bilan
-            avec un test d’effort te dira si tu peux t’entraîner sans risque. Tant qu’ils reviennent, arrête-toi et ne force
-            jamais au travers.
+            {textes.sante.conseilCoeur}
           </p>
         )}
       </Section>}
