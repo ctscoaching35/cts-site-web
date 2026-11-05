@@ -237,7 +237,6 @@ function questionnaires(a: Athlete): Ligne[] {
         { question: QUESTIONNAIRE_SEMAINE.items[0].question, value: ((c.jours_disponibles ?? []) as string[]).map((x) => JOURS.indexOf(x)) },
         { question: QUESTIONNAIRE_SEMAINE.items[1].question, value: JOURS.indexOf(String(c.jour_sl)) },
         { question: QUESTIONNAIRE_SEMAINE.items[2].question, value: Number(c.freq_hebdo) },
-        { question: QUESTIONNAIRE_SEMAINE.items[3].question, value: false },
       ],
     };
   });

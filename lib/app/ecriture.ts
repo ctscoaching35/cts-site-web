@@ -42,6 +42,9 @@ import { derniereActivite, garderLesSignaux } from './signauxGardes';
 import { demonstrationCoachOuverte, moteurDemonstration } from './demonstrationCoach';
 import { enTetesMoteur } from './cleMoteur';
 import { signaux } from './signauxSuivi';
+import { JOURS_DERNIERE_REPONSE, QUESTIONNAIRE_SEMAINE, questionnaireDeLaSemaine, type Questionnaire } from './questionnaireSamedi';
+
+export { QUESTIONNAIRE_SEMAINE, type Questionnaire };
 import { seuilsSuivi } from './suivi';
 import type { FamilleLue, ProfilLu } from './classement';
 
@@ -57,9 +60,11 @@ export type Objectif = Cible & {
 export type RetourSeance = {
   id: string; date: string; faite: boolean; duree_min: number | null; rpe: number | null; ressenti: number | null; dplus_m: number | null;
 };
-export type Questionnaire = { jours: string[]; jour_sl: string | null; nb_seances: number | null; arret: boolean };
 export type Retours = {
   seances: RetourSeance[]; hooper: { date: string; valeur: number }[]; questionnaire?: Questionnaire; nolio?: SemaineNolio;
+  // S11 : le jour de la réponse au questionnaire du samedi qui sert (celle de la semaine, ou la dernière, plus ancienne) ;
+  // pour « Ce qu'il a lu » du coach. Le moteur ne la lit pas.
+  questionnaire_du?: string;
   // La continuité (audit du 30/10/2026) : les séances faites des 4 dernières semaines, classées par leur structure.
   lues?: SeanceLue[];
 };
@@ -102,22 +107,6 @@ export type Realise = {
 export const TRAME = 'trame';
 const QUESTIONNAIRES = 'questionnaires';
 const COULEUR_NOTE = '#0C6E5F';
-const JOURS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
-const LIBELLES = JOURS.map((j) => j[0].toUpperCase() + j.slice(1));
-// Le questionnaire du samedi (décision coach du 19/10/2026, question 13 ; le samedi depuis le 24/10/2026, pour laisser
-// le week-end), lu par le passage du dimanche soir : quatre questions courtes. Sans `order` :
-// Nolio le compte à partir de 0 et le déduit de la place dans la liste (refus du 19/10/2026, essai sur « (toi) »).
-export const QUESTIONNAIRE_SEMAINE = {
-  name: 'Ta semaine prochaine',
-  description: 'Une minute, d’ici dimanche 18 h : tes séances de la semaine prochaine s’écrivent dimanche soir à partir de tes réponses.',
-  items: [
-    { question: 'Quels jours peux-tu courir la semaine prochaine ?', type: 'multiple_choices', is_mandatory: true,
-      choices: { choices: LIBELLES } },
-    { question: 'Quel jour pour ta sortie longue ?', type: 'unique_choice', is_mandatory: true, choices: { choices: LIBELLES } },
-    { question: 'Combien de séances veux-tu faire ?', type: 'number', is_mandatory: true, unit: 'séances' },
-    { question: 'As-tu dû arrêter de courir cette semaine (blessure, maladie) ?', type: 'boolean', is_mandatory: true },
-  ],
-};
 
 // ─── L'objectif ───────────────────────────────────────────────────────────
 
@@ -241,20 +230,6 @@ export const indiceHooper = () => {
   return hooperItem;
 };
 
-// Une réponse du questionnaire du samedi, lue dans Nolio (une réponse de la semaine, samedi ou dimanche).
-function lireQuestionnaire(items: { question: string; value: unknown }[]): Questionnaire | undefined {
-  const reponse = (n: number) => items.find((i) => i.question === QUESTIONNAIRE_SEMAINE.items[n].question)?.value;
-  const jours = reponse(0);
-  if (!Array.isArray(jours)) return undefined;
-  // Nolio rend un choix par son rang, de 0 (lundi) à 6 (dimanche) — vu le 25/10/2026 sur le compte du coach : [1, 3, 6]
-  // pour mardi, jeudi, dimanche ; jusque-là les jours cochés se perdaient et le moteur reprenait ceux du profil. Un nom
-  // reste lu.
-  const jour = (v: unknown) => (typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < JOURS.length ? JOURS[v]
-    : typeof v === 'string' && JOURS.includes(v.toLowerCase()) ? v.toLowerCase() : null);
-  const nb = Number(reponse(2));
-  return { jours: jours.map(jour).filter((x): x is string => Boolean(x)), jour_sl: jour(reponse(1)),
-    nb_seances: Number.isFinite(nb) && nb > 0 ? Math.round(nb) : null, arret: reponse(3) === true || reponse(3) === 'true' };
-}
 
 // Ce que le moteur juge : les séances faites (reliées à leur jour du plan par l'envoi), le Hooper, le questionnaire, et
 // la semaine telle qu'elle est dans Nolio (« Nolio fait foi »). Rien n'est gardé : le moteur en tire ce qu'il garde dans
@@ -312,9 +287,11 @@ export async function lireRetours(o: Objectif, du: string, au: string, garder?: 
   garder?.({ planifiees, reels, hooper: valeursHooper });
   // Les réponses envoyées seulement (is_confirmed) : Nolio liste aussi les questionnaires ouverts et pas envoyés, aux
   // valeurs de brouillon (25/10/2026 : un « 3 » lu « −6 » avant l'envoi).
+  // S11 (décision coach du 05/11/2026, audit A-18) : sans réponse cette semaine, la semaine s'écrit sur les jours de sa
+  // DERNIÈRE réponse, plus ceux de l'achat : les 8 dernières semaines sont lues en une fois (questionnaireDeLaSemaine).
   const resultats = (await listeNolio<{ id: string; name?: string; date_start: string; is_confirmed?: boolean; items: { question: string; value: unknown }[] }>(
-    `real/quiz_results/?date_from=${ajouterJours(au, -6)}&date_to=${au}${qui}`).catch(() => [])).filter((r) => r.is_confirmed !== false);
-  const dernier = resultats.filter((r) => r.name === QUESTIONNAIRE_SEMAINE.name).sort((a, b) => b.date_start.localeCompare(a.date_start))[0];
+    `real/quiz_results/?date_from=${ajouterJours(au, -JOURS_DERNIERE_REPONSE)}&date_to=${au}${qui}`).catch(() => [])).filter((r) => r.is_confirmed !== false);
+  const reponse = questionnaireDeLaSemaine(resultats, au, String(o.parametres.declaree_le ?? ''));
   const minutes = (d: { value?: number } | null | undefined) => (typeof d?.value === 'number' ? Math.round(d.value / 60) : null);
   const rpe = (x: unknown) => (typeof x === 'number' ? x : null);
   // Course ou trail, dans la période, hors jours de course (la course n'est pas une charge d'entraînement).
@@ -353,9 +330,10 @@ export async function lireRetours(o: Objectif, du: string, au: string, garder?: 
     console.error(`Séances lues de ${o.planId} :`, e instanceof Error ? e.message : e);
     return undefined;
   }) : undefined;
-  return { seances, hooper, nolio: { prevues, ajoutees }, ...(dernier ? { questionnaire: lireQuestionnaire(dernier.items) } : {}),
-    ...(lues ? { lues } : {}) };
+  return { seances, hooper, nolio: { prevues, ajoutees },
+    ...(reponse ? { questionnaire: reponse.questionnaire, questionnaire_du: reponse.du } : {}), ...(lues ? { lues } : {}) };
 }
+
 
 // ─── Écrire et envoyer ────────────────────────────────────────────────────
 

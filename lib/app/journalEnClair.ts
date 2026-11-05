@@ -17,15 +17,19 @@ export type Dose = { date?: string; minutes?: number; reps?: number; bloc_min?: 
 export const dose = (d: Dose) => (d.reps && d.reps > 1 ? `${d.reps} × ${d.bloc_min} min` : `${Math.round(d.minutes ?? 0)} min`);
 
 // Les réponses du questionnaire du samedi, en clair (décision coach du 01/11/2026) : Nolio affiche les cases du choix multiple
-// toujours vides, même cochées ; le site les lit par leur rang et les montre ici.
-export function reponsesDuSamedi(q: Questionnaire | undefined): string {
+// toujours vides, même cochées ; le site les lit par leur rang et les montre ici. du : le jour de la réponse ; ancienne :
+// pas de réponse cette semaine, ce sont les jours de la dernière (S11, décision coach du 05/11/2026).
+export function reponsesDuSamedi(q: Questionnaire | undefined, du?: string, ancienne = false): string {
   if (!q) return 'Pas de réponse au questionnaire du samedi : le moteur reprend ses jours habituels.';
+  if (ancienne) {
+    const nom = (j: string) => j[0].toUpperCase() + j.slice(1);
+    return `Pas de réponse au questionnaire de cette semaine : le moteur reprend les jours de sa dernière réponse${du ? `, du ${jourMois(du)}` : ''} (${q.jours.map(nom).join(', ')}${q.jour_sl ? ` ; sortie longue le ${q.jour_sl}` : ''}), sans son nombre de séances.`;
+  }
   const nom = (j: string) => j[0].toUpperCase() + j.slice(1);
   const morceaux = [
     q.jours.length ? q.jours.map(nom).join(', ') : 'aucun jour coché lisible',
     q.jour_sl ? `sortie longue le ${q.jour_sl}` : null,
     q.nb_seances ? `${q.nb_seances} séance${q.nb_seances > 1 ? 's' : ''}` : null,
-    q.arret ? 'un arrêt signalé' : 'pas d’arrêt',
   ].filter(Boolean);
   return `Ses réponses du samedi : ${morceaux.join(' ; ')}.`;
 }

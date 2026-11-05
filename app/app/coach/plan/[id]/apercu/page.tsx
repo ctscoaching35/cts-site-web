@@ -8,7 +8,7 @@ import { apercuDuDimanche } from '@/lib/app/ecriture';
 import { dose, enClair, FAMILLE, reponsesDuSamedi } from '@/lib/app/journalEnClair';
 import PourquoiSemaine from '@/components/app/PourquoiSemaine';
 import { exigerCoach } from '@/lib/app/nolio';
-import { dateLongue, jourMois } from '@/lib/app/plan';
+import { ajouterJours, aujourdhuiIso, dateLongue, jourMois } from '@/lib/app/plan';
 import { enHeures } from '@/lib/app/tableau';
 import type { Realise } from '@/lib/app/ecriture';
 import { espaceCoachOuvert } from '@/lib/app/supabase';
@@ -126,7 +126,8 @@ export default async function ApercuDimanche({ params }: { params: Promise<{ id:
               <span className="text-xs text-[#5E5C78]">Ouvrir <span aria-hidden className="inline-block group-open:rotate-90">›</span></span>
             </summary>
             <div className="mt-3 space-y-2">
-              {a?.retours && <p className="text-sm text-[#3B3957]">{reponsesDuSamedi(a.retours.questionnaire)}</p>}
+              {a?.retours && <p className="text-sm text-[#3B3957]">{reponsesDuSamedi(a.retours.questionnaire, a.retours.questionnaire_du,
+                Boolean(a.retours.questionnaire_du && a.retours.questionnaire_du < ajouterJours(aujourdhuiIso(), -6)))}</p>}
               {r && (
                 <p className="text-sm text-[#3B3957]">
                   Semaine écoulée : {semaineEcoulee(r)}{r.rpe_lu ? '' : ' (sans RPE lu : la charge compte le RPE prévu)'}.
