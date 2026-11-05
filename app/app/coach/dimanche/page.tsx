@@ -34,7 +34,7 @@ const estFond = (plan: Record<string, unknown>) => Boolean((plan.parametres as {
 function LigneListe({ nom, course, pourquoi, partie, planId }: { nom: string; course: string; pourquoi?: string; partie: boolean; planId: string }) {
   return (
     <li className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2.5 border-t first:border-t-0 border-indigo/[0.07]">
-      <div className="min-w-0 flex-[1_1_220px] text-sm">
+      <div className="min-w-0 flex-[1_1_160px] text-sm">
         <span className="font-bold">{nom}</span>
         <span className="text-[#4A4866]"> · {course}{pourquoi ? ` · ${pourquoi}` : ''}</span>
         {partie && <span className="ml-2 text-[0.6875rem] font-bold px-2 py-0.5 rounded-full bg-[#E3EFE9] text-[#22604F] whitespace-nowrap">Partie dans Nolio</span>}

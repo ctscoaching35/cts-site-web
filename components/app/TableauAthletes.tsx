@@ -37,6 +37,8 @@ export default function TableauAthletes({ athletes, signalDe, jour, filtre, base
   const lignes = athletes.filter((a) => filtre === 'tous' || categorie(a, jour) === filtre);
   // La semaine des chiffres (décision 2A du coach, 05/11/2026) : la dernière complète, du lundi d'avant au dimanche qui le suit.
   const lundi = ajouterJours(jour, -((new Date(`${jour}T12:00:00Z`).getUTCDay() + 6) % 7));
+  // « 1er nov. » finit déjà par son point ; « 1er mai », non.
+  const dimanche = dateAbregee(ajouterJours(lundi, -1));
   return (
     <Carte className="!p-5 !pb-2">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -63,7 +65,7 @@ export default function TableauAthletes({ athletes, signalDe, jour, filtre, base
             </div>
             {/* BROUILLON (05/11/2026, à valider) */}
             <p className="py-1.5 text-[0.72rem] text-[#5E5C78] border-b border-indigo/[0.06]">
-              Séances, charge tenue et Hooper : semaine du {dateAbregee(ajouterJours(lundi, -7))} au {dateAbregee(ajouterJours(lundi, -1))}.
+              Séances, charge tenue et Hooper : semaine du {dateAbregee(ajouterJours(lundi, -7))} au {dimanche}{dimanche.endsWith('.') ? '' : '.'}
             </p>
             {lignes.map((a) => <Ligne key={a.id} a={a} signal={signalDe.get(a.nom) ?? RIEN} jour={jour} />)}
           </div>
@@ -85,7 +87,7 @@ function Signal({ signal }: { signal: SignalAthlete }) {
     <>
       {etiquette}
       {signal.detail && (
-        <span className="mt-1 block text-[0.72rem] leading-snug text-[#5E5C78] line-clamp-2 group-hover:text-indigo group-hover:underline">{signal.detail}</span>
+        <span className="mt-1 text-[0.72rem] leading-snug text-[#5E5C78] line-clamp-2 group-hover:text-indigo group-hover:underline">{signal.detail}</span>
       )}
     </>
   );
