@@ -120,14 +120,16 @@ export const offer = {
   },
 };
 
+// Les témoignages de l'accueil (4A, décision coach du 05/11/2026 au soir ; audits du 05/11/2026, T3) : de vrais retours de
+// coachés, dont le coach garde l'accord écrit ; le titre dit qu'ils ont suivi le coaching individualisé (ils parlent de
+// lui, juste sous le bloc de la Préparation CTS) ; plus de photo : celles d'avant montraient les coachs.
 export const testimonials = {
   eyebrow: 'Ils nous ont fait confiance',
-  title: 'Trois trajectoires. Une même méthode.',
+  title: 'Ils ont suivi le coaching individualisé',
   items: [
     {
       initial: 'M.',
       meta: '34 ans · Paris',
-      photo: '/lifestyle/IMG_5687.jpeg',
       quote:
         'Je tournais sur le bitume depuis des années. Avec CTS, j’ai appris à courir en nature, à lire un dénivelé, à doser. Un an plus tard, premier trail finisher — sans douleur, sans appréhension.',
       result: 'De la route au trail, en confiance',
@@ -135,7 +137,6 @@ export const testimonials = {
     {
       initial: 'L.',
       meta: '41 ans · Nantes',
-      photo: '/lifestyle/IMG_5694.jpeg',
       quote:
         'Trois ans de blessures à répétition. Juliette et Romain ont structuré chaque semaine — charge, récupération, renfo ciblé. Aujourd’hui je cours plus, mieux, et le corps suit.',
       result: 'Sortie d’un cycle de blessures',
@@ -143,7 +144,6 @@ export const testimonials = {
     {
       initial: 'A.',
       meta: '38 ans · Lyon',
-      photo: '/lifestyle/IMG_5705.jpeg',
       quote:
         'Mon premier ultra, je l’ai construit avec eux pendant 10 mois. Plan ajusté chaque semaine, fiches renfo en vidéo, réponses sur WhatsApp à toute heure. Rien n’a été laissé au hasard.',
       result: 'Premier ultra accompagné de bout en bout',

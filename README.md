@@ -100,7 +100,7 @@ Toutes les photos sont dans `public/`. Pour remplacer une photo :
    ou modifie `hero.background` dans `lib/content.ts`.
 2. **Coachs** : modifie `about.juliette.photo` et `about.romain.photo`
    dans `lib/content.ts`.
-3. **Témoignages** : modifie `testimonials.items[i].photo` dans `lib/content.ts`.
+3. **Témoignages** : sans photo (l'initiale dans un cercle) ; le texte est dans `testimonials.items` de `lib/content.ts`.
 4. **Posts Instagram** : modifie `instagram.posts` (tableau de 6 chemins) dans `lib/content.ts`.
 
 Les images sont automatiquement optimisées (AVIF/WebP) par Next.js — pas besoin de pré-traitement.
@@ -212,7 +212,7 @@ Pour tester : `npm run build && npm run start`, puis Lighthouse sur Chrome DevTo
 ## Notes éditoriales
 
 - Le formulaire de contact est en `mailto:` — pas de backend, le client mail s'ouvre avec le contenu pré-rempli. Pour passer à un service hébergé, voir **Formspree** (`<form action="https://formspree.io/f/xxxx" method="POST">`) ou **Resend** (route API).
-- Les **témoignages** sont de vrais retours de coachés, anonymisés (M., L., A.).
+- Les **témoignages** sont de vrais retours de coachés du coaching individualisé, anonymisés (M., L., A.) ; leur accord écrit est gardé par le coach.
 - Les **6 posts Instagram** affichés sont des photos terrain en placeholder. Quand de vraies captures de posts seront disponibles, dépose-les dans `public/instagram/` et met à jour `instagram.posts` dans `lib/content.ts`.
 
 ---

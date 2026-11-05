@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import clsx from 'clsx';
 import Reveal from './Reveal';
 import { testimonials } from '@/lib/content';
@@ -38,18 +37,10 @@ export default function Testimonials() {
                   i === 1 && 'md:translate-y-6'
                 )}
               >
-                {/* En-tête : avatar silhouette + meta */}
+                {/* En-tête : l'initiale dans un cercle + meta. Sans photo (4A, décision coach du 05/11/2026 au soir) :
+                    celles d'avant, floutées, montraient les coachs. */}
                 <header className="flex items-center gap-4 mb-8 pb-6 border-b border-indigo/10">
-                  <div className="relative w-14 h-14 rounded-full overflow-hidden ring-2 ring-teal/30 flex-shrink-0">
-                    <Image
-                      src={t.photo}
-                      alt=""
-                      fill
-                      sizes="56px"
-                      className="object-cover blur-[3px] scale-110"
-                      aria-hidden="true"
-                    />
-                    <div className="absolute inset-0 bg-indigo/30" />
+                  <div className="relative w-14 h-14 rounded-full overflow-hidden ring-2 ring-teal/30 flex-shrink-0 bg-indigo">
                     <div className="absolute inset-0 flex items-center justify-center text-white text-base font-extrabold tracking-wider">
                       {t.initial}
                     </div>
