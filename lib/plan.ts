@@ -356,21 +356,22 @@ export function dureesProposees(c: Champs, config: ConfigPlan, aujourdhui = new 
 }
 
 // LE 3 MOIS POUR UNE COURSE DE 4 À 8 H (S15, décision coach du 05/11/2026, « A » ; audit G-12, I8) : une course de 4 à
-// 8 h ne se prépare pas en 3 mois, sauf quand le 4 mois serait rejoint au-delà de sa semaine 2, c'est-à-dire plus de 14
-// jours de la formule de 4 mois déjà écoulés le jour de l'achat (Paris) : le 3 mois, qui commence alors entier ou presque,
-// est AUSSI proposé, moins cher que le 4 mois rejoint en route. La même règle que le moteur (CONTRAT_API_CTS.md, la
-// vérification et le checkout l'acceptent). Seulement si le format a un 3 mois et que le temps visé admet le 4 mois.
-export const JOURS_ECOULES_TROIS_MOIS = 14;
+// 8 h ne se prépare pas en 3 mois, sauf quand le 4 mois serait rejoint au-delà de sa semaine 2, c'est-à-dire en semaine
+// 3 ou plus tard : le 3 mois, qui commence alors entier ou presque, est AUSSI proposé, moins cher que le 4 mois rejoint en
+// route. Seulement si le format a un 3 mois et que le temps visé admet le 4 mois.
+// La semaine rejointe est celle de debutFormule, comme ce que l'acheteur lit sous chaque durée : ses séances partent du
+// lendemain de l'achat (Paris), rejointe = floor((lendemain − lundi de la semaine 1) / 7) + 1. Semaine 3 ou plus : 14
+// jours ou plus entre le lendemain de l'achat et le lundi de la semaine 1 du 4 mois. Le seuil de /v1/config,
+// trois_mois_si_quatre_rejoint_au_dela_j (14), a ce sens depuis le moteur 8.453, la même formule (correction d'écart du
+// 05/11/2026 au soir : avant, plus de 14 jours écoulés le jour de l'achat, soit un achat le dimanche refusé jusqu'au mardi).
+export const SEMAINE_REJOINTE_TROIS_MOIS = 3;
 export function troisMoisEnPlus(c: Champs, config: ConfigPlan, aujourdhui = new Date()): boolean {
   const h = lireTemps(c.temps_cible ?? '');
   const bornes = config.bandes_temps_cible?.bornes_h;
   if (h === null || !bornes || bornes.length < 3 || !(h >= bornes[1] && h < bornes[2])) return false;
   const possibles = dureesPossibles(c, config);
   if (!(config.durees_par_format[c.format] ?? []).includes(3) || possibles.includes(3) || !possibles.includes(4)) return false;
-  const quatre = debutFormule(c, config, 4, aujourdhui);
-  if (!quatre) return false;
-  const ecoules = Math.round((midiUtc(aujourdhuiIso(aujourdhui)).getTime() - midiUtc(quatre.debut).getTime()) / JOUR_MS);
-  return ecoules > JOURS_ECOULES_TROIS_MOIS;
+  return (debutFormule(c, config, 4, aujourdhui)?.rejointe ?? 0) >= SEMAINE_REJOINTE_TROIS_MOIS;
 }
 
 const JOUR_MS = 86_400_000;
