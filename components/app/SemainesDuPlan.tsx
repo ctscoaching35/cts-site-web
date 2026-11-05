@@ -35,14 +35,14 @@ export default function SemainesDuPlan({ trame, jour, course }: { trame: LigneTr
       <li key={l.numero} className="border-t border-indigo/[0.06] first:border-t-0">
         <details open={moment === 'encours'} className="group">
           <summary className="cursor-pointer list-none min-h-11 py-2.5 flex items-center justify-between gap-3">
-            <span className="min-w-0 flex items-start gap-2">
+            <span className="min-w-0 flex-1 flex items-start gap-2">
               {moment === 'passee' && (
                 <svg viewBox="0 0 24 24" className="mt-0.5 w-4 h-4 shrink-0" fill="none" stroke="#0C6E5F" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <path d="M5 12.5 10 17 19 7" />
                 </svg>
               )}
               <span className="min-w-0">
-                <span className="block text-sm font-bold text-indigo">
+                <span className="block text-sm font-bold text-indigo whitespace-nowrap">
                   Semaine {l.numero.replace('S', '')}<span className="sr-only">{moment === 'passee' ? ', faite' : moment === 'encours' ? ', en cours' : ''}</span>
                 </span>
                 <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -51,7 +51,7 @@ export default function SemainesDuPlan({ trame, jour, course }: { trame: LigneTr
                 </span>
               </span>
             </span>
-            <span className="shrink-0 flex items-center gap-2 text-xs font-semibold">
+            <span className="shrink-0 max-w-[48%] flex flex-wrap items-center justify-end gap-x-2 gap-y-0.5 text-right text-xs font-semibold">
               <span style={{ color: deCourse ? '#0C6E5F' : BANNIERE[l.type] ?? '#4F6F69' }}>{deCourse ? 'Semaine de course' : typeEnClair(l.type)}</span>
               <span className="text-indigo tabular-nums whitespace-nowrap">{enHeures(Math.round(l.volume_h * 60))}{deCourse ? ' + ta course' : ''}</span>
               <span aria-hidden className="text-[#5E5C78] inline-block group-open:rotate-90">›</span>
