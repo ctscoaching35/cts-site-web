@@ -48,6 +48,7 @@ import { JOURS_DERNIERE_REPONSE, QUESTIONNAIRE_SEMAINE, questionnaireDeLaSemaine
 export { QUESTIONNAIRE_SEMAINE, type Questionnaire };
 import { seuilsSuivi } from './suivi';
 import type { FamilleLue, ProfilLu } from './classement';
+import { messageDoublon, objectifQuiCouvre } from './departs';
 
 export type Etat = Record<string, unknown>;
 // compteAthlete : le compte d'un coaché invité dans l'app (T6) ; ses gestes (une course, le veto) valent comme ceux du
@@ -729,6 +730,16 @@ export async function demarrerObjectif(planId: string, { prevenir = true, lundi,
   const premiere = prevu ? o.plan.semaines.find((s) => s.lundi && ajouterJours(s.lundi, 6) >= prevu.prevu) : debutReel;
   if (!premiere?.lundi) throw new Error('La course est passée.');
   const depart = prevu ? prevu.prevu : jourDeDepart;
+  // LE GARDE-FOU DES DÉPARTS EN DOUBLE (05/11/2026 au soir, lib/app/departs.ts) : un autre objectif du même athlète déjà
+  // démarré (ou parti plus tôt au même passage : departsDuJour les prend un par un) dont les semaines couvrent celle qui
+  // partirait. OM4 a déjà reprogrammé, plus haut, un objectif plus lointain après la récupération d'un plus proche : ce
+  // refus ne touche que des courses de la même semaine (un doublon). Rien ne s'écrit ; le coach est prévenu une fois.
+  const couvre = objectifQuiCouvre(premiere.lundi, autres);
+  if (couvre) {
+    const message = messageDoublon(o.plan.athlete.nom || 'Un athlète', couvre.course_nom, o.plan.course.nom);
+    if (prevenir) await prevenirCoach('Deux objectifs partiraient la même semaine', message, o.coachId).catch(() => null);
+    throw new Error(message);
+  }
   // La reprise allégée : la première semaine écrite suit de près la récupération (pas une préparation qui commence des
   // semaines plus tard, QD2).
   const premier = premiere.lundi > depart ? premiere.lundi : depart;
@@ -977,8 +988,9 @@ async function dureeAuDepart(o: Objectif, depart: string) {
 }
 
 // Les autres objectifs écrits semaine par semaine du même athlète (sa fiche de coaché, ou son compte d'acheteur).
+// fond : une saison de fond (le garde-fou des départs en double ne la compte pas : elle s'arrête quand une préparation part).
 type Voisin = { id: string; course_nom: string; course_date: string; temps_h: number; demarre: boolean; debut: string | null;
-  format: string };
+  format: string; fond: boolean };
 async function autresObjectifs(o: Objectif): Promise<Voisin[]> {
   const service = clientService();
   const { data: coaching } = await service.from('coaching').select('plan_id, athlete_id');
@@ -993,12 +1005,13 @@ async function autresObjectifs(o: Objectif): Promise<Voisin[]> {
   }
   ids = ids.filter((id) => id !== o.planId);
   if (!ids.length) return [];
-  const { data } = await service.from('plans').select('id, course_nom, course_date, intake, demarre_le, debut:donnees->semaines->0->>lundi')
+  const { data } = await service.from('plans').select('id, course_nom, course_date, intake, demarre_le, debut:donnees->semaines->0->>lundi, fond:parametres->fond')
     .in('id', ids).not('parametres', 'is', null);
   return (data ?? []).map((p) => ({
     id: p.id as string, course_nom: p.course_nom as string, course_date: p.course_date as string,
     temps_h: heures((p.intake as Record<string, unknown> | null)?.temps_cible), demarre: Boolean(p.demarre_le),
     debut: (p.debut ?? null) as string | null, format: String((p.intake as Record<string, unknown> | null)?.format ?? ''),
+    fond: Boolean((p as { fond?: unknown }).fond),
   }));
 }
 
