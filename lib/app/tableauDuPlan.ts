@@ -176,7 +176,8 @@ export async function testVcNonRepropose(ctx: Contexte): Promise<boolean> {
   if (ctx.coache || ctx.sansObjectif || ctx.profil.vc_ms !== null) return false;
   if (ctx.demonstration) return Boolean(ctx.demo?.vcNonRepropose);
   const { data, error } = await clientService().from('semaines_ecrites').select('numero').eq('plan_id', ctx.cle)
-    .contains('journal', [{ regle: 'TN', test: 'vitesse_critique' }]).limit(1);
+    // Un tableau JSON en texte : supabase-js écrirait un tableau JavaScript en tableau Postgres (« {…} »), pas en jsonb.
+    .contains('journal', JSON.stringify([{ regle: 'TN', test: 'vitesse_critique' }])).limit(1);
   return !error && Boolean(data?.length);
 }
 
