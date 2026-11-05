@@ -19,7 +19,7 @@ export function CarteSombre({ children, className }: { children: React.ReactNode
 export function Surtitre({ children, ton = 'teal', as: Balise = 'h2' }: {
   children: React.ReactNode; ton?: 'teal' | 'clair' | 'ocre' | 'gris'; as?: 'h2' | 'h3' | 'div';
 }) {
-  const couleur = { teal: 'text-teal', clair: 'text-[#8FD1C3]', ocre: 'text-[#8A5E10]', gris: 'text-indigo/60' }[ton];
+  const couleur = { teal: 'text-teal', clair: 'text-[#8FD1C3]', ocre: 'text-[#8A5E10]', gris: 'text-[#5E5C78]' }[ton];
   return <Balise className={clsx('text-[0.6875rem] font-bold tracking-[0.14em] uppercase', couleur)}>{children}</Balise>;
 }
 

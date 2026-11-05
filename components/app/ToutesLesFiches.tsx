@@ -21,7 +21,7 @@ export default function ToutesLesFiches({ familles, suite }: { familles: Famille
         </svg>
         <span className="sr-only">Chercher une fiche</span>
         <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Chercher une fiche"
-          className="flex-1 bg-transparent outline-none text-sm text-indigo placeholder:text-[#8B89A3]" />
+          className="flex-1 bg-transparent outline-none text-sm text-indigo placeholder:text-[#5E5C78]" />
       </label>
       {cherche ? (
         <section className="space-y-2.5">
