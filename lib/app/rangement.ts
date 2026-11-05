@@ -242,3 +242,22 @@ export async function renvoyerLesConfirmations(): Promise<{ plan: string; quoi: 
   }
   return comptes;
 }
+
+// LES ACHATS GARDÉS 10 ANS, PUIS EFFACÉS (3A, décision coach du 05/11/2026 au soir ; la politique de confidentialité :
+// « la date, le montant payé et la référence du paiement, gardés 10 ans pour notre comptabilité »). Chaque jour, le
+// passage quotidien efface les lignes de la table achats payées il y a plus de 10 ans, d'après leur date de paiement
+// (achats.paye_le). Rien d'autre : ni compte, ni plan. Un plan encore là garde tout ; seul son lien à l'achat effacé se
+// vide (plans.achat_id, « on delete set null », migration du 07/10/2026), comme quand un compte s'efface avant son achat.
+// Sans bruit : une ligne au compte rendu du passage quand un achat part ou que l'effacement échoue, rien sinon.
+export const ANS_GARDE_ACHATS = 10;
+export function limiteDesAchats(maintenant = new Date()): string {
+  const limite = new Date(maintenant);
+  limite.setUTCFullYear(limite.getUTCFullYear() - ANS_GARDE_ACHATS);
+  return limite.toISOString();
+}
+export async function effacerLesAchatsEchus(maintenant = new Date()): Promise<{ plan: string; quoi: string; erreur?: string }[]> {
+  const { data, error } = await clientService().from('achats').delete().lt('paye_le', limiteDesAchats(maintenant)).select('id');
+  if (error) return [{ plan: '', quoi: `achats de plus de ${ANS_GARDE_ACHATS} ans non effacés`, erreur: error.message }];
+  const n = data?.length ?? 0;
+  return n ? [{ plan: '', quoi: `${n} achat${n > 1 ? 's' : ''} de plus de ${ANS_GARDE_ACHATS} ans effacé${n > 1 ? 's' : ''}` }] : [];
+}

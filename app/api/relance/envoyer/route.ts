@@ -3,11 +3,12 @@ import { programmerLesDimanches } from '@/lib/app/dimanchesCoaches';
 import { saisonsDuJour } from '@/lib/app/fond';
 import { passageQuotidienLeger, passageQuotidienLong, retirerLaTrameAuDela } from '@/lib/app/ecriture';
 import { envoyerRelancesDues } from '@/lib/app/relance';
-import { renvoyerLesConfirmations } from '@/lib/app/rangement';
+import { effacerLesAchatsEchus, renvoyerLesConfirmations } from '@/lib/app/rangement';
 import { supabaseConfigure } from '@/lib/app/supabase';
 
 // Le passage quotidien (vercel.json, crons) : les relances ; les comptes inactifs (E7 : avertis 30 jours avant,
-// supprimés 3 ans après leur dernière activité) ; l'écriture semaine par semaine (la fatigue du jour, les invitations
+// supprimés 3 ans après leur dernière activité) ; les achats de plus de 10 ans, effacés (3A, décision coach du
+// 05/11/2026) ; l'écriture semaine par semaine (la fatigue du jour, les invitations
 // Nolio à refaire, le résumé au coach). Vercel l'appelle avec le secret CRON_SECRET, saisi par le coach dans Vercel ;
 // sans lui, rien ne part.
 // X1 (audits du 05/11/2026, lot 2) : les appels légers d'abord — les relances, la confirmation de commande à renvoyer
@@ -27,6 +28,8 @@ export async function GET(request: Request) {
   const envoyees = await envoyerRelancesDues();
   // J1 (audits du 05/11/2026) : la confirmation de commande qui n'est pas partie, renvoyée (14 jours au plus).
   const confirmations = await renvoyerLesConfirmations().catch((e) => [{ plan: '', quoi: 'confirmations en échec', erreur: e instanceof Error ? e.message : String(e) }]);
+  // 3A : les achats gardés 10 ans pour la comptabilité, puis effacés (une requête, sans toucher aux comptes ni aux plans).
+  const achats = await effacerLesAchatsEchus().catch((e) => [{ plan: '', quoi: 'achats échus en échec', erreur: e instanceof Error ? e.message : String(e) }]);
   // Les invitations, les alertes, les départs, les semaines du dimanche à reprendre : avant tout le reste (X1).
   const leger = await passageQuotidienLeger().catch((e) => [{ plan: '', quoi: 'passage léger en échec', erreur: e instanceof Error ? e.message : String(e) }]);
   const comptesInactifs = await passerComptesInactifs();
@@ -41,5 +44,5 @@ export async function GET(request: Request) {
   const reste = Math.max(20_000, BUDGET_MS - (Date.now() - debut));
   const long = await passageQuotidienLong(reste).catch((e) => [{ plan: '', quoi: 'passage en échec', erreur: e instanceof Error ? e.message : String(e) }]);
   return Response.json({ envoyees, comptes_inactifs: comptesInactifs,
-    ecriture: [...confirmations, ...leger, ...dimanches, ...saisons, ...trames, ...long].map(({ plan, quoi, erreur }) => ({ plan, quoi, erreur: erreur ?? null })) });
+    ecriture: [...confirmations, ...achats, ...leger, ...dimanches, ...saisons, ...trames, ...long].map(({ plan, quoi, erreur }) => ({ plan, quoi, erreur: erreur ?? null })) });
 }
