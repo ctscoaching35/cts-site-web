@@ -251,7 +251,7 @@ export function ArreterPreparation({ planId, nom }: { planId: string; nom: strin
       <summary className="cursor-pointer inline-flex items-center min-h-11 font-semibold text-[#5E5C78] underline underline-offset-2">Arrêter cette préparation (remboursée)</summary>
       <form action={action} className="mt-1 space-y-2">
         <p className="text-[#4A4866] leading-relaxed">
-          La préparation de {nom} s’arrête : plus d’invitation ni de séance écrite, ce qui est encore à venir quitte son Nolio,
+          La préparation {/^[aeiouyhàâéèêëîïôûAEIOUYHÀÂÉÈÊÎÔÛ]/.test(nom) ? 'd’' : 'de '}{nom} s’arrête : plus d’invitation ni de séance écrite, ce qui est encore à venir quitte son Nolio,
           et il quitte ton équipe s’il n’y est que pour elle. Le remboursement, lui, se fait dans Stripe.
         </p>
         <button type="submit" disabled={enCours} className="min-h-11 px-3 rounded-lg border border-[#E2725B]/50 font-bold text-[#B5462F] disabled:opacity-50">
