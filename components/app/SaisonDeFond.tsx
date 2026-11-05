@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import clsx from 'clsx';
-import { Carte, CarteSombre, Surtitre } from './Ui';
+import { Carte, CarteSombre, Surtitre, BOUTON } from './Ui';
 import type { LigneTrame } from '@/lib/app/ecriture';
 import { ajouterJours, dateLongue, joursEntre, type Plan } from '@/lib/app/plan';
 
@@ -45,7 +45,8 @@ export function CarteSaison({ plan, ligne, jour, href }: { plan: Plan; ligne: Li
         {tests ? 'Vitesse critique et test de la parole : tes zones et ton profil à jour, et le thème de ta saison suivante.'
           : theme ? TRAVAIL[theme] ?? '' : 'Une saison pour progresser entre deux objectifs, un thème par bloc.'}
       </p>
-      <Link href={href} className="inline-flex items-center min-h-11 px-4 rounded-full bg-white text-indigo text-[0.8125rem] font-bold">
+      {/* Q4 (audits du 05/11/2026) : le bouton de l'app, comme « Voir ma préparation ». */}
+      <Link href={href} className={BOUTON}>
         Voir ma saison
       </Link>
     </CarteSombre>

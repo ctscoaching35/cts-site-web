@@ -166,10 +166,19 @@ const semaineDuCoach = (lundi: string): SeanceNolio[] => ([
 
 // « Ta semaine » lue dans Nolio, dans l'ordre de lib/app/tableauDuPlan.ts (lireSemaineNolio) : pas encore partie, sans
 // accord, Nolio muet, puis lue (telle que le moteur l'a écrite, retouchée par le coach, vide).
+// La récupération d'un acheteur après sa course, écrite dans Nolio (PL5, 04/11/2026) : des EF courtes, la semaine qui
+// suit la course (C32, audits du 05/11/2026 : « Ta semaine » reste affichée pendant la récupération).
+const semaineDeRecuperation = (lundi: string): SeanceNolio[] => ([
+  [1, 'EF plate', 30], [3, 'EF plate', 40], [5, 'EF vallonnée', 45],
+] as const).map(([j, nom, minutes]) => ({ id: `demo-recup-${j}`, date: ajouterJours(lundi, j), nom, minutes, couleur: FAMILLES.ef.filet }));
+
 export async function lectureDeDemonstration(ctx: Contexte, lundi: string, numero?: string): Promise<LectureNolio> {
   const demo = ctx.demo;
   if (!demo) return { seances: null, raison: 'demo' };
   const avantLeDepart = !ctx.sansObjectif && lundi < (ctx.plan.course.date_debut_plan ?? '');
+  if (!ctx.coache && !numero && demo.nolio === 'actif' && lundi > ctx.plan.course.date) {
+    return demo.accord ? { seances: semaineDeRecuperation(lundi), raison: 'lue' } : { seances: null, raison: 'sans_accord' };
+  }
   if (!ctx.coache && (!numero || demo.nolio !== 'actif')) return { seances: null, raison: 'pas_partie' };
   if (demo.semaine === 'pas_partie' && numero) return { seances: null, raison: 'pas_partie' };
   if (!demo.accord) return { seances: null, raison: 'sans_accord' };
@@ -248,10 +257,14 @@ export async function etatsDuBandeau(): Promise<GroupeDuBandeau[]> {
       t('Rien de prévu dans Nolio cette semaine', '/app', { ...n, semaine: 'vide' }),
       t('Nolio ne répond pas', '/app', { ...n, semaine: 'muet' }),
       t('Semaine pas encore partie dans Nolio', '/app', { ...n, semaine: 'pas_partie' }),
-      t('Semaine ajustée : fatigue', '/app', { ...n, semaine: 'fatigue' }),
+      // Q7 (05/11/2026 au soir) : « Semaine ajustée », d'après la semaine passée (le moteur) ou par le coach (un coaché).
+      t('Semaine ajustée : fatigue (« Semaine ajustée »)', '/app', { ...n, semaine: 'fatigue' }),
       t('Semaine ajustée : séance manquée', '/app', { ...n, semaine: 'manquee' }),
+      // Q14 : la ligne de la semaine d'un test ; sans accord, « Entrer mon résultat » (un acheteur).
       t('Semaine de test (première semaine, sans repère)', '/app', { ...c, jour: mardi(L4, L4.semaines.test?.numero) ?? ajouterJours(debut, 1), semaine: 'test' }),
-      t('Semaine avec un back-to-back (week-end choc)', '/app', { ...c, jour: mardi(L4, L4.semaines.choc?.numero) ?? normal, ...ex }),
+      ...(coache ? [] : [t('Semaine de test, sans accord (« Entrer mon résultat »)', '/app', { jour: mardi(L4, L4.semaines.test?.numero) ?? ajouterJours(debut, 1), semaine: 'test', accord: '0' })]),
+      // Q2 : les séances « Back-to-back » de Nolio s'affichent « Week-end choc ».
+      t('Semaine de week-end choc', '/app', { ...c, jour: mardi(L4, L4.semaines.choc?.numero) ?? normal, ...ex }),
       ...(prep ? [
         t('Course de préparation ajoutée (sa semaine)', '/app', { ...c, jour: mardi(L4, prep.semaine.numero) ?? normal, ...ex, prepa: '1' }),
         t('Mon plan avec sa course de préparation', '/app/plan', { ...c, jour: mardi(L4, prep.semaine.numero) ?? normal, ...ex, prepa: '1' }),
@@ -259,7 +272,8 @@ export async function etatsDuBandeau(): Promise<GroupeDuBandeau[]> {
       ] : []),
       t('Semaine de course', '/app', { ...c, jour: ajouterJours(course, -3), ...ex }),
       t('Jour J', '/app', { ...c, jour: course, ...ex }),
-      t('Récupération', '/app', { ...c, jour: ajouterJours(course, 2), ...ex }),
+      // Q12 : la même carte « Après ta course » pour les deux versions.
+      t('Récupération (« Après ta course »)', '/app', { ...c, jour: ajouterJours(course, 2), ...ex }),
     ];
   };
   const L1 = plans.L1;
@@ -288,7 +302,10 @@ export async function etatsDuBandeau(): Promise<GroupeDuBandeau[]> {
     {
       titre: 'Préparation CTS · après, et Nolio',
       etats: [
-        t('Après la préparation', '/app', { jour: ajouterJours(course, 40), ...ex }),
+        t('Après la préparation (« Préparer une nouvelle course » et son prix)', '/app', { jour: ajouterJours(course, 40), ...ex }),
+        // C20 : « Ta préparation est terminée dans Nolio » dans « Après ta course ».
+        t('Après la course, sorti de l’équipe Nolio', '/app', { jour: ajouterJours(course, 2), ...ex, nolio: 'sorti' }),
+        // C19 : l'accueil réduit à la carte d'arrêt, la fiche de course et la bibliothèque.
         t('Préparation arrêtée (remboursée)', '/app', { jour: normal, ...ex, nolio: 'arrete' }),
         t('Sorti de l’équipe Nolio avant la course', '/app', { jour: normal, ...ex, nolio: 'sorti' }),
         // La carte Nolio s'affiche aussi avec « Pour bien démarrer » (corrigé le 05/11/2026 au soir : l'accueil restait sans
@@ -309,15 +326,42 @@ export async function etatsDuBandeau(): Promise<GroupeDuBandeau[]> {
     {
       titre: 'Coaching individualisé · après, et autres cas',
       etats: [
+        // Q17 : une seule carte « Ton prochain objectif », en tête ; sa demande partie, « Annuler ».
         t('Entre deux objectifs', '/app', { coache: '1', jour: ajouterJours(course, 40), ...ex }),
+        t('Entre deux objectifs : demande en attente (« Annuler »)', '/app', { coache: '1', jour: ajouterJours(course, 40), ...ex, objectif: 'demande' }),
         t('Objectif suivant demandé : demande envoyée', '/app/plan', { coache: '1', jour: ajouterJours(course, 40), ...ex, demande: 'envoyee', objectif: 'demande' }),
+        // Q16 : le bouton « Ta fiche de course » ; C47 : ses phrases sur Données et Profil.
         t('Programmé à la main', '/app', { coache: '1', main: '1', jour: normal }),
+        t('Programmé à la main : ses données', '/app/donnees', { coache: '1', main: '1', jour: normal, ...ex }),
+        t('Programmé à la main : son profil', '/app/profil', { coache: '1', main: '1', jour: normal }),
         t('Programmé à la main, sans accord', '/app', { coache: '1', main: '1', jour: normal, accord: '0' }),
         { titre: 'Saison de fond (sans objectif à préparer)', href: adresse('/app', { plan: 'F1', coache: '1', jour: jourNormal(F1), retours: 'exemple' }) },
         { titre: 'Saison de fond : semaine de tests', href: adresse('/app', { plan: 'F1', coache: '1', jour: mardi(F1, F1.semaines.test?.numero) ?? jourNormal(F1), semaine: 'test' }) },
         { titre: 'Sans objectif', href: adresse('/app', { sansobjectif: '1' }) },
         { titre: 'Sans objectif : demande envoyée', href: adresse('/app', { sansobjectif: '1', demande: 'envoyee' }) },
         { titre: 'Sans objectif : profil à remplir, accord à donner', href: adresse('/app', { sansobjectif: '1', accord: '0', profil: 'vide' }) },
+        // C41 et C46 : la carte du volume dit quand elle arrive ; le Compte montre Nolio et l'accord.
+        { titre: 'Sans objectif : ses données', href: adresse('/app/donnees', { sansobjectif: '1' }) },
+        { titre: 'Sans objectif : son compte', href: adresse('/app/compte', { sansobjectif: '1' }) },
+      ],
+    },
+    {
+      // Les autres écrans de la revue du 05/11/2026 au soir.
+      titre: 'Profil, tests, données, compte',
+      etats: [
+        t('Bienvenue en pleine préparation (C10)', '/app/bienvenue', { jour: normal }),
+        t('Profil sans repère (Q6-e, tuiles « à tester »)', '/app/profil', { jour: normal }),
+        t('Profil avec repères (« Ton style de coureur »)', '/app/profil', { jour: normal, fc1: '150', vc: '13.5', fc2: '170', v1: '10.8' }),
+        t('Profil sans accord (Q6-f, les badges)', '/app/profil', { jour: normal, accord: '0' }),
+        t('Tes tests (Q13 : la saisie en tête)', '/app/plan/zones', { jour: normal }),
+        t('Tes tests, protocole du test de la parole ouvert', '/app/plan/zones', { jour: normal, protocole: 'parole' }),
+        t('Tes données (Q15 : les mêmes semaines)', '/app/donnees', { jour: normal, ...ex }),
+        t('Tes données sans accord', '/app/donnees', { jour: normal, ...ex, accord: '0' }),
+        t('Calculateur ouvert de la fiche de course (C31)', '/app/calculateurs/calculateur-nutrition', { jour: normal, heures: '7', garder: 'objectif' }),
+        t('Compte d’un acheteur (« Écris-nous »)', '/app/compte', { jour: normal }),
+        t('Compte d’un acheteur sans accord', '/app/compte', { jour: normal, accord: '0' }),
+        { titre: 'Compte d’un coaché (« Ton coach »)', href: adresse('/app/compte', { plan: 'L4', coache: '1', jour: normal }) },
+        t('Bibliothèque', '/app/bibliotheque', {}),
       ],
     },
     {
