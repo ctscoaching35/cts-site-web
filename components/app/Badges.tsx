@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import clsx from 'clsx';
 import { BADGES, FAMILLES, totaux, type Badge, type EtatBadges, type Famille } from '@/lib/app/badges';
+import { dateLongue } from '@/lib/app/plan';
 import { Carte, CarteSombre, Surtitre } from './Ui';
 
 // Les badges du coureur (BG1 à BG3 ; maquette validée par le coach le 20/10/2026) : les 23, par famille, colorés une fois
@@ -16,7 +17,12 @@ const ICONES: Record<Famille | 'cadenas', React.ReactNode> = {
 
 const moisAnnee = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric', timeZone: 'UTC' });
 
-export function TesBadges({ etat, accord, aujourdhui }: { etat: EtatBadges | null; accord: boolean; aujourdhui: string }) {
+// Q6-f (décision coach du 05/11/2026 au soir, « A ») : sans accord de lecture, une phrase à la place des 23 badges
+// verrouillés, qui ne peuvent pas se débloquer ; C18 : avec « Donner mon accord › » pour un acheteur (donnerAccord), la
+// réponse au message de son coach pour un coaché. C3 : les badges verrouillés en gris foncé ; C6 : la date en lettres.
+export function TesBadges({ etat, accord, aujourdhui, donnerAccord = null, coache = false }: {
+  etat: EtatBadges | null; accord: boolean; aujourdhui: string; donnerAccord?: string | null; coache?: boolean;
+}) {
   const debloques = etat?.debloques ?? {};
   const t = etat ? totaux(etat) : { km: 0, dplus: 0 };
   const semaine = new Date(`${aujourdhui}T12:00:00Z`);
@@ -28,14 +34,21 @@ export function TesBadges({ etat, accord, aujourdhui }: { etat: EtatBadges | nul
     <Carte id="badges" className="space-y-1 scroll-mt-20">
       <div className="flex items-baseline justify-between gap-3">
         <Surtitre>Tes badges</Surtitre>
-        <span className="text-[0.8125rem] text-[#5E5C78]">{Object.keys(debloques).length} sur {BADGES.length}</span>
+        {accord && <span className="text-[0.8125rem] text-[#5E5C78]">{Object.keys(debloques).length} sur {BADGES.length}</span>}
       </div>
       {!accord ? (
-        <p className="text-xs text-[#5E5C78] leading-relaxed">Avec ton accord de lecture de Nolio, tes badges se débloquent tout seuls, d’après tes séances.</p>
+        <div className="space-y-1">
+          <p className="text-[0.8125rem] text-[#4A4866] leading-relaxed">
+            {/* BROUILLON, à valider par le coach (la phrase du coaché). */}
+            {coache ? 'Tes badges se débloquent tout seuls, d’après tes séances, avec ton accord : réponds « oui » au message de ton coach dans Nolio.'
+              : 'Avec ton accord de lecture de Nolio, tes badges se débloquent tout seuls, d’après tes séances.'}
+          </p>
+          {donnerAccord && <Link href={donnerAccord} className="inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">Donner mon accord ›</Link>}
+        </div>
       ) : !etat && (
         <p className="text-xs text-[#5E5C78] leading-relaxed">Tes badges se calculent la nuit, d’après toutes tes séances de course et de trail dans Nolio.</p>
       )}
-      {FAMILLES.map(([famille, titre]) => (
+      {accord && FAMILLES.map(([famille, titre]) => (
         <section key={famille} className="pt-2.5">
           <h3 className="text-[0.656rem] font-bold tracking-[0.1em] uppercase text-[#5E5C78] mb-2">{titre}</h3>
           <ul className="grid grid-cols-[repeat(auto-fill,minmax(88px,1fr))] gap-2">
@@ -45,14 +58,14 @@ export function TesBadges({ etat, accord, aujourdhui }: { etat: EtatBadges | nul
                 <li key={b.cle} className={clsx('rounded-xl px-1.5 py-2.5 flex flex-col items-center gap-1 text-center',
                   d ? 'bg-[#E1EFEA] border border-[#9FD3C5]' : 'bg-sand border border-dashed border-indigo/20')}>
                   <span className={clsx('w-9 h-9 rounded-full flex items-center justify-center',
-                    d ? 'bg-teal text-white' : 'bg-white text-[#9A98B0] border border-indigo/10')}>
+                    d ? 'bg-teal text-white' : 'bg-white text-[#5E5C78] border border-indigo/15')}>
                     <svg viewBox="0 0 24 24" className="w-5 h-5" aria-hidden>{ICONES[d ? b.famille : 'cadenas']}</svg>
                   </span>
-                  <span className={clsx('text-[0.78rem] leading-tight', d ? 'font-bold text-teal-dark' : 'font-semibold text-[#8A88A3]')}>{b.court}</span>
-                  <span className={clsx('text-[0.656rem] leading-tight', d ? 'text-teal' : 'text-[#9A98B0]')}>
+                  <span className={clsx('text-[0.78rem] leading-tight', d ? 'font-bold text-teal-dark' : 'font-semibold text-[#5E5C78]')}>{b.court}</span>
+                  <span className={clsx('text-[0.656rem] leading-tight', d ? 'text-teal-dark' : 'text-[#5E5C78]')}>
                     {d ? (recent(d) ? 'nouveau' : moisAnnee(d)) : progression(b)}
                   </span>
-                  <span className="sr-only">{d ? `débloqué le ${d}` : 'à débloquer'}</span>
+                  <span className="sr-only">{d ? `débloqué le ${dateLongue(d, true)}` : 'à débloquer'}</span>
                 </li>
               );
             })}

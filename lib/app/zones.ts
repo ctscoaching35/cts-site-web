@@ -227,19 +227,21 @@ export function profilCoureur(p: Pick<Profil, 'vc_ms' | 'd_prime_m'>): ProfilCou
   if (p.vc_ms === null || p.d_prime_m === null || !p.d_prime_m) return null;
   const r = coefficientRiegel(p.vc_ms, p.d_prime_m);
   const rapide = r < 0.9;
-  const coef = r.toFixed(2).replace('.', ',');
   return {
     coefficient: r,
     nom: rapide ? 'Plutôt rapide' : 'Plutôt endurant',
+    // Q1 (décision coach du 05/11/2026 au soir, « A ») : des mots de coureur, sans le coefficient ni son auteur ; C38 : les
+    // conseils disent ce que la préparation en fait (lu tel quel, « travaille ton point faible » invitait à ajouter des
+    // séances soi-même ; le moteur lit ce profil, lib/app/ecriture.ts, avecLeProfil). BROUILLON, à valider par le coach.
     texte: rapide
-      ? `Ton coefficient de Riegel est de ${coef} : ta vitesse baisse plus que la moyenne quand l’effort s’allonge. Ta marge de progrès est surtout en endurance : tenir plus longtemps une plus grande part de ta vitesse.`
-      : `Ton coefficient de Riegel est de ${coef} : tu tiens bien ta vitesse quand l’effort s’allonge. Ta marge de progrès est surtout en vitesse, sur les efforts courts.`,
+      ? 'Ta vitesse baisse plus que la moyenne quand l’effort s’allonge. Ta marge de progrès est surtout en endurance : tenir plus longtemps une plus grande part de ta vitesse.'
+      : 'Tu tiens bien ta vitesse quand l’effort s’allonge. Ta marge de progrès est surtout en vitesse, sur les efforts courts.',
     loin: rapide
-      ? 'Travaille ton point faible, l’endurance : des blocs longs juste sous ta vitesse critique, du tempo, du seuil 1 et du volume d’endurance. Garde quelques rappels de vitesse.'
-      : 'Travaille ton point faible, la vitesse : des intervalles courts au-dessus de ta vitesse critique, des côtes courtes, des accélérations. Garde ton volume d’endurance.',
+      ? 'Ta préparation en tient compte : loin de ton objectif, plus d’endurance (des blocs longs juste sous ta vitesse critique, du tempo, du seuil 1, du volume), avec quelques rappels de vitesse.'
+      : 'Ta préparation en tient compte : loin de ton objectif, plus de vitesse (des intervalles courts, des côtes courtes, des accélérations), sans lâcher ton volume d’endurance.',
     pres: rapide
-      ? 'Appuie-toi sur ta vitesse, ton point fort, et sur la spécificité de ton épreuve : sa durée, son dénivelé, son allure de course. Sur un format long, des sorties longues sur un terrain proche de la course.'
-      : 'Appuie-toi sur ton endurance, ton point fort, et sur la spécificité de ton épreuve : sa durée, son dénivelé, son allure de course. Sur un format court, des séances à l’allure de course.',
-    note: 'Le repère de 0,90 est un repère de coach. Ce profil oriente l’entraînement ; tes sensations et ton objectif décident.',
+      ? 'Près de ton objectif, elle s’appuie sur ta vitesse, ton point fort, et sur ce que demande ta course : sa durée, son dénivelé, son allure.'
+      : 'Près de ton objectif, elle s’appuie sur ton endurance, ton point fort, et sur ce que demande ta course : sa durée, son dénivelé, son allure.',
+    note: 'Ce style oriente ta préparation ; tes sensations et ton objectif décident.',
   };
 }
