@@ -31,6 +31,12 @@ export default async function PagePlan() {
           </p>
         </div>
         <Questionnaire simulation={simulation} />
+        {/* A-41 (audits du 05/11/2026) : les liens légaux sur le parcours d'achat, comme sur la page des plans. */}
+        <nav aria-label="Informations légales" className="mt-10 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-indigo/60">
+          <a href="/mentions-legales" className="underline underline-offset-4">Mentions légales</a>
+          <a href="/cgv" className="underline underline-offset-4">Conditions générales de vente</a>
+          <a href="/confidentialite" className="underline underline-offset-4">Confidentialité</a>
+        </nav>
       </main>
     </div>
   );

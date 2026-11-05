@@ -10,19 +10,20 @@ commence dès son paiement : il est remboursé du prix, moins la part des jours 
 
 ## 1. Calculer le remboursement
 
-La règle des conditions de vente (article 8) : il doit la part du prix des jours de préparation déjà écoulés le jour
-de sa demande, rapportés à la durée de sa préparation jusqu'à sa course ; avant la date de début donnée dans son plan,
-rien.
+La règle des conditions de vente (article 11 depuis le 05/11/2026) : il doit la part du prix des jours de préparation
+déjà écoulés le jour de sa demande, rapportés à la durée de sa préparation jusqu'à la fin de sa récupération après sa
+course ; avant sa première séance, rien.
 
 - Le prix payé : dans Stripe (le paiement), ou dans ton espace coach, Chiffres de la vente (code promo déduit).
 - La date de début : celle de son plan (« Ta préparation commence le… », dans son e-mail de bienvenue et dans l'app) ;
   pour un plan rejoint en route, le jour de son paiement.
 - Les jours écoulés : de la date de début au jour de sa demande (0 si sa demande arrive avant).
-- La durée : de la date de début au jour de sa course.
-- Remboursement = prix × (1 − jours écoulés / durée), arrondi au centime inférieur, sous 14 jours.
+- La durée : de la date de début à la fin de sa récupération (le lundi de reprise qui suit sa course : deux jours par
+  heure de course, 3 à 21 jours, jusqu'au lundi suivant).
+- Remboursement = prix × (1 − jours écoulés / durée), arrondi au centime supérieur (en sa faveur), sous 14 jours.
 
-Exemple : 49 € payés, préparation commencée le 2 mars, course le 28 juin (118 jours), demande le 9 mars (7 jours) :
-49 × (1 − 7/118) = 46,09 €.
+Exemple : 49 € payés, préparation commencée le 2 mars, course de 6 h le 28 juin, reprise le lundi 13 juillet (133 jours),
+demande le 9 mars (7 jours) : 49 × (1 − 7/133) = 46,43 €.
 
 ## 2. Rembourser dans Stripe
 

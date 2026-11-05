@@ -417,7 +417,7 @@ export default function Questionnaire({
     // Ce qui manque quand le bouton reste grisé (C2, audit de l'app plan du 03/11/2026) : dit sous le bouton.
     const manque = [
       !sansAvertissement && !confirme ? (demande || coach ? 'coche l’avertissement' : 'coche l’avertissement et les conditions de vente') : null,
-      !coach && !debutImmediat ? 'coche le début de ta préparation dès ton paiement' : null,
+      !coach && !debutImmediat ? 'coche le début de ton accès dès ton paiement' : null,
     ].filter(Boolean) as string[];
     return (
       <div className="space-y-6">
@@ -468,8 +468,9 @@ export default function Questionnaire({
                 'J’ai lu cet avertissement et je veux générer mon plan.'
               ) : (
                 <>
+                  {/* A-42 (audits du 05/11/2026, S3) : la majorité, dite dans la case des CGV, sans case de plus. */}
                   J’ai lu cet avertissement et les{' '}
-                  <a href="/cgv" target="_blank" rel="noopener" className="underline underline-offset-2">conditions générales de vente</a>, et je veux générer mon plan.{' '}
+                  <a href="/cgv" target="_blank" rel="noopener" className="underline underline-offset-2">conditions générales de vente</a>, je suis majeur (ou j’ai l’accord de mon représentant légal), et je veux générer mon plan.{' '}
                   <span className="text-[0.75rem] font-bold tracking-[0.06em] uppercase text-[#5E5C78]">Obligatoire</span>
                 </>
               )}
@@ -492,10 +493,12 @@ export default function Questionnaire({
           {!coach && (
             <label className="flex gap-3 items-start mt-4 cursor-pointer">
               <input type="checkbox" checked={debutImmediat} onChange={(e) => setDebutImmediat(e.target.checked)} className="mt-1 accent-teal" />
+              {/* J3 (audits du 05/11/2026, S3, proposition 1) : la demande porte sur l'accès, qui commence au paiement ; la
+                  première séance a sa date. */}
               <span className="text-indigo">
-                <span className="font-semibold">Je demande que ma préparation commence dès mon paiement.</span>{' '}
+                <span className="font-semibold">Je demande que mon accès commence dès mon paiement{debutChoisi ? ` (ta première séance : le ${jourEnLettres(debutChoisi.premierJour)})` : ''}.</span>{' '}
                 <span className="text-[0.75rem] font-bold tracking-[0.06em] uppercase text-[#5E5C78]">Obligatoire</span>{' '}
-                <span className="text-indigo/70">Tu gardes ton droit de rétractation de 14 jours : si tu l’exerces, tu es remboursé du prix, moins la part des jours de préparation déjà écoulés.</span>
+                <span className="text-indigo/70">Ton app s’ouvre tout de suite. Tu gardes ton droit de rétractation de 14 jours : si tu l’exerces, tu es remboursé du prix, moins la part des jours de préparation déjà écoulés (rien avant ta première séance).</span>
               </span>
             </label>
           )}
@@ -505,10 +508,21 @@ export default function Questionnaire({
           <p role="alert" className="bg-white rounded-r-xl border-l-4 border-red-400 p-4 text-[0.875rem] text-indigo leading-relaxed">{refus}</p>
         )}
 
+        {/* J3 (audits du 05/11/2026, S3) : ce que tu achètes, juste avant le bouton (art. L221-14). BROUILLON. */}
+        {!coach && (
+          <section className="bg-white rounded-2xl border border-indigo/[0.08] p-5 sm:p-6 text-[0.875rem] text-indigo/80 leading-relaxed">
+            <p><span className="font-bold text-indigo">Ce que tu achètes :</span> une préparation construite et ajustée chaque semaine par
+              des règles automatiques, sans suivi par un coach. Tes séances arrivent dans Nolio : il te faut un compte Nolio
+              (gratuit, créé par l’invitation si tu n’en as pas).</p>
+          </section>
+        )}
+
         <section className="bg-indigo text-white rounded-[18px] p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
           <div>
             <div className="eyebrow text-teal-light mb-2">{demande ? 'Ton objectif · jusqu’à la course' : coach ? `Plan de ${c.nom} · jusqu’à la course` : `Ton plan · ${c.duree_mois} mois`}</div>
             {!coach && <div className="text-4xl font-black">{prix} €</div>}
+            {/* A-41 (audits du 05/11/2026) : le prix final et sa mention de TVA. */}
+            {!coach && <div className="mt-1 text-xs text-white/70">Prix final, TVA non applicable (art. 293 B du CGI)</div>}
           </div>
           <button type="button" onClick={() => generer()} disabled={bloque || envoi} className={boutonCls}>
             {envoi

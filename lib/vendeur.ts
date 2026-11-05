@@ -24,8 +24,10 @@ export const mediateur = {
   site: 'https://www.cm2c.net',
 };
 
-export const VERSION_CGV = '4 novembre 2026';
-export const VERSION_CONFIDENTIALITE = '4 novembre 2026';
+// LES DATES DE VERSION (audits du 05/11/2026, S3) : celle de la mise en ligne des textes corrigés, que la session
+// principale fixe ; « 5 novembre 2026 » par défaut.
+export const VERSION_CGV = '5 novembre 2026';
+export const VERSION_CONFIDENTIALITE = '5 novembre 2026';
 
 // LE FORMULAIRE DE RÉTRACTATION (modèle de l'annexe à l'article R221-1 du code de la consommation, au « tu » des
 // conditions de vente) : dans les CGV (article 8) et dans la confirmation de commande (J1), mot pour mot les mêmes lignes.

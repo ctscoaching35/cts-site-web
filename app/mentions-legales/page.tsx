@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { PageLegale, Section } from '@/components/PageLegale';
 import { mediateur, plansVisibles, vendeur } from '@/lib/legal';
 
+// TEXTE CORRIGÉ LE 05/11/2026 d'après les audits de la Préparation CTS (S3, A-42) : la propriété intellectuelle
+// appartient à une personne, l'éditeur, pas à un nom commercial. Le téléphone de l'hébergeur (A-32) reste à trouver.
 // Les mentions légales (loi pour la confiance dans l'économie numérique ; CTS_LANCEMENT_CADRAGE.md dans le dépôt du
 // moteur, L5 et C5 ; écrites le 15/10/2026, relues par le coach).
 export const metadata: Metadata = {
@@ -42,9 +44,9 @@ export default async function MentionsLegales() {
 
       <Section titre="Propriété intellectuelle">
         <p>
-          Les textes, les fiches, les plans, les photographies et les logos de ce site appartiennent à{' '}
-          {vendeur.nomCommercial}, sauf mention contraire. Toute reproduction ou diffusion, même partielle, sans notre
-          accord écrit est interdite.
+          Les textes, les fiches, les plans, les photographies et les logos de ce site appartiennent à {vendeur.nom}, qui
+          les publie sous le nom commercial {vendeur.nomCommercial}, sauf mention contraire. Toute reproduction ou
+          diffusion, même partielle, sans notre accord écrit est interdite.
         </p>
       </Section>
 

@@ -6,7 +6,7 @@
  * Côté serveur seulement.
  */
 import { site } from '@/lib/content';
-import { EXPEDITEUR, REPONSE } from './emailBienvenue';
+import { EXPEDITEUR, PIED_LEGAL, piedHtml, REPONSE } from './emailBienvenue';
 import { clientService } from './supabase';
 
 export const emailValide = (email: string) => email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -26,12 +26,15 @@ export async function retirerRelance(email: string) {
   await clientService().from('relances').delete().eq('email', email).is('envoyee_le', null);
 }
 
+// A-42 (audits du 05/11/2026, S3) : le moyen de s'opposer dans l'e-mail (art. L34-5 du code des postes et des
+// communications électroniques), et la mention du vendeur (EI) au pied.
+export const OPPOSITION_RELANCE = 'Tu ne veux plus de rappel de notre part ? Réponds simplement à cet e-mail : nous effaçons ton adresse.';
 export function contenuRelance() {
   const lien = `${site.url}/plan`;
   const paragraphe =
     'Tu as commencé à construire ta préparation sur cts-coaching.com. Elle t’attend : reprends ton questionnaire sur le même appareil et le même navigateur, tes réponses y sont gardées.';
   const signature = 'Juliette et Romain — CTS Coaching';
-  const texte = ['Bonjour,', paragraphe, `Reprendre mon questionnaire : ${lien}`, signature].join('\n\n');
+  const texte = ['Bonjour,', paragraphe, `Reprendre mon questionnaire : ${lien}`, signature, OPPOSITION_RELANCE, PIED_LEGAL].join('\n\n');
   const p = (contenu: string) => `<p style="margin:0 0 16px;line-height:1.55">${contenu}</p>`;
   const html = `<!doctype html><html lang="fr"><body style="margin:0;padding:24px 12px;background:#F3F7F0">
 <div style="max-width:560px;margin:0 auto;background:#ffffff;padding:32px 28px;font-family:Helvetica,Arial,sans-serif;font-size:16px;color:#2F2D4E">
@@ -39,6 +42,8 @@ ${p('Bonjour,')}
 ${p(paragraphe)}
 <p style="margin:24px 0"><a href="${lien}" style="display:inline-block;background:#0C6E5F;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 24px">Reprendre mon questionnaire</a></p>
 <p style="margin:24px 0 0;line-height:1.55;font-weight:bold">${signature}</p>
+<p style="margin:20px 0 0;font-size:13px;line-height:1.5;color:#5E5C78">${OPPOSITION_RELANCE}</p>
+${piedHtml()}
 </div></body></html>`;
   return { sujet: 'Ta préparation t’attend', texte, html };
 }

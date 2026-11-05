@@ -2,6 +2,12 @@ import type { Metadata } from 'next';
 import { Liste, PageLegale, Section } from '@/components/PageLegale';
 import { plansVisibles, vendeur, VERSION_CONFIDENTIALITE } from '@/lib/legal';
 
+// TEXTE CORRIGÉ LE 05/11/2026 d'après les audits A et B de la Préparation CTS (S3, « A » : corrigé sans juriste, relu par
+// Romain) : J5 (la base légale de la section Nolio, l'effort ressenti et le Hooper comme données liées à la santé sous
+// accord, la semaine décidée par des règles et la revue par un coach, le coach qui voit l'équipe, les badges et
+// l'historique Nolio lus), S1 et S9 (plus de question d'arrêt), E1 (l'adresse Nolio gardée jusqu'à l'adhésion), J1 (la
+// confirmation de commande), et les mineurs (les transferts hors de l'Union, les cookies de 13 mois). La date de version
+// passe au jour de la mise en ligne.
 // La politique de confidentialité (RGPD ; CTS_LANCEMENT_CADRAGE.md dans le dépôt du moteur, L5 ; écrite le 15/10/2026
 // d'après l'inventaire de ce que le site, l'app et l'API gardent réellement, après la correction des écarts E1 à E7 ;
 // relue par le coach). Elle ne dit que ce que le code fait : un changement de ce que l'app garde la change aussi. Ce
@@ -85,8 +91,8 @@ export default async function Confidentialite() {
             </li>
             <li>
               <strong>Quand tu passes au paiement.</strong> Ton nom, ton e-mail, ta course, ton niveau, ton volume et ta plus longue sortie
-              actuels, un arrêt récent de la course à pied, ton terrain, tes jours disponibles et ta trace GPX partent vers
-              notre moteur, qui construit ton plan. Ce dossier est effacé 30 jours après, que tu aies payé ou non (le contrat).
+              actuels, ton terrain, tes jours disponibles et ta trace GPX partent vers notre moteur, qui construit ton plan. Ce
+              dossier est effacé 30 jours après, que tu aies payé ou non (le contrat).
             </li>
           </Liste>
         </Section>
@@ -105,13 +111,14 @@ export default async function Confidentialite() {
             </li>
             <li>
               <strong>Le paiement</strong> se fait chez Stripe, qui reçoit ta carte, ton e-mail et le montant, et garde avec
-              le paiement la date à laquelle tu as accepté les conditions de vente et demandé que ta préparation commence
-              tout de suite.
+              le paiement la date à laquelle tu as accepté les conditions de vente et demandé que ton accès commence dès ton
+              paiement.
               Nous ne voyons jamais tes numéros de carte.
             </li>
             <li>
-              <strong>Les e-mails</strong> (bienvenue, codes de connexion, rappel si tu l’as demandé, relance de ton invitation
-              Nolio ou de ta confirmation, avertissement avant suppression) partent par Brevo.
+              <strong>Les e-mails</strong> (la confirmation de ta commande et la bienvenue, codes de connexion, rappel si tu l’as
+              demandé, relance de ton invitation Nolio ou de ta confirmation, avertissement avant suppression) partent par
+              Brevo.
             </li>
           </Liste>
         </Section>
@@ -127,25 +134,33 @@ export default async function Confidentialite() {
             Ta préparation vit dans Nolio, la plateforme d’entraînement que nous utilisons (une société française). Le lundi
             de la semaine qui précède ton départ (ou dès ton achat, si ta préparation commence dans les 7 jours), nous
             transmettons à Nolio l’adresse e-mail de ton achat, ou celle de ton compte Nolio si tu nous en as donné une
-            autre, pour t’inviter dans l’équipe CTS ou te créer un compte. Cette autre adresse, nous l’effaçons de notre côté
-            une fois l’invitation partie ; celle de ton achat reste celle de ton compte CTS. Tu restes dans l’équipe jusqu’à
-            la fin de ta récupération après ta course ; ton compte Nolio et tes séances restent à toi, sous la politique de
-            confidentialité de Nolio.
+            autre, pour t’inviter dans l’équipe CTS ou te créer un compte. Cette autre adresse, nous la gardons jusqu’à ce
+            que tu aies rejoint l’équipe, pour suivre ton invitation, puis nous l’effaçons de notre côté ; celle de ton achat reste
+            celle de ton compte CTS. Tu restes dans l’équipe jusqu’à la fin de ta récupération après ta course ; ton compte
+            Nolio et tes séances restent à toi, sous la politique de confidentialité de Nolio.
           </p>
           <Liste>
             <li>
               <strong>Si ton achat date de plus de 3 semaines</strong> au moment de ton invitation, ton app CTS te demande
-              si ce que tu cours a changé (ton volume par semaine, ta plus longue sortie, un arrêt récent) : ta réponse
-              rejoint celles de ton achat, et ta première semaine s’écrit dessus.
+              si ce que tu cours a changé (ton volume par semaine, ta plus longue sortie) : ta réponse rejoint celles de ton
+              achat, et ta première semaine s’écrit dessus (le contrat).
             </li>
             <li>
-              <strong>Chaque dimanche</strong>, ta semaine suivante s’écrit d’après tes réponses au questionnaire du samedi,
-              et tes séances faites ou manquées et leur durée, que nous lisons dans Nolio.
+              <strong>Chaque dimanche</strong>, ta semaine suivante s’écrit d’après tes réponses au questionnaire du samedi
+              (tes jours, ton jour de sortie longue, ton nombre de séances), et tes séances faites ou manquées et leur durée,
+              que nous lisons dans Nolio (le contrat : c’est le service que tu as acheté).
             </li>
             <li>
               <strong>Avec ton accord de lecture</strong> (une case facultative, recommandée), nous lisons aussi ton effort
-              ressenti (RPE), ton ressenti, ton Hooper et la trace de tes séances test (distance, fréquence cardiaque), pour
-              ajuster ta semaine à ta fatigue et en tirer tes repères.
+              ressenti (RPE), ton ressenti, ton Hooper (fatigue, sommeil, stress, courbatures) et la trace de tes séances
+              test (distance, fréquence cardiaque), pour ajuster ta semaine à ta fatigue et en tirer tes repères. Ce sont des
+              données liées à ta santé : nous ne les lisons qu’avec cet accord exprès (ton consentement explicite), que tu
+              retires quand tu veux.
+            </li>
+            <li>
+              <strong>Tes badges</strong>, avec ce même accord : nous lisons toutes tes séances de course et de trail
+              réalisées dans Nolio, depuis le début de ton historique (date, distance, durée, dénivelé), et ne gardons que
+              tes badges débloqués, avec leur date, et tes totaux de kilomètres et de dénivelé par mois.
             </li>
             <li>
               <strong>Nous gardons</strong>, pour chaque semaine écrite, ce qui a été décidé et un résumé chiffré (charge
@@ -153,8 +168,16 @@ export default async function Confidentialite() {
             </li>
           </Liste>
           <p>
-            Retirer ton accord, dans ton Compte, arrête la lecture de ces données et efface ces chiffres. Tes commentaires
-            dans Nolio ne sont pas suivis : pour une question, écris-nous.
+            <strong>Une semaine décidée par des règles.</strong> Ta semaine suivante est décidée automatiquement, par les
+            règles de la méthode CTS, à partir de ces données ; personne ne la relit avant qu’elle parte. Tu peux demander
+            qu’un coach la revoie, donner ton point de vue et contester une décision : écris-nous à{' '}
+            <a href={`mailto:${vendeur.email}`}>{vendeur.email}</a>.
+          </p>
+          <p>
+            Dans Nolio, Juliette et Romain, les coachs de l’équipe CTS, voient tes séances et ce que tu en remplis, comme pour
+            tout athlète de l’équipe ; ils ne suivent pas ta préparation au jour le jour. Retirer ton accord, dans ton
+            Compte, arrête la lecture de ces données et efface ces chiffres et tes badges. Tes commentaires dans Nolio ne
+            sont pas suivis : pour une question, écris-nous.
           </p>
         </Section>
 
@@ -235,11 +258,14 @@ export default async function Confidentialite() {
           <li>Google : notre messagerie Gmail (États-Unis) ;</li>
           <li>Nolio : la plateforme d’entraînement où arrivent tes séances (France).</li>
         </Liste>
+        {/* A-42 (audits du 05/11/2026) : les transferts hors de l'Union, prestataire par prestataire ; ce que chacun
+            applique (cadre UE–États-Unis ou clauses types) est à vérifier par Romain dans leurs accords de traitement. */}
         <p>
-          Vercel, Supabase, Render, Formspree et Google sont des sociétés américaines. Quand des données peuvent être
-          consultées depuis les États-Unis, ce transfert est encadré par le cadre de protection des données entre l’Union
-          européenne et les États-Unis (Data Privacy Framework) pour les sociétés qui y adhèrent, ou par les clauses
-          contractuelles types de la Commission européenne. Nous ne vendons ni ne louons aucune donnée.
+          Des données peuvent être consultées depuis les États-Unis par Vercel, Supabase, Render, Formspree et Google, des
+          sociétés américaines{plans ? ', et par la maison mère américaine de Stripe' : ''}. Pour chacun, ce transfert est
+          encadré par le cadre de protection des données entre l’Union européenne et les États-Unis (Data Privacy
+          Framework) quand il y adhère, sinon par les clauses contractuelles types de la Commission européenne, prévues
+          dans son accord de traitement des données. Nous ne vendons ni ne louons aucune donnée.
         </p>
       </Section>
 
@@ -253,9 +279,9 @@ export default async function Confidentialite() {
             <Liste>
               <li>la session de connexion à l’app (Supabase) ;</li>
               <li>« cts_invitation » : ton lien d’invitation, quand la vente se fait sur invitation (90 jours) ;</li>
-              <li>« cts_plan » : le plan affiché quand tu en as plusieurs (400 jours) ;</li>
-              <li>« cts_bienvenue » : l’écran de bienvenue déjà vu (400 jours) ;</li>
-              <li>« cts_demarrage » : la liste « Pour bien démarrer » masquée (400 jours) ;</li>
+              <li>« cts_plan » : le plan affiché quand tu en as plusieurs (13 mois) ;</li>
+              <li>« cts_bienvenue » : l’écran de bienvenue déjà vu (13 mois) ;</li>
+              <li>« cts_demarrage » : la liste « Pour bien démarrer » masquée (13 mois) ;</li>
               <li>tes réponses en cours au questionnaire, jusqu’au paiement (stockage local) ;</li>
               <li>« cts-mesure-… » : l’étape du questionnaire déjà comptée, sans identifiant, le temps de l’onglet (stockage de session) ;</li>
               <li>les pages de l’app gardées pour s’ouvrir sans connexion, effacées à la déconnexion.</li>
