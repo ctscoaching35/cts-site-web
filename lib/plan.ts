@@ -59,9 +59,9 @@ export type Champs = {
   // Le dépistage cardiaque (audit de la programmation trail du 30/10/2026, P4) : comme la blessure, il ne quitte jamais
   // le navigateur ; « oui » avertit (consulter avant de commencer) sans arrêter l'achat.
   coeur: string;
-  // Section 2 : l'arrêt récent part avec le plan, comme la charge actuelle (second audit
-  // du moteur, D16) : il fait démarrer le plan par deux semaines sans séance dure. Depuis le 05/11/2026 (S9), au seul
-  // questionnaire du coach (coaching individualisé, demande d'un coaché) : l'achat ne le demande plus.
+  // L'arrêt récent (second audit du moteur, D16 : deux semaines sans séance dure au départ) ne se demande plus : retiré
+  // de l'achat le 05/11/2026 (S9), puis du coaching le même soir (1B). Le champ part toujours vide ; le moteur 8.452 lit
+  // son absence comme « non ».
   coupure: string;
   // « oui » : un premier marathon (route, signalé au coach sous 20 semaines de préparation).
   premier_marathon: string;
@@ -113,14 +113,14 @@ export const textes = {
   // 26/09/2026 : l'étude dit 10 %, le plan monte par marches de 15 % au plus, et
   // l'athlète lirait les deux.
   // S9 (décision coach du 05/11/2026, « ne complique pas les choses ») : deux questions simples, sans note dessous ; la
-  // question de l'arrêt récent quitte le questionnaire d'achat et la confirmation de charge (elle reste à celui du coach).
+  // question de l'arrêt récent quitte le questionnaire d'achat et la confirmation de charge, puis celui du coaching (1B,
+  // le même soir).
   charge: {
     titre: 'Ce que tu cours en ce moment',
     aide:
       'Ta plus longue sortie décide d’où ton plan démarre. C’est la seule chose qui distingue deux coureurs du même niveau : l’un tient déjà 2h30, l’autre plafonne à 1h, et ils n’ont pas à recevoir la même première semaine. Le risque de blessure monte quand une sortie dépasse nettement la plus longue des 4 dernières semaines : c’est l’un des faits les mieux établis en prévention des blessures en course à pied.',
     volume: 'Ton volume de course par semaine, en ce moment',
     sortieLongue: 'Ta plus longue sortie en ce moment',
-    coupure: 'As-tu arrêté de courir plus de 4 semaines au cours des 2 derniers mois ?',
   },
   gpx:
     'Le profil réel du parcours (répartition des pentes) affine tout le plan. Sans trace, le plan est construit sur le D+/D− déclaré ci-dessus, et ta fiche de course n’aura pas de profil.',
@@ -157,14 +157,7 @@ export const textes = {
 export function avertissements(c: Champs, config: ConfigPlan, aujourdhui = new Date()): string[] {
   const out: string[] = [];
   // La blessure en cours n'est plus un avertissement : elle arrête l'achat, dans le questionnaire (décision coach du
-  // 20/10/2026).
-  if (c.coupure === 'oui') {
-    out.push(
-      c.niveau === 'debutant'
-        ? 'Après plus de 4 semaines sans courir, le plan débutant reste le bon choix : il démarre au plus bas. Écoute tes sensations les premières semaines, et allège si une douleur apparaît.'
-        : 'Après plus de 4 semaines sans courir, tes deux premières semaines de plan se font sans séance dure, puis la vitesse revient par un Seuil 2 au plus bas : tes muscles et tes tendons se réhabituent avant la vitesse. Écoute tes sensations, et allège si une douleur apparaît.'
-    );
-  }
+  // 20/10/2026). L'arrêt récent non plus : il ne se demande plus (S9 et 1B, 05/11/2026).
   // Le Trail Marathon du débutant (audit de la programmation trail du 30/10/2026, P1 ; décision coach) : ouvert, avec
   // ce qui protège le mieux d'une première longue course, la blessure de surcharge et l'abandon.
   if (c.niveau === 'debutant' && c.format === 'TM') {

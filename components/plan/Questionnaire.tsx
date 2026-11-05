@@ -99,10 +99,14 @@ export default function Questionnaire({
   // réponses du précédent (N9).
   // Le coaching individualisé n'a pas de durée (QD1, décision coach du 19/10/2026) : « auto », fixée par l'API à la
   // commande, la formule qui couvre le temps jusqu'à la course.
-  // L'acheteur ne répond plus sur l'arrêt récent (S9, 05/11/2026) : un « Nouvel objectif » prérempli d'un ancien plan ne
-  // le reprend pas.
-  const [c, setC] = useState<Champs>(coach ? { ...champsVides, ...(initial as Partial<Champs>), email: emailCoach, duree_mois: 'auto' }
-    : { ...champsVides, ...((initial ?? {}) as Partial<Champs>), coupure: '' });
+  // L'arrêt récent ne se demande plus (S9 à l'achat le 05/11/2026 ; 1B, décision coach du 05/11/2026 au soir : partout,
+  // le coaching compris) : un questionnaire prérempli (un objectif précédent, une demande, la charge lue dans Nolio, un
+  // objectif à modifier) ne le reprend pas, et il part vide (le moteur 8.452 le lit alors « non »).
+  const [c, setC] = useState<Champs>({
+    ...(coach ? { ...champsVides, ...(initial as Partial<Champs>), email: emailCoach, duree_mois: 'auto' }
+      : { ...champsVides, ...((initial ?? {}) as Partial<Champs>) }),
+    coupure: '',
+  });
   const [gpx, setGpx] = useState<File | null>(null);
   // LA ROUTE (moteur 8.349, CTS_ROUTE_CADRAGE.md) : pour le coach seulement, un 10 km, un semi ou un marathon ; ni
   // dénivelé, ni trace, ni terrain ; le chrono visé fixe l'allure des séances spécifiques.
@@ -644,19 +648,6 @@ export default function Questionnaire({
             <p role="status" className="bg-sand rounded-r-xl border-l-4 border-teal px-4 py-3 mt-2 text-[0.8125rem] text-indigo leading-relaxed">{alerteSl}</p>
           )}
         </div>
-        {/* L'arrêt récent (S9, décision coach du 05/11/2026) : au seul questionnaire du coach ; l'achat ne le demande plus. */}
-        {coach && <div>
-          <p className="font-bold text-indigo mb-3">{textes.charge.coupure}</p>
-          <div className="flex gap-3">
-            {['non', 'oui'].map((v) => (
-              <label key={v} className={clsx('flex items-center gap-2 px-5 py-2.5 rounded-xl border cursor-pointer',
-                c.coupure === v ? 'border-teal bg-teal/5' : 'border-indigo/15')}>
-                <input type="radio" name="coupure" value={v} checked={c.coupure === v} required onChange={() => maj('coupure')(v)} className="accent-teal" />
-                <span className="text-indigo capitalize">{v}</span>
-              </label>
-            ))}
-          </div>
-        </div>}
       </Section>
 
       {/* La course d'abord, sa distance comprise (décision coach du 20/10/2026), puis la formule, qui n'offre que les

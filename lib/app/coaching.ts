@@ -140,7 +140,8 @@ export async function questionnairePrerempli(coachId: string, athleteId: string)
 // Suivi, pour préremplir son questionnaire (relue et corrigible) : le volume moyen et la plus longue sortie de course
 // des 4 dernières semaines (après une course, des 4 d'avant son affûtage), et un arrêt de plus de 4 semaines sur les 2
 // derniers mois. null sans accord ; sans course ces 4 semaines, seul l'arrêt est rempli (le questionnaire demande alors
-// la dernière sortie régulière).
+// la dernière sortie régulière). L'arrêt ne préremplit plus le questionnaire, qui ne le demande plus (1B, décision coach
+// du 05/11/2026) : il sert encore au recalage du départ réel (lib/app/ecriture.ts, recalerSurNolio) et à la saison de fond.
 const enHeuresMinutes = (min: number) => `${Math.floor(min / 60)}h${String(Math.round(min % 60)).padStart(2, '0')}`;
 // lu : la charge vient de Nolio ; sinon, detail dit pourquoi, et les champs gardent ses réponses précédentes (décision coach
 // du 23/10/2026 : « relis à chaque fois dans Nolio », et dis-le quand ce n'est pas possible). Une erreur de Nolio remonte.
