@@ -212,6 +212,7 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
           <CarteObjectif plan={plan} restants={restants} jauge={ctx.aLaMain ? null : jauge} etape={etape} href={lien('/app/plan', ctx)}
             surtitre={etape === 'apres' ? 'Ta dernière course' : 'Ton objectif'} jourJ={jourJ}
             // Q16 (décision coach du 05/11/2026 au soir, « A ») : programmé à la main, le bouton ouvre sa fiche de course.
+            // BROUILLON, à valider par le coach (« Ta fiche de course »).
             bouton={ctx.aLaMain ? { texte: 'Ta fiche de course', href: fiche } : null}
             coache={Boolean(ctx.coache)} jour={jour} debut={d.trame.find((l) => l.lundi)?.lundi ?? null} />
         )}

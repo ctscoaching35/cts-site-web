@@ -148,7 +148,8 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
         )}
 
         {/* Q5 (décision coach du 05/11/2026 au soir, « A », et « pour les plans, pas d'interaction avec moi ») : un acheteur
-            nous écrit pour son achat ou l'app, jamais pour son entraînement. Le texte de la décision. */}
+            nous écrit pour son achat ou l'app, jamais pour son entraînement. BROUILLON, à valider par le coach (le texte de
+            la décision). */}
         {!ctx.coache && (
           <a href={ECRIRE_A_CTS} className="flex items-center justify-between gap-3 min-h-[52px] px-[18px] py-3 bg-white rounded-2xl border border-indigo/[0.08] text-sm text-indigo">
             <span>Une question sur ton achat ou sur l’app ? <strong className="text-teal whitespace-nowrap">Écris-nous ›</strong></span>

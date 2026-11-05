@@ -204,7 +204,7 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
                         className="w-full min-h-11 flex justify-between items-center gap-3 text-sm text-left disabled:cursor-default">
                         <span className="font-bold text-indigo">{o.course_nom}</span>
                         <span className={o.id === ctx.cle ? 'text-teal font-semibold' : 'text-[#5E5C78]'}>
-                          {/* C26 : « Celui-ci », plus « Affiché ». */}
+                          {/* C26 : « Celui-ci », plus « Affiché ». BROUILLON, à valider par le coach. */}
                           {o.id === ctx.cle ? 'Celui-ci' : `${o.course_date < jour ? 'Passé' : o.id === objectifs.enCours ? 'En cours' : 'À venir'} · ${dateLongue(o.course_date, true)}`}
                         </span>
                       </button>
