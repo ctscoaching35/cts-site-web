@@ -7,6 +7,7 @@
  * 04/11/2026).
  */
 import { API_URL } from '@/lib/plan';
+import { enTetesMoteur } from './cleMoteur';
 import { demonstrationCoachOuverte, seuilsDemonstration } from './demonstrationCoach';
 import { ajouterJours } from './plan';
 import { listeNolio } from './nolio';
@@ -18,7 +19,7 @@ export { aujourdhuiParis, type GenreSignal, type Seuils, type Signal, type Suivi
 export async function seuilsSuivi(): Promise<Seuils> {
   // En démonstration : les seuils du moteur, gardés avec ses données (cts_suivi.SEUILS_SUIVI).
   if (demonstrationCoachOuverte()) return seuilsDemonstration();
-  const r = await fetch(`${API_URL}/v1/config`, { next: { revalidate: 3600 } });
+  const r = await fetch(`${API_URL}/v1/config`, { next: { revalidate: 3600 }, headers: enTetesMoteur() });
   if (!r.ok) throw new Error(`Moteur /v1/config : ${r.status}`);
   const s = (await r.json()).suivi as Seuils | undefined;
   if (!s) throw new Error('Moteur /v1/config : les seuils du suivi manquent (moteur 8.322 attendu).');

@@ -40,6 +40,7 @@ import { relierAuxPrevues } from './relier';
 import { correctionsAEnvoyer, CORRECTIONS_ACTIVES, marquerAppliquees } from './corrections';
 import { derniereActivite, garderLesSignaux } from './signauxGardes';
 import { demonstrationCoachOuverte, moteurDemonstration } from './demonstrationCoach';
+import { enTetesMoteur } from './cleMoteur';
 import { signaux } from './signauxSuivi';
 import { seuilsSuivi } from './suivi';
 import type { FamilleLue, ProfilLu } from './classement';
@@ -187,7 +188,7 @@ export async function moteur<T>(chemin: string, corps: unknown): Promise<T> {
   // En démonstration (lib/app/demonstrationCoach.ts) : ce que le moteur a écrit pour elle, rien d'autre.
   if (demonstrationCoachOuverte()) return moteurDemonstration<T>(chemin, corps);
   const r = await fetch(`${API_URL}${chemin}`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corps), cache: 'no-store',
+    method: 'POST', headers: enTetesMoteur({ 'Content-Type': 'application/json' }), body: JSON.stringify(corps), cache: 'no-store',
   });
   if (!r.ok) {
     const message = await r.json().then((x) => x?.message).catch(() => null);
@@ -938,7 +939,7 @@ async function recalerSurLePrecedent(o: Objectif, precedentId: string, lundi: st
 // Le plan se refait par le moteur (POST /v1/donnees) avant sa première semaine ; une durée inchangée ne touche à rien.
 async function dureeAuDepart(o: Objectif, depart: string) {
   const champs = (o.parametres.champs ?? {}) as Record<string, unknown>;
-  const config = await fetch(`${API_URL}/v1/config`, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)) as ConfigPlan | null;
+  const config = await fetch(`${API_URL}/v1/config`, { cache: 'no-store', headers: enTetesMoteur() }).then((r) => (r.ok ? r.json() : null)) as ConfigPlan | null;
   if (!config?.semaines_par_formule) return;
   const c = champs as unknown as Champs;
   const veille = new Date(`${ajouterJours(depart, -1)}T12:00:00Z`);

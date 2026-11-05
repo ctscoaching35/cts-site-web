@@ -13,6 +13,7 @@ import {
 import { enregistrerConfirmation } from './confirmation';
 import { annulerLeChoix, CORRECTIONS, CORRECTIONS_ACTIVES, garderLeChoix, RAISONS, type Correction, type Raison } from './corrections';
 import { coachConnecte } from './nolio';
+import { enTetesMoteur } from './cleMoteur';
 import { clientServeur, clientService } from './supabase';
 
 export type EtatGeste = { ok: boolean; message: string } | null;
@@ -126,7 +127,7 @@ async function enregistrerCourse(planId: string, form: FormData, ancienne: strin
   const parametres = { ...o.parametres, courses_secondaires: autres };
   const reelles = Object.values(((o.etat ?? {}) as { sl_reelles?: Record<string, number> }).sl_reelles ?? {});
   const r = await fetch(`${API_URL}/v1/course-secondaire`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
+    method: 'POST', headers: enTetesMoteur({ 'Content-Type': 'application/json' }), cache: 'no-store',
     body: JSON.stringify({ parametres, course, sl_30j_min: reelles.length ? Math.max(...reelles.slice(-4)) : null }),
   });
   const verdict = await r.json().catch(() => null) as { ok?: boolean; message?: string | null } | null;
@@ -147,7 +148,7 @@ async function enregistrerCourse(planId: string, form: FormData, ancienne: strin
   const envoi = new FormData();
   envoi.set('corps', JSON.stringify({ parametres: o.parametres, course }));
   if (trace) envoi.set('gpx', new File([trace], 'trace.gpx', { type: 'application/gpx+xml' }));
-  const rf = await fetch(`${API_URL}/v1/fiche-course`, { method: 'POST', body: envoi, cache: 'no-store' }).catch(() => null);
+  const rf = await fetch(`${API_URL}/v1/fiche-course`, { method: 'POST', body: envoi, cache: 'no-store', headers: enTetesMoteur() }).catch(() => null);
   const fiche = rf?.ok ? await rf.json().catch(() => null) as { trace?: boolean } | null : null;
   let ficheGardee = false;
   let traceAvant = false;

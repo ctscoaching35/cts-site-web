@@ -4,6 +4,7 @@ import CompterOffre from '@/components/CompterOffre';
 import EnTetePlan from '@/components/plan/EnTetePlan';
 import { plansOffre as t } from '@/lib/content';
 import { API_URL } from '@/lib/plan';
+import { enTetesMoteur } from '@/lib/app/cleMoteur';
 import { planOuvert } from '@/lib/planAcces';
 
 // La page des plans clé en main (CTS_LANCEMENT_CADRAGE.md dans le dépôt du moteur, L2, décision coach du
@@ -18,7 +19,7 @@ export const metadata: Metadata = {
 
 async function prixParMois(): Promise<Record<string, number> | null> {
   try {
-    const r = await fetch(`${API_URL}/v1/config`, { next: { revalidate: 3600 } });
+    const r = await fetch(`${API_URL}/v1/config`, { next: { revalidate: 3600 }, headers: enTetesMoteur() });
     return r.ok ? (await r.json()).prix_eur_par_mois ?? null : null;
   } catch {
     return null;

@@ -20,6 +20,7 @@ import { envoyerRappelConfirmation } from './emailBienvenue';
 import { carteOuverte, chargeChangee, chargeDe, confirmationDemandee, samediDuRappel, type Charge } from './invitation';
 import { ajouterJours, dateLongue } from './plan';
 import { clientService } from './supabase';
+import { enTetesMoteur } from './cleMoteur';
 
 export type Confirmation = { le: string; reponse: 'oui' | 'corrige'; charge: Charge };
 export type CarteConfirmation = { planId: string; achat: Charge; reponse: Confirmation | null; dimanche: string };
@@ -93,7 +94,7 @@ export async function enregistrerConfirmation(planId: string, charge: Charge | n
     }
     // Les contrôles du questionnaire d'achat : le moteur relit les réponses (valider_champs, comme au départ).
     const r = await fetch(`${API_URL}/v1/trame`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
+      method: 'POST', headers: enTetesMoteur({ 'Content-Type': 'application/json' }), cache: 'no-store',
       body: JSON.stringify({ parametres: { ...p.parametres, champs: { ...champs, ...charge } } }),
     }).catch(() => null);
     if (!r?.ok) {

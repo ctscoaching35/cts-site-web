@@ -6,6 +6,7 @@
  * repères et le nom de l'athlète. Côté serveur seulement.
  */
 import { API_URL } from '@/lib/plan';
+import { enTetesMoteur } from './cleMoteur';
 import type { CleTest, Plan, Zones } from './plan';
 
 export type Reperes = { zones: Zones; effort: Plan['mode_emploi']['effort'] };
@@ -25,7 +26,7 @@ const INDISPONIBLES: Reperes = {
 
 export async function reperesDeBase(): Promise<Reperes> {
   try {
-    const r = await fetch(`${API_URL}/v1/reperes`, { next: { revalidate: 3600 } });
+    const r = await fetch(`${API_URL}/v1/reperes`, { next: { revalidate: 3600 }, headers: enTetesMoteur() });
     if (!r.ok) throw new Error(`repères du moteur : ${r.status}`);
     return (await r.json()) as Reperes;
   } catch (e) {

@@ -7,6 +7,7 @@
  */
 import { CONTINUITE_ACTIVE } from './continuite';
 import { API_URL } from '@/lib/plan';
+import { enTetesMoteur } from './cleMoteur';
 import { actionsTrame, dateDe, empreinte, empreinteSeance, type Voulu } from './trameNolio';
 import { noteFicheCourse } from './ficheCourse';
 import { ajouterJours, jMoins, joursEntre, type Plan, type Semaine } from './plan';
@@ -278,7 +279,7 @@ export async function seancesDuMoteur(plan: Plan, planId: string, semaine: Semai
     affutage: lundiDu('Affûtage'), fiches_du_plan: plan.pour_aller_plus_loin.fiches.map((f) => f.cle),
   };
   const r = await fetch(`${API_URL}/v1/nolio/seances`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
+    method: 'POST', headers: enTetesMoteur({ 'Content-Type': 'application/json' }), cache: 'no-store',
     body: JSON.stringify({ jours: semaine.jours, profil, niveau, calendrier,
       // Sa place et les qualités de son bloc : la description du bandeau (décision coach du 21/10/2026).
       semaine: { type: semaine.type, bloc: semaine.bloc, lundi: semaine.lundi, rang_bloc: rang || 1,

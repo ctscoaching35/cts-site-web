@@ -20,6 +20,7 @@ import { envoyerBienvenue } from './emailBienvenue';
 import { retirerRelance } from './relance';
 import type { Plan } from './plan';
 import { clientService } from './supabase';
+import { enTetesMoteur } from './cleMoteur';
 
 // La connexion sans code ne vaut que dans l'heure qui suit l'achat : un lien de retour de paiement
 // retrouvé plus tard dans un historique ne connecte personne.
@@ -35,7 +36,7 @@ export class ErreurAchat extends Error {}
 
 async function lire(chemin: string | null) {
   if (!chemin) throw new Error('plan sans données');
-  const reponse = await fetch(`${API_URL}${chemin}`, { cache: 'no-store' });
+  const reponse = await fetch(`${API_URL}${chemin}`, { cache: 'no-store', headers: enTetesMoteur() });
   if (!reponse.ok) throw new Error(`${chemin} : ${reponse.status}`);
   return reponse;
 }
@@ -51,7 +52,7 @@ export async function rangerLePlan(sessionId: string, origine: string) {
   const simule = sessionId.startsWith(SIMULE);
   const reponse = await fetch(`${API_URL}/v1/plans`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...(simule && process.env.CTS_CLE_COACH ? { 'X-CTS-Coach': process.env.CTS_CLE_COACH } : {}) },
+    headers: enTetesMoteur({ 'Content-Type': 'application/json', ...(simule && process.env.CTS_CLE_COACH ? { 'X-CTS-Coach': process.env.CTS_CLE_COACH } : {}) }),
     body: JSON.stringify({ checkout_session_id: sessionId }),
     cache: 'no-store',
   });

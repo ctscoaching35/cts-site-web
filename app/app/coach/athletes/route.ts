@@ -5,6 +5,7 @@ import { planAchete } from '@/lib/app/acheteurs';
 import { reprogrammerSortie } from '@/lib/app/ecriture';
 import { coachConnecte } from '@/lib/app/nolio';
 import { clientService } from '@/lib/app/supabase';
+import { enTetesMoteur } from '@/lib/app/cleMoteur';
 
 // « Ajouter un athlète » et « Nouvel objectif » (CTS_NOLIO_CADRAGE.md, N1, N2, N5, N9) : le questionnaire rempli
 // par le coach part au moteur avec le code du coach (CTS_CLE_COACH), sans paiement ; le plan est rangé dans le compte
@@ -15,7 +16,7 @@ export async function POST(request: NextRequest) {
   const cle = process.env.CTS_CLE_COACH;
   if (!coach) return NextResponse.json({ message: 'Réservé au coach.' }, { status: 403 });
   if (!cle) return NextResponse.json({ message: 'Le code du coach (CTS_CLE_COACH) manque dans Vercel.' }, { status: 500 });
-  const enTete: Record<string, string> = { 'X-CTS-Coach': cle };
+  const enTete: Record<string, string> = enTetesMoteur({ 'X-CTS-Coach': cle });
   const formulaire = await request.formData();
   const athleteDemande = String(formulaire.get('athlete_id') ?? '');
   // OM1 : un objectif demandé par le coaché ; sa trace, gardée avec la demande, part si le coach n'en donne pas d'autre.
@@ -89,7 +90,7 @@ export async function POST(request: NextRequest) {
   if (!r2.ok || !c2?.donnees_url) {
     return NextResponse.json({ message: c2?.message || 'La génération du plan n’a pas abouti.' }, { status: 502 });
   }
-  const donnees: Plan = await (await fetch(`${API_URL}${c2.donnees_url}`, { cache: 'no-store' })).json();
+  const donnees: Plan = await (await fetch(`${API_URL}${c2.donnees_url}`, { cache: 'no-store', headers: enTetesMoteur() })).json();
   const service = clientService();
   if (ancien) {
     // Gardés : ses courses de préparation, son profil de coureur ; sa trace sans nouvelle trace ; en route, sa semaine
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest) {
       ...(ancien.demarre_le ? { declaree_le: anciensParametres.declaree_le } : {}),
     };
     const r3 = await fetch(`${API_URL}/v1/trame`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ parametres }), cache: 'no-store',
+      method: 'POST', headers: enTetesMoteur({ 'Content-Type': 'application/json' }), body: JSON.stringify({ parametres }), cache: 'no-store',
     });
     if (!r3.ok) {
       const c3 = await r3.json().catch(() => null);
@@ -131,7 +132,7 @@ export async function POST(request: NextRequest) {
       bande_majeure: nouveaux.bande_majeure ?? anciensParametres.bande_majeure ?? null,
     };
     const r3 = await fetch(`${API_URL}/v1/trame`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ parametres }), cache: 'no-store',
+      method: 'POST', headers: enTetesMoteur({ 'Content-Type': 'application/json' }), body: JSON.stringify({ parametres }), cache: 'no-store',
     });
     if (!r3.ok) {
       const c3 = await r3.json().catch(() => null);

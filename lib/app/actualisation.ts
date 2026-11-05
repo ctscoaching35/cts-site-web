@@ -3,6 +3,7 @@ import { realignerTrame } from './coaching';
 import { objectifEcrit, plansALaMain, TRAME } from './ecriture';
 import { aujourdhuiIso, SCHEMA_PLAN, type Plan } from './plan';
 import { clientService } from './supabase';
+import { enTetesMoteur } from './cleMoteur';
 
 // Les plans en cours suivent les règles du jour (CTS_NOLIO_CADRAGE.md ; décision coach du 19/10/2026 : « si je change
 // des règles, je ne veux pas que ce qui a été vu avant reste figé », la nuit qui suit). Chaque nuit, un plan dont la
@@ -18,7 +19,7 @@ export type Actualisation = { plan: string; quoi: string; erreur?: string };
 const BUDGET_MS = 240_000;
 
 export async function actualiserPlans(): Promise<Actualisation[]> {
-  const conf = await fetch(`${API_URL}/v1/config`, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  const conf = await fetch(`${API_URL}/v1/config`, { cache: 'no-store', headers: enTetesMoteur() }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
   const version = typeof conf?.version_moteur === 'string' ? conf.version_moteur : null;
   if (!version) throw new Error('la version du moteur est introuvable');
   const service = clientService();
@@ -38,7 +39,7 @@ export async function actualiserPlans(): Promise<Actualisation[]> {
     }
     try {
       const r = await fetch(`${API_URL}/v1/donnees`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
+        method: 'POST', headers: enTetesMoteur({ 'Content-Type': 'application/json' }), cache: 'no-store',
         body: JSON.stringify({ parametres: p.parametres, donnees_avant: p.donnees }),
       });
       const donnees = (await r.json().catch(() => null)) as Plan | null;

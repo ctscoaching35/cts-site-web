@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { Liste, PageLegale, Section } from '@/components/PageLegale';
 import { mediateur, plansVisibles, vendeur, VERSION_CGV } from '@/lib/legal';
 import { API_URL } from '@/lib/plan';
+import { enTetesMoteur } from '@/lib/app/cleMoteur';
 
 // Les conditions générales de vente des plans (CTS_LANCEMENT_CADRAGE.md dans le dépôt du moteur, L5, écrites le
 // 15/10/2026 à partir de ce que le site et l'app font réellement ; relues par le coach). La case du récapitulatif les
@@ -17,7 +18,7 @@ export const dynamic = 'force-dynamic';
 
 async function prixParMois(): Promise<Record<string, number> | null> {
   try {
-    const r = await fetch(`${API_URL}/v1/config`, { next: { revalidate: 3600 } });
+    const r = await fetch(`${API_URL}/v1/config`, { next: { revalidate: 3600 }, headers: enTetesMoteur() });
     return r.ok ? (await r.json()).prix_eur_par_mois ?? null : null;
   } catch {
     return null;
