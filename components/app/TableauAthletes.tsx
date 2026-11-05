@@ -3,7 +3,7 @@ import clsx from 'clsx';
 import { Carte, Surtitre } from './Ui';
 import type { LigneAthlete } from '@/lib/app/espaceCoach';
 import type { SignalAthlete } from '@/lib/app/cetteSemaine';
-import { jMoins } from '@/lib/app/plan';
+import { ajouterJours, dateAbregee, jMoins } from '@/lib/app/plan';
 
 // Les pastilles et le signal de chaque ligne (maquette validée par le coach le 24/10/2026).
 const PASTILLE = {
@@ -35,6 +35,8 @@ export default function TableauAthletes({ athletes, signalDe, jour, filtre, base
 }) {
   const parCategorie = (f: Filtre) => f === 'tous' ? athletes.length : athletes.filter((a) => categorie(a, jour) === f).length;
   const lignes = athletes.filter((a) => filtre === 'tous' || categorie(a, jour) === filtre);
+  // La semaine des chiffres (décision 2A du coach, 05/11/2026) : la dernière complète, du lundi d'avant au dimanche qui le suit.
+  const lundi = ajouterJours(jour, -((new Date(`${jour}T12:00:00Z`).getUTCDay() + 6) % 7));
   return (
     <Carte className="!p-5 !pb-2">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -59,8 +61,9 @@ export default function TableauAthletes({ athletes, signalDe, jour, filtre, base
             <div className={clsx('grid gap-x-3 py-2.5 text-[0.656rem] font-bold tracking-[0.08em] uppercase text-[#5E5C78] border-b border-indigo/10', COLONNES)}>
               <span>Athlète</span><span>Objectif</span><span>Sa semaine</span><span>Séances</span><span>Charge tenue</span><span>Hooper</span><span>Signal</span>
             </div>
+            {/* BROUILLON (05/11/2026, à valider) */}
             <p className="py-1.5 text-[0.72rem] text-[#5E5C78] border-b border-indigo/[0.06]">
-              Séances, charge tenue et Hooper : sa semaine passée. La semaine en cours est sur sa fiche, « Ses 7 jours ».
+              Séances, charge tenue et Hooper : semaine du {dateAbregee(ajouterJours(lundi, -7))} au {dateAbregee(ajouterJours(lundi, -1))}.
             </p>
             {lignes.map((a) => <Ligne key={a.id} a={a} signal={signalDe.get(a.nom) ?? RIEN} jour={jour} />)}
           </div>

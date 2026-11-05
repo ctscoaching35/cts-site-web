@@ -33,9 +33,10 @@ export type LigneAthlete = {
     fond?: { saison: number; theme: string | null; tests_dans: number | null } } | null;
   // Son entrée, tant qu'elle n'est pas complète (décision coach du 22/10/2026) : « Entrée 3/5 » sur sa ligne.
   entree: { faites: number; total: number } | null;
-  // Le tableau de bord (décision coach du 24/10/2026) : sa programmation, sa semaine passée (la dernière complète, déjà
-  // résumée : séances faites sur prévues, charge tenue ; la semaine en cours est sur sa fiche, « Ses 7 jours »), son
-  // Hooper de dimanche et sa tendance. Son signal vient de « Cette semaine » (cetteSemaine.ts, signalDe).
+  // Le tableau de bord (décision coach du 24/10/2026) : sa programmation, sa semaine passée (la dernière complète, du
+  // lundi d'avant au dimanche qui le suit, déjà résumée : séances faites sur prévues, charge tenue ; ses dates sous les
+  // titres du tableau, décision 2A du 05/11/2026), son Hooper de dimanche et sa tendance. Son signal vient de « Cette
+  // semaine » (cetteSemaine.ts, signalDe).
   // coache : false pour une fiche passée en mode plan avant le 04/11/2026 (le mode n'est plus dans l'interface) : rien ne
   // s'écrit pour elle ni ne la signale ici, elle se lit comme programmée à la main (aLaMain).
   coache: boolean; aLaMain: boolean;
