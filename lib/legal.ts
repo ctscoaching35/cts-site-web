@@ -3,28 +3,12 @@
  * coach) : qui vend, comment le joindre, le médiateur. Une seule source pour les CGV, les mentions légales et la
  * politique de confidentialité. Données par le coach le 15/10/2026 ; coordonnées publiques choisies par lui (option 1).
  */
-import { site } from './content';
 import { clientServeur, supabaseConfigure } from './app/supabase';
 import { planOuvert } from './planAcces';
 
-export const vendeur = {
-  nom: 'Romain Leterme',
-  forme: 'entrepreneur individuel (EI)',
-  nomCommercial: 'CTS Coaching',
-  adresse: '3 allée Angélique du Coudray, 35000 Rennes, France',
-  siret: '813 554 755 00062',
-  tvaIntracom: 'FR38813554755',
-  email: site.email,
-  telephone: '06 74 18 96 16',
-  telephoneLien: '+33674189616',
-};
-
-// Adhésion faite par le coach le 15/10/2026, pour 3 ans.
-export const mediateur = {
-  nom: 'CM2C',
-  adresse: '49 rue de Ponthieu, 75008 Paris',
-  site: 'https://www.cm2c.net',
-};
+// Qui vend, le médiateur, les dates de version et le formulaire de rétractation : lib/vendeur.ts (sans dépendance, lu
+// aussi par les e-mails).
+export { FORMULAIRE_RETRACTATION, mediateur, vendeur, VERSION_CGV, VERSION_CONFIDENTIALITE } from './vendeur';
 
 // RIEN DES PLANS AVANT LE LANCEMENT (décision coach du 15/10/2026) : les CGV et ce que la politique de confidentialité
 // dit des plans restent derrière la porte des plans (lib/planAcces.ts : CTS_PLAN_OUVERT=1 le 7/11, ou le lien
@@ -46,5 +30,3 @@ export async function plansVisibles(): Promise<boolean> {
   }
 }
 
-export const VERSION_CGV = '4 novembre 2026';
-export const VERSION_CONFIDENTIALITE = '4 novembre 2026';

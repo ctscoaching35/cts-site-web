@@ -9,7 +9,7 @@ import { after } from 'next/server';
 import { inviterAcheteur } from './ecriture';
 import { coachConnecte } from './nolio';
 import { COOKIE_PLAN, DUREE_COOKIE_PLAN } from './planChoisi';
-import { ErreurAchat, MESSAGE_RANGEMENT, rangerLePlan } from './rangement';
+import { ErreurAchat, MESSAGE_RANGEMENT, rangerLePlan, signalerAchatNonRange } from './rangement';
 import { clientServeur } from './supabase';
 
 export async function finaliserAchat(sessionId: string): Promise<{ destination: string } | { erreur: string }> {
@@ -33,6 +33,8 @@ export async function finaliserAchat(sessionId: string): Promise<{ destination: 
     return { destination: '/app/connexion?achat=1' };
   } catch (e) {
     console.error(`Rangement de l'achat ${sessionId} :`, e);
+    // E2 (audits du 05/11/2026) : le coach prévenu au premier échec d'un achat payé, une seule fois.
+    await signalerAchatNonRange(sessionId, e);
     return { erreur: e instanceof ErreurAchat ? e.message : MESSAGE_RANGEMENT };
   }
 }

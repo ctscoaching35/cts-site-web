@@ -1,6 +1,6 @@
 import { after } from 'next/server';
 import { inviterAcheteur } from '@/lib/app/ecriture';
-import { rangerLePlan } from '@/lib/app/rangement';
+import { rangerLePlan, signalerAchatNonRange } from '@/lib/app/rangement';
 import { signatureValide } from '@/lib/app/stripeWebhook';
 
 // Le webhook de Stripe (lib/app/stripeWebhook.ts) : un paiement réussi range le plan, même si l'acheteur a fermé
@@ -32,8 +32,10 @@ export async function POST(request: Request) {
     }
     return Response.json({ range: true });
   } catch (e) {
-    // Une erreur rend 500 : Stripe rappelle plus tard, et le rangement reprend où il s'est arrêté.
+    // Une erreur rend 500 : Stripe rappelle plus tard, et le rangement reprend où il s'est arrêté. E2 : le coach prévenu
+    // au premier échec, une seule fois (la page de retour le signale aussi, sous la même clé).
     console.error(`Webhook Stripe, rangement de ${session.id} :`, e);
+    await signalerAchatNonRange(session.id, e);
     return new Response('Rangement en échec', { status: 500 });
   }
 }

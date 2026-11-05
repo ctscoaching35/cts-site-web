@@ -3,6 +3,7 @@ import { programmerLesDimanches } from '@/lib/app/dimanchesCoaches';
 import { saisonsDuJour } from '@/lib/app/fond';
 import { passageQuotidien, retirerLaTrameAuDela } from '@/lib/app/ecriture';
 import { envoyerRelancesDues } from '@/lib/app/relance';
+import { renvoyerLesConfirmations } from '@/lib/app/rangement';
 import { supabaseConfigure } from '@/lib/app/supabase';
 
 // Le passage quotidien (vercel.json, crons) : les relances ; les comptes inactifs (E7 : avertis 30 jours avant,
@@ -18,6 +19,8 @@ export async function GET(request: Request) {
   if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`) return new Response('Refusé', { status: 401 });
   if (!supabaseConfigure()) return Response.json({ envoyees: 0 });
   const envoyees = await envoyerRelancesDues();
+  // J1 (audits du 05/11/2026) : la confirmation de commande qui n'est pas partie, renvoyée (14 jours au plus).
+  const confirmations = await renvoyerLesConfirmations().catch((e) => [{ plan: '', quoi: 'confirmations en échec', erreur: e instanceof Error ? e.message : String(e) }]);
   const comptesInactifs = await passerComptesInactifs();
   // La saison de fond (décisions coach du 24/10/2026) : celle de chaque coaché sans objectif à préparer, pour le lundi qui
   // vient ; le passage du dimanche l'écrit. D'abord : le dimanche soir, ses reprises de 21 h et 23 h l'attendent.
@@ -29,5 +32,5 @@ export async function GET(request: Request) {
   // L'écriture semaine par semaine : la fatigue du jour, les invitations à refaire, le résumé au coach.
   const ecriture = await passageQuotidien().catch((e) => [{ plan: '', quoi: 'passage en échec', erreur: e instanceof Error ? e.message : String(e) }]);
   return Response.json({ envoyees, comptes_inactifs: comptesInactifs,
-    ecriture: [...dimanches, ...saisons, ...trames, ...ecriture].map(({ plan, quoi, erreur }) => ({ plan, quoi, erreur: erreur ?? null })) });
+    ecriture: [...confirmations, ...dimanches, ...saisons, ...trames, ...ecriture].map(({ plan, quoi, erreur }) => ({ plan, quoi, erreur: erreur ?? null })) });
 }

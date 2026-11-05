@@ -11,6 +11,8 @@
  * dans Nolio, l'invitation part à part, l'app devient son tableau de bord. BROUILLON, à valider par le coach. Sans PDF
  * (décision coach du 21/10/2026 : la préparation est vivante, l'app en montre tout à jour).
  */
+import { site } from '@/lib/content';
+import { FORMULAIRE_RETRACTATION, vendeur, VERSION_CGV } from '@/lib/vendeur';
 import { chargeEnClair, confirmationDemandee, invitationAVenir, type Charge } from './invitation';
 import type { Plan } from './plan';
 
@@ -23,6 +25,11 @@ export const EXPEDITEUR = {
 // Les réponses vont à la boîte du coach : le domaine n'a pas de boîte mail (aucun enregistrement MX, 22/10/2026).
 export const REPONSE = { name: 'CTS Coaching', email: 'ctscoaching35@gmail.com' };
 
+// LA MENTION DU VENDEUR AU PIED DES E-MAILS (A-42, audits du 05/11/2026 : l'entrepreneur individuel se dit « EI », art.
+// L526-22 du code de commerce), sous la signature de chaque e-mail à un acheteur.
+export const PIED_LEGAL = `${vendeur.nomCommercial} — ${vendeur.nom}, ${vendeur.forme}, ${vendeur.adresse}, SIRET ${vendeur.siret}.`;
+export const piedHtml = () => `<p style="margin:20px 0 0;font-size:12px;line-height:1.5;color:#5E5C78">${echapper(PIED_LEGAL)}</p>`;
+
 const sansBalises = (texte: string) => texte.replace(/<[^>]+>/g, '');
 const echapper = (texte: string) =>
   texte.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -30,9 +37,35 @@ const echapper = (texte: string) =>
 const enLettres = (iso: string) => new Intl.DateTimeFormat('fr-FR', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' })
   .format(new Date(`${iso}T12:00:00Z`));
 const lendemain = (iso: string) => new Date(Date.parse(`${iso}T12:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+const euros = (centimes: number) => (centimes / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' }).replace(/\u202f|\u00a0/g, ' ');
+const dateParis = (horodatage: string) => new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', day: 'numeric', month: 'long', year: 'numeric' })
+  .format(new Date(horodatage)).replace(/^1 /, '1er ');
+
+// LA COMMANDE (J1, audits du 05/11/2026 ; art. L221-13 du code de la consommation : la confirmation du contrat sur un
+// support durable, avec ses caractéristiques essentielles, son prix, l'identité du vendeur, les conditions de vente et le
+// formulaire de rétractation). montantCentimes : ce que Stripe a encaissé, code promo déduit (le prix de la formule en
+// mode test, 0 pour un achat simulé par le coach) ; payeLe : l'horodatage du paiement ; dureeMois : la formule.
+export type Commande = { montantCentimes: number; payeLe: string; dureeMois: number | null };
+
+// Les lignes de la commande, en texte (le même ordre dans le HTML). Pure : sondée à part.
+export function lignesDeCommande(plan: Plan, commande: Commande, premiereSeance: string): string[] {
+  const { course } = plan;
+  const debut = course.date_debut_plan ?? '';
+  const formule = `Préparation CTS${commande.dureeMois ? ` — ${commande.dureeMois} mois` : ''}, pour ${course.nom}, le ${course.date_lettres}`;
+  return [
+    `Ta formule : ${formule}.`,
+    `Ta préparation : ${debut && debut >= premiereSeance ? `du ${enLettres(debut)}` : `rejointe en route, à partir du ${enLettres(premiereSeance)}`} `
+      + `jusqu’à ta course, puis ta récupération ; ta première séance : le ${enLettres(premiereSeance)}.`,
+    `Payée le ${dateParis(commande.payeLe)} : ${euros(commande.montantCentimes)}, TVA non applicable (article 293 B du code général `
+      + 'des impôts), en une fois, sans abonnement.',
+    `Vendue par ${vendeur.nom}, ${vendeur.forme}, sous le nom commercial ${vendeur.nomCommercial}, ${vendeur.adresse}, `
+      + `SIRET ${vendeur.siret}, ${vendeur.email}.`,
+    `Les conditions générales de vente acceptées avant ton paiement (version du ${VERSION_CGV}) : ${site.url}/cgv`,
+  ];
+}
 
 // nolio : l'adresse où part l'invitation Nolio, pour un plan écrit semaine par semaine ; null pour un plan d'avant.
-// aujourdhui : le jour de l'achat (Paris).
+// aujourdhui : le jour de l'achat (Paris). commande (J1) : sa commande, en tête ; le formulaire de rétractation, en bas.
 // L'e-mail juste (V3, audit de l'app plan du 03/11/2026) : « Bonjour » au prénom, une seule fois « Ta préparation », et
 // la date de sa première séance (le lendemain de l'achat, C9, ou le premier lundi d'une préparation qui commence plus
 // tard) à la place de « a commencé tout de suite ». L'invitation Nolio part le lundi de la semaine qui précède le départ,
@@ -41,7 +74,7 @@ const lendemain = (iso: string) => new Date(Date.parse(`${iso}T12:00:00Z`) + 86_
 // calendrier Nolio » (même décision : Nolio ne relie une activité à sa séance que le même jour). Une course reportée : il
 // répond à cet e-mail (PL6).
 export function contenuBienvenue(plan: Plan, lienApp: string, nolio: { adresse: string } | null = null,
-  aujourdhui = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date())) {
+  aujourdhui = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date()), commande: Commande | null = null) {
   const nom = plan.athlete.nom.trim();
   const prenom = nom.split(/\s+/)[0] ?? '';
   const { course } = plan;
@@ -79,45 +112,65 @@ export function contenuBienvenue(plan: Plan, lienApp: string, nolio: { adresse: 
     // avant de payer et son droit de rétractation (Code de la consommation, art. L221-13 et L221-25 ; décision coach du
     // 19/10/2026 : un service, rétractable 14 jours au prorata).
     `Comme tu l’as demandé avant ton paiement, ton accès a commencé tout de suite ; ta première séance est le ${enLettres(premiereSeance)}. Tu peux te rétracter pendant ` +
-      '14 jours à compter de ton paiement, en répondant simplement à cet e-mail : nous te remboursons le prix, moins la ' +
-      'part des jours de préparation déjà écoulés (article L221-25 du Code de la consommation). Le formulaire de ' +
-      'rétractation est dans nos conditions de vente.',
+      '14 jours à compter de ton paiement, sans avoir à te justifier, en répondant simplement à cet e-mail ou avec le ' +
+      'formulaire ci-dessous : nous te remboursons le prix, moins la part des jours de préparation déjà écoulés (article ' +
+      'L221-25 du code de la consommation).',
   ];
   const signature = 'Juliette et Romain — CTS Coaching';
   const bouton = nolio ? 'Ouvrir mon tableau de bord' : 'Ouvrir ma préparation';
   const bonjour = prenom ? `Bonjour ${prenom},` : 'Bonjour,';
+  // J1 : la commande en tête, le formulaire de rétractation au bout, mot pour mot celui des conditions de vente.
+  const lignes = commande ? lignesDeCommande(plan, commande, premiereSeance) : [];
+  const formulaire = [FORMULAIRE_RETRACTATION.titre, FORMULAIRE_RETRACTATION.consigne, FORMULAIRE_RETRACTATION.destinataire,
+    ...FORMULAIRE_RETRACTATION.lignes];
   const texte = [
     bonjour,
+    ...(lignes.length ? [`Ta commande\n${lignes.map((l) => `- ${l}`).join('\n')}`] : []),
     paragraphes[0],
     `${bouton} : ${lienApp}`,
     ...paragraphes.slice(1),
+    formulaire.join('\n'),
     signature,
+    PIED_LEGAL,
   ].join('\n\n');
   const p = (contenu: string) => `<p style="margin:0 0 16px;line-height:1.55">${contenu}</p>`;
+  const lien = (l: string) => echapper(l).replace(`${site.url}/cgv`, `<a href="${site.url}/cgv" style="color:#0C6E5F">${site.url}/cgv</a>`);
   const html = `<!doctype html><html lang="fr"><body style="margin:0;padding:24px 12px;background:#F3F7F0">
 <div style="max-width:560px;margin:0 auto;background:#ffffff;padding:32px 28px;font-family:Helvetica,Arial,sans-serif;font-size:16px;color:#2F2D4E">
 ${p(echapper(bonjour))}
+${lignes.length ? `<div style="margin:0 0 20px;padding:16px 18px;border:1px solid #D6DBD2;background:#F7F9F5">
+<p style="margin:0 0 8px;font-weight:bold">Ta commande</p>
+${lignes.map((l) => `<p style="margin:0 0 6px;font-size:14px;line-height:1.5">${lien(l)}</p>`).join('\n')}
+</div>` : ''}
 ${p(echapper(paragraphes[0]))}
 <p style="margin:24px 0"><a href="${echapper(lienApp)}" style="display:inline-block;background:#0C6E5F;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 24px">${bouton}</a></p>
 ${paragraphes.slice(1).map((x) => p(echapper(x))).join('\n')}
+<div style="margin:8px 0 20px;padding:14px 16px;border:1px solid #D6DBD2;font-size:14px;line-height:1.5">
+${formulaire.map((l, i) => `<p style="margin:0 0 6px${i === 0 ? ';font-weight:bold' : ''}">${echapper(l)}</p>`).join('\n')}
+</div>
 <p style="margin:24px 0 0;line-height:1.55;font-weight:bold">${signature}</p>
+${piedHtml()}
 </div></body></html>`;
-  return { sujet: `Ta Préparation CTS est prête — ${course.nom}`, texte, html };
+  return { sujet: commande ? `Ta commande est confirmée : ta Préparation CTS pour ${course.nom}` : `Ta Préparation CTS est prête — ${course.nom}`, texte, html };
 }
 
+// aujourdhui : le jour de l'achat (Paris), pour un renvoi par le passage quotidien (J1) ; aujourd'hui sinon. Rend false
+// sans clé Brevo (rien n'est parti), true quand Brevo l'a pris ; une erreur sinon.
 export async function envoyerBienvenue(
   email: string,
   plan: Plan,
   lienApp: string,
   pdf: { nom: string; contenu: ArrayBuffer } | null,
   nolio: { adresse: string } | null = null,
-) {
+  commande: Commande | null = null,
+  aujourdhui?: string,
+): Promise<boolean> {
   const cle = process.env.BREVO_API_KEY?.trim();
   if (!cle) {
     console.warn(`E-mail de bienvenue non envoyé (${plan.course.nom}) : BREVO_API_KEY absente.`);
-    return;
+    return false;
   }
-  const { sujet, texte, html } = contenuBienvenue(plan, lienApp, nolio);
+  const { sujet, texte, html } = contenuBienvenue(plan, lienApp, nolio, aujourdhui, commande);
   const reponse = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: { 'api-key': cle, 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -133,6 +186,7 @@ export async function envoyerBienvenue(
     cache: 'no-store',
   });
   if (!reponse.ok) throw new Error(`Brevo ${reponse.status} : ${await reponse.text()}`);
+  return true;
 }
 
 // La relance d'une invitation Nolio pas encore acceptée, trois jours après l'achat (décision coach du 21/10/2026 :
@@ -148,7 +202,7 @@ export function contenuRelanceInvitation(nom: string, lienApp: string) {
   const signature = 'Juliette et Romain — CTS Coaching';
   const bouton = 'Ouvrir mon tableau de bord';
   const bonjour = prenom ? `Bonjour ${prenom},` : 'Bonjour,';
-  const texte = [bonjour, ...paragraphes, `${bouton} : ${lienApp}`, signature].join('\n\n');
+  const texte = [bonjour, ...paragraphes, `${bouton} : ${lienApp}`, signature, PIED_LEGAL].join('\n\n');
   const p = (contenu: string) => `<p style="margin:0 0 16px;line-height:1.55">${contenu}</p>`;
   const html = `<!doctype html><html lang="fr"><body style="margin:0;padding:24px 12px;background:#F3F7F0">
 <div style="max-width:560px;margin:0 auto;background:#ffffff;padding:32px 28px;font-family:Helvetica,Arial,sans-serif;font-size:16px;color:#2F2D4E">
@@ -156,6 +210,7 @@ ${p(echapper(bonjour))}
 ${paragraphes.map((x) => p(echapper(x))).join('\n')}
 <p style="margin:24px 0"><a href="${echapper(lienApp)}" style="display:inline-block;background:#0C6E5F;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 24px">${bouton}</a></p>
 <p style="margin:24px 0 0;line-height:1.55;font-weight:bold">${signature}</p>
+${piedHtml()}
 </div></body></html>`;
   return { sujet: 'Ta Préparation CTS t’attend dans Nolio', texte, html };
 }
@@ -192,7 +247,7 @@ export function contenuRappelConfirmation(nom: string, lienApp: string, charge: 
   const signature = 'Juliette et Romain — CTS Coaching';
   const bouton = 'Répondre dans mon app';
   const bonjour = prenom ? `Bonjour ${prenom},` : 'Bonjour,';
-  const texte = [bonjour, ...paragraphes, `${bouton} : ${lienApp}`, signature].join('\n\n');
+  const texte = [bonjour, ...paragraphes, `${bouton} : ${lienApp}`, signature, PIED_LEGAL].join('\n\n');
   const p = (contenu: string) => `<p style="margin:0 0 16px;line-height:1.55">${contenu}</p>`;
   const html = `<!doctype html><html lang="fr"><body style="margin:0;padding:24px 12px;background:#F3F7F0">
 <div style="max-width:560px;margin:0 auto;background:#ffffff;padding:32px 28px;font-family:Helvetica,Arial,sans-serif;font-size:16px;color:#2F2D4E">
@@ -200,6 +255,7 @@ ${p(echapper(bonjour))}
 ${paragraphes.map((x) => p(echapper(x))).join('\n')}
 <p style="margin:24px 0"><a href="${echapper(lienApp)}" style="display:inline-block;background:#0C6E5F;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 24px">${bouton}</a></p>
 <p style="margin:24px 0 0;line-height:1.55;font-weight:bold">${signature}</p>
+${piedHtml()}
 </div></body></html>`;
   return { sujet: 'Avant ta première semaine : ce que tu cours a-t-il changé ?', texte, html };
 }
