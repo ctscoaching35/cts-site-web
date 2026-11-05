@@ -483,7 +483,8 @@ export function semaineDeRecuperation(o: Pick<Objectif, 'coache' | 'plan' | 'tem
 }
 
 const recuperationDuMoteur = (o: Objectif, numero: string, jusqua: string, retours: Retours | null) =>
-  moteur<SortieMoteur>('/v1/recuperation', { parametres: o.parametres, numero, jusqua, etat: o.etat, retours });
+  // « coache » (moteur 8.452, M-13) : un acheteur lit qu'il quitte l'équipe à la fin de sa récupération.
+  moteur<SortieMoteur>('/v1/recuperation', { parametres: o.parametres, numero, jusqua, etat: o.etat, retours, coache: o.coache });
 
 async function ecrireLaRecuperation(o: Objectif, numero: string, jusqua: string, retours: Retours | null): Promise<SortieMoteur> {
   return envoyerEtRanger(o, numero, await recuperationDuMoteur(o, numero, jusqua, retours));
