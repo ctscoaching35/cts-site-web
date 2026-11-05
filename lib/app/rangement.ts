@@ -31,12 +31,12 @@ import { enTetesMoteur } from './cleMoteur';
 // retrouvé plus tard dans un historique ne connecte personne.
 const SANS_CODE_PENDANT_MS = 60 * 60 * 1000;
 
-// E2 (audits du 05/11/2026) : le message vrai d'un paiement que le site n'a pas pu ranger. BROUILLON, à valider par le
-// coach (CTS_TEXTES_A_VALIDER.md).
+// E2 (audits du 05/11/2026) : le message vrai d'un paiement que le site n'a pas pu ranger. Validé par le coach le
+// 05/11/2026 au soir (CTS_TEXTES_A_VALIDER.md, L) : l'adresse e-mail au lieu du formulaire de contact.
 export const MESSAGE_RANGEMENT =
   'Ton paiement est bien enregistré. Ta préparation n’a pas encore pu être rangée dans ton compte : le site réessaie, et ' +
   'tu la reçois par e-mail dès qu’elle est prête. Nous sommes prévenus. Sans e-mail de notre part d’ici quelques heures, ' +
-  'écris-nous par le formulaire de contact de cts-coaching.com en donnant ce lien : Juliette ou Romain te répondent sous 48 h.';
+  'écris-nous à ctscoaching35@gmail.com avec l’adresse e-mail de ton achat : nous te répondons sous 48 h.';
 
 // Une phrase de l'API écrite pour l'athlète (refus, échec de génération) : la page la montre telle quelle. statut : la
 // réponse du moteur (402 : pas encore payé ; 404 : session inconnue ; rien de payé à signaler au coach).

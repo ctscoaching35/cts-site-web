@@ -43,7 +43,7 @@ export function CarteNolio({ etat, inviteLe = null, confirmer = false, avantCour
       ? { titre: 'Tu as quitté l’équipe CTS dans Nolio', bouton: false,
         texte: 'Tes séances ne t’arrivent plus. Pour rejoindre l’équipe, réponds simplement à ton e-mail de bienvenue : nous t’envoyons une nouvelle invitation.' }
       : { titre: 'Ta préparation est terminée dans Nolio', bouton: true, texte: 'Ton compte Nolio et tes séances restent à toi.' },
-    // E3 (audits du 05/11/2026) : arrêtée par le coach après un remboursement. BROUILLON, à valider par le coach.
+    // E3 (audits du 05/11/2026) : arrêtée par le coach après un remboursement. Validé par le coach le 05/11/2026 au soir.
     arrete: { titre: 'Ta préparation est arrêtée', bouton: true,
       texte: 'Elle a été arrêtée après ton remboursement : plus rien ne s’écrit dans ton Nolio. Ton compte Nolio et les séances déjà passées restent à toi.' },
     // Un plan acheté, l'athlète en coaching (décision coach du 23/10/2026).

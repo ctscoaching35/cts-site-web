@@ -424,7 +424,7 @@ export default function Questionnaire({
     ].filter(Boolean) as string[];
     return (
       <div className="space-y-6">
-        {/* M-14 (audits du 05/11/2026) : l'adresse, saisie une seule fois, redite en gros : tout y arrive. BROUILLON. */}
+        {/* M-14 (audits du 05/11/2026) : l'adresse, saisie une seule fois, redite en gros : tout y arrive. Validé par le coach le 05/11/2026 au soir. */}
         {!coach && (
           <section className="bg-white rounded-2xl border-2 border-teal/40 p-5 sm:p-6">
             <p className="text-[0.6875rem] font-bold tracking-[0.12em] uppercase text-teal mb-1">Tout arrive à cette adresse</p>
@@ -512,7 +512,7 @@ export default function Questionnaire({
               <span className="text-indigo">
                 <span className="font-semibold">Je demande que mon accès commence dès mon paiement{debutChoisi ? ` (ta première séance : le ${jourEnLettres(debutChoisi.premierJour)})` : ''}.</span>{' '}
                 <span className="text-[0.75rem] font-bold tracking-[0.06em] uppercase text-[#5E5C78]">Obligatoire</span>{' '}
-                <span className="text-indigo/70">Ton app s’ouvre tout de suite. Tu gardes ton droit de rétractation de 14 jours : si tu l’exerces, tu es remboursé du prix, moins la part des jours de préparation déjà écoulés (rien avant ta première séance).</span>
+                <span className="text-indigo/70">Ton app s’ouvre tout de suite. Tu gardes ton droit de rétractation de 14 jours : si tu l’exerces, tu es remboursé du prix, moins la part des jours de préparation déjà écoulés (aucune retenue avant ta première séance).</span>
               </span>
             </label>
           )}

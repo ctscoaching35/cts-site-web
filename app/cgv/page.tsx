@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 // Le « X » du modèle de la fourniture continue (J2) : la période contractuelle de fourniture.
-const PERIODE_FOURNITURE = 'la durée de la préparation, du paiement à la fin de la récupération qui suit la course';
+const PERIODE_FOURNITURE = 'la durée de la préparation (du paiement à la fin de la récupération qui suit la course)';
 
 async function prixParMois(): Promise<Record<string, number> | null> {
   try {
@@ -96,7 +96,7 @@ export default async function CGV() {
           <li>
             l’accès à l’app CTS, ton tableau de bord : ta course, ta trame, ta jauge de préparation et tes graphiques, ta
             fiche de course et la bibliothèque de fiches ; si ton achat date de plus de 3 semaines au moment de ton
-            invitation, l’app te demande alors si ce que tu cours a changé, et ta première semaine s’écrit sur ta réponse ;
+            invitation, l’app te demande alors si ce que tu cours a changé, et ta première semaine s’écrit sur ta réponse.
           </li>
         </Liste>
         <p>
@@ -110,7 +110,7 @@ export default async function CGV() {
           envoyé par e-mail, sans mot de passe.
         </p>
         <p>
-          Ton plan reste accessible dans l’app au moins jusqu’au lendemain de ta course, et tant que ton compte existe. Un
+          Ton plan reste accessible dans l’app au moins jusqu’à la fin de ta récupération après ta course, et tant que ton compte existe. Un
           compte resté 3 ans sans activité est supprimé, après un e-mail d’avertissement 30 jours avant (voir la{' '}
           <a href="/confidentialite">politique de confidentialité</a>).
         </p>
@@ -164,9 +164,11 @@ export default async function CGV() {
         <p>
           La méthode CTS s’améliore au fil des semaines : ses améliorations s’appliquent à tes semaines suivantes, sans
           frais, jamais à celles déjà écrites dans ton Nolio. Elles ne changent ni ta course, ni ta formule, ni ton prix.
-          Si l’une te gêne, écris-nous : nous voyons avec toi. Si une modification nuit de façon importante à ta
-          préparation, tu peux mettre fin au contrat dans les 30 jours qui suivent, et nous te remboursons la part du prix
-          des semaines qui restent jusqu’à ta course.
+          Si l’une te gêne, écris-nous : nous voyons avec toi. Une modification qui pourrait gêner ta préparation t’est
+          annoncée à l’avance par e-mail, avec sa date ; si elle la gêne autrement que de façon mineure, tu peux mettre
+          fin au contrat, sans frais, dans les 30 jours qui suivent son annonce ou, si c’est plus tard, son application,
+          et nous te remboursons la part du prix des semaines qui restent jusqu’à ta course (article L. 224-25-26 du code
+          de la consommation).
         </p>
       </Section>
 

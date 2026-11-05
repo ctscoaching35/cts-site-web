@@ -236,7 +236,7 @@ export async function envoyerRelanceInvitation(email: string, nom: string, lienA
 
 // LE RAPPEL DE LA CONFIRMATION DE CHARGE (décision coach du 04/11/2026 au soir, « A » ; lib/app/confirmation.ts) : le
 // samedi qui précède le départ, à l'acheteur qui n'a pas répondu à la carte de son app. Sans réponse, rien ne bloque.
-// BROUILLON, à valider par le coach.
+// Validé par le coach le 05/11/2026 au soir.
 export function contenuRappelConfirmation(nom: string, lienApp: string, charge: Charge) {
   const prenom = nom.trim().split(/\s+/)[0] ?? '';
   const paragraphes = [

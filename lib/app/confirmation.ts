@@ -128,9 +128,9 @@ export async function enregistrerConfirmation(planId: string, charge: Charge | n
   if (reponse.plancher && reponse.demandee) {
     await prevenirDuPlancher(planId, achat, reponse.demandee, reponse.charge, dimanche)
       .catch((e) => console.error(`Confirmation au plancher de ${planId} :`, e instanceof Error ? e.message : e));
-    // BROUILLON (05/11/2026), à valider par le coach : l'acheteur n'a pas de coach attitré, « nous » le suivons.
+    // Validé par le coach le 05/11/2026 au soir (CTS_TEXTES_A_VALIDER.md, L) : l'acheteur n'a pas de coach attitré.
     return { ok: true, message: `C’est noté. Ta plus longue sortie est sous les 45 minutes que demande la préparation : ta `
-      + `première semaine s’écrira ${dimanche} au soir en partant d’une sortie longue de 45 min, le plus bas possible. Écoute tes `
+      + `première semaine s’écrira ${dimanche} au soir en partant d’une sortie longue de 45 min, le minimum de la préparation. Écoute tes `
       + 'sensations ; si tu hésites, réponds à ton e-mail de bienvenue.' };
   }
   return { ok: true, message: reponse.reponse === 'oui'
@@ -147,7 +147,7 @@ async function prevenirDuPlancher(planId: string, achat: Charge, demandee: Charg
     `${nom || 'L’acheteur'} (plan « ${String(data?.course_nom ?? '')} ») a corrigé sa charge avant son départ. À l’achat : `
     + `${chargeEnClair(achat)}. Maintenant : ${chargeEnClair(demandee)}. Sa plus longue sortie est sous les 45 min que `
     + `demande la préparation : sa première semaine s’écrit ${dimanche} au soir sur le plancher, ${chargeEnClair(plancher)}. `
-    + 'À voir avec lui si besoin, en réponse à son e-mail de bienvenue.');
+    + 'À voir avec l’athlète si besoin, en réponse à son e-mail de bienvenue.');
 }
 
 // Le rappel du samedi (passage quotidien) : la carte encore sans réponse, son départ ce lundi. Le passage tourne une fois
