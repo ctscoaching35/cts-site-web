@@ -2338,8 +2338,10 @@ const REGLES_EN_CLAIR: Record<string, string> = {
 // Le Suivi du coach (décision 8 du document des règles) : les ajustements de ses coachés écrits ces 8 derniers jours,
 // chacun avec son geste : « Annuler » pour ceux du dimanche, « Garder la séance d'origine » pour une séance allégée.
 // annulable : la dernière semaine écrite de son objectif (B-EC-1) ; « Annuler » ne s'offre que là.
+// allegees : le jour de chaque séance allégée en EF et son nom d'origine ; joursArret : les jours sans courir lus à son
+// lundi (R4), pour le signal de « Mes athlètes » (décision 1A du coach, 05/11/2026).
 export type Ajustement = { planId: string; nom: string; numero: string; lundi: string | null; raisons: string[]; bilan: string | null;
-  allegees: { id: string; nom: string }[]; annulable: boolean };
+  allegees: { id: string; nom: string; jour: string }[]; annulable: boolean; joursArret: number | null };
 export async function ajustementsDuCoach(coachId: string): Promise<Ajustement[]> {
   const service = clientService();
   const { data: coaching } = await service.from('coaching').select('plan_id, athlete_nom').eq('coach_id', coachId);
@@ -2358,15 +2360,16 @@ export async function ajustementsDuCoach(coachId: string): Promise<Ajustement[]>
   const liste: Ajustement[] = [];
   for (const e of ecrites ?? []) {
     // Les corrections du coach (EC3, « COACH ») sont les siennes, pas des ajustements du moteur.
-    const journal = e.sans_ajustement ? [] : ((e.journal ?? []) as { regle?: string }[]).filter((j) => j.regle !== 'COACH');
+    const journal = e.sans_ajustement ? [] : ((e.journal ?? []) as { regle?: string; jours?: number }[]).filter((j) => j.regle !== 'COACH');
     const jours = ((e.donnees as Semaine | null)?.jours ?? []) as (Semaine['jours'][number] & { origine?: { seance?: string } })[];
-    const allegees = jours.filter((j) => j.origine).map((j) => ({ id: j.id, nom: j.origine?.seance ?? j.id }));
+    const allegees = jours.filter((j) => j.origine).map((j) => ({ id: j.id, nom: j.origine?.seance ?? j.id, jour: j.jour }));
     if (!journal.length && !allegees.length) continue;
     liste.push({
       planId: e.plan_id as string, nom: nomDe.get(e.plan_id as string) ?? '', numero: e.numero as string,
       lundi: (e.donnees as Semaine | null)?.lundi ?? null,
       raisons: [...new Set(journal.map((j) => REGLES_EN_CLAIR[j.regle ?? ''] ?? j.regle ?? ''))], bilan: e.bilan as string | null, allegees,
       annulable: derniere.get(e.plan_id as string) === Number(String(e.numero).slice(1)),
+      joursArret: journal.find((j) => j.regle === 'R4' && typeof j.jours === 'number')?.jours ?? null,
     });
   }
   return liste.sort((a, b) => a.nom.localeCompare(b.nom, 'fr') || a.numero.localeCompare(b.numero, 'fr', { numeric: true }));

@@ -72,7 +72,27 @@ export default function TableauAthletes({ athletes, signalDe, jour, filtre, base
 
 const RIEN: SignalAthlete = { texte: 'Rien à signaler', niveau: 'ok' };
 
-// Une ligne du tableau : toute la ligne ouvre sa fiche.
+// Son signal (décision 1A du coach, 05/11/2026) : l'étiquette est un lien vers le détail (Nolio, son plan, sa fiche), une
+// ligne courte dessous dit ce qui se passe ; « Rien à signaler », ni lien ni ligne. Au-dessus du lien étiré de la ligne.
+function Signal({ signal }: { signal: SignalAthlete }) {
+  const etiquette = <span className={clsx('inline-block text-[0.75rem] font-bold px-2.5 py-1 rounded-full', PASTILLE[signal.niveau])}>{signal.texte}</span>;
+  if (!signal.href) return <span>{etiquette}</span>;
+  const classe = 'group relative z-10 block min-w-0 rounded-lg';
+  const contenu = (
+    <>
+      {etiquette}
+      {signal.detail && (
+        <span className="mt-1 block text-[0.72rem] leading-snug text-[#5E5C78] line-clamp-2 group-hover:text-indigo group-hover:underline">{signal.detail}</span>
+      )}
+    </>
+  );
+  return signal.externe
+    ? <a href={signal.href} target="_blank" rel="noopener" className={classe}>{contenu}</a>
+    : <Link href={signal.href} className={classe}>{contenu}</Link>;
+}
+
+// Une ligne du tableau : toute la ligne ouvre sa fiche (le lien de son nom, étiré sur la ligne), sauf son signal, qui a
+// son propre lien (jamais un lien dans un lien).
 function Ligne({ a, signal, jour }: { a: LigneAthlete; signal: SignalAthlete; jour: string }) {
   const o = a.objectif;
   const avenir = Boolean(o && o.course_date >= jour);
@@ -92,10 +112,9 @@ function Ligne({ a, signal, jour }: { a: LigneAthlete; signal: SignalAthlete; jo
             : o.prevu ? [`Démarre le ${dateCourte(o.prevu, jour)}`, 'Programmé'] : ['Pas encore démarré', ''];
   const s = a.semaine;
   return (
-    <Link href={`/app/coach/athlete/${a.id}`}
-      className={clsx('grid gap-x-3 items-center min-h-16 py-2 text-[0.84rem] border-b last:border-b-0 border-indigo/[0.06] hover:bg-sand/50', COLONNES)}>
+    <div className={clsx('relative grid gap-x-3 items-center min-h-16 py-2 text-[0.84rem] border-b last:border-b-0 border-indigo/[0.06] hover:bg-sand/50', COLONNES)}>
       <span className="min-w-0">
-        <span className="block font-bold">{a.nom}</span>
+        <Link href={`/app/coach/athlete/${a.id}`} className="block font-bold after:absolute after:inset-0 after:content-['']">{a.nom}</Link>
         <span className="mt-1 flex flex-wrap gap-1">
           {a.aLaMain && <span className={clsx(pastille, PASTILLE.warn)}>À la main</span>}
           {a.entree && <span className={clsx(pastille, PASTILLE.warn)}>Entrée {a.entree.faites}/{a.entree.total}</span>}
@@ -126,7 +145,7 @@ function Ligne({ a, signal, jour }: { a: LigneAthlete; signal: SignalAthlete; jo
       <span className={a.hooper ? '' : 'text-[#5E5C78]'}>
         {a.hooper ? `${a.hooper.valeur}${a.hooper.tendance ? ` · ${TENDANCE[a.hooper.tendance]}` : ''}` : '—'}
       </span>
-      <span><span className={clsx('inline-block text-[0.75rem] font-bold px-2.5 py-1 rounded-full', PASTILLE[signal.niveau])}>{signal.texte}</span></span>
-    </Link>
+      <span className="min-w-0"><Signal signal={signal} /></span>
+    </div>
   );
 }

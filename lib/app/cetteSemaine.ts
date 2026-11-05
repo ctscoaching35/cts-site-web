@@ -15,7 +15,7 @@
  */
 import { vueDuCoach, type ARegarder, type VueCoach } from './espaceCoach';
 import { ajustementsDuCoach, type Ajustement } from './ecriture';
-import { ajouterJours, dateLongue, joursEntre } from './plan';
+import { ajouterJours, dateAbregee, dateLongue, joursEntre } from './plan';
 import { signauxGardes, SILENCE_JOURS, type SignauxGardes } from './signauxGardes';
 import { apresLePassage, HEURE_PASSAGE_UTC, semainesDuDimanche } from './semainesDuDimanche';
 import { clientService } from './supabase';
@@ -29,8 +29,10 @@ export type BilanDimanche = { dimanche: string; parties: number; pasParties: num
 export type CarteCoache = { athlete: string; raisons: ARegarder[] };
 // Ce que le moteur a décidé seul pour un coaché, une semaine : ses ajustements (un par objectif écrit cette semaine-là).
 export type LigneMoteur = { athlete: string; lundi: string | null; planId: string; raisons: string[]; ajustements: Ajustement[] };
-// Le signal de sa ligne dans « Mes athlètes » : le nom court de ce que cet accueil dit de lui.
-export type SignalAthlete = { texte: string; niveau: 'ok' | 'warn' | 'ko' | 'neutre' };
+// Le signal de sa ligne dans « Mes athlètes » : le nom court de ce que cet accueil dit de lui. Décision 1A du coach
+// (05/11/2026) : un lien vers le détail (href, externe : hors de l'app, Nolio) et, dessous, une ligne courte qui dit ce
+// qui se passe (detail) ; « Rien à signaler » n'a ni l'un ni l'autre.
+export type SignalAthlete = { texte: string; niveau: 'ok' | 'warn' | 'ko' | 'neutre'; detail?: string; href?: string; externe?: boolean };
 export type CetteSemaine = {
   bilan: BilanDimanche | null;
   cartes: CarteCoache[];
@@ -102,6 +104,37 @@ function santeDesSignaux(nom: string, usr: string, g: SignauxGardes, jour: strin
   return sante;
 }
 
+// La ligne courte d'un signal tirée du texte d'« À regarder » : sa majuscule, sans point final (l'écran la coupe à deux
+// lignes, le lien garde le texte entier).
+const ligneCourte = (texte: string) => (texte.charAt(0).toUpperCase() + texte.slice(1)).replace(/\.$/, '');
+
+// Le signal d'un coaché que le moteur a ajusté : ce qu'il a changé (une séance allégée, sinon ses raisons, la durée d'un
+// arrêt), et la semaine sur la page de son plan, là où son pourquoi est écrit.
+function signalDuMoteur(l: LigneMoteur): SignalAthlete {
+  const derniere = l.ajustements[l.ajustements.length - 1];
+  const href = `/app/coach/plan/${derniere.planId}#semaine-${derniere.numero}`;
+  if (l.raisons.includes('arrêt')) {
+    const a = l.ajustements.find((x) => x.joursArret !== null);
+    // BROUILLON (05/11/2026, à valider)
+    return { niveau: 'warn', texte: 'Arrêt de course', href,
+      ...(a ? { detail: `${a.joursArret} jours sans courir${a.lundi ? ` au ${dateAbregee(a.lundi)}` : ''}` } : {}) };
+  }
+  const allegees = l.ajustements.flatMap((x) => x.allegees);
+  const fatigue = l.raisons.includes('fatigue') || allegees.length > 0;
+  // BROUILLON (05/11/2026, à valider) : « Mardi : séance VO2 long allégée en EF » ; la fatigue du dimanche (R3), « semaine allégée ».
+  const detail = allegees.length
+    ? allegees.map((j) => `${j.jour} : séance ${j.nom.split(' — ')[0].split(' · ')[0]} allégée en EF`).join(' · ')
+    : l.raisons.map((r) => (r === 'fatigue' ? 'semaine allégée' : r)).join(', ');
+  return { niveau: 'warn', texte: fatigue ? 'Fatigue franche' : 'Semaine ajustée', href, ...(detail ? { detail: ligneCourte(detail) } : {}) };
+}
+
+// Le signal d'un point d'« À regarder » : son nom court, sa ligne (la sienne, sinon son texte ; rien pour un arrêt dont
+// la durée n'est pas connue) et son geste.
+const signalDuPoint = (r: ARegarder, niveau: SignalAthlete['niveau']): SignalAthlete => ({
+  texte: SIGNAL[r.genre] ?? r.texte, niveau, href: r.href, ...(r.externe ? { externe: true } : {}),
+  ...(r.detail ? { detail: r.detail } : r.genre === 'arret' ? {} : { detail: ligneCourte(r.texte) }),
+});
+
 // Les ajustements, une ligne par coaché et par semaine (deux objectifs écrits la même semaine, une saison qui s'arrête
 // et la préparation qui part : une seule ligne).
 function lignesDuMoteur(ajustements: Ajustement[]): LigneMoteur[] {
@@ -139,16 +172,16 @@ export async function cetteSemaine(coachId: string, membres: Set<string> | null,
   const cartes = [...parCoache.values()];
   const moteur = lignesDuMoteur(ajustements);
   const aVenir = vue.aRegarder.filter((r) => r.niveau === 'arrive');
-  // Le signal de chacun dans « Mes athlètes » : sa carte, sinon ce que le moteur a réglé pour lui, sinon ce qui arrive.
+  // Le signal de chacun dans « Mes athlètes » : sa carte, sinon ce que le moteur a réglé pour lui (sa semaine la plus
+  // récente), sinon ce qui arrive.
   const signalDe = new Map<string, SignalAthlete>();
   for (const a of vue.athletes) {
     const carte = parCoache.get(a.nom);
-    const decision = moteur.find((l) => l.athlete === a.nom);
+    const decision = moteur.filter((l) => l.athlete === a.nom).sort((x, y) => String(y.lundi ?? '').localeCompare(String(x.lundi ?? '')))[0];
     const arrive = aVenir.find((r) => r.athlete === a.nom);
-    signalDe.set(a.nom, carte ? { texte: SIGNAL[carte.raisons[0].genre] ?? carte.raisons[0].texte, niveau: 'ko' }
-      : decision ? { niveau: 'warn', texte: decision.raisons.includes('arrêt') ? 'Arrêt de course'
-        : decision.raisons.includes('fatigue') || decision.ajustements.some((x) => x.allegees.length) ? 'Fatigue franche' : 'Semaine ajustée' }
-        : arrive ? { texte: SIGNAL[arrive.genre] ?? arrive.texte, niveau: 'neutre' }
+    signalDe.set(a.nom, carte ? signalDuPoint(carte.raisons[0], 'ko')
+      : decision ? signalDuMoteur(decision)
+        : arrive ? signalDuPoint(arrive, 'neutre')
           : { texte: 'Rien à signaler', niveau: 'ok' });
   }
   const coaches = vue.athletes.filter((a) => a.coache);

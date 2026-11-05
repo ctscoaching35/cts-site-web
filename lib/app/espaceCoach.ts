@@ -19,7 +19,7 @@ import { coursesGardees, pasEncoreIci, type CourseNolio } from './coursesNolio';
 import { entreeDe } from './entree';
 import { cleLaissee, debutApres, plansALaMain, trameDuPlan, type Realise, type Trame } from './ecriture';
 import { lireTemps } from '@/lib/plan';
-import { ajouterJours, dateLongue, jourMois, joursEntre, type Semaine } from './plan';
+import { ajouterJours, dateAbregee, dateLongue, jourMois, joursEntre, type Semaine } from './plan';
 import { athletesNolio, ErreurNolio, nolioConfigure, type AthleteNolio } from './nolio';
 import { clientService } from './supabase';
 import { jaugeDuPlan, weekEndChoc, type Verdict } from './tableau';
@@ -54,8 +54,10 @@ export const NIVEAUX: { cle: Niveau; titre: string }[] = [
 // semaine : le geste est un bouton (Réessayer), planId le porte ; externe : le lien sort de l'app (Nolio).
 // cle : ce point-là (décision coach du 24/10/2026, « Réglé ») — son genre et ce qu'il désigne ; réglé, il ne revient
 // jamais, un nouveau point du même genre (une autre semaine, course, test, un autre mot ou chrono) a une autre clé.
+// detail : la ligne courte sous son signal dans « Mes athlètes » (décision 1A du coach, 05/11/2026), quand le texte ne la
+// donne pas (la date du questionnaire d'un mot, la durée d'un arrêt).
 export type ARegarder = { niveau: Niveau; genre: string; athlete: string; texte: string; action: string; href: string;
-  cle: string; planId?: string; externe?: boolean };
+  cle: string; planId?: string; externe?: boolean; detail?: string };
 export type VueCoach = { athletes: LigneAthlete[]; aRegarder: ARegarder[] };
 
 const aujourdhui = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
@@ -66,7 +68,7 @@ const WEEK_END_CHOC_PREVENIR_JOURS = 30;
 // AC4 : la part de la charge prévue sous laquelle une semaine compte « sous le plan ».
 const SOUS_LE_PLAN = 0.8;
 const TEST: Record<string, string> = { illisible: 'est illisible dans Nolio', sans_reponse: 'est resté sans réponse au questionnaire du soir', non_fait: 'n’a pas été fait' };
-type Journal = { regle?: string; effet?: string; trop_dur?: boolean }[];
+type Journal = { regle?: string; effet?: string; trop_dur?: boolean; jours?: number }[];
 // L'équipe Nolio du coach, que le tableau de bord et « À regarder » lisent à l'ouverture ; sans réponse de Nolio,
 // personne, et la raison.
 export async function equipeNolio(): Promise<{ nolio: AthleteNolio[] | null; erreur: string | null }> {
@@ -182,7 +184,11 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
       const proche = String(arret.effet ?? '').startsWith('course proche');
       const dure = Boolean(avant && arretDe(avant));
       if (proche || dure) {
+        // La durée sans courir, lue par le moteur au lundi de la semaine (R4) ; inconnue à l'approche de la course.
+        const lundiArret = (l.donnees as Semaine | null)?.lundi ?? null;
         aRegarder.push({ niveau: 'sante', genre: 'arret', cle: `arret:${l.plan_id}:${l.numero}`, athlete: a.nom, action: 'Relire ›', href: hrefPlan,
+          // BROUILLON (05/11/2026, à valider)
+          ...(typeof arret.jours === 'number' ? { detail: `${arret.jours} jours sans courir${lundiArret ? ` au ${dateAbregee(lundiArret)}` : ''}` } : {}),
           texte: proche
             ? `arrêt de course à l’approche de son objectif : rien ne remonte, à toi de voir son objectif avec lui.`
             : `arrêt de course depuis plus de 7 jours, deux semaines de suite : à voir avec lui, sa reprise est en semaine ${num(l.numero)}.` });
@@ -191,6 +197,8 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     // Un mot à la question ouverte du dimanche, ces 7 derniers jours (décision coach du 21/10/2026) : à lire dans Nolio.
     if ((a.questionnaires?.mot_le ?? '') >= ajouterJours(jour, -7)) {
       aRegarder.push({ niveau: 'sante', genre: 'mot', cle: `mot:${a.id}:${a.questionnaires?.mot_le}`, athlete: a.nom, action: 'Lire dans Nolio ›', href: NOLIO, externe: true,
+        // BROUILLON (05/11/2026, à valider)
+        detail: `Questionnaire du ${dateAbregee(String(a.questionnaires?.mot_le))}`,
         texte: 'a un mot pour toi dans son questionnaire du samedi.' });
     }
     // Le RPE à revoir (décision coach du 21/10/2026) : une séance clé jugée trop dure sur son RPE deux semaines de suite.

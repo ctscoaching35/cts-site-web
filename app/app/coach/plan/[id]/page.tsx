@@ -217,7 +217,9 @@ export default async function ObjectifCoache({ params, searchParams }: {
                         </span>
                       );
                       return (
-                        <li key={w.numero} className={clsx('px-3.5 py-2.5 rounded-xl space-y-1.5', ajuste ? 'bg-[#FBF3F5] border border-[#EBC9D3]' : 'bg-sand')}>
+                        // L'ancre de la semaine : le signal de « Mes athlètes » y mène (décision 1A du coach, 05/11/2026).
+                        <li key={w.numero} id={`semaine-${w.numero}`}
+                          className={clsx('px-3.5 py-2.5 rounded-xl space-y-1.5 scroll-mt-6', ajuste ? 'bg-[#FBF3F5] border border-[#EBC9D3]' : 'bg-sand')}>
                           {w.bilan ? (
                             <details className="group">
                               <summary className="cursor-pointer list-none min-h-8 flex items-center">{ligne}</summary>

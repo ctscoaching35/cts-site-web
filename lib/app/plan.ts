@@ -310,6 +310,12 @@ export const dateLongue = (iso: string, avecAnnee = false) =>
     })
     .replace(/ 1 /, ' 1er ');
 
+// Les dates courtes de l'espace coach (05/11/2026) : « lundi 26 oct. », « dimanche 1er nov. » ; sans le jour, « 12 avr. ».
+export const dateAbregee = (iso: string, avecJour = true) =>
+  enDate(iso)
+    .toLocaleDateString('fr-FR', { ...(avecJour ? { weekday: 'long' } : {}), day: 'numeric', month: 'short', timeZone: 'UTC' })
+    .replace(/(^| )1 /, '$11er ');
+
 export const moisLong = (iso: string) =>
   enDate(iso).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 
