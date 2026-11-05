@@ -4,11 +4,11 @@ import { notFound } from 'next/navigation';
 import CadreCoach from '@/components/app/CadreCoach';
 import { Carte } from '@/components/app/Ui';
 import { exigerCoach } from '@/lib/app/nolio';
-import { ajouterJours, dateLongue } from '@/lib/app/plan';
+import { ajouterJours, dateAbregee, dateLongue } from '@/lib/app/plan';
 import { prevision, RANG, type Niveau, type Prevision } from '@/lib/app/prevision';
 import { signauxGardes } from '@/lib/app/signauxGardes';
 import { apresLePassage as passageFait, semainesDuDimanche } from '@/lib/app/semainesDuDimanche';
-import { espaceCoachOuvert } from '@/lib/app/supabase';
+import { clientService, espaceCoachOuvert } from '@/lib/app/supabase';
 
 // Toujours calculée à la visite : la page lit la session du coach.
 export const dynamic = 'force-dynamic';
@@ -17,26 +17,32 @@ export const dynamic = 'force-dynamic';
 // proposé le 30/10/2026) : les semaines qui s'écrivent dimanche soir, avec leur niveau, lu dans les signaux gardés du soir
 // (rouge : le moteur changera sa semaine ; orange : proche d'un seuil ; vert : elle suit le plan). Par exception
 // (décisions coach du 04/11/2026, relecture écran par écran) : en cartes, seulement les rouges et les orange, les rouges en
-// tête ; les verts en une ligne, leurs noms vers leur aperçu. Après le passage, une semaine pas encore partie reprend sa
-// carte, avec les reprises de 20 h et 22 h. Chaque carte ouvre son aperçu, calculé à son ouverture (rien n'est lu dans
-// Nolio ici). En cartes, pour le téléphone d'abord (EC5).
+// tête. Après le passage, une semaine pas encore partie reprend sa carte, avec les reprises de 20 h et 22 h. Décision 3A
+// du coach (05/11/2026) : une ligne de bilan en tête ; les autres semaines en deux listes repliées, « Suivent le plan » et
+// « Sans signal » (pas d'accord de lecture, ou rien de lu ce soir), une ligne chacune vers son aperçu. Chaque aperçu se
+// calcule à son ouverture (rien n'est lu dans Nolio ici). Pour le téléphone d'abord (EC5).
 const NIVEAU: Record<Niveau, { libelle: string; classe: string }> = {
   rouge: { libelle: 'Rouge', classe: 'bg-[#F6E1DD] text-[#8A3326]' }, orange: { libelle: 'Orange', classe: 'bg-[#F6ECD8] text-[#6E4A0C]' },
   vert: { libelle: 'Vert', classe: 'bg-[#E3EFE9] text-[#22604F]' }, rien: { libelle: 'Sans signal lu', classe: 'bg-[#ECEBF2] text-[#4A4866]' },
 };
 
-// Des noms, chacun vers son aperçu : « Léa Martin, Hugo Bernard et Sarah Lambert ». nom : le nom à montrer (avec sa course
-// quand l'athlète a deux semaines dans la liste).
-function Noms({ vues, nom }: { vues: { a: { nom: string }; o: { plan_id: string } }[]; nom: (v: { a: { nom: string }; o: { plan_id: string } }) => string }) {
+type Vue = { a: { nom: string; nolio_athlete_id?: string | null }; o: { plan_id: string; course_nom: string; course_date: string };
+  plan: Record<string, unknown> };
+const estFond = (plan: Record<string, unknown>) => Boolean((plan.parametres as { fond?: unknown } | null)?.fond);
+
+// Une ligne d'une liste repliée : le nom, la course, pourquoi (« Sans signal »), son aperçu.
+function LigneListe({ nom, course, pourquoi, partie, planId }: { nom: string; course: string; pourquoi?: string; partie: boolean; planId: string }) {
   return (
-    <>
-      {vues.map((v, i) => (
-        <span key={v.o.plan_id}>
-          {i > 0 && (i === vues.length - 1 ? ' et ' : ', ')}
-          <Link href={`/app/coach/plan/${v.o.plan_id}/apercu`} className="font-semibold text-teal hover:underline">{nom(v)}</Link>
-        </span>
-      ))}
-    </>
+    <li className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2.5 border-t first:border-t-0 border-indigo/[0.07]">
+      <div className="min-w-0 flex-[1_1_220px] text-sm">
+        <span className="font-bold">{nom}</span>
+        <span className="text-[#4A4866]"> · {course}{pourquoi ? ` · ${pourquoi}` : ''}</span>
+        {partie && <span className="ml-2 text-[0.6875rem] font-bold px-2 py-0.5 rounded-full bg-[#E3EFE9] text-[#22604F] whitespace-nowrap">Partie dans Nolio</span>}
+      </div>
+      <Link href={`/app/coach/plan/${planId}/apercu`} className="inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal whitespace-nowrap hover:underline">
+        Voir l’aperçu ›
+      </Link>
+    </li>
   );
 }
 
@@ -57,19 +63,34 @@ export default async function Dimanche() {
     return { a, o, plan, p, partie: partis.has(o.plan_id) };
   }).sort((x, y) => RANG[x.p.niveau] - RANG[y.p.niveau] || x.a.nom.localeCompare(y.a.nom, 'fr'));
   // Un athlète qui a deux semaines dans la liste (deux objectifs, ou un objectif et sa saison de fond) : le nom de la course
-  // à côté du sien, « Alexandre Allin (OCC) », dans les cartes comme dans les noms (05/11/2026 au soir).
-  const fois = new Map<string, number>();
-  for (const v of vues) fois.set(v.a.nom, (fois.get(v.a.nom) ?? 0) + 1);
-  const courseDe = (plan_id: string) => {
-    const v = vues.find((x) => x.o.plan_id === plan_id);
-    return v && (v.plan.parametres as { fond?: unknown } | null)?.fond ? 'saison de fond' : v?.o.course_nom ?? '';
+  // à côté du sien, « Alexandre Allin (OCC) » (05/11/2026 au soir) ; deux courses du même nom, sa date en plus,
+  // « Sébastien Deschamps (Trail, 12 avr.) » (décision 3A du coach, 05/11/2026). Dans les listes, la course a sa place.
+  const courseDe = (v: Vue) => (estFond(v.plan) ? 'Saison de fond' : v.o.course_nom);
+  const memesNoms = (v: Vue) => vues.filter((x) => x.a.nom === v.a.nom);
+  const homonyme = (v: Vue) => memesNoms(v).filter((x) => courseDe(x) === courseDe(v)).length > 1;
+  // BROUILLON (05/11/2026, à valider) : la date de la course quand l'athlète a deux courses du même nom.
+  const courseDatee = (v: Vue) => `${courseDe(v)}${homonyme(v) ? `, ${dateAbregee(v.o.course_date, false)}` : ''}`;
+  const nomAffiche = (v: Vue) => {
+    if (memesNoms(v).length < 2) return v.a.nom;
+    const course = estFond(v.plan) && !homonyme(v) ? 'saison de fond' : courseDatee(v);
+    return course ? `${v.a.nom} (${course})` : v.a.nom;
   };
-  const nomAffiche = ({ a, o }: { a: { nom: string }; o: { plan_id: string } }) =>
-    (fois.get(a.nom) ?? 0) > 1 && courseDe(o.plan_id) ? `${a.nom} (${courseDe(o.plan_id)})` : a.nom;
+  // La ligne d'une liste : sa course, puis ce que la carte disait (le départ lundi, la récupération).
+  const courseDeLaLigne = (v: Vue) =>
+    `${courseDatee(v)}${!v.plan.demarre_le ? ' · départ lundi' : v.o.course_date < jour ? ' · récupération' : ''}`;
   const enCarte = (v: (typeof vues)[number]) => v.p.niveau === 'rouge' || v.p.niveau === 'orange' || (apresLePassage && !v.partie);
   const cartes = vues.filter(enCarte);
   const verts = vues.filter((v) => !enCarte(v) && v.p.niveau === 'vert');
   const sansSignal = vues.filter((v) => !enCarte(v) && v.p.niveau === 'rien');
+  // Sans signal : pas d'accord de lecture (aucune ligne d'accord), ou rien dans les signaux gardés du soir.
+  const usrs = [...new Set(sansSignal.map((v) => v.a.nolio_athlete_id).filter((x): x is string => Boolean(x)))];
+  const { data: accords } = usrs.length
+    ? await clientService().from('nolio_accords').select('nolio_athlete_id').eq('coach_id', coach.compteId).in('nolio_athlete_id', usrs)
+    : { data: [] };
+  const avecAccord = new Set((accords ?? []).map((x) => String(x.nolio_athlete_id)));
+  // BROUILLON (05/11/2026, à valider) : le bilan, les deux listes et leurs raisons.
+  const suivent = (n: number) => (n > 1 ? 'suivent le plan' : 'suit le plan');
+  const pourquoiSansSignal = (v: Vue) => (v.a.nolio_athlete_id && avecAccord.has(v.a.nolio_athlete_id) ? 'pas encore lu' : 'pas d’accord de lecture');
   return (
     <CadreCoach actif="dimanche">
       <div>
@@ -81,15 +102,20 @@ export default async function Dimanche() {
       </div>
       {ecrites.length === 0 ? <Carte className="!p-5"><p className="text-sm text-teal font-semibold">Aucune semaine à écrire dimanche.</p></Carte> : (
         <>
+          {/* BROUILLON (05/11/2026, à valider) */}
+          <p className="text-sm text-indigo">
+            <strong>{cartes.length} à regarder</strong> · {verts.length} {suivent(verts.length)} · {sansSignal.length} sans signal
+          </p>
           {cartes.length > 0 && (
             <ul className="space-y-3">
-              {cartes.map(({ a, o, plan, p, partie }) => {
-                const fond = Boolean((plan.parametres as { fond?: unknown } | null)?.fond);
+              {cartes.map((v) => {
+                const { o, plan, p, partie } = v;
+                const fond = estFond(plan);
                 return (
                   <li key={o.plan_id} className="bg-white rounded-[14px] border border-indigo/[0.08] p-4 flex flex-wrap items-center justify-between gap-3">
                     <div className="min-w-0 flex-[1_1_300px] space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-bold">{nomAffiche({ a, o })}</span>
+                        <span className="font-bold">{nomAffiche(v)}</span>
                         <span className={clsx('text-[0.6875rem] font-bold px-2 py-0.5 rounded-full', NIVEAU[p.niveau].classe)}>{NIVEAU[p.niveau].libelle}</span>
                         {partie && <span className="text-[0.6875rem] font-bold px-2 py-0.5 rounded-full bg-[#E3EFE9] text-[#22604F]">Partie dans Nolio</span>}
                         {!partie && apresLePassage && (
@@ -111,19 +137,41 @@ export default async function Dimanche() {
               })}
             </ul>
           )}
+          {/* BROUILLON (05/11/2026, à valider) */}
+          {gardes !== null && cartes.length === 0 && verts.length > 0 && (
+            <p className="text-sm text-teal font-semibold">Aucune semaine ne change dimanche.</p>
+          )}
           {verts.length > 0 && (
-            <Carte className="!p-4">
-              <p className="text-sm text-[#3B3957] leading-relaxed">
-                <span className={clsx('mr-2 text-[0.6875rem] font-bold px-2 py-0.5 rounded-full', NIVEAU.vert.classe)}>Vert</span>
-                <strong>{verts.length} semaine{verts.length > 1 ? 's' : ''} sui{verts.length > 1 ? 'vent' : 't'} le plan</strong>
-                {apresLePassage ? `, partie${verts.length > 1 ? 's' : ''} dans Nolio` : ''} : <Noms vues={verts} nom={nomAffiche} />.
-              </p>
+            <Carte className="!p-5">
+              <details>
+                <summary className="cursor-pointer min-h-11 flex items-center justify-between gap-3">
+                  {/* BROUILLON (05/11/2026, à valider) */}
+                  <span className="text-[0.8125rem] font-extrabold tracking-[0.1em] uppercase text-[#22604F]">
+                    {verts.length > 1 ? 'Suivent le plan' : 'Suit le plan'} ({verts.length})
+                  </span>
+                  <span className="text-xs text-[#5E5C78]">Voir ›</span>
+                </summary>
+                <ul className="mt-1">
+                  {verts.map((v) => <LigneListe key={v.o.plan_id} nom={v.a.nom} course={courseDeLaLigne(v)} partie={v.partie} planId={v.o.plan_id} />)}
+                </ul>
+              </details>
             </Carte>
           )}
           {sansSignal.length > 0 && (
-            <p className="text-[0.8125rem] text-[#5E5C78] leading-relaxed">
-              Sans signal lu (pas d’accord de lecture, ou rien de lu ce soir) : <Noms vues={sansSignal} nom={nomAffiche} />.
-            </p>
+            <Carte className="!p-5">
+              <details>
+                <summary className="cursor-pointer min-h-11 flex items-center justify-between gap-3">
+                  {/* BROUILLON (05/11/2026, à valider) */}
+                  <span className="text-[0.8125rem] font-extrabold tracking-[0.1em] uppercase text-[#4A4866]">Sans signal ({sansSignal.length})</span>
+                  <span className="text-xs text-[#5E5C78]">Voir ›</span>
+                </summary>
+                <ul className="mt-1">
+                  {sansSignal.map((v) => (
+                    <LigneListe key={v.o.plan_id} nom={v.a.nom} course={courseDeLaLigne(v)} pourquoi={pourquoiSansSignal(v)} partie={v.partie} planId={v.o.plan_id} />
+                  ))}
+                </ul>
+              </details>
+            </Carte>
           )}
         </>
       )}
