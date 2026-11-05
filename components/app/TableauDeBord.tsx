@@ -63,6 +63,25 @@ export function CarteNolio({ etat, inviteLe = null, confirmer = false, avantCour
   );
 }
 
+// ─── Le test de vitesse critique plus proposé (D5) ──────────────────────────
+
+// D5 (moteur 8.452 ; 7B, décision coach du 05/11/2026 au soir) : après deux propositions restées sans valeur, la
+// préparation d'un acheteur n'écrit plus le test de vitesse critique (le journal porte la ligne TN « non reproposé » ;
+// lib/app/tableauDuPlan.ts, testVcNonRepropose). La carte le dit, tant qu'aucune vitesse critique n'est connue.
+// BROUILLON, à valider par le coach. saisie : « Tes zones », où il entre ses deux distances ; null sans elle.
+export function CarteTestVitesseCritique({ saisie }: { saisie: string | null }) {
+  return (
+    <Carte className="space-y-2">
+      <Surtitre>Ton test de vitesse critique</Surtitre>
+      <p className="text-[0.875rem] text-[#4A4866] leading-relaxed">
+        Il ne t’est plus proposé : les deux derniers sont restés sans résultat. Tes séances se règlent sur ton effort
+        ressenti. Tu peux le faire quand tu veux : entre ensuite tes deux distances dans ton profil, à « La vitesse critique ».
+      </p>
+      {saisie && <Link href={saisie} className="inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">Entrer mes distances ›</Link>}
+    </Carte>
+  );
+}
+
 // ─── L'objectif et sa montagne (AP2) ──────────────────────────────────────
 
 const REMPLI = { bien: '#2BB39B', retrait: '#E3A23B', retard: '#E2725B' } as const;

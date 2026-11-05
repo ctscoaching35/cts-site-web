@@ -168,6 +168,18 @@ export async function lireSemaineNolio(ctx: Contexte, lundi: string, numero?: st
     return { seances: null, raison: 'muet' };
   }
 }
+// D5 (moteur 8.452 ; CONTRAT_API_CTS.md, « non reproposé ») : le test de vitesse critique n'est plus proposé à un
+// acheteur après deux propositions restées sans valeur ; le journal d'une semaine écrite le dit (regle « TN », test
+// « vitesse_critique »). Vrai tant qu'aucune vitesse critique n'est connue : la carte de l'accueil le dit
+// (components/app/TableauDeBord.tsx, CarteTestVitesseCritique). Pas pour un coaché : son coach s'en charge.
+export async function testVcNonRepropose(ctx: Contexte): Promise<boolean> {
+  if (ctx.coache || ctx.sansObjectif || ctx.profil.vc_ms !== null) return false;
+  if (ctx.demonstration) return Boolean(ctx.demo?.vcNonRepropose);
+  const { data, error } = await clientService().from('semaines_ecrites').select('numero').eq('plan_id', ctx.cle)
+    .contains('journal', [{ regle: 'TN', test: 'vitesse_critique' }]).limit(1);
+  return !error && Boolean(data?.length);
+}
+
 export async function semaineDansNolio(ctx: Contexte, lundi: string, numero?: string): Promise<SeanceNolio[] | null> {
   return (await lireSemaineNolio(ctx, lundi, numero)).seances;
 }

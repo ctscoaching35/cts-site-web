@@ -37,9 +37,12 @@ export const REFUS_DEMONSTRATION = 'Démonstration : rien ne s’enregistre, rie
 //   demarrage=masque    « Pour bien démarrer » masquée sur cet appareil
 //   profil=vide         le profil d'entraînement d'un coaché pas encore rempli
 //   objectif=demande    un objectif suivant demandé, en attente du coach
+//   testvc=non_repropose  le test de vitesse critique plus proposé après deux fois sans valeur (D5, moteur 8.452) : la
+//                       carte de l'accueil d'un acheteur, tant qu'aucune vitesse critique n'est connue (sans ?vc=)
 // Sans être gardés : demande=envoyee (« Ta demande est partie »), reinitialiser=1 (efface sur ce navigateur les deux
 // cookies que posait l'ancienne démonstration, cts_bienvenue et cts_demarrage).
 export const PARAMETRES_DEMONSTRATION = ['plan', 'jour', 'fc1', 'vc', 'fc2', 'v1', 'retours', 'coache', 'main', 'sansobjectif',
-  'nolio', 'accord', 'achat', 'confirmation', 'semaine', 'prepa', 'demarrage', 'profil', 'objectif'] as const;
+  'nolio', 'accord', 'achat', 'confirmation', 'semaine', 'prepa', 'demarrage', 'profil', 'objectif', 'testvc'] as const;
 // Ceux que lien() (lib/app/contexte.ts) ajoute à ce qu'il tire du contexte.
-export const ETATS_DEMONSTRATION = ['nolio', 'accord', 'achat', 'confirmation', 'semaine', 'prepa', 'demarrage', 'profil', 'objectif'] as const;
+export const ETATS_DEMONSTRATION = ['nolio', 'accord', 'achat', 'confirmation', 'semaine', 'prepa', 'demarrage', 'profil', 'objectif',
+  'testvc'] as const;

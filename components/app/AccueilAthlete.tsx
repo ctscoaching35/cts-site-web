@@ -4,7 +4,7 @@ import ConfirmationCharge from './ConfirmationCharge';
 import EnTeteApp from './EnTeteApp';
 import PourBienDemarrer from './PourBienDemarrer';
 import {
-  CarteNolio, CarteObjectif, CetteSemaine, CoursesPreparation, FichesDeLaSemaine, Piliers,
+  CarteNolio, CarteObjectif, CarteTestVitesseCritique, CetteSemaine, CoursesPreparation, FichesDeLaSemaine, Piliers,
 } from './TableauDeBord';
 import { Carte, CarteSombre, Surtitre } from './Ui';
 import { CarteSaison } from './SaisonDeFond';
@@ -17,7 +17,7 @@ import { lien, prenom, recuperationDuCoache, type Contexte, type Recuperation } 
 import { joursRecuperation, lireTemps } from '@/lib/plan';
 import { ajouterJours, dateLongue, joursEntre, moment } from '@/lib/app/plan';
 import { fichesDeLaSemaine, jaugeDuPlan, momentDe } from '@/lib/app/tableau';
-import { donneesTableau, lireSemaineNolio, semaineEcrite } from '@/lib/app/tableauDuPlan';
+import { donneesTableau, lireSemaineNolio, semaineEcrite, testVcNonRepropose } from '@/lib/app/tableauDuPlan';
 
 // L'accueil de l'athlète (CTS_NOLIO_CADRAGE.md dans le dépôt du moteur, T1, AP1, AP2 ; maquette validée par le coach le
 // 19/10/2026) : les séances vivent dans Nolio ; ici l'objectif et sa montagne, un badge tout neuf (BG3), les piliers,
@@ -95,6 +95,8 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
   const arrivee = nolio || raison || lecture?.raison === 'demo' || !ligne || d.nolio === 'arrete' ? null : !ctx.coache && d.nolio !== 'actif' ? 'invitation' as const : 'bientot' as const;
   const jauge = jaugeDuPlan(d.trame, d.realises, jour);
   const fiches = fichesDeLaSemaine(d.fiches, jour);
+  // D5 (moteur 8.452) : le test de vitesse critique plus proposé, tant qu'aucune vitesse critique n'est connue.
+  const vcNonRepropose = etape !== 'apres' && await testVcNonRepropose(ctx).catch(() => false);
   const nom = prenom(plan.athlete.nom);
   // Un badge débloqué la semaine écoulée (BG3, décision coach du 20/10/2026).
   const nouveaux = badges.etat ? nouveauxBadges(badges.etat, jour) : [];
@@ -182,7 +184,11 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
           <CetteSemaine semaine={null} ligne={null} questionnaire nolio={nolio} raison={lecture?.raison ?? null} coache
             lundi={lundiCourant} hooper={d.accord} />
         )}
-        {etape !== 'apres' && (!demarrage || d.nolio === 'sorti' || d.nolio === 'arrete') && <CarteNolio etat={d.nolio} inviteLe={inviteLe} confirmer={confirmer} avantCourse={plan.course.date >= jour} />}
+        {/* Un plan acheté pendant un coaching (« coaching ») : « Pour bien démarrer » ne s'affiche pas pour lui, la carte Nolio
+            le dit donc tout de suite, comme une sortie ou un arrêt (avant le 05/11/2026 au soir, son accueil restait sans
+            elle tant que la liste n'était pas masquée). */}
+        {etape !== 'apres' && (!demarrage || d.nolio === 'sorti' || d.nolio === 'arrete' || d.nolio === 'coaching') && <CarteNolio etat={d.nolio} inviteLe={inviteLe} confirmer={confirmer} avantCourse={plan.course.date >= jour} />}
+        {vcNonRepropose && <CarteTestVitesseCritique saisie={plan.zones ? `${lien('/app/plan/zones', ctx)}#vitesse_critique` : null} />}
 
         {etape !== 'apres' && restants <= 7 && !plan.fond && (
           <Link href={lien('/app/plan/jour-j', ctx)} className="block bg-teal text-white rounded-2xl p-[18px]">

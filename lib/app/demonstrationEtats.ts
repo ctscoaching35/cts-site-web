@@ -29,6 +29,8 @@ export type SemaineDemo = 'lue' | 'retouchee' | 'vide' | 'muet' | 'pas_partie' |
 export type EtatDemo = {
   nolio: EtatNolio; accord: boolean; achat: string; confirmation: boolean; semaine: SemaineDemo; prepa: boolean;
   demarrage: boolean; profilVide: boolean; objectifDemande: boolean;
+  // ?testvc=non_repropose : le test de vitesse critique plus proposé (D5, moteur 8.452 ; le journal porte la ligne TN).
+  vcNonRepropose: boolean;
   // Le dimanche de la sortie qui débloque un badge (la semaine qui suit, « Nouveau badge »).
   badge: string | null;
   // Les paramètres d'état de l'adresse, que les liens gardent.
@@ -63,6 +65,7 @@ export async function planDemo(voulu: string): Promise<PlanDemo> {
         nolio, accord: texte(r, 'accord') !== '0', achat, confirmation: texte(r, 'confirmation') === 'oui', semaine,
         prepa: texte(r, 'prepa') === '1' && Boolean(e.preparation), demarrage: texte(r, 'demarrage') !== 'masque',
         profilVide: texte(r, 'profil') === 'vide', objectifDemande: texte(r, 'objectif') === 'demande',
+        vcNonRepropose: texte(r, 'testvc') === 'non_repropose',
         badge: ajouterJours(normal, -2), garde,
       };
     },
@@ -268,15 +271,20 @@ export async function etatsDuBandeau(): Promise<GroupeDuBandeau[]> {
         t('« Pour bien démarrer » masquée', '/app', { jour: ajouterJours(invitation, 2), demarrage: 'masque', confirmation: 'oui' }),
       ],
     },
-    { titre: 'Préparation CTS · pendant', etats: versions(false) },
+    { titre: 'Préparation CTS · pendant', etats: [
+      ...versions(false),
+      // D5 (moteur 8.452) : la carte de l'accueil quand le test de vitesse critique n'est plus proposé (BROUILLON).
+      t('Test de vitesse critique plus proposé (deux fois sans résultat)', '/app', { jour: normal, ...ex, testvc: 'non_repropose' }),
+    ] },
     {
       titre: 'Préparation CTS · après, et Nolio',
       etats: [
         t('Après la préparation', '/app', { jour: ajouterJours(course, 40), ...ex }),
         t('Préparation arrêtée (remboursée)', '/app', { jour: normal, ...ex, nolio: 'arrete' }),
         t('Sorti de l’équipe Nolio avant la course', '/app', { jour: normal, ...ex, nolio: 'sorti' }),
-        // « Pour bien démarrer » masquée : sans elle, ni sa liste ni la carte Nolio ne s'affichent pour ce cas (à voir).
-        t('Plan acheté pendant un coaching', '/app', { jour: normal, nolio: 'coaching', demarrage: 'masque' }),
+        // La carte Nolio s'affiche aussi avec « Pour bien démarrer » (corrigé le 05/11/2026 au soir : l'accueil restait sans
+        // elle tant que la liste n'était pas masquée).
+        t('Plan acheté pendant un coaching', '/app', { jour: normal, nolio: 'coaching' }),
         t('Ta séance d’origine (lien d’une note Nolio)', '/app/garder', { seance: `${L4.semaines.fatigue?.numero ?? 'S11'}-mardi` }),
         t('Nouvel objectif : l’aiguillage', '/app/objectif/nouveau', { jour: ajouterJours(course, 40) }),
       ],
