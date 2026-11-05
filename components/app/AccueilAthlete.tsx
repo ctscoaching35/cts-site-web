@@ -175,11 +175,15 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
             surtitre={etape === 'apres' ? 'Ta dernière course' : 'Ton objectif'}
             coache={Boolean(ctx.coache)} jour={jour} debut={d.trame.find((l) => l.lundi)?.lundi ?? null} />
         )}
-        {etape !== 'apres' && !ctx.aLaMain && (
+        {/* Un plan acheté pendant un coaching (décision coach du 05/11/2026 au soir, « 3 A ») : la semaine du plan, sans
+            rien de Nolio, où ce plan ne s'écrit pas. */}
+        {etape !== 'apres' && !ctx.aLaMain && (d.nolio === 'coaching' ? (
+          <CetteSemaine semaine={semaine} ligne={ligne} questionnaire={false} debut={debut} lundi={ligne?.lundi ?? lundiCourant} horsNolio />
+        ) : (
           <CetteSemaine semaine={semaine} ligne={ligne} questionnaire={d.ecrit && restants > 7} nolio={nolio}
             arrivee={arrivee} depuis={arrivee ? jour : null} debut={debut} raison={raison} coache={Boolean(ctx.coache)}
             lundi={ligne?.lundi ?? lundiCourant} hooper={d.accord} />
-        )}
+        ))}
         {etape !== 'apres' && ctx.aLaMain && (
           <CetteSemaine semaine={null} ligne={null} questionnaire nolio={nolio} raison={lecture?.raison ?? null} coache
             lundi={lundiCourant} hooper={d.accord} />

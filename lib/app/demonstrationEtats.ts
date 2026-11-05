@@ -273,7 +273,7 @@ export async function etatsDuBandeau(): Promise<GroupeDuBandeau[]> {
     },
     { titre: 'Préparation CTS · pendant', etats: [
       ...versions(false),
-      // D5 (moteur 8.452) : la carte de l'accueil quand le test de vitesse critique n'est plus proposé (BROUILLON).
+      // D5 (moteur 8.452) : la carte de l'accueil quand le test de vitesse critique n'est plus proposé (validée le 05/11/2026).
       t('Test de vitesse critique plus proposé (deux fois sans résultat)', '/app', { jour: normal, ...ex, testvc: 'non_repropose' }),
     ] },
     {
@@ -283,7 +283,7 @@ export async function etatsDuBandeau(): Promise<GroupeDuBandeau[]> {
         t('Préparation arrêtée (remboursée)', '/app', { jour: normal, ...ex, nolio: 'arrete' }),
         t('Sorti de l’équipe Nolio avant la course', '/app', { jour: normal, ...ex, nolio: 'sorti' }),
         // La carte Nolio s'affiche aussi avec « Pour bien démarrer » (corrigé le 05/11/2026 au soir : l'accueil restait sans
-        // elle tant que la liste n'était pas masquée).
+        // elle tant que la liste n'était pas masquée) ; « Ta semaine » montre la semaine du plan, sans rien de Nolio (« 3 A »).
         t('Plan acheté pendant un coaching', '/app', { jour: normal, nolio: 'coaching' }),
         t('Ta séance d’origine (lien d’une note Nolio)', '/app/garder', { seance: `${L4.semaines.fatigue?.numero ?? 'S11'}-mardi` }),
         t('Nouvel objectif : l’aiguillage', '/app/objectif/nouveau', { jour: ajouterJours(course, 40) }),

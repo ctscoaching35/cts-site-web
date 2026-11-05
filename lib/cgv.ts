@@ -45,7 +45,7 @@ export const PERIODE_FOURNITURE = 'la durée de la préparation (du paiement à 
 
 // Le prix sans la liste de l'API (la page, quand l'API ne répond pas).
 export const PRIX_SANS_LISTE = 'Le prix de chaque durée est affiché sur la page des plans.';
-// Le prix dans l'e-mail (5B) : le renvoi à la commande, en tête de l'e-mail. BROUILLON, à valider par le coach.
+// Le prix dans l'e-mail (5B) : le renvoi à la commande, en tête de l'e-mail. Validé par le coach le 05/11/2026 au soir.
 export const PRIX_DANS_L_EMAIL = 'Le prix de chaque durée est affiché sur la page des plans ; celui que tu as payé est dans ta commande, en tête de cet e-mail.';
 
 const p = (...morceaux: Morceau[]): Bloc => ({ type: 'p', morceaux });
@@ -138,7 +138,9 @@ export const ARTICLES: Article[] = [
         ['Au récapitulatif, tu relis tes réponses et peux les corriger, tu lis l’avertissement santé et ce que tu achètes, puis tu coches la case qui accepte ces conditions et celle qui demande que ton accès commence dès ton paiement (article ', art('retractation'), ').'],
         'Tu payes sur la page de paiement sécurisée de notre prestataire Stripe.',
       ),
-      p('Le contrat est conclu quand ton paiement est confirmé. Tu reçois alors par e-mail la confirmation de ta commande : ta formule et ses dates, le prix payé, le vendeur, le lien vers ces conditions avec leur version, et le formulaire de rétractation. Garde-la : c’est ton exemplaire du contrat.'),
+      // Leur texte entier dans la confirmation (5B ; ajouté à l'article le 05/11/2026 au soir, décision coach « 2 A », la
+      // version restant celle du 5 novembre 2026 : aucun plan n'était encore vendu).
+      p('Le contrat est conclu quand ton paiement est confirmé. Tu reçois alors par e-mail la confirmation de ta commande : ta formule et ses dates, le prix payé, le vendeur, le lien vers ces conditions, leur version et leur texte entier, et le formulaire de rétractation. Garde-la : c’est ton exemplaire du contrat.'),
       // A-42 (audits du 05/11/2026) : la langue et l'archivage du contrat (article 1127-1 du code civil).
       p('Le contrat est conclu en français. Nous gardons la version de ces conditions que tu as acceptée, avec la date de ton acceptation, et te l’envoyons sur simple demande.'),
     ],
@@ -224,6 +226,7 @@ export const LIGNES_FORMULAIRE = [FORMULAIRE_RETRACTATION.titre, FORMULAIRE_RETR
 
 // ─── Le texte entier dans la confirmation de commande (5B) ────────────────────────────────────────────────────────
 
+// Validé par le coach le 05/11/2026 au soir.
 export const TITRE_DANS_L_EMAIL = `Les conditions générales de vente (version du ${VERSION_CGV}) que tu as acceptées`;
 
 const echapper = (texte: string) =>

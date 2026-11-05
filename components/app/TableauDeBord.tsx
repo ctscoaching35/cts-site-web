@@ -68,7 +68,7 @@ export function CarteNolio({ etat, inviteLe = null, confirmer = false, avantCour
 // D5 (moteur 8.452 ; 7B, décision coach du 05/11/2026 au soir) : après deux propositions restées sans valeur, la
 // préparation d'un acheteur n'écrit plus le test de vitesse critique (le journal porte la ligne TN « non reproposé » ;
 // lib/app/tableauDuPlan.ts, testVcNonRepropose). La carte le dit, tant qu'aucune vitesse critique n'est connue.
-// BROUILLON, à valider par le coach. saisie : « Tes zones », où il entre ses deux distances ; null sans elle.
+// Validée par le coach le 05/11/2026 au soir. saisie : « Tes zones », où il entre ses deux distances ; null sans elle.
 export function CarteTestVitesseCritique({ saisie }: { saisie: string | null }) {
   return (
     <Carte className="space-y-2">
@@ -300,6 +300,8 @@ const couleurDuJour = (j: Jour) => j.couleur ?? FAMILLES[j.famille]?.filet ?? '#
 // l'accord ; Nolio muet, la semaine écrite et « Nolio ne répond pas ». La carte ne disparaît plus sans un mot.
 // lundi : le lundi de la semaine, quand il n'y a pas de semaine écrite (un coaché à la main ou sans objectif), pour
 // placer le questionnaire du samedi ; hooper : la forme du dimanche, avec l'accord de lecture (§8, point 9).
+// horsNolio : un plan acheté pendant un coaching (« coaching », décision coach du 05/11/2026 au soir, « 3 A ») : la semaine
+// du plan seule, sans rien de Nolio (ni ses séances, ni « elles arrivent », ni le questionnaire du samedi, ni le lien).
 const ARRIVEE = {
   invitation: 'Tes séances arrivent dans Nolio dès que tu as rejoint l’équipe CTS.',
   bientot: 'Tes séances de la semaine arrivent bientôt dans Nolio.',
@@ -311,10 +313,10 @@ const TYPE_EN_CLAIR: Record<string, string> = {
 };
 export const typeEnClair = (type: string) => TYPE_EN_CLAIR[type] ?? type;
 export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null, arrivee = null, depuis = null, debut = null,
-  raison = null, coache = false, lundi = null, hooper = false }: {
+  raison = null, coache = false, lundi = null, hooper = false, horsNolio = false }: {
   semaine: Semaine | null; ligne: LigneTrame | null; questionnaire: boolean; nolio?: SeanceNolio[] | null;
   arrivee?: keyof typeof ARRIVEE | null; depuis?: string | null; debut?: string | null; raison?: RaisonNolio | null;
-  coache?: boolean; lundi?: string | null; hooper?: boolean;
+  coache?: boolean; lundi?: string | null; hooper?: boolean; horsNolio?: boolean;
 }) {
   const muet = !nolio && raison === 'muet';
   const sansAccord = !nolio && raison === 'sans_accord';
@@ -404,7 +406,8 @@ export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null, arri
           )}
         </div>
       )}
-      {sansAccord ? ouvrirNolio('Le détail de chaque séance est dans Nolio.')
+      {horsNolio ? null
+        : sansAccord ? ouvrirNolio('Le détail de chaque séance est dans Nolio.')
         : muet ? ouvrirNolio('Nolio ne répond pas pour l’instant : tes séances y sont, avec leur détail.')
         : !nolio && !jours.length && !ligne ? null
         : nolio || !arrivee ? ouvrirNolio('Le détail de chaque séance est dans Nolio.')

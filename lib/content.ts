@@ -122,9 +122,10 @@ export const offer = {
 
 // Les témoignages de l'accueil (4A, décision coach du 05/11/2026 au soir ; audits du 05/11/2026, T3) : de vrais retours de
 // coachés, dont le coach garde l'accord écrit ; le titre dit qu'ils ont suivi le coaching individualisé (ils parlent de
-// lui, juste sous le bloc de la Préparation CTS) ; plus de photo : celles d'avant montraient les coachs.
+// lui, juste sous le bloc de la Préparation CTS) ; plus de photo : celles d'avant montraient les coachs. Le surtitre
+// « Témoignages » (décision coach du 05/11/2026 au soir, « 4 B » ; avant : « Ils nous ont fait confiance »).
 export const testimonials = {
-  eyebrow: 'Ils nous ont fait confiance',
+  eyebrow: 'Témoignages',
   title: 'Ils ont suivi le coaching individualisé',
   items: [
     {
