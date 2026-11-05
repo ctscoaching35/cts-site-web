@@ -25,14 +25,15 @@ const NIVEAU: Record<Niveau, { libelle: string; classe: string }> = {
   vert: { libelle: 'Vert', classe: 'bg-[#E3EFE9] text-[#22604F]' }, rien: { libelle: 'Sans signal lu', classe: 'bg-[#ECEBF2] text-[#4A4866]' },
 };
 
-// Des noms, chacun vers son aperçu : « Léa Martin, Hugo Bernard et Sarah Lambert ».
-function Noms({ vues }: { vues: { a: { nom: string }; o: { plan_id: string } }[] }) {
+// Des noms, chacun vers son aperçu : « Léa Martin, Hugo Bernard et Sarah Lambert ». nom : le nom à montrer (avec sa course
+// quand l'athlète a deux semaines dans la liste).
+function Noms({ vues, nom }: { vues: { a: { nom: string }; o: { plan_id: string } }[]; nom: (v: { a: { nom: string }; o: { plan_id: string } }) => string }) {
   return (
     <>
-      {vues.map(({ a, o }, i) => (
-        <span key={o.plan_id}>
+      {vues.map((v, i) => (
+        <span key={v.o.plan_id}>
           {i > 0 && (i === vues.length - 1 ? ' et ' : ', ')}
-          <Link href={`/app/coach/plan/${o.plan_id}/apercu`} className="font-semibold text-teal hover:underline">{a.nom}</Link>
+          <Link href={`/app/coach/plan/${v.o.plan_id}/apercu`} className="font-semibold text-teal hover:underline">{nom(v)}</Link>
         </span>
       ))}
     </>
@@ -55,6 +56,16 @@ export default async function Dimanche() {
       : { niveau: 'rien', pourquoi: '', prevoit: '' };
     return { a, o, plan, p, partie: partis.has(o.plan_id) };
   }).sort((x, y) => RANG[x.p.niveau] - RANG[y.p.niveau] || x.a.nom.localeCompare(y.a.nom, 'fr'));
+  // Un athlète qui a deux semaines dans la liste (deux objectifs, ou un objectif et sa saison de fond) : le nom de la course
+  // à côté du sien, « Alexandre Allin (OCC) », dans les cartes comme dans les noms (05/11/2026 au soir).
+  const fois = new Map<string, number>();
+  for (const v of vues) fois.set(v.a.nom, (fois.get(v.a.nom) ?? 0) + 1);
+  const courseDe = (plan_id: string) => {
+    const v = vues.find((x) => x.o.plan_id === plan_id);
+    return v && (v.plan.parametres as { fond?: unknown } | null)?.fond ? 'saison de fond' : v?.o.course_nom ?? '';
+  };
+  const nomAffiche = ({ a, o }: { a: { nom: string }; o: { plan_id: string } }) =>
+    (fois.get(a.nom) ?? 0) > 1 && courseDe(o.plan_id) ? `${a.nom} (${courseDe(o.plan_id)})` : a.nom;
   const enCarte = (v: (typeof vues)[number]) => v.p.niveau === 'rouge' || v.p.niveau === 'orange' || (apresLePassage && !v.partie);
   const cartes = vues.filter(enCarte);
   const verts = vues.filter((v) => !enCarte(v) && v.p.niveau === 'vert');
@@ -78,7 +89,7 @@ export default async function Dimanche() {
                   <li key={o.plan_id} className="bg-white rounded-[14px] border border-indigo/[0.08] p-4 flex flex-wrap items-center justify-between gap-3">
                     <div className="min-w-0 flex-[1_1_300px] space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-bold">{a.nom}</span>
+                        <span className="font-bold">{nomAffiche({ a, o })}</span>
                         <span className={clsx('text-[0.6875rem] font-bold px-2 py-0.5 rounded-full', NIVEAU[p.niveau].classe)}>{NIVEAU[p.niveau].libelle}</span>
                         {partie && <span className="text-[0.6875rem] font-bold px-2 py-0.5 rounded-full bg-[#E3EFE9] text-[#22604F]">Partie dans Nolio</span>}
                         {!partie && apresLePassage && (
@@ -105,13 +116,13 @@ export default async function Dimanche() {
               <p className="text-sm text-[#3B3957] leading-relaxed">
                 <span className={clsx('mr-2 text-[0.6875rem] font-bold px-2 py-0.5 rounded-full', NIVEAU.vert.classe)}>Vert</span>
                 <strong>{verts.length} semaine{verts.length > 1 ? 's' : ''} sui{verts.length > 1 ? 'vent' : 't'} le plan</strong>
-                {apresLePassage ? `, partie${verts.length > 1 ? 's' : ''} dans Nolio` : ''} : <Noms vues={verts} />.
+                {apresLePassage ? `, partie${verts.length > 1 ? 's' : ''} dans Nolio` : ''} : <Noms vues={verts} nom={nomAffiche} />.
               </p>
             </Carte>
           )}
           {sansSignal.length > 0 && (
             <p className="text-[0.8125rem] text-[#5E5C78] leading-relaxed">
-              Sans signal lu (pas d’accord de lecture, ou rien de lu ce soir) : <Noms vues={sansSignal} />.
+              Sans signal lu (pas d’accord de lecture, ou rien de lu ce soir) : <Noms vues={sansSignal} nom={nomAffiche} />.
             </p>
           )}
         </>
