@@ -2209,6 +2209,47 @@ export async function arreterLaPreparation(planId: string): Promise<string[]> {
   return soucis;
 }
 
+// J7 (audits du 05/11/2026, S3) : avant l'effacement d'un compte, ses préparations achetées s'arrêtent dans Nolio (ce
+// qu'elles y ont posé et qui est à venir en part), il quitte l'équipe s'il n'y est que pour elles (jamais un coaché, ni
+// le coach), et ses badges s'effacent. Ce qui n'a pas pu se faire part au coach, à finir à la main.
+export async function sortirDeNolioAvantEffacement(compteId: string): Promise<string[]> {
+  const service = clientService();
+  const { data: plans } = await service.from('plans').select('id, nolio_athlete_id, nolio_statut, demarre_le, nom:donnees->athlete->>nom')
+    .eq('compte_id', compteId).not('nolio_statut', 'is', null);
+  if (!plans?.length) return [];
+  const { data: coaches } = await service.from('coaching').select('plan_id').in('plan_id', plans.map((p) => p.id));
+  const deCoaching = new Set((coaches ?? []).map((c) => String(c.plan_id)));
+  const achetes = plans.filter((p) => !deCoaching.has(String(p.id)) && p.nolio_statut !== 'coaching');
+  const soucis: string[] = [];
+  for (const p of achetes) {
+    if (p.nolio_athlete_id && p.demarre_le && p.nolio_statut !== 'sorti') {
+      soucis.push(...await retirerDeNolio(String(p.id)).catch((e) => [e instanceof Error ? e.message : String(e)]));
+    }
+    await service.from('plans').update({ nolio_statut: 'sorti', depart_prevu: null }).eq('id', p.id);
+  }
+  const moi = await moiNolio().then((m) => m.id).catch(() => null);
+  const equipeId = await equipeDuCoach();
+  for (const usr of new Set(achetes.map((p) => String(p.nolio_athlete_id ?? '')).filter((u) => /^usr_/.test(u)))) {
+    const { data: fiches } = await service.from('athletes_coaches').select('id').eq('nolio_athlete_id', usr).limit(1);
+    const { data: autres } = await service.from('plans').select('id').eq('nolio_athlete_id', usr).neq('compte_id', compteId)
+      .in('nolio_statut', ['actif', 'invite']);
+    const geste = sortieApresArret({ usr, autresPlans: autres?.length ?? 0, coache: Boolean(fiches?.length), moi });
+    if (geste === 'reprogrammer') continue;
+    if (!fiches?.length) await service.from('badges').delete().eq('nolio_athlete_id', usr);
+    if (geste !== 'retirer' || !equipeId) continue;
+    const sorties = await listeNolio<{ id: string; user?: string }>(`team/teams/${equipeId}/expirations/`).catch(() => []);
+    for (const x of sorties.filter((y) => y.user === usr)) await appelNolio('DELETE', `team/teams/${equipeId}/expirations/${x.id}/`).catch(() => null);
+    const r = await appelNolio('DELETE', `team/teams/${equipeId}/members/${usr}/`).catch(() => null);
+    if (!r || (r.statut !== 204 && r.statut !== 200 && r.statut !== 404)) soucis.push(r ? refusNolio(r, 'sa sortie de l’équipe') : 'sa sortie de l’équipe : Nolio injoignable');
+  }
+  if (soucis.length) {
+    const nom = String(achetes[0]?.nom ?? '').trim() || 'Un acheteur';
+    await prevenirCoach('Plan CTS : un compte supprimé, Nolio à finir à la main',
+      `${nom} a supprimé son compte de l’app : sa préparation s’arrête. Dans Nolio, à finir à la main : ${soucis.join(' ; ')}.`);
+  }
+  return soucis;
+}
+
 // Chaque jour, en tête (X1, audits du 05/11/2026, lot 2 : « les appels légers d'abord ») : les invitations à refaire, la
 // relance de J+3, l'alerte du samedi et la relecture de l'équipe (E1), le rappel du samedi de la confirmation de charge,
 // les départs du jour, et le lundi les semaines du dimanche à reprendre (E4) : avant les tâches longues, que la limite des

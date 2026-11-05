@@ -150,7 +150,7 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
         ) : (
           <>
             <Deconnexion />
-            <Suppression />
+            <Suppression acheteur={!ctx.coache} />
           </>
         )}
         {!ctx.coache && <Avertissement avertissement={ctx.plan.avertissement} />}

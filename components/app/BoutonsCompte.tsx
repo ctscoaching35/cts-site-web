@@ -22,7 +22,8 @@ export function Deconnexion({ menu = false }: { menu?: boolean }) {
   );
 }
 
-export function Suppression() {
+// J7 (audits du 05/11/2026, S3) : pour un acheteur, l'écran dit ce que la suppression fait dans Nolio et pour son achat.
+export function Suppression({ acheteur = false }: { acheteur?: boolean }) {
   return (
     <form
       action={async (formulaire: FormData) => {
@@ -33,6 +34,12 @@ export function Suppression() {
     >
       <h2 className="font-bold text-indigo">Supprimer mon compte</h2>
       <p className="text-sm text-indigo/70">Ton compte et tout ce qu’il contient sont effacés, sans retour possible.</p>
+      {acheteur && (
+        <p className="text-sm text-indigo/70">
+          Ta préparation dans Nolio s’arrête : ce qui est encore à venir en part, et tu quittes l’équipe CTS ; ton compte Nolio
+          et tes séances passées restent à toi. Ton achat n’est pas remboursé, sauf pendant ton délai de rétractation.
+        </p>
+      )}
       <label className="flex items-center gap-2 text-sm text-indigo">
         <input type="checkbox" name="confirmation" value="oui" required className="accent-[#9A3B2C]" />
         Je veux supprimer mon compte
