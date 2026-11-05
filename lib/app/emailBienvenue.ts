@@ -13,6 +13,7 @@
  */
 import { site } from '@/lib/content';
 import { FORMULAIRE_RETRACTATION, vendeur, VERSION_CGV } from '@/lib/vendeur';
+import { cgvEnHtml, cgvEnTexte } from '@/lib/cgv';
 import { chargeEnClair, confirmationDemandee, invitationAVenir, type Charge } from './invitation';
 import type { Plan } from './plan';
 
@@ -121,6 +122,9 @@ export function contenuBienvenue(plan: Plan, lienApp: string, nolio: { adresse: 
   const bonjour = prenom ? `Bonjour ${prenom},` : 'Bonjour,';
   // J1 : la commande en tête, le formulaire de rétractation au bout, mot pour mot celui des conditions de vente.
   const lignes = commande ? lignesDeCommande(plan, commande, premiereSeance) : [];
+  // 5B (décision coach du 05/11/2026 au soir ; art. L221-13 : le contrat confirmé sur un support durable, qu'un lien vers
+  // une page web n'est pas) : sous le pied, le texte entier des conditions de vente acceptées, celui de la page /cgv
+  // (lib/cgv.ts, une seule source) ; leur prix renvoie à la commande, en tête. Seulement pour une commande.
   const formulaire = [FORMULAIRE_RETRACTATION.titre, FORMULAIRE_RETRACTATION.consigne, FORMULAIRE_RETRACTATION.destinataire,
     ...FORMULAIRE_RETRACTATION.lignes];
   const texte = [
@@ -132,6 +136,7 @@ export function contenuBienvenue(plan: Plan, lienApp: string, nolio: { adresse: 
     formulaire.join('\n'),
     signature,
     PIED_LEGAL,
+    ...(commande ? [`${'─'.repeat(24)}\n\n${cgvEnTexte()}`] : []),
   ].join('\n\n');
   const p = (contenu: string) => `<p style="margin:0 0 16px;line-height:1.55">${contenu}</p>`;
   const lien = (l: string) => echapper(l).replace(`${site.url}/cgv`, `<a href="${site.url}/cgv" style="color:#0C6E5F">${site.url}/cgv</a>`);
@@ -150,6 +155,7 @@ ${formulaire.map((l, i) => `<p style="margin:0 0 6px${i === 0 ? ';font-weight:bo
 </div>
 <p style="margin:24px 0 0;line-height:1.55;font-weight:bold">${signature}</p>
 ${piedHtml()}
+${commande ? cgvEnHtml() : ''}
 </div></body></html>`;
   return { sujet: commande ? `Ta commande est confirmée : ta Préparation CTS pour ${course.nom}` : `Ta Préparation CTS est prête — ${course.nom}`, texte, html };
 }
