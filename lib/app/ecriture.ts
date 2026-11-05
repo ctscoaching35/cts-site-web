@@ -525,13 +525,15 @@ async function envoyerEtRanger(o: Objectif, numero: string, sortie: SortieMoteur
   return sortie;
 }
 
+// Un acheteur : plus de « réponds à son e-mail de bienvenue si elle doit changer » (« pour les plans, pas d'interaction
+// avec moi », décision coach du 05/11/2026 au soir) ; le coach peut toujours corriger la séance dans Nolio.
 async function prevenirDuRepli(o: Objectif, numero: string, repli: NonNullable<SortieMoteur['repli']>) {
   const nom = (await nomsDesPlans([o.planId])).get(o.planId) ?? 'Un athlète';
   await prevenirCoach(`Plan CTS : la semaine ${numero.replace('S', '')} de ${nom} écrite par un repli`,
     `Le contrôle du moteur refusait la semaine ${numero.replace('S', '')} de ${nom} (« ${o.plan.course.nom} »)`
     + `${repli.refus ? ` : ${repli.refus}` : ''}. Elle est partie dans Nolio par un repli (${repli.niveau === 1
       ? 'la même semaine, sortie longue plafonnée' : repli.niveau === 2 ? 'la semaine du plan de l’achat, sortie longue plafonnée'
-        : 'la semaine du plan de l’achat'})${repli.effet ? ` : ${repli.effet}` : ''}. Relis-la dans son Nolio${o.coache ? '' : ' (un acheteur : réponds à son e-mail de bienvenue si elle doit changer)'}.`,
+        : 'la semaine du plan de l’achat'})${repli.effet ? ` : ${repli.effet}` : ''}. Relis-la dans son Nolio.`,
     o.coache ? o.coachId : null);
 }
 
