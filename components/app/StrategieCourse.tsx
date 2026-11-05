@@ -3,6 +3,7 @@ import { Lignes } from './Texte';
 import { ficheParSlug, lireBibliotheque } from '@/lib/app/bibliotheque';
 import { dateLongue } from '@/lib/app/plan';
 import type { Strategie } from '@/lib/app/strategie';
+import { BOUTON, BOUTON_DANGER } from './Ui';
 
 // La stratégie de course (décisions coach du 19/10/2026) : la durée d'effort visée, puis le calculateur « Ta
 // nutrition en course », prérempli avec cette durée et le niveau (pour la course, le calculateur fait foi : la fiche ne
@@ -14,12 +15,15 @@ import type { Strategie } from '@/lib/app/strategie';
 // l'athlète a gardée (décision coach du 20/10/2026, « les quatre repères ») ; effacer, dans l'app seulement.
 const FICHES_DE_COURSE = ['checklist', 'nutrition-avant-course', 'nutrition', 'ultra', 'recuperation'];
 
+// C30 (audits du 05/11/2026) : la durée d'effort n'est plus redite ici (le pavé « Temps visé » de la fiche la dit) ; la
+// stratégie gardée sans second titre emboîté, dans un encadré arrondi ; « Effacer ma stratégie » demande confirmation.
 export default function StrategieCourse({ lignes, href, fiche, ultra, externe = false, strategie = null, effacer }: {
   lignes: [string, string][]; href: string; fiche: (slug: string) => string; ultra: boolean; externe?: boolean;
   strategie?: Strategie | null; effacer?: () => Promise<void>;
 }) {
-  const duree = lignes.find(([cle]) => cle.startsWith('Durée'));
-  const bouton = 'inline-flex items-center min-h-12 px-5 rounded-xl bg-teal text-white text-sm font-bold';
+  // Hors de l'app (la fiche privée d'un coaché, externe), sans pavé « Temps visé » au-dessus : la durée reste.
+  const duree = externe ? lignes.find(([cle]) => cle.startsWith('Durée')) : undefined;
+  const bouton = BOUTON;
   const familles = lireBibliotheque();
   const fiches = FICHES_DE_COURSE.filter((s) => ultra || s !== 'ultra')
     .map((slug) => ({ slug, f: ficheParSlug(familles, slug) }))
@@ -29,21 +33,19 @@ export default function StrategieCourse({ lignes, href, fiche, ultra, externe = 
     <>
       {duree && <Lignes lignes={[duree]} />}
       {strategie ? (
-        <div className="bg-sand px-4 py-3">
-          <h3 className="text-[0.6875rem] font-bold tracking-[0.12em] uppercase text-[#5E5C78]">
-            Ta stratégie de course · gardée le {dateLongue(strategie.le).replace(/^\S+ /, '')}
-          </h3>
+        <div className="bg-sand rounded-xl px-4 py-3">
+          <p className="text-xs text-[#5E5C78]">Gardée le {dateLongue(strategie.le).replace(/^\S+ /, '')}</p>
           <dl className="mt-1">
             {strategie.cartes.map((c) => (
               <div key={c.nom} className="grid grid-cols-[6.5rem_1fr] gap-3 py-2 border-b last:border-b-0 border-indigo/[0.08]">
                 <dt className="text-sm font-bold text-indigo">{c.nom}</dt>
-                <dd className="text-sm text-indigo">{c.valeur}{c.sous ? <span className="text-indigo/70"> {c.sous}</span> : null}</dd>
+                <dd className="text-sm text-indigo">{c.valeur}{c.sous ? <span className="text-[#4A4866]"> {c.sous}</span> : null}</dd>
               </div>
             ))}
           </dl>
         </div>
       ) : (
-        <p className="text-sm text-indigo/75 leading-relaxed">
+        <p className="text-sm text-[#4A4866] leading-relaxed">
           Ta stratégie de course se construit avec le calculateur : il part de ta durée et de ton niveau, et tient compte de
           ton intestin, de la chaleur et de ta sueur. Glucides, boisson, sodium et caféine, heure par heure.
           {!externe && ' Garde-la : elle s’inscrit ici, sans avoir à la refaire.'}
@@ -52,9 +54,14 @@ export default function StrategieCourse({ lignes, href, fiche, ultra, externe = 
       {externe ? <a href={href} className={bouton}>{strategie ? 'Revoir le détail dans le calculateur' : 'Construis ta stratégie de course'}</a>
         : <Link href={href} className={bouton}>{strategie ? 'Modifier ma stratégie' : 'Construis ta stratégie de course'}</Link>}
       {strategie && effacer && !externe && (
-        <form action={effacer}>
-          <button type="submit" className="text-xs font-semibold text-indigo/60 underline underline-offset-2">Effacer ma stratégie</button>
-        </form>
+        <details>
+          <summary className="cursor-pointer list-none inline-flex items-center min-h-11 text-sm font-semibold text-[#5E5C78] underline underline-offset-2">Effacer ma stratégie</summary>
+          <form action={effacer} className="pb-1 space-y-2">
+            {/* BROUILLON, à valider par le coach. */}
+            <p className="text-sm text-[#4A4866]">Ta stratégie gardée s’efface ; le calculateur reste là pour la refaire.</p>
+            <button type="submit" className={BOUTON_DANGER}>Confirmer</button>
+          </form>
+        </details>
       )}
       {fiches.length > 0 && (
         <div className="pt-3">

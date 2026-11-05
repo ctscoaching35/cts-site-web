@@ -3,8 +3,9 @@
 import { useActionState, useState } from 'react';
 import { formatRouteDe } from '@/lib/app/route';
 import { CORRECTIONS, RAISONS, type Choix } from '@/lib/app/correctionsTextes';
+import { BOUTON, BOUTON_DANGER } from './Ui';
 import {
-  ajouterCourse, annulerCorrections, annulerSemaine, arreterPreparationRemboursee, choisirCorrections, demarrerDansNolio, donnerMonAccord, modifierCourse, reessayerLaSemaine, retirerCourse, retirerMonAccord,
+  ajouterCourse, ajouterTraceObjectif, annulerCorrections, annulerSemaine, arreterPreparationRemboursee, choisirCorrections, demarrerDansNolio, donnerMonAccord, modifierCourse, reessayerLaSemaine, retirerCourse, retirerMonAccord,
   type EtatGeste,
 } from '@/lib/app/actionsEcriture';
 
@@ -147,8 +148,7 @@ export function AjouterCourse({ planId, initial, ancienne }: {
           ? 'Sans elle, sa trace d’avant est gardée.'
           : 'Avec elle, sa fiche de course montre son profil et ses tronçons.'}</span>
       </label>}
-      <button type="submit" disabled={enCours}
-        className="w-full min-h-12 rounded-xl bg-teal text-white text-sm font-bold disabled:opacity-50">
+      <button type="submit" disabled={enCours} className={`${BOUTON} w-full`}>
         {enCours ? 'Vérification…' : ancienne ? 'Enregistrer la course' : 'Ajouter la course'}
       </button>
       <Message etat={etat} />
@@ -156,34 +156,58 @@ export function AjouterCourse({ planId, initial, ancienne }: {
   );
 }
 
-// L'accord de lecture donné après l'achat (décision coach du 21/10/2026), avec la phrase du questionnaire d'achat.
-export function DonnerAccord({ planId }: { planId: string }) {
+// L'accord de lecture donné après l'achat (décision coach du 21/10/2026), avec la phrase du questionnaire d'achat ; C18
+// (audits du 05/11/2026) : elle dit aussi qu'il montre sa semaine dans l'app. Q4 : le bouton de l'app. demonstration :
+// rien ne s'enregistre.
+export function DonnerAccord({ planId, demonstration = false }: { planId: string; demonstration?: boolean }) {
   const [etat, action, enCours] = useActionState<EtatGeste, FormData>(donnerMonAccord.bind(null, planId), null);
+  const [demo, setDemo] = useState<EtatGeste>(null);
   if (etat?.ok) return <Message etat={etat} />;
   return (
-    <form action={action} className="space-y-2">
+    <form action={action} onSubmit={demonstration ? (e) => { e.preventDefault(); setDemo({ ok: false, message: 'Démonstration : rien ne s’enregistre.' }); } : undefined}
+      className="space-y-2">
       <p className="text-[0.8rem] text-[#4A4866] leading-relaxed">
-        {/* La phrase du questionnaire d'achat (PL7, décision coach du 04/11/2026). */}
+        {/* La phrase du questionnaire d'achat (PL7, décision coach du 04/11/2026), et C18 : « et voir ma semaine ici ».
+            BROUILLON, à valider par le coach (l'ajout). */}
         J’accepte que l’app lise aussi dans Nolio mon RPE, mon ressenti, mon Hooper et la trace de mes séances test
-        (distance, FC), pour ajuster mon plan à ma fatigue et en tirer mes repères. Je peux retirer cet accord à tout
-        moment.
+        (distance, FC), pour ajuster mon plan à ma fatigue, en tirer mes repères et voir ma semaine ici. Je peux retirer cet
+        accord à tout moment.
       </p>
-      <button type="submit" disabled={enCours} className="btn btn-primary disabled:opacity-50">
+      <button type="submit" disabled={enCours} className={BOUTON}>
         {enCours ? 'Envoi…' : 'Donner mon accord'}
+      </button>
+      <Message etat={demo ?? etat} />
+    </form>
+  );
+}
+
+// C1 (audits du 05/11/2026) : un vrai bouton de 44 px, plus un lien rouge de 20 px.
+export function RetirerAccord({ planId }: { planId: string }) {
+  const [etat, action, enCours] = useActionState<EtatGeste, FormData>(retirerMonAccord.bind(null, planId), null);
+  if (etat?.ok) return <Message etat={etat} />;
+  return (
+    <form action={action} className="space-y-1">
+      <button type="submit" disabled={enCours} className={BOUTON_DANGER}>
+        {enCours ? 'Retrait…' : 'Retirer mon accord'}
       </button>
       <Message etat={etat} />
     </form>
   );
 }
 
-export function RetirerAccord({ planId }: { planId: string }) {
-  const [etat, action, enCours] = useActionState<EtatGeste, FormData>(retirerMonAccord.bind(null, planId), null);
+// Q11 (décision coach du 05/11/2026 au soir, « A ») : la trace GPX de l'objectif, donnée depuis sa fiche de course, avec
+// le même champ que pour une course de préparation (lib/app/actionsEcriture.ts, ajouterTraceObjectif). BROUILLON, à
+// valider par le coach.
+export function AjouterTrace({ planId }: { planId: string }) {
+  const [etat, action, enCours] = useActionState<EtatGeste, FormData>(ajouterTraceObjectif.bind(null, planId), null);
   if (etat?.ok) return <Message etat={etat} />;
   return (
-    <form action={action} className="space-y-1">
-      <button type="submit" disabled={enCours} className="text-sm font-semibold text-red-700 underline underline-offset-2 disabled:opacity-50">
-        {enCours ? 'Retrait…' : 'Retirer mon accord'}
-      </button>
+    <form action={action} className="space-y-3">
+      <label className="flex flex-col gap-1.5 text-xs font-semibold text-indigo">Ajoute la trace de ta course
+        <input name="gpx" type="file" accept=".gpx" required className="block w-full max-w-full text-sm font-normal text-indigo file:mr-3 file:min-h-10 file:px-3 file:rounded-[10px] file:border-0 file:bg-[#E1EFEA] file:text-teal-dark file:font-bold" />
+        <span className="font-normal text-[#5E5C78]">Le fichier .gpx du site de la course : sa fiche montre alors son profil et ses tronçons. Ta préparation, elle, ne change pas.</span>
+      </label>
+      <button type="submit" disabled={enCours} className={BOUTON}>{enCours ? 'Lecture de la trace…' : 'Ajouter la trace'}</button>
       <Message etat={etat} />
     </form>
   );

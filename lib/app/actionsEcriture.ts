@@ -97,6 +97,13 @@ async function enregistrerCourse(planId: string, form: FormData, ancienne: strin
   if (!o || !compteId || (o.compteId !== compteId && o.compteAthlete !== compteId && o.coachId !== coachId)) {
     return { ok: false, message: 'Plan introuvable.' };
   }
+  // C19 (audits du 05/11/2026) : une préparation arrêtée (remboursée) n'ajoute ni ne modifie plus de course ; l'app ne
+  // le propose plus, le serveur le refuse aussi. Sans la migration du 05/11/2026, la lecture échoue et rien ne change.
+  const { data: arret } = await clientService().from('plans').select('arretee_le').eq('id', planId).maybeSingle()
+    .then((r) => r, () => ({ data: null }));
+  if ((arret as { arretee_le?: string | null } | null)?.arretee_le) {
+    return { ok: false, message: 'Ta préparation est arrêtée : plus rien ne s’y ajoute.' };
+  }
   const toutes = ((o.parametres.courses_secondaires as Course[] | undefined) ?? []);
   const aujourdhui = new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris' }).format(new Date());
   if (ancienne !== null && (!toutes.some((c) => c.date === ancienne) || ancienne <= aujourdhui)) {
@@ -205,6 +212,62 @@ async function enregistrerCourse(planId: string, form: FormData, ancienne: strin
   return { ok: true, message: ancienne !== null
     ? `Course modifiée : les jours autour d’elle s’ajustent dans tes prochaines semaines.${verdict.message ? ` ${verdict.message}` : ''}${surLaFiche}${nolio}`
     : `Course ajoutée : les jours autour d’elle s’ajustent dans tes semaines.${verdict.message ? ` ${verdict.message}` : ''}${surLaFiche}` };
+}
+
+// LA TRACE DE L'OBJECTIF, DONNÉE APRÈS L'ACHAT (Q11, décision coach du 05/11/2026 au soir, « A ») : facultative à
+// l'achat, elle s'ajoute ensuite depuis la fiche de course, avec le même champ que pour une course de préparation. Le
+// moteur en tire le profil, les tronçons, ses déterminants mécaniques et ses secteurs clés (POST /v1/fiche-course, rien
+// n'y est conservé) ; ils remplacent ceux du plan (plans.donnees), et le D- lu sur la trace. La préparation déjà écrite
+// ne change pas (ni les paramètres, ni la trame) ; les données refaites chaque nuit (POST /v1/donnees) gardent ce profil.
+// La trace est gardée (objectifs/<plan>.gpx), comme celle d'une course de préparation.
+export async function ajouterTraceObjectif(planId: string, _e: EtatGeste, form: FormData): Promise<EtatGeste> {
+  if (estPlanDeDemonstration(planId)) return { ok: false, message: REFUS_DEMONSTRATION };
+  const { compteId, coachId } = await qui();
+  const o = await objectifEcrit(planId);
+  if (!o || !compteId || (o.compteId !== compteId && o.compteAthlete !== compteId && o.coachId !== coachId)) {
+    return { ok: false, message: 'Plan introuvable.' };
+  }
+  const gpx = form.get('gpx');
+  if (!(gpx instanceof File) || gpx.size === 0) return { ok: false, message: 'Choisis le fichier .gpx de ta course.' };
+  if (gpx.size >= 4_000_000) return { ok: false, message: 'Cette trace est trop lourde : 4 Mo au plus.' };
+  const { course } = o.plan;
+  const envoi = new FormData();
+  envoi.set('corps', JSON.stringify({ parametres: o.parametres, course: {
+    nom: course.nom, date: course.date, distance_km: course.distance_km, dplus_m: course.dplus_m,
+    ...(o.tempsH > 0 ? { temps_h: o.tempsH } : {}),
+  } }));
+  envoi.set('gpx', new File([gpx], 'trace.gpx', { type: 'application/gpx+xml' }));
+  type FicheLue = { trace?: boolean; profil?: Record<string, unknown>; ta_course?: { lignes?: [string, string][] };
+    determinants?: { mecanique?: unknown; secteurs_cles?: unknown } };
+  const r = await fetch(`${API_URL}/v1/fiche-course`, { method: 'POST', body: envoi, cache: 'no-store', headers: enTetesMoteur() }).catch(() => null);
+  const fiche = r?.ok ? await r.json().catch(() => null) as FicheLue | null : null;
+  if (!fiche) return { ok: false, message: 'Le moteur ne répond pas : réessaie dans un moment.' };
+  // BROUILLON, à valider par le coach (les deux messages).
+  if (!fiche.trace || !fiche.profil) {
+    return { ok: false, message: 'Ta trace ne s’est pas lue : exporte-la de nouveau depuis le site de la course, avec son altitude.' };
+  }
+  const service = clientService();
+  const { data: ligne, error } = await service.from('plans').select('donnees').eq('id', planId).maybeSingle();
+  const donnees = (ligne?.donnees ?? null) as Record<string, unknown> | null;
+  if (error || !donnees) return { ok: false, message: 'L’enregistrement n’a pas abouti. Réessaie dans un moment.' };
+  const determinants = (donnees.determinants ?? {}) as Record<string, unknown>;
+  const taCourse = (donnees.ta_course ?? {}) as { lignes?: [string, string][] };
+  const dMoins = fiche.ta_course?.lignes?.find(([cle, v]) => cle === 'D-' && !/hypoth/i.test(v));
+  const maj = {
+    ...donnees,
+    profil: fiche.profil,
+    determinants: { ...determinants, mecanique: fiche.determinants?.mecanique ?? determinants.mecanique ?? null,
+      secteurs_cles: fiche.determinants?.secteurs_cles ?? null, sans_trace: null },
+    ...(dMoins && taCourse.lignes ? { ta_course: { ...taCourse, lignes: taCourse.lignes.map(([cle, v]) => (cle === 'D-' ? dMoins : [cle, v])) } } : {}),
+  };
+  if ((await service.from('plans').update({ donnees: maj }).eq('id', planId)).error) {
+    return { ok: false, message: 'L’enregistrement n’a pas abouti. Réessaie dans un moment.' };
+  }
+  await service.storage.from('plans-pdf').upload(`objectifs/${planId}.gpx`, gpx, { contentType: 'application/gpx+xml', upsert: true })
+    .catch(() => null);
+  revalidatePath('/app/plan/course');
+  revalidatePath('/app/plan');
+  return { ok: true, message: 'C’est fait : le profil et les tronçons de ta course sont dans ta fiche. Ta préparation, elle, ne change pas.' };
 }
 
 // Retirer une course de préparation à venir (décision coach du 20/10/2026 : l'athlète la retire seul, comme il l'ajoute ;

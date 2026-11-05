@@ -27,7 +27,9 @@ export default function CorpsFichePreparation({ fiche, calculateur, cheminFiche,
       <EnTeteCourse surtitre="Course de préparation" nom={fiche.course.nom} lignes={fiche.ta_course.lignes} />
       <Partie titre={profil.titre}>
         {profil.sans_trace ? (
-          <p>{profil.sans_trace}</p>
+          // C29 (audits du 05/11/2026) : une phrase de coureur ; « Modifier » sa course reprend la trace. BROUILLON, à
+          // valider par le coach.
+          <p>Sans la trace GPX de cette course, sa fiche n’a pas son profil ni ses tronçons : donne-la en modifiant ta course, dans « Ta préparation ».</p>
         ) : (
           <>
             {profil.points && <ProfilCourse points={profil.points} />}
@@ -45,7 +47,6 @@ export default function CorpsFichePreparation({ fiche, calculateur, cheminFiche,
           <Puces puces={d.mecanique.puces} />
         </Partie>
       )}
-      {d.sans_trace && <p className="text-[0.8125rem] text-[#5E5C78] px-1 leading-relaxed">{d.sans_trace}</p>}
       <h2 className="pt-3 text-[1.25rem] font-extrabold text-indigo tracking-tight">{j.titre}</h2>
       <Partie titre={j.nutrition.titre}>
         <StrategieCourse lignes={j.nutrition.lignes as [string, string][]} href={calculateur} fiche={cheminFiche}

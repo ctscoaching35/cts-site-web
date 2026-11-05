@@ -1,4 +1,6 @@
+import type { Metadata } from 'next';
 import StrategieCourse from '@/components/app/StrategieCourse';
+import { AjouterTrace } from '@/components/app/GestesEcriture';
 import EnTeteApp from '@/components/app/EnTeteApp';
 import CorpsFichePreparation, { type FichePrep } from '@/components/app/FichePreparation';
 import ProfilCourse from '@/components/app/ProfilCourse';
@@ -11,6 +13,11 @@ import { contexte, lien, type Recherche } from '@/lib/app/contexte';
 import { COURSE_OBJECTIF, parametresCalculateur, STRATEGIE_EXEMPLE, strategiesDuPlan } from '@/lib/app/strategie';
 import { clientService } from '@/lib/app/supabase';
 import { ficheDeDemonstration, niveauDeDemonstration } from '@/lib/app/demonstration';
+
+export const metadata: Metadata = { title: 'Ta fiche de course' };
+
+// Q1 (décision coach du 05/11/2026 au soir, « A ») : des mots de coureur hors des noms de séance.
+const enMotsDeCoureur = (t: string) => t.replace(/le déterminant physiologique central de ta préparation/g, 'ce qui compte le plus pour ta course');
 
 // Ta fiche de course (cadrage, 3.4 ; maquette validée le 19/10/2026 : « profil, tronçons, ravitaillement ») : la fiche,
 // le profil et ses pentes, ton terrain, les tronçons, les déterminants de la performance, puis ton jour J et ta
@@ -61,9 +68,15 @@ export default async function TaCourse({ searchParams }: { searchParams: Recherc
         <RetourPlan ctx={ctx} />
         <EnTeteCourse surtitre="Ta fiche de course" nom={plan.course.nom} lignes={plan.ta_course.lignes} />
 
+        {/* C29 et Q11 (audits du 05/11/2026 ; décision coach du 05/11/2026 au soir, « A ») : sans trace, une phrase de
+            coureur à la place des phrases de fichier, et de quoi la donner. BROUILLON, à valider par le coach. */}
         <Partie titre={profil.titre}>
           {profil.sans_trace ? (
-            <p>{profil.sans_trace}</p>
+            <>
+              <p>Sans la trace GPX de ta course, sa fiche n’a pas encore son profil ni ses tronçons : ta préparation part de son dénivelé total.</p>
+              {/* En démonstration, le geste répond que rien ne s'enregistre. */}
+              <AjouterTrace planId={ctx.cle} />
+            </>
           ) : (
             <>
               {profil.points && <ProfilCourse points={profil.points} />}
@@ -86,9 +99,8 @@ export default async function TaCourse({ searchParams }: { searchParams: Recherc
 
         <h2 className="pt-3 text-[1.25rem] font-extrabold text-indigo tracking-tight">{d.titre}</h2>
         <Partie titre={d.physio.titre}>
-          <Puces puces={d.physio.puces} />
+          <Puces puces={d.physio.puces.map(enMotsDeCoureur)} />
         </Partie>
-        {d.sans_trace && <p className="text-[0.8125rem] text-[#5E5C78] px-1 leading-relaxed">{d.sans_trace}</p>}
         {d.mecanique && (
           <Partie titre={d.mecanique.titre}>
             <Puces puces={d.mecanique.puces} />
