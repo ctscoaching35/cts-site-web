@@ -101,7 +101,8 @@ export default async function Confidentialite() {
           <Liste>
             <li>
               <strong>Ton compte</strong> : ton e-mail, ton nom, ton plan (ses données), les réponses qui ont
-              servi à le construire, les dates de création et de connexion. Nous le gardons tant qu’il existe : tu peux le
+              servi à le construire, la trace GPX de ta course ou de tes courses de préparation si tu en ajoutes une dans
+              l’app, les dates de création et de connexion. Nous le gardons tant qu’il existe : tu peux le
               supprimer à tout moment dans l’app (Compte, puis « Supprimer mon compte ») ; s’il reste 3 ans sans activité,
               il est supprimé, après un e-mail d’avertissement 30 jours avant (le contrat).
             </li>
@@ -281,7 +282,7 @@ export default async function Confidentialite() {
               <li>« cts_invitation » : ton lien d’invitation, quand la vente se fait sur invitation (90 jours) ;</li>
               <li>« cts_plan » : le plan affiché quand tu en as plusieurs (13 mois) ;</li>
               <li>« cts_bienvenue » : l’écran de bienvenue déjà vu (13 mois) ;</li>
-              <li>« cts_demarrage » : la liste « Pour bien démarrer » masquée (13 mois) ;</li>
+              <li>« cts_demarrage_plans » : les plans où la liste « Pour bien démarrer » est masquée (13 mois) ;</li>
               <li>tes réponses en cours au questionnaire, jusqu’au paiement (stockage local) ;</li>
               <li>« cts-mesure-… » : l’étape du questionnaire déjà comptée, sans identifiant, le temps de l’onglet (stockage de session) ;</li>
               <li>les pages de l’app gardées pour s’ouvrir sans connexion, effacées à la déconnexion.</li>
