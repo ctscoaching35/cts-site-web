@@ -1,7 +1,11 @@
+import type { Metadata } from 'next';
 import EnTeteApp from '@/components/app/EnTeteApp';
+import { TITRE } from '@/components/app/Ui';
 import ToutesLesFiches from '@/components/app/ToutesLesFiches';
 import { lireBibliotheque } from '@/lib/app/bibliotheque';
 import { contexte, lien, type Recherche } from '@/lib/app/contexte';
+
+export const metadata: Metadata = { title: 'Bibliothèque' };
 
 // La bibliothèque (cadrage, 3.5 ; décisions coach des 07 et 11/10/2026 ; AP1 et maquette validée le 19/10/2026) :
 // toutes les fiches par famille, avec une recherche. Plus de « Pour ta préparation » en tête ni de calculateurs
@@ -17,8 +21,10 @@ export default async function Bibliotheque({ searchParams }: { searchParams: Rec
       <EnTeteApp ctx={ctx} />
       <main className="mx-auto max-w-2xl px-4 pt-5 pb-6 space-y-4">
         <div>
-          <h1 className="text-[1.625rem] font-extrabold text-indigo tracking-tight">Bibliothèque</h1>
-          <p className="mt-1.5 text-[0.8125rem] text-[#5E5C78] leading-relaxed">Les fiches de tes coachs, kinés du sport, fondées sur la littérature.</p>
+          <h1 className={TITRE}>Bibliothèque</h1>
+          {/* C42 (audits du 05/11/2026) : les prénoms à l'écrit, pour tous ; « tes coachs » contredisait l'avertissement de
+              l'acheteur (« sans échange avec un coach »). */}
+          <p className="mt-1.5 text-[0.8125rem] text-[#5E5C78] leading-relaxed">Les fiches de Juliette et Romain, kinés du sport, fondées sur la littérature.</p>
         </div>
 
         <ToutesLesFiches familles={familles} suite={suite} />

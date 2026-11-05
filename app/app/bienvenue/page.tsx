@@ -1,12 +1,16 @@
+import type { Metadata } from 'next';
 import Image from 'next/image';
 import { redirect } from 'next/navigation';
 import Installation from '@/components/app/Installation';
-import { Carte, Surtitre } from '@/components/app/Ui';
+import { BOUTON, Carte, Surtitre } from '@/components/app/Ui';
 import { entrerDansLePlan } from '@/lib/app/actionsBienvenue';
 import { confirmationAVenir } from '@/lib/app/confirmation';
 import { confirmationDemandee, invitationAVenir } from '@/lib/app/invitation';
 import { contexte, lien, prenom, type Recherche } from '@/lib/app/contexte';
 import { dateLongue } from '@/lib/app/plan';
+import { donneesTableau } from '@/lib/app/tableauDuPlan';
+
+export const metadata: Metadata = { title: 'Bienvenue' };
 
 // L'écran de bienvenue (cadrage, 2.6), à la première ouverture sur un appareil : la course et
 // la date de départ, sur quoi le plan se construit (la couverture du PDF), l'installation sur
@@ -29,10 +33,17 @@ export default async function Bienvenue({ searchParams }: { searchParams: Recher
   const inviteLe = invitationAVenir(plan.course.date_debut_plan, ctx.jour);
   const confirmer = Boolean(inviteLe && (ctx.demo ? confirmationDemandee(plan.course.date_debut_plan, ctx.demo.achat)
     : await confirmationAVenir(ctx.cle).catch(() => false)));
+  // C10 (audits du 05/11/2026) : l'écran revient une fois par appareil (sur iPhone, l'app installée a ses propres cookies :
+  // il y redit les consignes d'installation, cadrage 2.6) ; ses deux phrases suivent le moment. La préparation « a
+  // commencé » une fois partie ; plus de « Nolio t'écrit dans quelques minutes » une fois l'invitation partie, rien une
+  // fois l'athlète dans l'équipe.
+  const nolio = (await donneesTableau(ctx).catch(() => null))?.nolio ?? null;
+  const commencee = ctx.jour >= plan.course.date_debut_plan;
   return (
     <main className="mx-auto max-w-md px-4 py-8 space-y-4">
       <div className="text-center space-y-2">
-        <Image src="/logo/cts-logo-rond-navy.png" alt="CTS Coaching" width={64} height={64} className="mx-auto w-16 h-16" />
+        {/* C11 : le logo de l'en-tête, sans le disque gris qui n'est pas de la charte. */}
+        <Image src="/logo/cts-logo-white.png" alt="CTS Coaching" width={64} height={64} className="mx-auto w-16 h-16 object-contain" />
         {/* Le nom de l'offre (O1 ; décision coach du 20/10/2026, point 5). */}
         <div className="text-[0.6875rem] font-bold tracking-[0.14em] uppercase text-teal">Préparation CTS</div>
         <h1 className="text-[1.75rem] font-extrabold text-indigo tracking-tight leading-tight">{nom ? `Bienvenue ${nom}` : 'Bienvenue'}</h1>
@@ -49,7 +60,8 @@ export default async function Bienvenue({ searchParams }: { searchParams: Recher
       </dl>
 
       <Carte className="text-center">
-        <p className="text-[0.9375rem] font-bold text-indigo">{c.debut}</p>
+        {/* BROUILLON, à valider par le coach (« Ta préparation a commencé le … »). */}
+        <p className="text-[0.9375rem] font-bold text-indigo">{commencee ? `Ta préparation a commencé le ${dateLongue(plan.course.date_debut_plan, true).replace(/^\S+ /, '')}.` : c.debut}</p>
         <p className="mt-1 text-[0.8125rem] text-[#5E5C78]">{c.rendez_vous}</p>
       </Carte>
 
@@ -58,15 +70,19 @@ export default async function Bienvenue({ searchParams }: { searchParams: Recher
         <p><strong className="text-indigo">L’app CTS</strong> : ta course, ta préparation, tes données et tes fiches.</p>
         {/* B-PL-45 : l'invitation à accepter, dite dès la première ouverture ; une semaine avant le départ pour une
             préparation lointaine. */}
-        <p className="pt-1">
-          {inviteLe ? `Nolio t’écrira le ${dateLongue(inviteLe)}, une semaine avant ta première semaine` : 'Nolio t’écrit dans quelques minutes'} :
-          accepte son invitation dans l’équipe CTS, ou connecte-toi avec les identifiants reçus. Pense à regarder dans tes indésirables.
-          {confirmer && ' Ce jour-là, ton app te demande aussi si ce que tu cours a changé depuis ton achat.'}
-        </p>
+        {nolio !== 'actif' && nolio !== 'sorti' && nolio !== 'arrete' && nolio !== 'coaching' && (
+          <p className="pt-1">
+            {/* BROUILLON, à valider par le coach (« Nolio t'a écrit »). */}
+            {inviteLe ? `Nolio t’écrira le ${dateLongue(inviteLe)}, une semaine avant ta première semaine`
+              : nolio === 'invite' || nolio === 'refuse' ? 'Nolio t’a écrit' : 'Nolio t’écrit dans quelques minutes'} :
+            accepte son invitation dans l’équipe CTS, ou connecte-toi avec les identifiants reçus. Pense à regarder dans tes indésirables.
+            {confirmer && ' Ce jour-là, ton app te demande aussi si ce que tu cours a changé depuis ton achat.'}
+          </p>
+        )}
       </Carte>
 
+      {/* C11 : sans le titre « Installer l'app », qui redisait le bouton. */}
       <Carte className="space-y-2.5">
-        <Surtitre>Installer l’app</Surtitre>
         <Installation />
       </Carte>
 
@@ -78,7 +94,8 @@ export default async function Bienvenue({ searchParams }: { searchParams: Recher
       </Carte>
 
       <form action={entrer}>
-        <button type="submit" className="btn btn-primary w-full">Entrer</button>
+        {/* Q4 : le bouton de l'app ; « Entrer » reste après l'avertissement santé, qui doit être lu (CGV). */}
+        <button type="submit" className={`${BOUTON} w-full`}>Entrer</button>
       </form>
     </main>
   );

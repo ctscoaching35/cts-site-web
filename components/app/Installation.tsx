@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { BOUTON } from './Ui';
 
 type Appareil = 'iphone' | 'android' | 'chrome' | 'safari' | 'firefox' | 'installee';
 
@@ -42,14 +43,14 @@ export default function Installation() {
   }, []);
 
   if (!appareil) return null;
-  if (appareil === 'installee') return <p className="text-sm text-indigo/70">L’app est installée sur cet appareil.</p>;
+  if (appareil === 'installee') return <p className="text-sm text-[#4A4866]">L’app est installée sur cet appareil.</p>;
   const edge = typeof navigator !== 'undefined' && /Edg\//.test(navigator.userAgent);
   const navigateur = edge ? 'Edge' : 'Chrome';
   return (
     <div className="space-y-3 text-sm text-[#4A4866] leading-relaxed">
       {invitation && (
         <>
-          <button type="button" onClick={() => invitation.prompt()} className="btn btn-primary w-full">
+          <button type="button" onClick={() => invitation.prompt()} className={`${BOUTON} w-full`}>
             Installer l’app
           </button>
           <p className="text-[0.8125rem] text-[#5E5C78]">L’app CTS s’ouvre ensuite dans sa propre fenêtre, depuis son icône.</p>

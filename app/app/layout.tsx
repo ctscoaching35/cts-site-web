@@ -34,7 +34,7 @@ export default function MiseEnPageApp({ children }: { children: React.ReactNode 
           pour le bouton « Installer l'app » (components/app/Installation.tsx ; retour du coach du 20/10/2026). */}
       <script dangerouslySetInnerHTML={{ __html: CAPTURE_INSTALLATION }} />
       {children}
-      <HorsReseau />
+      <HorsReseau rendu={new Date().toISOString()} />
       <Suspense>
         <BarreOnglets />
       </Suspense>

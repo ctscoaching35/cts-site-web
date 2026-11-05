@@ -2,6 +2,7 @@
 
 import { oublierCeQueLAppareilAGarde } from './HorsReseau';
 import { seDeconnecter, supprimerCompte } from '@/lib/app/actionsCompte';
+import { BOUTON_DANGER } from './Ui';
 
 // Les boutons du compte : avant de partir, l'appareil oublie ce qu'il a gardé hors réseau. menu : le lien discret du
 // menu de l'espace coach, pour changer de compte (décision coach du 20/10/2026 : chaque version par son compte).
@@ -33,18 +34,19 @@ export function Suppression({ acheteur = false }: { acheteur?: boolean }) {
       className="bg-white rounded-2xl border border-indigo/[0.08] p-[18px] space-y-3"
     >
       <h2 className="font-bold text-indigo">Supprimer mon compte</h2>
-      <p className="text-sm text-indigo/70">Ton compte et tout ce qu’il contient sont effacés, sans retour possible.</p>
+      <p className="text-sm text-[#4A4866]">Ton compte et tout ce qu’il contient sont effacés, sans retour possible.</p>
       {acheteur && (
-        <p className="text-sm text-indigo/70">
+        <p className="text-sm text-[#4A4866]">
           Ta préparation dans Nolio s’arrête : ce qui est encore à venir en part, et tu quittes l’équipe CTS ; ton compte Nolio
           et tes séances passées restent à toi. Ton achat n’est pas remboursé, sauf pendant ton délai de rétractation.
         </p>
       )}
-      <label className="flex items-center gap-2 text-sm text-indigo">
-        <input type="checkbox" name="confirmation" value="oui" required className="accent-[#9A3B2C]" />
+      <label className="flex items-center gap-2.5 min-h-11 text-sm text-indigo">
+        <input type="checkbox" name="confirmation" value="oui" required className="w-4 h-4 accent-[#9A3B2C]" />
         Je veux supprimer mon compte
       </label>
-      <button type="submit" className="text-sm font-bold text-[#9A3B2C]">Supprimer définitivement</button>
+      {/* C1 (audits du 05/11/2026) : un vrai bouton bordé de rouge, 44 px. */}
+      <button type="submit" className={BOUTON_DANGER}>Supprimer définitivement</button>
     </form>
   );
 }

@@ -11,8 +11,9 @@ export default function EnTeteApp({ ctx }: { ctx: Contexte }) {
     <>
       <header className="bg-white border-b border-indigo/[0.08]">
         <div className="mx-auto max-w-2xl h-16 px-4 flex items-center justify-between gap-3">
+          {/* C6 (audits du 05/11/2026) : le logo n'est plus lu deux fois (le texte le dit). */}
           <Link href={lien('/app', ctx)} className="flex items-center gap-2.5 min-w-0">
-            <Image src="/logo/cts-logo-white.png" alt="CTS Coaching" width={36} height={36} className="w-9 h-9 object-contain" />
+            <Image src="/logo/cts-logo-white.png" alt="" width={36} height={36} className="w-9 h-9 object-contain" />
             <span className="text-[0.8125rem] font-bold tracking-[0.12em] text-indigo">CTS COACHING</span>
           </Link>
           <Link href={lien('/app/compte', ctx)} aria-label="Ton compte"

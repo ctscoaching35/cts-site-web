@@ -3,9 +3,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { clientNavigateur } from '@/lib/app/supabaseNavigateur';
+import { BOUTON, CHAMP } from './Ui';
 
-const champCls =
-  'w-full bg-white border border-indigo/20 focus:border-teal px-4 py-3 text-indigo outline-none transition-colors';
+// Q4 (décision coach du 05/11/2026 au soir, « A ») : le champ et le bouton de l'app.
+const champCls = `${CHAMP} !min-h-12 !text-base`;
+const etiquette = 'block text-xs font-semibold text-indigo mb-1.5';
 
 // La connexion par code (D6) : l'e-mail du compte, puis le code à 6 chiffres reçu par e-mail.
 // Un code plutôt qu'un lien : sur iPhone, un lien ouvert depuis Mail se connecte dans Safari, pas
@@ -64,7 +66,7 @@ export default function FormulaireConnexion({ suite = '/app' }: { suite?: string
   return etape === 'email' ? (
     <form suppressHydrationWarning onSubmit={demanderCode} className="space-y-4">
       <label className="block">
-        <span className="block text-xs font-semibold tracking-cts uppercase text-indigo/70 mb-2">Ton e-mail</span>
+        <span className={etiquette}>Ton e-mail</span>
         <input
           // Le remplissage automatique des navigateurs marque ses champs (Chrome sur iPhone :
           // __gcruniqueid) avant que React démarre : ce n'est pas une erreur.
@@ -74,18 +76,18 @@ export default function FormulaireConnexion({ suite = '/app' }: { suite?: string
         />
       </label>
       {message && <p className="text-sm text-[#9A3B2C]">{message}</p>}
-      <button type="submit" disabled={enCours} className="btn btn-primary w-full disabled:opacity-60">
+      <button type="submit" disabled={enCours} className={`${BOUTON} w-full`}>
         Recevoir mon code
       </button>
     </form>
   ) : (
     <form suppressHydrationWarning onSubmit={verifierCode} className="space-y-4">
-      <p className="text-sm text-indigo/70 leading-relaxed">
+      <p className="text-sm text-[#4A4866] leading-relaxed">
         Si un compte CTS est rattaché à <strong className="text-indigo">{email}</strong>, tu vas recevoir un code à
         6 chiffres.
       </p>
       <label className="block">
-        <span className="block text-xs font-semibold tracking-cts uppercase text-indigo/70 mb-2">Le code reçu</span>
+        <span className={etiquette}>Le code reçu</span>
         <input
           suppressHydrationWarning
           inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required
@@ -94,7 +96,7 @@ export default function FormulaireConnexion({ suite = '/app' }: { suite?: string
         />
       </label>
       {message && <p className="text-sm text-[#9A3B2C]">{message}</p>}
-      <button type="submit" disabled={enCours} className="btn btn-primary w-full disabled:opacity-60">
+      <button type="submit" disabled={enCours} className={`${BOUTON} w-full`}>
         Me connecter
       </button>
       {/* §8, point 10 (audit du 03/11/2026) : pas de code reçu. */}
@@ -106,9 +108,10 @@ export default function FormulaireConnexion({ suite = '/app' }: { suite?: string
         className="w-full min-h-11 text-sm text-teal font-semibold">
         Changer d’e-mail
       </button>
-      <p className="text-xs text-indigo/60 leading-relaxed">
-        Pas de code ? Pense à tes indésirables. Ton coach t’a invité avec une adresse précise : si ce n’est pas celle-ci,
-        demande-la-lui ; un acheteur, l’adresse de son achat.
+      {/* C44 (audits du 05/11/2026) : une phrase qui ne change plus de personne. La phrase de la synthèse. */}
+      <p className="text-xs text-[#5E5C78] leading-relaxed">
+        Pas de code ? Pense à tes indésirables. Utilise l’adresse de ton achat, ou celle que ton coach a utilisée pour
+        t’inviter.
       </p>
     </form>
   );

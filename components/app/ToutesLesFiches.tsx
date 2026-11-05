@@ -54,8 +54,9 @@ export default function ToutesLesFiches({ familles, suite }: { familles: Famille
               <ul className="pb-2">
                 {f.fiches.map((x) => (
                   <li key={x.slug}>
-                    <Link href={`/app/bibliotheque/${x.slug}${suite}`} className="flex items-center min-h-10 border-t border-indigo/[0.06] text-[0.84rem] text-indigo">
-                      {x.titre}
+                    {/* C1 (audits du 05/11/2026) : 44 px de haut, avec une flèche. */}
+                    <Link href={`/app/bibliotheque/${x.slug}${suite}`} className="flex items-center justify-between gap-3 min-h-11 py-1.5 border-t border-indigo/[0.06] text-[0.84rem] text-indigo">
+                      <span>{x.titre}</span><span aria-hidden className="text-[#5E5C78]">›</span>
                     </Link>
                   </li>
                 ))}

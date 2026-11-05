@@ -1,4 +1,6 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
+import { BOUTON, BOUTON_SECONDAIRE, LIEN, Surtitre, TITRE } from '@/components/app/Ui';
 import EnTeteSimple from '@/components/app/EnTeteSimple';
 import { notFound, redirect } from 'next/navigation';
 import ProfilAthlete from '@/components/app/ProfilAthlete';
@@ -11,6 +13,7 @@ import { lignesDuProfil, profilDeLaFiche } from '@/lib/app/profilEntrainement';
 import { clientServeur, supabaseConfigure } from '@/lib/app/supabase';
 
 export const dynamic = 'force-dynamic';
+export const metadata: Metadata = { title: 'Nouvel objectif' };
 
 // « Nouvel objectif » dans l'app (CTS_NOLIO_CADRAGE.md, OM1, décision coach du 19/10/2026) : le questionnaire,
 // prérempli des dernières réponses, la course à remplir. Un acheteur paie sa nouvelle préparation ; un coaché envoie sa
@@ -58,11 +61,12 @@ export default async function NouvelObjectif({ searchParams }: { searchParams: P
       {/* §8, point 12 : la page dans l'app, avec son en-tête. */}
       <EnTeteSimple />
       <main className="mx-auto max-w-3xl px-4 sm:px-6 py-8 sm:py-12">
-        <Link href="/app/plan" className="inline-flex items-center min-h-11 text-teal font-bold text-sm">‹ Ton objectif</Link>
+        {/* Q3 et Q4 (audits du 05/11/2026) : « ‹ Ta préparation », et les titres de l'app. */}
+        <Link href="/app/plan" className={LIEN}>‹ Ta préparation</Link>
         <div className="my-6 px-2">
-          <div className="eyebrow text-teal mb-3">Nouvel objectif majeur{route ? ' · route' : fiche ? ' · trail' : ''}</div>
-          <h1 className="text-3xl sm:text-4xl text-indigo leading-tight">Ta prochaine course</h1>
-          <p className="text-indigo/70 mt-2">
+          <Surtitre as="div">{`Nouvel objectif majeur${route ? ' · route' : fiche ? ' · trail' : ''}`}</Surtitre>
+          <h1 className={`${TITRE} mt-1.5`}>Ta prochaine course</h1>
+          <p className="text-sm text-[#4A4866] leading-relaxed mt-2">
             {fiche
               ? court
                 ? `Ton profil d’entraînement part avec ta demande (ci-dessous) : seules ta charge du moment${depuisNolio ? ' (lue dans tes séances Nolio : relis-la)' : ''} et ta course sont demandées. Ton coach relit ta demande et lance ta préparation.`
@@ -70,7 +74,7 @@ export default async function NouvelObjectif({ searchParams }: { searchParams: P
               : 'Tes réponses du dernier plan sont reprises : mets à jour ce que tu cours en ce moment et saisis ta course.'}
           </p>
           {/* OM4 : un objectif majeur à la fois ; une course avant l'objectif en cours est une course de préparation. */}
-          <p className="text-sm text-indigo/60 mt-2">
+          <p className="text-sm text-[#5E5C78] mt-2">
             Une course avant ton objectif en cours ? Ajoute-la plutôt comme course de préparation, dans ton objectif. Un
             objectif après lui démarre le lundi qui suit ta récupération.
           </p>
@@ -87,7 +91,7 @@ export default async function NouvelObjectif({ searchParams }: { searchParams: P
                 </div>
               ))}
             </dl>
-            <Link href="/app/profil#profil-entrainement" className="inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">Le modifier dans ton onglet Profil ›</Link>
+            <Link href="/app/profil#profil-entrainement" className={LIEN}>Le modifier dans ton onglet Profil ›</Link>
           </div>
         )}
         {/* Le profil d'abord (décision coach du 23/10/2026) : sans lui, son formulaire ; une fois enregistré, la page se
@@ -116,7 +120,8 @@ export default async function NouvelObjectif({ searchParams }: { searchParams: P
 function Aiguillage({ enCours, coache, liens = {} }: {
   enCours: boolean; coache: boolean; liens?: { plan?: string; majeur?: string; route?: string };
 }) {
-  const bouton = 'flex items-center justify-center min-h-12 px-5 rounded-xl text-sm font-bold';
+  // Q4 (audits du 05/11/2026) : les boutons de l'app.
+  const bouton = 'w-full';
   const plan = liens.plan ?? '/app/plan';
   const majeur = liens.majeur ?? '/app/objectif/nouveau?majeur=1';
   const route = liens.route ?? '/app/objectif/nouveau?majeur=1&discipline=route';
@@ -125,11 +130,11 @@ function Aiguillage({ enCours, coache, liens = {} }: {
       {/* §8, point 12 : la page dans l'app, avec son en-tête. */}
       <EnTeteSimple />
       <main className="mx-auto max-w-xl px-4 sm:px-6 py-8 sm:py-12 space-y-5">
-        <Link href={plan} className="inline-flex items-center min-h-11 text-teal font-bold text-sm">‹ Ton objectif</Link>
+        <Link href={plan} className={LIEN}>‹ Ta préparation</Link>
         <div className="px-2">
-          <div className="eyebrow text-teal mb-3">Nouvel objectif majeur</div>
-          <h1 className="text-3xl sm:text-4xl text-indigo leading-tight">Ta prochaine course</h1>
-          <p className="text-indigo/80 mt-3 leading-relaxed">
+          <Surtitre as="div">Nouvel objectif majeur</Surtitre>
+          <h1 className={`${TITRE} mt-1.5`}>Ta prochaine course</h1>
+          <p className="text-sm text-[#4A4866] mt-3 leading-relaxed">
             Un objectif majeur, c’est la course que toute ta préparation vise : une à trois par saison. Les autres courses
             de ta saison sont des courses de préparation : elles se glissent dans ta préparation, sans la changer.
           </p>
@@ -137,27 +142,27 @@ function Aiguillage({ enCours, coache, liens = {} }: {
         <div className="space-y-2.5 px-2">
           {coache ? (
             <div className="grid grid-cols-2 gap-2.5">
-              <Link href={majeur} className={`${bouton} bg-teal text-white`}>Un trail</Link>
-              <Link href={route} className={`${bouton} bg-teal text-white`}>Une course sur route</Link>
+              <Link href={majeur} className={`${BOUTON} ${bouton}`}>Un trail</Link>
+              <Link href={route} className={`${BOUTON} ${bouton}`}>Une course sur route</Link>
             </div>
           ) : (
-            <Link href={majeur} className={`${bouton} bg-teal text-white`}>C’est mon objectif majeur</Link>
+            <Link href={majeur} className={`${BOUTON} ${bouton}`}>C’est mon objectif majeur</Link>
           )}
-          {coache && <p className="text-[0.8125rem] text-indigo/60 text-center">C’est mon objectif majeur : un trail, ou un 10 km, un semi ou un marathon.</p>}
-          {!coache && <p className="text-[0.8125rem] text-indigo/60 text-center">Une nouvelle préparation, construite pour cette course.</p>}
+          {coache && <p className="text-[0.8125rem] text-[#5E5C78] text-center">C’est mon objectif majeur : un trail, ou un 10 km, un semi ou un marathon.</p>}
+          {!coache && <p className="text-[0.8125rem] text-[#5E5C78] text-center">Une nouvelle préparation, construite pour cette course.</p>}
           {enCours ? (
             <>
-              <Link href={`${plan}#ajouter-course`} className={`${bouton} border border-teal text-teal`}>C’est une course de préparation ›</Link>
-              {!coache && <p className="text-[0.8125rem] text-indigo/60 text-center">Elle s’ajoute gratuitement à ta préparation en cours.</p>}
+              <Link href={`${plan}#ajouter-course`} className={`${BOUTON_SECONDAIRE} ${bouton} min-h-12`}>C’est une course de préparation ›</Link>
+              {!coache && <p className="text-[0.8125rem] text-[#5E5C78] text-center">Elle s’ajoute gratuitement à ta préparation en cours.</p>}
             </>
           ) : (
-            <p className="text-sm text-indigo/70 leading-relaxed">
+            <p className="text-sm text-[#4A4866] leading-relaxed">
               {coache ? 'Une course de préparation s’ajoute à ton objectif majeur : propose-le d’abord.'
                 : 'Une course de préparation s’ajoute à une préparation : choisis d’abord ton objectif majeur.'}
             </p>
           )}
         </div>
-        {coache && <p className="px-2 text-sm text-indigo/60">Ton coach relit chaque objectif majeur avant de le lancer.</p>}
+        {coache && <p className="px-2 text-sm text-[#5E5C78]">Ton coach relit chaque objectif majeur avant de le lancer.</p>}
       </main>
     </div>
   );
@@ -172,8 +177,8 @@ async function demonstration(searchParams: Promise<Record<string, string | strin
       <div className="min-h-screen bg-sand">
         <EnTeteSimple />
         <main className="mx-auto max-w-xl px-4 py-8 space-y-4">
-          <Link href={lien('/app/objectif/nouveau', ctx)} className="inline-flex items-center min-h-11 text-teal font-bold text-sm">‹ Nouvel objectif</Link>
-          <p className="text-sm text-indigo/80 leading-relaxed">
+          <Link href={lien('/app/objectif/nouveau', ctx)} className={LIEN}>‹ Nouvel objectif</Link>
+          <p className="text-sm text-[#4A4866] leading-relaxed">
             Démonstration : le questionnaire d’un nouvel objectif ne s’ouvre qu’avec les comptes ; il part vers le paiement (un
             acheteur) ou chez le coach (un coaché).
           </p>

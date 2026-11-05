@@ -1,9 +1,13 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
+import { BOUTON } from '@/components/app/Ui';
 import { Deconnexion } from '@/components/app/BoutonsCompte';
 import { redirect } from 'next/navigation';
 import { ficheDuCompte } from '@/lib/app/demandes';
 import { coachConnecte } from '@/lib/app/nolio';
 import { clientServeur, supabaseConfigure } from '@/lib/app/supabase';
+
+export const metadata: Metadata = { title: 'Sans plan' };
 
 // La session se lit à chaque visite : jamais figée à la compilation.
 export const dynamic = 'force-dynamic';
@@ -23,8 +27,9 @@ export default async function SansPlan() {
   if (await ficheDuCompte(String(data.claims.sub))) redirect('/app');
   return (
     <main className="mx-auto max-w-sm px-4 py-12 space-y-6 text-center">
-      <h1 className="text-2xl text-indigo">Tu n’as pas encore de plan</h1>
-      <Link href="/plan" className="btn btn-primary">Construire ma préparation</Link>
+      {/* Q4 (audits du 05/11/2026) : au style de l'app. */}
+      <h1 className="text-[1.625rem] font-extrabold text-indigo tracking-tight">Tu n’as pas encore de plan</h1>
+      <Link href="/plan" className={BOUTON}>Construire ma préparation</Link>
       <Compte email={email} />
     </main>
   );
@@ -35,7 +40,7 @@ export default async function SansPlan() {
 function Compte({ email }: { email: string }) {
   return (
     <div className="pt-6 space-y-2">
-      <p className="text-xs text-indigo/60">Connecté avec {email || 'un compte sans adresse'}. Pas le bon compte ?</p>
+      <p className="text-xs text-[#5E5C78]">Connecté avec {email || 'un compte sans adresse'}. Pas le bon compte ?</p>
       <Deconnexion />
     </div>
   );

@@ -4,7 +4,7 @@ import { useActionState, useState } from 'react';
 import { confirmerMaCharge, type EtatGeste } from '@/lib/app/actionsEcriture';
 import { chargeEnClair, type Charge } from '@/lib/app/invitation';
 import { textes } from '@/lib/plan';
-import { Carte, Surtitre } from './Ui';
+import { BOUTON, BOUTON_SECONDAIRE, Carte, Surtitre } from './Ui';
 
 // LA CONFIRMATION DE CHARGE (décision coach du 04/11/2026 au soir, « A » ; lib/app/confirmation.ts) : de son invitation à
 // la veille de son départ, l'acheteur dont l'achat date de plus de 3 semaines relit ses réponses de l'achat sur la charge.
@@ -34,7 +34,7 @@ export default function ConfirmationCharge({ planId, achat, reponse, dimanche, d
       {reponse && !corriger ? (
         <>
           <p className="text-[0.875rem] text-[#4A4866] leading-relaxed">
-            C’est noté : ta première semaine s’écrira {dimanche} au soir sur {chargeEnClair(reponse.charge)}.
+            C’est noté : ta première semaine s’écrira {dimanche} au soir sur {chargeEnClair(reponse.charge, true)}.
           </p>
           <button type="button" onClick={() => setCorriger(true)} className="inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">
             Corriger ›
@@ -43,15 +43,15 @@ export default function ConfirmationCharge({ planId, achat, reponse, dimanche, d
       ) : (
         <>
           <p className="text-[0.9375rem] font-bold text-indigo leading-snug">
-            Tu nous disais {chargeEnClair(achat)}. C’est toujours vrai ?
+            Tu nous disais {chargeEnClair(achat, true)}. C’est toujours vrai ?
           </p>
           {!corriger && (
             <form action={action} onSubmit={parDemo} className="flex flex-wrap gap-2">
               <input type="hidden" name="reponse" value="oui" />
-              <button type="submit" disabled={enCours} className="min-h-11 px-5 rounded-xl bg-teal text-white text-sm font-bold disabled:opacity-50">
+              <button type="submit" disabled={enCours} className={BOUTON}>
                 {enCours ? 'Envoi…' : 'Oui'}
               </button>
-              <button type="button" onClick={() => setCorriger(true)} className="min-h-11 px-5 rounded-xl border border-indigo/25 bg-white text-indigo text-sm font-bold">
+              <button type="button" onClick={() => setCorriger(true)} className={BOUTON_SECONDAIRE}>
                 Non, je corrige
               </button>
             </form>
@@ -66,13 +66,15 @@ export default function ConfirmationCharge({ planId, achat, reponse, dimanche, d
                   <input name="sortie_longue_actuelle" required placeholder="ex. 1h30 ou 90min" defaultValue={valeurs.sortie_longue_actuelle} className={champ} />
                 </label>
               </div>
-              <button type="submit" disabled={enCours} className="min-h-11 px-5 rounded-xl bg-teal text-white text-sm font-bold disabled:opacity-50">
+              <button type="submit" disabled={enCours} className={BOUTON}>
                 {enCours ? 'Vérification…' : 'Enregistrer'}
               </button>
             </form>
           )}
+          {/* C23 (audits du 05/11/2026) : l'heure limite, comme l'e-mail de rappel. BROUILLON, à valider par le coach. */}
           <p className="text-xs text-[#5E5C78] leading-relaxed">
-            Ta première semaine s’écrit {dimanche} au soir sur ta réponse ; sans réponse, sur celles de ton achat.
+            Réponds d’ici {dimanche}, 18 h : ta première semaine s’écrit le soir même sur ta réponse ; sans réponse, sur
+            celles de ton achat.
           </p>
         </>
       )}

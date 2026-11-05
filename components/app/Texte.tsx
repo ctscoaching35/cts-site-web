@@ -69,13 +69,15 @@ export function Tableau({ lignes }: { lignes: string[][] }) {
   );
 }
 
+// L'avertissement santé (C43, audits du 05/11/2026) : une carte comme les autres, son titre en surtitre ; avant, centré
+// tout en bas du Compte, sous les mentions légales.
 export function Avertissement({ avertissement }: { avertissement: { surtitre: string; paragraphes: string[] } }) {
   return (
-    <aside className="border-t-2 border-teal pt-4 text-center text-sm text-indigo/70 leading-relaxed space-y-2 px-2">
-      <div className="text-[0.65rem] font-bold tracking-cts text-teal">{avertissement.surtitre}</div>
+    <section className="bg-white rounded-2xl border border-indigo/[0.08] p-[18px] space-y-2.5">
+      <h2 className="text-[0.6875rem] font-bold tracking-[0.14em] uppercase text-teal">{avertissement.surtitre}</h2>
       {avertissement.paragraphes.map((p, i) => (
-        <p key={i}>{p}</p>
+        <p key={i} className="text-[0.8125rem] text-[#4A4866] leading-relaxed">{p}</p>
       ))}
-    </aside>
+    </section>
   );
 }

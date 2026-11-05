@@ -1,4 +1,7 @@
+import type { Metadata } from 'next';
 import CadreSite from '@/components/app/CadreSite';
+
+export const metadata: Metadata = { title: 'Fiche' };
 import { notFound } from 'next/navigation';
 import { lireBibliotheque, ficheParSlug } from '@/lib/app/bibliotheque';
 import { contexte, lien, type Recherche } from '@/lib/app/contexte';

@@ -108,16 +108,19 @@ export function chargeAuPlancher(corrigee: Charge, achat: Charge): Charge | null
   };
 }
 
-// « 5 h », « 4 h 30 », « 50 min » ; la saisie telle quelle si elle ne se lit pas.
-export function dureeEnClair(brut: string): string {
+// « 5 h », « 4 h 30 », « 50 min » ; la saisie telle quelle si elle ne se lit pas. compacte (C4, audits du 05/11/2026 :
+// un seul format dans l'app) : « 5h », « 4h30 ».
+export function dureeEnClair(brut: string, compacte = false): string {
   const h = lireTemps(brut);
   if (h === null || !(h > 0)) return brut;
   const m = Math.round(h * 60);
   if (m < 60) return `${m} min`;
-  return `${Math.floor(m / 60)} h${m % 60 ? ` ${String(m % 60).padStart(2, '0')}` : ''}`;
+  const reste = m % 60 ? String(m % 60).padStart(2, '0') : '';
+  return compacte ? `${Math.floor(m / 60)}h${reste}` : `${Math.floor(m / 60)} h${reste ? ` ${reste}` : ''}`;
 }
 
-// « 5 h par semaine et 2 h de sortie longue » (sans l'arrêt récent depuis le 05/11/2026, S9).
-export function chargeEnClair(c: Charge): string {
-  return `${dureeEnClair(c.volume_hebdo_actuel)} par semaine et ${dureeEnClair(c.sortie_longue_actuelle)} de sortie longue`;
+// « 5 h par semaine et 2 h de sortie longue » (sans l'arrêt récent depuis le 05/11/2026, S9) ; compacte : « 5h », dans
+// l'app.
+export function chargeEnClair(c: Charge, compacte = false): string {
+  return `${dureeEnClair(c.volume_hebdo_actuel, compacte)} par semaine et ${dureeEnClair(c.sortie_longue_actuelle, compacte)} de sortie longue`;
 }

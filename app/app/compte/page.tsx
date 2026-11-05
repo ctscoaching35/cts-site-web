@@ -1,16 +1,20 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import EnTeteApp from '@/components/app/EnTeteApp';
 import { Avertissement } from '@/components/app/Texte';
 import { Deconnexion, Suppression } from '@/components/app/BoutonsCompte';
 import Installation from '@/components/app/Installation';
 import { DonnerAccord, RetirerAccord } from '@/components/app/GestesEcriture';
-import { Carte, CarteSombre, Surtitre } from '@/components/app/Ui';
+import { Carte, CarteSombre, EcrisNous, Surtitre, TITRE } from '@/components/app/Ui';
 import { contexte, initiales, type Recherche } from '@/lib/app/contexte';
 import { ajouterJours, dateLongue } from '@/lib/app/plan';
 import { clientServeur, clientService } from '@/lib/app/supabase';
 import { coachConnecte } from '@/lib/app/nolio';
 import { donneesTableau } from '@/lib/app/tableauDuPlan';
 import { plansVisibles } from '@/lib/legal';
+import { ECRIRE_A_CTS } from '@/lib/app/contact';
+
+export const metadata: Metadata = { title: 'Compte' };
 
 // L'adresse fictive de la démonstration : « clara@demonstration.test ».
 const prenomDemo = (nom: string) => (nom.trim().split(/\s+/)[0] ?? 'athlete').toLowerCase().normalize('NFD').replace(/[^a-z]/g, '') || 'athlete';
@@ -55,7 +59,7 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
     <>
       <EnTeteApp ctx={ctx} />
       <main className="mx-auto max-w-2xl px-4 pt-5 pb-6 space-y-4">
-        <h1 className="text-[1.625rem] font-extrabold text-indigo tracking-tight">Compte</h1>
+        <h1 className={TITRE}>Compte</h1>
 
         <Carte className="flex items-center gap-3.5">
           <span className="w-[52px] h-[52px] rounded-full bg-[#E1EFEA] text-teal-dark flex items-center justify-center text-[1.0625rem] font-extrabold shrink-0">
@@ -78,9 +82,11 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
               {/* Le prénom du coach (§8, point 4, audit du 03/11/2026) : « Juliette relit… » pour ses coachés. */}
               {coach.texte} {ctx.aLaMain ? `${coach.prenom} écrit tes séances dans Nolio.` : `${coach.prenom} relit ta préparation et peut reprendre la main sur une semaine à tout moment.`}
             </p>
-            <a href="https://www.nolio.io/" target="_blank" rel="noopener" className="inline-flex items-center min-h-11 px-4 rounded-full bg-white text-indigo text-[0.8125rem] font-bold">
-              Lui écrire dans Nolio
-            </a>
+            {/* Q5 et Q18 (décisions coach du 05/11/2026 au soir, « A ») : plus de bouton vers le site de Nolio, qui n'ouvrait
+                pas sa conversation ; ses mots restent dans Nolio, la carte le dit. BROUILLON, à valider par le coach. */}
+            <p className="text-[0.8125rem] leading-relaxed text-white font-semibold">
+              Écris-lui dans ton appli Nolio. Ses mots sur ta semaine sont dans Nolio.
+            </p>
           </CarteSombre>
         )}
 
@@ -90,8 +96,9 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
           </Link>
         )}
 
-        {d.ecrit && (
-          <Carte className="!py-1 divide-y divide-indigo/[0.06]">
+        {/* C46 (audits du 05/11/2026) : un coaché sans objectif voit aussi Nolio et son accord. */}
+        {(d.ecrit || ctx.sansObjectif) && (
+          <Carte id="accord" className="!py-1 divide-y divide-indigo/[0.06] scroll-mt-20">
             <div className="flex gap-3 py-3.5">
               <span className="w-2.5 h-2.5 mt-1.5 rounded-full bg-teal shrink-0" aria-hidden />
               <div>
@@ -120,22 +127,32 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
                       : 'Sans accord de lecture, l’app lit seulement tes séances faites ou manquées et leur durée : ton plan suit sa trame et ton questionnaire du samedi, sans s’ajuster à ta fatigue, et tu donnes toi-même tes repères. L’accord est recommandé.'}
                 </p>
                 {!ctx.coache && affiche?.parametres && affiche.accord_lecture_le && <RetirerAccord planId={ctx.cle} />}
-                {!ctx.coache && affiche?.parametres && !affiche.accord_lecture_le && <DonnerAccord planId={ctx.cle} />}
+                {!ctx.coache && affiche?.parametres && !affiche.accord_lecture_le && <DonnerAccord planId={ctx.cle} demonstration={ctx.demonstration} />}
               </div>
             </div>
-            {/* Une course reportée (PL6, décision coach du 04/11/2026) : il répond à son e-mail de bienvenue. */}
+            {/* Une course reportée (PL6, décision coach du 04/11/2026) ; Q5 (décision coach du 05/11/2026 au soir, « A ») : il
+                nous écrit, par le lien de Compte, plus « réponds à ton e-mail de bienvenue ». BROUILLON, à valider par le coach. */}
             {!ctx.coache && (
               <div className="flex gap-3 py-3.5">
                 <span className="w-2.5 h-2.5 mt-1.5 rounded-full bg-teal shrink-0" aria-hidden />
                 <div>
                   <p className="text-sm font-bold text-indigo">Ta course change de date ?</p>
                   <p className="mt-0.5 text-[0.8rem] text-[#4A4866] leading-relaxed">
-                    Réponds simplement à ton e-mail de bienvenue, avec la nouvelle date : nous voyons avec toi comment ta préparation suit.
+                    Écris-nous avec la nouvelle date : nous voyons avec toi comment ta préparation suit.
                   </p>
+                  <EcrisNous />
                 </div>
               </div>
             )}
           </Carte>
+        )}
+
+        {/* Q5 (décision coach du 05/11/2026 au soir, « A », et « pour les plans, pas d'interaction avec moi ») : un acheteur
+            nous écrit pour son achat ou l'app, jamais pour son entraînement. Le texte de la décision. */}
+        {!ctx.coache && (
+          <a href={ECRIRE_A_CTS} className="flex items-center justify-between gap-3 min-h-[52px] px-[18px] py-3 bg-white rounded-2xl border border-indigo/[0.08] text-sm text-indigo">
+            <span>Une question sur ton achat ou sur l’app ? <strong className="text-teal whitespace-nowrap">Écris-nous ›</strong></span>
+          </a>
         )}
 
         <Carte className="space-y-2" id="installer">
@@ -155,6 +172,7 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
         {/* En démonstration aussi : leurs actions n'y font rien (lib/app/actionsCompte.ts). */}
         <Deconnexion />
         <Suppression acheteur={!ctx.coache} />
+        {/* C43 (audits du 05/11/2026) : l'avertissement santé dans une carte comme les autres, même titre, même texte. */}
         {!ctx.coache && <Avertissement avertissement={ctx.plan.avertissement} />}
       </main>
     </>
