@@ -13,7 +13,7 @@ import type { FichePrep } from '@/components/app/FichePreparation';
 import { FAMILLES } from './charte';
 import { jourDInvitation } from './invitation';
 import { ajouterJours, type Plan, type Semaine } from './plan';
-import { minutesDe } from './tableau';
+import { ajustementDuJournal, minutesDe } from './tableau';
 import type { CourseSecondaire, DonneesTableau, EtatNolio, LectureNolio, SeanceNolio } from './tableauDuPlan';
 
 export async function plansDeDemonstration(): Promise<Record<string, PlanDeDemonstration>> {
@@ -108,6 +108,15 @@ export async function notesDeLaSemaine(ctx: Contexte): Promise<{ numero: string;
   const m = ligne ? await semaineMontree(ctx, ligne.numero) : null;
   const notes = [...(m?.notes ?? []).map((n) => n.texte), ...(ctx.demo.semaine === 'retouchee' ? [RETOUCHE] : [])];
   return ligne && notes.length ? { numero: ligne.numero, notes } : null;
+}
+
+// La semaine ajustée (Q7) : ?semaine=fatigue ou manquee, le journal que le moteur a gardé avec elle (R3, R8) ;
+// ?semaine=retouchee, pour un coaché, la semaine que son coach a retouchée dans Nolio.
+export async function ajustementDeDemonstration(ctx: Contexte, numero: string): Promise<'moteur' | 'coach' | null> {
+  if (!ctx.demo) return null;
+  if (ctx.demo.semaine === 'retouchee') return ctx.coache ? 'coach' : null;
+  const m = await semaineMontree(ctx, numero);
+  return m ? ajustementDuJournal(m.journal, ctx.coache) : null;
 }
 
 // Le tableau de bord : la trame et les fiches du moteur, l'état Nolio et l'accord choisis, la course de préparation ;

@@ -58,12 +58,17 @@ export default function BarreOnglets() {
   }
   const requete = garde.toString();
   const suite = requete ? `?${requete}` : '';
-  // L'objectif (/app/plan) s'ouvre depuis l'accueil : c'est lui qui reste allumé ; un calculateur, depuis la
-  // bibliothèque.
+  // « Ta préparation » (/app/plan) s'ouvre depuis l'accueil : c'est lui qui reste allumé. C5 (audits du 05/11/2026) :
+  // l'onglet suit d'où l'on vient : la page des tests (/app/plan/zones) s'ouvre depuis Profil ; un calculateur ouvert
+  // depuis une fiche de course (?garder=…) allume Accueil, depuis la bibliothèque, Bibliothèque.
+  const tests = chemin.startsWith('/app/plan/zones');
+  const calculateur = chemin.startsWith('/app/calculateurs');
+  const depuisUneFiche = calculateur && Boolean(params.get('garder'));
   const actif = (c: string) =>
     c === '/app'
-      ? chemin === '/app' || chemin.startsWith('/app/plan') || chemin.startsWith('/app/objectif')
-      : chemin.startsWith(c) || (c === '/app/bibliotheque' && chemin.startsWith('/app/calculateurs'));
+      ? chemin === '/app' || (chemin.startsWith('/app/plan') && !tests) || chemin.startsWith('/app/objectif') || depuisUneFiche
+      : c === '/app/profil' ? chemin.startsWith(c) || tests
+        : chemin.startsWith(c) || (c === '/app/bibliotheque' && calculateur && !depuisUneFiche);
   return (
     <nav
       aria-label="Navigation de l’app"

@@ -1,4 +1,7 @@
+import type { Metadata } from 'next';
 import CadreSite from '@/components/app/CadreSite';
+
+export const metadata: Metadata = { title: 'Calculateur' };
 import { notFound } from 'next/navigation';
 import { lireCalculateurs, calculateurParSlug } from '@/lib/app/bibliotheque';
 import { garderStrategie } from '@/lib/app/actionsStrategie';
@@ -24,8 +27,10 @@ export default async function CalculateurApp({
   const r = await searchParams;
   const garder = slug === 'calculateur-nutrition' ? cleCourse(r.garder) : null;
   const prerempli = new URLSearchParams([...CLES_ENTREES, 'garder'].flatMap((k) => (typeof r[k] === 'string' ? [[k, r[k] as string]] : []))).toString();
-  const fiche = garder === COURSE_OBJECTIF ? lien('/app/plan/jour-j', ctx) : garder ? lien('/app/plan/course', ctx, { course: garder }) : null;
+  // C31 et Q10 (05/11/2026 au soir) : il revient d'où il a été ouvert, la fiche de course à sa partie « Ton jour J » (la page
+  // « Ton jour J » est retirée).
+  const fiche = garder === COURSE_OBJECTIF ? `${lien('/app/plan/course', ctx)}#jour-j` : garder ? lien('/app/plan/course', ctx, { course: garder }) : null;
   return <CadreSite src={`/${calculateur.slug}${prerempli ? `?${prerempli}` : ''}`} titre={calculateur.titre}
     retour={{ href: fiche ?? lien('/app/bibliotheque', ctx), libelle: 'Retour' }}
-    garder={garder ? garderStrategie.bind(null, ctx.cle, garder) : undefined} />;
+    garder={garder ? garderStrategie.bind(null, ctx.cle, garder) : undefined} masquer=".titre .surtitre" />;
 }

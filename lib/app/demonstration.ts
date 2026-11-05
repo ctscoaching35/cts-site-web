@@ -28,6 +28,7 @@ export const tableauDeDemonstration = async (ctx: Contexte) => (await etats()).t
 export const semaineDeDemonstration = async (ctx: Contexte, numero: string) => (await etats()).semaineDeDemonstration(ctx, numero);
 export const lectureDeDemonstration = async (ctx: Contexte, lundi: string, numero?: string) =>
   (await etats()).lectureDeDemonstration(ctx, lundi, numero);
+export const ajustementDeDemonstration = async (ctx: Contexte, numero: string) => (await etats()).ajustementDeDemonstration(ctx, numero);
 export const notesDeLaSemaine = async (ctx: Contexte) => (await etats()).notesDeLaSemaine(ctx);
 export const ficheDeDemonstration = async (ctx: Contexte, date: string) => (await etats()).ficheDeDemonstration(ctx, date);
 export const datesDesFiches = async (ctx: Contexte) => (await etats()).datesDesFiches(ctx);

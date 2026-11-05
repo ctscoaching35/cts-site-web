@@ -1,20 +1,19 @@
 import Link from 'next/link';
 import clsx from 'clsx';
-import type { LigneTrame, Realise } from '@/lib/app/ecriture';
+import type { LigneTrame } from '@/lib/app/ecriture';
 import { BANNIERE, FAMILLES } from '@/lib/app/charte';
 import { lien, type Contexte } from '@/lib/app/contexte';
-import { ajouterJours, dateLongue, jourMois, slugFiche, type Jour, type Plan, type Semaine } from '@/lib/app/plan';
-import {
-  courseDeLaSemaine, ECART_ZONE_HOOPER, enHeures, type Barre, type CourseDuGraphique, type Fiche, type Jauge, type PointHooper,
-} from '@/lib/app/tableau';
+import { estSemaineDeWeekEndChoc, nomAffiche } from '@/lib/app/nomsSeances';
+import { ajouterJours, dateLongue, slugFiche, type Jour, type Plan, type Semaine } from '@/lib/app/plan';
+import { enHeures, type Fiche, type Jauge } from '@/lib/app/tableau';
 import type { CourseSecondaire, EtatNolio, RaisonNolio, SeanceNolio } from '@/lib/app/tableauDuPlan';
-import { Carte, CarteSombre, PastilleDate, Surtitre } from './Ui';
+import { BOUTON, Carte, CarteSombre, EcrisNous, LIEN, PastilleDate, Surtitre } from './Ui';
 
-// Les pièces de l'accueil et de « Mes données » (CTS_NOLIO_CADRAGE.md, T1, T4, T10, AP1 à AP3 ; maquettes validées
-// par le coach le 19/10/2026) : l'objectif et sa montagne, les piliers, les courses de préparation, la semaine, la
-// fiche du moment ; la charge, le volume et le Hooper. Jamais le mot « chance » (J4) ; la montagne sans pourcentage.
-
-const NOLIO = 'https://www.nolio.io/';
+// Les pièces de l'accueil (CTS_NOLIO_CADRAGE.md, T1, T4, AP1, AP2 ; maquettes validées par le coach le 19/10/2026) :
+// l'objectif et sa montagne, les piliers, les courses de préparation, la semaine, la fiche du moment. Jamais le mot
+// « chance » (J4) ; la montagne sans pourcentage. Les graphiques de « Mes données » sont dans components/app/Graphiques.tsx.
+// C9 (audits du 05/11/2026) : aucun lien ne mène plus au site de Nolio (il ouvrait le navigateur, pas l'appli) ; aucune
+// adresse documentée n'ouvre l'appli Nolio : l'app dit « dans ton appli Nolio », sans bouton.
 
 // ─── Nolio, tant que l'athlète n'y est pas ──────────────────────────────────
 
@@ -25,29 +24,32 @@ const ARRIVE = 'Nolio t’écrit dans quelques minutes : une invitation à rejoi
 // inviteLe : une préparation qui commence plus tard, invitée le lundi de la semaine qui précède son départ (décision coach
 // du 04/11/2026 au soir, lib/app/invitation.ts) ; confirmer : ce jour-là, l'app lui demandera si sa charge a changé ;
 // avantCourse : sorti de l'équipe avant sa course (B-PL-41), il peut la rejoindre.
+// ecrire (Q5, décision coach du 05/11/2026 au soir) : la carte renvoie au lien vers CTS (« Écris-nous › »), à la place de
+// « réponds simplement à ton e-mail de bienvenue ».
 export function CarteNolio({ etat, inviteLe = null, confirmer = false, avantCourse = false }: {
   etat: EtatNolio; inviteLe?: string | null; confirmer?: boolean; avantCourse?: boolean;
 }) {
   if (!etat || etat === 'actif' || etat === 'coache') return null;
-  const textes: Record<'a_inviter' | 'en_cours' | 'invite' | 'refuse' | 'sorti' | 'arrete' | 'coaching', { titre: string; texte: string; bouton: boolean }> = {
+  const textes: Record<'a_inviter' | 'en_cours' | 'invite' | 'refuse' | 'sorti' | 'arrete' | 'coaching', { titre: string; texte: string; ecrire?: boolean }> = {
     a_inviter: inviteLe
-      ? { titre: 'Ton accès Nolio arrive une semaine avant ta préparation', bouton: false,
+      ? { titre: 'Ton accès Nolio arrive une semaine avant ta préparation',
         texte: `Nolio t’écrira le ${dateLongue(inviteLe)} : une invitation à rejoindre l’équipe CTS si tu as déjà un compte Nolio, sinon les identifiants de ton nouveau compte. Ta première semaine s’y installe la veille de son début.${confirmer ? ' Ce jour-là, ton app te demande aussi si ce que tu cours a changé depuis ton achat.' : ''}` }
-      : { titre: 'Ton accès Nolio arrive', bouton: false, texte: ARRIVE },
-    en_cours: { titre: 'Ton accès Nolio arrive', bouton: false, texte: ARRIVE },
-    invite: { titre: 'Accepte ton invitation Nolio', bouton: false,
+      : { titre: 'Ton accès Nolio arrive', texte: ARRIVE },
+    en_cours: { titre: 'Ton accès Nolio arrive', texte: ARRIVE },
+    invite: { titre: 'Accepte ton invitation Nolio',
       texte: 'Nolio t’a envoyé par e-mail une invitation à rejoindre l’équipe CTS (pense à regarder dans tes indésirables). Dès que tu l’acceptes, tes séances s’installent dans ton calendrier Nolio.' },
-    refuse: { titre: 'Ton invitation Nolio n’a pas abouti', bouton: false,
-      texte: 'Réponds simplement à ton e-mail de bienvenue : nous t’en renvoyons une.' },
+    // Q5 : BROUILLON, à valider par le coach.
+    refuse: { titre: 'Ton invitation Nolio n’a pas abouti', ecrire: true, texte: 'Écris-nous : nous t’en renvoyons une.' },
     sorti: avantCourse
-      ? { titre: 'Tu as quitté l’équipe CTS dans Nolio', bouton: false,
-        texte: 'Tes séances ne t’arrivent plus. Pour rejoindre l’équipe, réponds simplement à ton e-mail de bienvenue : nous t’envoyons une nouvelle invitation.' }
-      : { titre: 'Ta préparation est terminée dans Nolio', bouton: true, texte: 'Ton compte Nolio et tes séances restent à toi.' },
+      // Q5 : BROUILLON, à valider par le coach.
+      ? { titre: 'Tu as quitté l’équipe CTS dans Nolio', ecrire: true,
+        texte: 'Tes séances ne t’arrivent plus. Pour rejoindre l’équipe, écris-nous : nous t’envoyons une nouvelle invitation.' }
+      : { titre: 'Ta préparation est terminée dans Nolio', texte: 'Ton compte Nolio et tes séances restent à toi.' },
     // E3 (audits du 05/11/2026) : arrêtée par le coach après un remboursement. Validé par le coach le 05/11/2026 au soir.
-    arrete: { titre: 'Ta préparation est arrêtée', bouton: true,
+    arrete: { titre: 'Ta préparation est arrêtée',
       texte: 'Elle a été arrêtée après ton remboursement : plus rien ne s’écrit dans ton Nolio. Ton compte Nolio et les séances déjà passées restent à toi.' },
     // Un plan acheté, l'athlète en coaching (décision coach du 23/10/2026).
-    coaching: { titre: 'Ce plan ne s’écrit pas dans Nolio', bouton: false,
+    coaching: { titre: 'Ce plan ne s’écrit pas dans Nolio',
       texte: 'Tu es en coaching : ton coach écrit ta préparation. Ce plan reste lisible ici ; s’il doit reprendre, ton coach le relance.' },
   };
   const t = textes[etat];
@@ -58,7 +60,7 @@ export function CarteNolio({ etat, inviteLe = null, confirmer = false, avantCour
         <h2 className="font-bold text-indigo">{t.titre}</h2>
       </div>
       <p className="text-sm text-[#4A4866] leading-relaxed">{t.texte}</p>
-      {t.bouton && <a href={NOLIO} target="_blank" rel="noopener" className="inline-flex items-center min-h-11 text-sm font-bold text-teal">Ouvrir Nolio ›</a>}
+      {t.ecrire && <EcrisNous />}
     </Carte>
   );
 }
@@ -68,7 +70,8 @@ export function CarteNolio({ etat, inviteLe = null, confirmer = false, avantCour
 // D5 (moteur 8.452 ; 7B, décision coach du 05/11/2026 au soir) : après deux propositions restées sans valeur, la
 // préparation d'un acheteur n'écrit plus le test de vitesse critique (le journal porte la ligne TN « non reproposé » ;
 // lib/app/tableauDuPlan.ts, testVcNonRepropose). La carte le dit, tant qu'aucune vitesse critique n'est connue.
-// Validée par le coach le 05/11/2026 au soir. saisie : « Tes zones », où il entre ses deux distances ; null sans elle.
+// Validée par le coach le 05/11/2026 au soir. saisie : « Tes tests », où il entre ses deux distances ; null sans elle.
+// Elle ne s'affiche pas la semaine où la préparation écrit ce test (Q14) : elles se contrediraient.
 export function CarteTestVitesseCritique({ saisie }: { saisie: string | null }) {
   return (
     <Carte className="space-y-2">
@@ -77,12 +80,13 @@ export function CarteTestVitesseCritique({ saisie }: { saisie: string | null }) 
         Il ne t’est plus proposé : les deux derniers sont restés sans résultat. Tes séances se règlent sur ton effort
         ressenti. Tu peux le faire quand tu veux : entre ensuite tes deux distances dans ton profil, à « La vitesse critique ».
       </p>
-      {saisie && <Link href={saisie} className="inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">Entrer mes distances ›</Link>}
+      {saisie && <Link href={saisie} className={LIEN}>Entrer mes distances ›</Link>}
     </Carte>
   );
 }
 
 // ─── L'objectif et sa montagne (AP2) ──────────────────────────────────────
+
 
 const REMPLI = { bien: '#2BB39B', retrait: '#E3A23B', retard: '#E2725B' } as const;
 const SOMMET = 'M0 170 L78 92 L112 116 L176 26 L236 98 L262 80 L350 170 Z';
@@ -110,6 +114,11 @@ export const estRoute = (format: string | null | undefined) => /^R(10|21|42)$/.t
 // AT3 (décision coach du 04/11/2026, « A ») : la montagne se remplit avec le temps, la part de la préparation déjà faite
 // (le sommet au jour J) ; sa couleur dit l'assiduité (le verdict des piliers). Avant, elle se remplissait de la moyenne
 // des piliers : pleine des semaines avant la course.
+// C17 (audits du 05/11/2026) : tant qu'il n'y a pas de verdict (moins de deux semaines lues), la montagne se remplit en
+// blanc translucide, sans dire « tout va bien ». Q8 (décision coach du 05/11/2026 au soir, « A ») : le dessin ne dépasse
+// pas 140 px de haut, quelle que soit la largeur (avant, près de 300 px sur tablette) ; la route suit la même règle.
+const NEUTRE = 'rgba(255,255,255,0.28)';
+const DESSIN = 'block w-full h-auto max-h-[140px]';
 export function Montagne({ score, ton, route = false }: { score: number | null; ton: keyof typeof REMPLI | null; route?: boolean }) {
   if (route) return <Route score={score} ton={ton} />;
   // La montagne monte de 170 (le pied) à 26 (le sommet).
@@ -117,11 +126,11 @@ export function Montagne({ score, ton, route = false }: { score: number | null; 
   const libelle = score === null ? 'Ta montagne de préparation, qui se remplira semaine après semaine'
     : `Ta montagne de préparation, ${score >= 0.95 ? 'au sommet' : score >= 0.66 ? 'gravie aux deux tiers' : score >= 0.33 ? 'gravie au tiers' : 'au pied'}`;
   return (
-    <svg viewBox="0 0 350 170" className="block w-full h-auto" role="img" aria-label={libelle}>
+    <svg viewBox="0 0 350 170" className={DESSIN} role="img" aria-label={libelle}>
       <defs><clipPath id="cts-montagne"><path d={SOMMET} /></clipPath></defs>
       <path d={SOMMET} fill="rgba(255,255,255,0.07)" />
-      {niveau !== null && ton && (
-        <rect x="0" y={niveau} width="350" height={170 - niveau} fill={REMPLI[ton]} clipPath="url(#cts-montagne)" />
+      {niveau !== null && (
+        <rect x="0" y={niveau} width="350" height={170 - niveau} fill={ton ? REMPLI[ton] : NEUTRE} clipPath="url(#cts-montagne)" />
       )}
       <path d={SOMMET} fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth={1.5} strokeLinejoin="round" />
       {niveau !== null && <line x1="0" y1={niveau} x2="350" y2={niveau} stroke="#8FD1C3" strokeWidth={1} strokeDasharray="3 4" />}
@@ -141,7 +150,7 @@ function Route({ score, ton }: { score: number | null; ton: keyof typeof REMPLI 
   const libelle = part === null ? 'Ta route de préparation, qui se remplira semaine après semaine'
     : `Ta route de préparation, remplie ${part >= 0.85 ? 'presque jusqu’à l’arrivée' : part >= 0.65 ? 'aux deux tiers' : 'à moitié ou moins'}`;
   return (
-    <svg viewBox="0 0 350 170" className="block w-full h-auto" role="img" aria-label={libelle}>
+    <svg viewBox="0 0 350 170" className={DESSIN} role="img" aria-label={libelle}>
       <defs>
         <clipPath id="cts-route"><path d={ROUTE} /></clipPath>
         <pattern id="cts-damier" patternUnits="userSpaceOnUse" x={fin.x} y={fin.y - ROUTE_DEMI} width={DAMIER * 2} height={DAMIER * 2}>
@@ -156,7 +165,7 @@ function Route({ score, ton }: { score: number | null; ton: keyof typeof REMPLI 
         </pattern>
       </defs>
       <path d={ROUTE} fill="rgba(255,255,255,0.07)" />
-      {niveau !== null && ton && <rect x="0" y="0" width={niveau} height="170" fill={REMPLI[ton]} clipPath="url(#cts-route)" />}
+      {niveau !== null && <rect x="0" y="0" width={niveau} height="170" fill={ton ? REMPLI[ton] : NEUTRE} clipPath="url(#cts-route)" />}
       <path d={ROUTE} fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth={1.5} strokeLinejoin="round" />
       {ROUTE_TIRETS.map(({ a, b }) => (
         <line key={a.x} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="rgba(255,255,255,0.55)" strokeWidth={1.5} strokeLinecap="round" />
@@ -175,52 +184,59 @@ function Route({ score, ton }: { score: number | null; ton: keyof typeof REMPLI 
   );
 }
 
+
 // Un compte à rebours en « J- » jusqu'à l'objectif, sans « semaine x sur N », pour tous, plans achetés compris
 // (décisions coach du 19/10/2026 : « on part de l'objectif et on revient jusqu'au jour J »).
-// surtitre : « Ton prochain objectif majeur » pour un coaché (décision coach du 20/10/2026 : son app le suit d'un
-// objectif à l'autre), « Ton objectif » pour un acheteur.
+// surtitre : « Ton objectif », ou « Ta dernière course » après elle.
 // jauge : null pour un coaché que son coach programme à la main (décision coach du 20/10/2026) : ni montagne ni verdict,
 // qui suivent la trame du moteur ; le compte à rebours et sa course.
 // coache : pour un coaché, ni le début calendaire du plan ni la semaine rejointe (décision coach du 22/10/2026 : ses
 // objectifs s'enchaînent).
 // jour et debut : l'avancée dans la préparation, qui remplit la montagne (AT3).
-export function CarteObjectif({ plan, restants, jauge, etape, href, surtitre = 'Ton objectif', coache = false, jour = null, debut = null }: {
+// bouton (Q16, décision coach du 05/11/2026 au soir, « A ») : un coaché programmé à la main ouvre directement sa fiche de
+// course, sa préparation n'étant pas dans l'app ; jourJ : la fiche de course à « Ton jour J » (C14).
+export function CarteObjectif({ plan, restants, jauge, etape, href, surtitre = 'Ton objectif', coache = false, jour = null, debut = null,
+  bouton = null, jourJ = null }: {
   plan: Plan; restants: number; jauge: Jauge | null; etape: 'avant' | 'pendant' | 'apres'; href: string; surtitre?: string;
-  coache?: boolean; jour?: string | null; debut?: string | null;
+  coache?: boolean; jour?: string | null; debut?: string | null; bouton?: { texte: string; href: string } | null; jourJ?: string | null;
 }) {
   const depart = debut ?? plan.course.date_debut_plan;
   const total = depart ? Math.max(1, (Date.parse(`${plan.course.date}T12:00:00Z`) - Date.parse(`${depart}T12:00:00Z`)) / 86_400_000) : 0;
   const avancee = !jour || !depart ? jauge?.score ?? null : etape === 'avant' ? 0 : etape === 'apres' ? 1
     : Math.max(0, Math.min(1, (Date.parse(`${jour}T12:00:00Z`) - Date.parse(`${depart}T12:00:00Z`)) / 86_400_000 / total));
+  // C14 (audits du 05/11/2026) : le jour de la course.
+  const cestLeJour = etape === 'pendant' && restants === 0;
+  // C21 : l'année, quand la course ne tombe pas l'année en cours.
+  const annee = Boolean(jour && plan.course.date.slice(0, 4) !== jour.slice(0, 4));
+  const action = cestLeJour && jourJ ? { texte: 'Voir ton jour J', href: jourJ } : bouton ?? { texte: 'Voir ma préparation', href };
   return (
     <CarteSombre className="space-y-3.5">
       <div className="flex justify-between items-start gap-3">
         <div className="min-w-0">
           <Surtitre ton="clair" as="div">{surtitre}</Surtitre>
           <h2 className="mt-1.5 text-[1.625rem] font-extrabold leading-tight">{plan.course.nom}</h2>
-          <p className="mt-1.5 text-[0.8125rem] text-[#D6D5E6]">{dateLongue(plan.course.date)} · {plan.course.format_clair}</p>
+          <p className="mt-1.5 text-[0.8125rem] text-[#D6D5E6]">{dateLongue(plan.course.date, annee)} · {plan.course.format_clair}</p>
         </div>
-        {restants > 0 && (
+        {(restants > 0 || cestLeJour) && (
           <div className="shrink-0 text-center bg-white/10 rounded-xl px-3 py-2.5">
-            <div className="text-[1.375rem] font-extrabold leading-none">J-{restants}</div>
+            <div className="text-[1.375rem] font-extrabold leading-none whitespace-nowrap">{cestLeJour ? 'Jour J' : `J-${restants}`}</div>
           </div>
         )}
       </div>
-      {jauge && <Montagne score={avancee} ton={jauge.verdict?.ton ?? (avancee !== null ? 'bien' : null)} route={estRoute(plan.course.format)} />}
-      {!jauge ? (etape === 'apres' && <p className="text-[0.9375rem] font-bold">Ta course est derrière toi : bravo pour le chemin.</p>)
+      {jauge && <Montagne score={avancee} ton={jauge.verdict?.ton ?? null} route={estRoute(plan.course.format)} />}
+      {cestLeJour ? (
+        // C14 : BROUILLON, à valider par le coach.
+        <p className="text-base font-bold">C’est le jour J. Bonne course !</p>
+      ) : !jauge || etape === 'apres' ? null
       : etape === 'avant' ? (
         <p className="text-[0.9375rem] font-bold">{coache ? 'Tes séances arrivent chaque dimanche dans Nolio.' : plan.couverture.debut}</p>
-      ) : etape === 'apres' ? (
-        <p className="text-[0.9375rem] font-bold">Ta course est derrière toi : bravo pour le chemin.</p>
       ) : (
         <div className="flex items-center gap-2">
           {jauge.verdict && <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: REMPLI[jauge.verdict.ton] }} aria-hidden />}
           <span className="text-base font-bold">{jauge.verdict?.libelle ?? 'Ta préparation est lancée'}</span>
         </div>
       )}
-      <Link href={href} className="inline-flex items-center min-h-11 px-4 rounded-full bg-white text-indigo text-[0.8125rem] font-bold">
-        Voir ma préparation
-      </Link>
+      <Link href={action.href} className={BOUTON}>{action.texte}</Link>
     </CarteSombre>
   );
 }
@@ -247,9 +263,10 @@ export function Piliers({ jauge }: { jauge: Jauge }) {
 
 // ─── Les courses de préparation (O2, PO3) ─────────────────────────────────
 
-// aLaMain : un coaché que son coach programme à la main ; rien ne s'ajuste tout seul autour de sa course (B-AT-21).
-export function CoursesPreparation({ courses, ajout, aLaMain = false }: { courses: CourseSecondaire[]; ajout: string | null; aLaMain?: boolean }) {
-  if (!courses.length && !ajout) return null;
+// Q6-b (décision coach du 05/11/2026 au soir, « A ») : sur l'accueil, seulement quand une course est prévue (avant, la
+// carte invitait chaque semaine à en ajouter une) ; l'ajout reste dans « Ta préparation ».
+export function CoursesPreparation({ courses, ajout }: { courses: CourseSecondaire[]; ajout: string | null }) {
+  if (!courses.length) return null;
   return (
     <Carte className="space-y-3">
       <Surtitre>Tes courses de préparation</Surtitre>
@@ -264,13 +281,6 @@ export function CoursesPreparation({ courses, ajout, aLaMain = false }: { course
           </span>
         </div>
       ))}
-      {!courses.length && (
-        <p className="text-[0.8125rem] text-[#4A4866] leading-relaxed">
-          {aLaMain
-            ? 'Une course avant ton objectif ? Ajoute-la : ton coach en est prévenu et adapte ta semaine autour d’elle.'
-            : 'Une course avant ton objectif ? Ajoute-la : les jours autour d’elle s’ajustent, sans toucher à la suite de ta préparation.'}
-        </p>
-      )}
       {ajout && (
         <Link href={ajout} className="flex items-center justify-center min-h-11 rounded-xl border-[1.5px] border-dashed border-teal/45 text-[0.8125rem] font-bold text-teal">
           + Ajouter une course
@@ -290,33 +300,61 @@ const jourCourt = (iso: string | null, jour: string) => {
 };
 const couleurDuJour = (j: Jour) => j.couleur ?? FAMILLES[j.famille]?.filet ?? '#B9C7C3';
 
-// nolio : la semaine telle qu'elle est dans Nolio, retouches du coach comprises (tableauDuPlan.lireSemaineNolio) ; sans
-// elle, la semaine écrite par le moteur. Tant qu'elle n'est pas dans Nolio (décision coach du 20/10/2026) : arrivee dit
-// quand elle y arrive, et les jours d'avant depuis ne s'y poseront pas (un départ en milieu de semaine). Toujours la
-// semaine en cours, rien d'autre (décision coach du 24/10/2026) : avant le départ, ce qui est dans Nolio cette semaine ;
-// sans rien à y montrer, debut dit quand la préparation commence.
-// raison (AT1, décision coach du 04/11/2026 ; B-AT-1 et B-AT-2) : sans accord de lecture, plus de liste de séances (la
-// semaine du moteur n'est souvent pas celle que le coach a retouchée) mais « elles sont dans Nolio », et comment donner
-// l'accord ; Nolio muet, la semaine écrite et « Nolio ne répond pas ». La carte ne disparaît plus sans un mot.
-// lundi : le lundi de la semaine, quand il n'y a pas de semaine écrite (un coaché à la main ou sans objectif), pour
-// placer le questionnaire du samedi ; hooper : la forme du dimanche, avec l'accord de lecture (§8, point 9).
-// horsNolio : un plan acheté pendant un coaching (« coaching », décision coach du 05/11/2026 au soir, « 3 A ») : la semaine
-// du plan seule, sans rien de Nolio (ni ses séances, ni « elles arrivent », ni le questionnaire du samedi, ni le lien).
+// AT5 (décision coach du 04/11/2026) : le type de la semaine en mots de coureur ; Q3 (décision coach du 05/11/2026 au
+// soir) : « Semaine allégée », un seul nom (plus d'« assimilation » ni de « décharge »), et « Semaine de course » pour celle
+// de la course (C13, ailleurs). Le week-end choc, sous son ancien et son nouveau nom (Q2).
+const TYPE_EN_CLAIR: Record<string, string> = {
+  Charge: 'Semaine de charge', Assimilation: 'Semaine allégée', Décharge: 'Semaine allégée', 'Affûtage actif': 'Affûtage',
+};
+export const typeEnClair = (type: string) => TYPE_EN_CLAIR[type] ?? (estSemaineDeWeekEndChoc(type) ? 'Semaine de charge' : type);
+// La semaine qui contient la course (C13).
+export const contientLaCourse = (lundi: string | null | undefined, course: string | null | undefined) =>
+  Boolean(lundi && course && course >= lundi && course <= ajouterJours(lundi, 6));
+
+// Q1 (décision coach du 05/11/2026 au soir, « A ») : les noms des séances restent ceux de Nolio ; sous « Ta semaine », les
+// mots qu'ils emploient, repliés, une ligne chacun. BROUILLON, à valider par le coach (les huit lignes).
+const LEXIQUE: [string, string][] = [
+  ['EF', 'endurance fondamentale, RPE 3 : tu tiens une conversation sans gêne.'],
+  ['SL', 'sortie longue, la plus longue de ta semaine, en endurance.'],
+  ['Seuil 1', 'RPE 5 : un effort soutenu, tu dis encore des phrases courtes.'],
+  ['Seuil 2', 'RPE 7 : un effort dur, quelques mots seulement, difficilement.'],
+  ['Myocrossmax', 'de la force en côte : des montées enchaînées avec des exercices de renforcement.'],
+  ['Navettes', 'des montées et des descentes répétées sur une même pente, pour habituer tes jambes au relief.'],
+  ['RPE', 'ton effort ressenti, de 0 à 10 : note ton souffle, pas la douleur des jambes.'],
+  ['Hooper', 'ta forme du dimanche : fatigue, sommeil, stress et courbatures. Plus il est haut, plus tu es fatigué.'],
+];
+
 const ARRIVEE = {
   invitation: 'Tes séances arrivent dans Nolio dès que tu as rejoint l’équipe CTS.',
   bientot: 'Tes séances de la semaine arrivent bientôt dans Nolio.',
 } as const;
-// AT5 (décision coach du 04/11/2026) : le type de la semaine en mots de coureur.
-const TYPE_EN_CLAIR: Record<string, string> = {
-  Charge: 'Semaine de charge', Assimilation: 'Semaine allégée', Décharge: 'Semaine allégée',
-  'Affûtage actif': 'Affûtage', 'Back-to-back': 'Semaine de charge',
-};
-export const typeEnClair = (type: string) => TYPE_EN_CLAIR[type] ?? type;
-export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null, arrivee = null, depuis = null, debut = null,
-  raison = null, coache = false, lundi = null, hooper = false, horsNolio = false }: {
+
+// Le test que la préparation écrit cette semaine (Q14) : son nom, son protocole, et, sans accord de lecture, sa saisie.
+export type TestDeLaSemaine = { titre: string; comment: string; saisie: string | null };
+
+// nolio : la semaine telle qu'elle est dans Nolio, retouches du coach comprises (tableauDuPlan.lireSemaineNolio) ; sans
+// elle, la semaine écrite par le moteur. Tant qu'elle n'est pas dans Nolio (décision coach du 20/10/2026) : arrivee dit
+// quand elle y arrive, et les jours d'avant depuis ne s'y poseront pas (un départ en milieu de semaine). Toujours la
+// semaine en cours, rien d'autre (décision coach du 24/10/2026). C21 (audits du 05/11/2026) : avant le départ, la date de
+// début n'est plus dite ici, seulement dans la carte de l'objectif.
+// raison (AT1, décision coach du 04/11/2026 ; B-AT-1 et B-AT-2) : sans accord de lecture, plus de liste de séances (la
+// semaine du moteur n'est souvent pas celle que le coach a retouchée) mais « elles sont dans Nolio », et comment donner
+// l'accord (C18 : « Donner mon accord › », accord : son adresse, pour un acheteur) ; Nolio muet, la semaine écrite et
+// « Nolio ne répond pas ».
+// lundi : le lundi de la semaine, quand il n'y a pas de semaine écrite (un coaché à la main ou sans objectif), pour
+// placer le questionnaire du samedi ; hooper : la forme du dimanche, avec l'accord de lecture (§8, point 9).
+// horsNolio : un plan acheté pendant un coaching (« coaching », décision coach du 05/11/2026 au soir, « 3 A ») : la semaine
+// du plan seule, sans rien de Nolio (ni ses séances, ni « elles arrivent », ni le questionnaire du samedi, ni le lien).
+// jour (C15) : aujourd'hui, mis en avant, les jours passés grisés. course (C13) : la date de la course, pour « Semaine de
+// course ». ajustee (Q7, décision coach du 05/11/2026 au soir, « A ») : la semaine écrite d'après la semaine passée
+// (« moteur »), ou retouchée par le coach d'un coaché (« coach »). test (Q14) : le test que la préparation écrit cette semaine.
+export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null, arrivee = null, depuis = null,
+  raison = null, coache = false, lundi = null, hooper = false, horsNolio = false, jour = null, course = null, ajustee = null,
+  test = null, accord = null }: {
   semaine: Semaine | null; ligne: LigneTrame | null; questionnaire: boolean; nolio?: SeanceNolio[] | null;
-  arrivee?: keyof typeof ARRIVEE | null; depuis?: string | null; debut?: string | null; raison?: RaisonNolio | null;
-  coache?: boolean; lundi?: string | null; hooper?: boolean; horsNolio?: boolean;
+  arrivee?: keyof typeof ARRIVEE | null; depuis?: string | null; raison?: RaisonNolio | null;
+  coache?: boolean; lundi?: string | null; hooper?: boolean; horsNolio?: boolean; jour?: string | null; course?: string | null;
+  ajustee?: 'moteur' | 'coach' | null; test?: TestDeLaSemaine | null; accord?: string | null;
 }) {
   const muet = !nolio && raison === 'muet';
   const sansAccord = !nolio && raison === 'sans_accord';
@@ -326,60 +364,81 @@ export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null, arri
   const samediEcrit = semaine?.jours.find((j) => j.jour.toLowerCase().startsWith('sam'));
   const samedi = samediEcrit ?? (lundi ? { date_iso: ajouterJours(lundi, 5), jour: 'samedi' } : null);
   const dimanche = samedi?.date_iso ? ajouterJours(samedi.date_iso, 1) : null;
-  const apresSamedi = (date: string | null | undefined, jour: string) =>
-    samedi?.date_iso && date ? date > samedi.date_iso : jour.toLowerCase().startsWith('dim');
-  if (!nolio && !jours.length && !ligne && !debut && !raison) return null;
-  const commence = debut && <p className="text-sm text-indigo">Ta préparation commence le {dateLongue(debut)}.</p>;
-  const ligneSimple = (cle: string, date: string | null, jour: string, texte: string) => (
-    <li key={cle} className="grid grid-cols-[52px_6px_1fr] gap-x-2.5 items-center min-h-11 border-b border-indigo/[0.06]">
-      <span className="text-xs font-semibold text-[#5E5C78] whitespace-nowrap">{jourCourt(date, jour)}</span>
-      <span className="w-1.5 h-7 rounded-full bg-[#B7B6C8]" aria-hidden />
-      <span className="text-[0.8125rem] text-[#5E5C78]">{texte}</span>
-    </li>
-  );
+  const apresSamedi = (date: string | null | undefined, jourTexte: string) =>
+    samedi?.date_iso && date ? date > samedi.date_iso : jourTexte.toLowerCase().startsWith('dim');
+  if (!nolio && !jours.length && !ligne && !raison) return null;
+  const lundiDeLaSemaine = ligne?.lundi || semaine?.lundi || lundi;
+  const etiquette = contientLaCourse(lundiDeLaSemaine, course) ? { texte: 'Semaine de course', couleur: '#0C6E5F' }
+    : ajustee ? { texte: 'Semaine ajustée', couleur: '#8A5E10' }
+      : ligne ? { texte: typeEnClair(ligne.type), couleur: BANNIERE[ligne.type] ?? '#4F6F69' } : null;
+  // Une ligne de la semaine : le jour (aujourd'hui en avant, les jours passés grisés, C15), la couleur de la séance, son
+  // nom et, dans sa colonne, sa durée totale (C16 : le nom garde le temps de travail de Nolio, « Seuil 2 court · 18 min —
+  // 9 × 2 min », la colonne dit la séance entière, « 51 min »).
+  const ligneDeSemaine = ({ cle, date, jourTexte, couleur, nom, duree, discrete = false }: {
+    cle: string; date: string | null; jourTexte: string; couleur: string; nom: string; duree?: string | null; discrete?: boolean;
+  }) => {
+    const passe = Boolean(jour && date && date < jour);
+    const aujourdhui = Boolean(jour && date === jour);
+    return (
+      <li key={cle} className={clsx('grid grid-cols-[62px_6px_1fr_auto] gap-x-2.5 items-center min-h-11 py-1',
+        aujourdhui ? '-mx-2 px-2 rounded-lg bg-[#E1EFEA]' : 'border-b border-indigo/[0.06]')}>
+        <span className={clsx('text-xs font-semibold whitespace-nowrap leading-tight', aujourdhui ? 'text-teal-dark' : 'text-[#5E5C78]')}>
+          {jourCourt(date, jourTexte)}
+          {aujourdhui && <span className="block text-[0.6875rem] font-bold">aujourd’hui</span>}
+        </span>
+        <span className={clsx('w-1.5 h-7 rounded-full', passe && 'opacity-40')} style={{ backgroundColor: couleur }} aria-hidden />
+        <span className={clsx('text-sm leading-snug', discrete || passe ? 'text-[#5E5C78] font-medium' : 'text-indigo font-semibold')}>
+          {nom}{passe && <span className="sr-only"> (passée)</span>}
+        </span>
+        <span className="text-xs tabular-nums text-right whitespace-nowrap text-[#5E5C78]">{duree ?? ''}</span>
+      </li>
+    );
+  };
   const quiz = questionnaire && samedi && (
     <>
-      {ligneSimple('questionnaire', samedi.date_iso, samedi.jour, 'Questionnaire « Ta semaine prochaine » à 8 h, dans Nolio')}
-      {hooper && dimanche && ligneSimple('hooper', dimanche, 'dimanche', 'Ta forme du dimanche (Hooper) à 8 h, dans Nolio')}
+      {ligneDeSemaine({ cle: 'questionnaire', date: samedi.date_iso, jourTexte: samedi.jour, couleur: '#B7B6C8',
+        nom: 'Questionnaire « Ta semaine prochaine » à 8 h, dans Nolio', discrete: true })}
+      {hooper && dimanche && ligneDeSemaine({ cle: 'hooper', date: dimanche, jourTexte: 'dimanche', couleur: '#B7B6C8',
+        nom: 'Ta forme du dimanche (Hooper) à 8 h, dans Nolio', discrete: true })}
     </>
   );
-  const ligneNolio = (x: SeanceNolio) => (
-    <li key={x.id} className="grid grid-cols-[52px_6px_1fr] gap-x-2.5 items-center min-h-11 border-b border-indigo/[0.06]">
-      <span className="text-xs font-semibold text-[#5E5C78] whitespace-nowrap">{jourCourt(x.date, '')}</span>
-      <span className="w-1.5 h-7 rounded-full" style={{ backgroundColor: x.couleur ?? '#B9C7C3' }} aria-hidden />
-      <span className="text-sm font-semibold text-indigo">
-        {x.nom}{x.minutes !== null && <span className="font-normal text-[#5E5C78]"> · {enHeures(x.minutes)}</span>}
-      </span>
-    </li>
-  );
-  const ligneJour = (j: Jour) => (
-    <li key={j.id} className="grid grid-cols-[52px_6px_1fr] gap-x-2.5 items-center min-h-11 border-b border-indigo/[0.06]">
-      <span className="text-xs font-semibold text-[#5E5C78] whitespace-nowrap">{jourCourt(j.date_iso, j.jour)}</span>
-      <span className="w-1.5 h-7 rounded-full" style={{ backgroundColor: couleurDuJour(j) }} aria-hidden />
-      <span className="text-sm font-semibold text-indigo">
-        {j.seance}{j.duree && <span className="font-normal text-[#5E5C78]"> · {j.duree}</span>}
-      </span>
-    </li>
-  );
-  const ouvrirNolio = (texte: string) => (
-    <div className="mt-2.5 p-3 rounded-xl bg-sand flex items-center justify-between gap-3">
-      <span className="text-xs text-[#4A4866] leading-relaxed">{texte}</span>
-      <a href={NOLIO} target="_blank" rel="noopener" className="shrink-0 inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">Ouvrir Nolio ›</a>
-    </div>
-  );
+  const ligneNolio = (x: SeanceNolio) => ligneDeSemaine({ cle: x.id, date: x.date, jourTexte: '', couleur: x.couleur ?? '#B9C7C3',
+    nom: nomAffiche(x.nom), duree: x.minutes !== null ? enHeures(x.minutes) : null });
+  const ligneJour = (j: Jour) => ligneDeSemaine({ cle: j.id, date: j.date_iso, jourTexte: j.jour, couleur: couleurDuJour(j),
+    nom: nomAffiche(j.seance), duree: j.duree || null });
+  const note = (texte: string) => <p className="mt-2.5 p-3 rounded-xl bg-sand text-xs text-[#4A4866] leading-relaxed">{texte}</p>;
   return (
     <Carte className="space-y-1">
       <div className="flex justify-between items-baseline gap-3 mb-2">
         <Surtitre>Ta semaine</Surtitre>
-        {ligne && <span className="text-xs font-semibold" style={{ color: BANNIERE[ligne.type] ?? '#4F6F69' }}>{typeEnClair(ligne.type)}</span>}
+        {etiquette && <span className="text-xs font-semibold" style={{ color: etiquette.couleur }}>{etiquette.texte}</span>}
       </div>
+      {/* Q7 : BROUILLON, à valider par le coach. Le pourquoi reste dans Nolio (Q18). */}
+      {ajustee && (
+        <p className="pb-1.5 text-[0.8125rem] text-[#4A4866] leading-relaxed">
+          {ajustee === 'coach' ? 'Ajustée par ton coach.'
+            : 'Ajustée d’après ta semaine passée : le pourquoi est dans la note de ta semaine, dans Nolio.'}
+        </p>
+      )}
+      {/* Q14 : la semaine d'un test a sa ligne. BROUILLON, à valider par le coach. */}
+      {test && (
+        <div className="mb-2 p-3 rounded-xl bg-[#FFF6E5] space-y-0.5">
+          <p className="text-sm font-bold text-indigo">Cette semaine : {test.titre}</p>
+          <div className="flex flex-wrap gap-x-5">
+            <Link href={test.comment} className={LIEN}>Comment faire ›</Link>
+            {test.saisie && <Link href={test.saisie} className={LIEN}>Entrer mon résultat ›</Link>}
+          </div>
+        </div>
+      )}
       {sansAccord ? (
         <div className="space-y-1.5">
           <p className="text-sm font-semibold text-indigo">Tes séances de la semaine sont dans Nolio.</p>
           <p className="text-[0.8125rem] text-[#4A4866] leading-relaxed">
             {coache ? 'Pour les voir ici, réponds « oui » au message de ton coach dans Nolio.'
-              : 'Pour les voir ici, donne ton accord de lecture dans Compte.'}
+              // C18 : BROUILLON, à valider par le coach.
+              : 'Pour les voir ici, donne ton accord de lecture.'}
           </p>
+          {!coache && accord && <Link href={accord} className={LIEN}>Donner mon accord ›</Link>}
           {quiz && <ul>{quiz}</ul>}
         </div>
       ) : nolio ? (
@@ -388,7 +447,6 @@ export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null, arri
           {nolio.filter((x) => !apresSamedi(x.date, '')).map(ligneNolio)}
           {quiz}
           {nolio.filter((x) => apresSamedi(x.date, '')).map(ligneNolio)}
-          {nolio.length === 0 && commence && <li className="pt-2">{commence}</li>}
         </ul>
       ) : jours.length > 0 ? (
         <ul>
@@ -396,22 +454,35 @@ export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null, arri
           {quiz}
           {jours.filter((j) => apresSamedi(j.date_iso, j.jour)).map(ligneJour)}
         </ul>
-      ) : !ligne ? (commence || (quiz ? <ul>{quiz}</ul> : null)) : (
+      ) : !ligne ? (quiz ? <ul>{quiz}</ul> : null) : (
         <div className="space-y-1">
           <p className="text-sm text-indigo">{enHeures(Math.round(ligne.volume_h * 60))} de volume prévu{ligne.week_end_choc ? ' · week-end choc' : ''}</p>
           {ligne.seances_cles.length > 0 && (
             <ul className="text-sm text-indigo space-y-0.5">
-              {ligne.seances_cles.map((c) => <li key={`${c.jour}-${c.seance}`}><span className="text-[#5E5C78]">{c.jour} ·</span> {c.seance}</li>)}
+              {ligne.seances_cles.map((c) => <li key={`${c.jour}-${c.seance}`}><span className="text-[#5E5C78]">{c.jour} ·</span> {nomAffiche(c.seance)}</li>)}
             </ul>
           )}
         </div>
       )}
       {horsNolio ? null
-        : sansAccord ? ouvrirNolio('Le détail de chaque séance est dans Nolio.')
-        : muet ? ouvrirNolio('Nolio ne répond pas pour l’instant : tes séances y sont, avec leur détail.')
+        // C9 : plus de bouton vers le site de Nolio ; BROUILLON, à valider par le coach (« dans ton appli Nolio »).
+        : sansAccord ? note('Le détail de chaque séance est dans ton appli Nolio.')
+        : muet ? note('Nolio ne répond pas pour l’instant : tes séances y sont, avec leur détail.')
         : !nolio && !jours.length && !ligne ? null
-        : nolio || !arrivee ? ouvrirNolio('Le détail de chaque séance est dans Nolio.')
-        : <p className="mt-2.5 p-3 rounded-xl bg-sand text-xs text-[#4A4866] leading-relaxed">{ARRIVEE[arrivee]}</p>}
+        : nolio || !arrivee ? note('Le détail de chaque séance est dans ton appli Nolio.')
+        : note(ARRIVEE[arrivee])}
+      <details className="group pt-1">
+        <summary className="cursor-pointer list-none inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">
+          Les mots de ta semaine <span aria-hidden className="ml-1 inline-block transition-transform group-open:rotate-90">›</span>
+        </summary>
+        <dl className="pb-1 space-y-1.5">
+          {LEXIQUE.map(([mot, sens]) => (
+            <div key={mot} className="text-[0.8125rem] text-[#4A4866] leading-relaxed">
+              <dt className="inline font-bold text-indigo">{mot}</dt> : <dd className="inline">{sens}</dd>
+            </div>
+          ))}
+        </dl>
+      </details>
     </Carte>
   );
 }
@@ -427,7 +498,7 @@ export function FichesDeLaSemaine({ fiches, ctx }: { fiches: Fiche[]; ctx: Conte
       <ul>
         {fiches.map((f) => (
           <li key={f.cle} className="border-b border-indigo/[0.06] last:border-b-0">
-            <Link href={href(f)} className="block py-2.5">
+            <Link href={href(f)} className="block py-2.5 min-h-11">
               <span className="block text-[0.9375rem] font-bold text-indigo leading-snug">{f.titre}</span>
               <span className="block mt-0.5 text-[0.8125rem] text-[#4A4866] leading-relaxed">
                 {f.pourquoi} <span className="font-bold text-[#8A5E10]">›</span>
@@ -436,217 +507,6 @@ export function FichesDeLaSemaine({ fiches, ctx }: { fiches: Fiche[]; ctx: Conte
           </li>
         ))}
       </ul>
-    </Carte>
-  );
-}
-
-// ─── Mes données : la charge (AP3) ────────────────────────────────────────
-
-const L = 326;
-
-// La charge de chaque semaine écoulée (RPE de séance × durée, Foster), et sa moyenne sur 4 semaines ; sans prévu à
-// côté (décision coach du 19/10/2026 : calculé autrement, la comparaison serait biaisée).
-// Une semaine se dit par son lundi, pour tous (décision coach du 19/10/2026) ; par son numéro seulement sans date.
-const etiquette = (numero: string, lundi: string | undefined) => (lundi ? jourMois(lundi) : numero);
-const laSemaine = (numero: string, lundi: string | undefined) =>
-  lundi ? `la semaine du ${jourMois(lundi)}` : `la semaine ${numero.replace('S', '')}`;
-
-// Le repère d'une course (un objectif ou une course de préparation) sur un graphique : un petit drapeau, son nom au survol.
-function Drapeau({ x, y, nom }: { x: number; y: number; nom: string }) {
-  return (
-    <g>
-      <title>{nom}</title>
-      <line x1={x} y1={y} x2={x} y2={y + 12} stroke="#2F2D4E" strokeWidth={1.2} />
-      <path d={`M${x} ${y}h7l-2 3 2 3h-7z`} fill="#2BB39B" />
-    </g>
-  );
-}
-
-export function GraphiqueCharge({ realises, courses = [] }: { realises: Realise[]; courses?: CourseDuGraphique[] }) {
-  const semaines = realises.filter((r) => r.rpe_lu && r.charge_faite > 0).slice(-10);
-  if (semaines.length < 2) return null;
-  const moyenne = (i: number) => {
-    const avant = semaines.slice(Math.max(0, i - 3), i + 1);
-    return avant.length === 4 ? avant.reduce((a, r) => a + r.charge_faite, 0) / 4 : null;
-  };
-  const pic = Math.max(...semaines.map((r) => r.charge_faite)) * 1.15;
-  const bas = 140;
-  const y = (v: number) => bas - (v / pic) * 130;
-  const pas = (L - 30) / semaines.length;
-  const derniere = semaines[semaines.length - 1];
-  const moyDerniere = moyenne(semaines.length - 1);
-  const ligne = semaines.map((_, i) => moyenne(i)).map((m, i) => (m === null ? null : `${30 + i * pas + pas / 2},${y(m)}`)).filter(Boolean);
-  const graduations = [0.33, 0.66, 1].map((k) => Math.round((pic * k) / 100) * 100);
-  return (
-    <Carte className="space-y-2.5">
-      <Surtitre>Ta charge d’entraînement</Surtitre>
-      <div className="flex flex-wrap items-baseline gap-2">
-        <span className="text-[1.625rem] font-extrabold text-indigo">{Math.round(derniere.charge_faite).toLocaleString('fr-FR')}</span>
-        <span className="text-xs text-[#5E5C78]">
-          {laSemaine(derniere.numero, derniere.lundi)}{moyDerniere !== null ? ` · moyenne sur 4 semaines : ${Math.round(moyDerniere).toLocaleString('fr-FR')}` : ''}
-        </span>
-      </div>
-      {/* Un repère pour un nombre sans unité (AT5, décision coach du 04/11/2026) : l'écart à sa moyenne. */}
-      {moyDerniere !== null && moyDerniere > 0 && (() => {
-        const ecart = Math.round(((derniere.charge_faite - moyDerniere) / moyDerniere) * 100);
-        return (
-          <p className="text-[0.8125rem] font-semibold text-indigo">
-            {Math.abs(ecart) < 3 ? 'Dans ta moyenne des 4 dernières semaines.'
-              : `${Math.abs(ecart)} % de ${ecart > 0 ? 'plus' : 'moins'} que ta moyenne des 4 dernières semaines.`}
-          </p>
-        );
-      })()}
-      <svg viewBox={`0 0 ${L} 160`} className="block w-full h-auto" role="img" aria-label="Ta charge par semaine, avec ta moyenne sur quatre semaines">
-        {graduations.map((g) => (
-          <g key={g}>
-            <line x1="30" y1={y(g)} x2={L} y2={y(g)} stroke="rgba(47,45,78,0.08)" />
-            <text x="0" y={y(g) + 3} fontSize="9" fill="#5E5C78">{g.toLocaleString('fr-FR')}</text>
-          </g>
-        ))}
-        <line x1="30" y1={bas} x2={L} y2={bas} stroke="rgba(47,45,78,0.25)" />
-        {semaines.map((r, i) => {
-          const course = courseDeLaSemaine(r.lundi, courses);
-          return (
-            <g key={r.lundi}>
-              <title>{`${laSemaine(r.numero, r.lundi)} : ${Math.round(r.charge_faite)}`}</title>
-              <rect x={30 + i * pas + pas * 0.22} y={y(r.charge_faite)} width={pas * 0.56} height={bas - y(r.charge_faite)} rx="3" fill="#0C6E5F" />
-              <text x={30 + i * pas + pas / 2} y="154" fontSize="9" fill="#5E5C78" textAnchor="middle">{etiquette(r.numero, r.lundi)}</text>
-              {course && <Drapeau x={30 + i * pas + pas / 2} y={Math.max(0, y(r.charge_faite) - 14)} nom={course} />}
-            </g>
-          );
-        })}
-        {ligne.length >= 2 && <polyline points={ligne.join(' ')} fill="none" stroke="#2F2D4E" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />}
-      </svg>
-      <div className="flex flex-wrap gap-x-3.5 gap-y-1 text-[0.72rem] text-[#4A4866]">
-        <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-teal" />ta charge (RPE × durée)</span>
-        <span className="inline-flex items-center gap-1.5"><span className="w-3.5 h-0.5 bg-indigo" />moyenne sur 4 semaines</span>
-      </div>
-    </Carte>
-  );
-}
-
-// ─── Mes données : le volume (T10, en durées) ─────────────────────────────
-
-// Le volume (retour du coach du 20/10/2026 : « pas très pro », le haut tronqué) : des graduations rondes qui tiennent
-// dans le cadre, le prévu en fond clair et le fait en vert par-dessus, le futur en pointillé fin, la semaine en cours
-// soulignée.
-export function GraphiqueVolume({ barres }: { barres: Barre[] }) {
-  if (!barres.length) return null;
-  const H = 150;
-  const HAUT = 12;
-  const BAS = 126;
-  const G = 34;
-  const pas = (L - G) / barres.length;
-  const max = Math.max(60, ...barres.map((b) => Math.max(b.prevue, b.faite ?? 0)));
-  const pasH = max <= 180 ? 1 : max <= 360 ? 2 : max <= 720 ? 3 : 5;
-  const sommet = Math.ceil(max / 60 / pasH) * pasH;
-  const h = (min: number) => (min / (sommet * 60)) * (BAS - HAUT);
-  const graduations = Array.from({ length: sommet / pasH }, (_, k) => (k + 1) * pasH);
-  const passee = [...barres].reverse().find((b) => b.moment === 'passee' && b.faite !== null);
-  return (
-    <Carte className="space-y-2.5">
-      <Surtitre>Ton volume de course</Surtitre>
-      {passee && (
-        <div className="flex flex-wrap items-baseline gap-2">
-          <span className="text-[1.625rem] font-extrabold text-indigo">{enHeures(passee.faite ?? 0)}</span>
-          <span className="text-xs text-[#5E5C78]">{laSemaine(passee.numero, passee.lundi)}, sur {enHeures(passee.prevue)} prévues</span>
-        </div>
-      )}
-      <svg viewBox={`0 0 ${L} ${H}`} className="block w-full h-auto" role="img" aria-label="Tes heures de course par semaine, faites à côté des prévues">
-        {graduations.map((g) => (
-          <g key={g}>
-            <line x1={G} y1={BAS - h(g * 60)} x2={L} y2={BAS - h(g * 60)} stroke="rgba(47,45,78,0.07)" />
-            <text x="2" y={BAS - h(g * 60) + 3} fontSize="9" fill="#8A88A3">{g} h</text>
-          </g>
-        ))}
-        <line x1={G} y1={BAS} x2={L} y2={BAS} stroke="rgba(47,45,78,0.18)" />
-        {barres.map((b, i) => {
-          const x = G + i * pas;
-          const w = Math.min(28, pas * 0.6);
-          const x0 = x + (pas - w) / 2;
-          const avenir = b.moment !== 'passee';
-          return (
-            <g key={b.lundi}>
-              <title>{`${laSemaine(b.numero, b.lundi)} : ${enHeures(b.prevue)} prévues${b.faite !== null ? `, ${enHeures(b.faite)} faites` : ''}`}</title>
-              {b.moment === 'encours' && <rect x={x + 1} y={HAUT - 6} width={pas - 2} height={BAS - HAUT + 6} rx="6" fill="rgba(12,110,95,0.06)" />}
-              {avenir ? (
-                <rect x={x0} y={BAS - h(b.prevue)} width={w} height={h(b.prevue)} rx="3" fill="none" stroke="#B9B8CC" strokeWidth={1} strokeDasharray="3 3" />
-              ) : (
-                <rect x={x0} y={BAS - h(b.prevue)} width={w} height={h(b.prevue)} rx="3" fill="#ECEBF3" />
-              )}
-              {b.faite !== null && <rect x={x0 + w * 0.2} y={BAS - h(b.faite)} width={w * 0.6} height={h(b.faite)} rx="2" fill="#0C6E5F" />}
-              {b.course && <Drapeau x={x + pas / 2} y={Math.max(0, BAS - h(Math.max(b.prevue, b.faite ?? 0)) - 14)} nom={b.course} />}
-              {(barres.length <= 9 || i % 2 === 0 || b.moment === 'encours') && (
-                <text x={x + pas / 2} y={BAS + 15} fontSize="9" fontWeight={b.moment === 'encours' ? 700 : 500}
-                  fill={b.moment === 'encours' ? '#2F2D4E' : '#8A88A3'} textAnchor="middle">{etiquette(b.numero, b.lundi)}</text>
-              )}
-            </g>
-          );
-        })}
-      </svg>
-      <div className="flex flex-wrap gap-x-3.5 gap-y-1 text-[0.72rem] text-[#4A4866]">
-        <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-teal" />fait</span>
-        <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[#ECEBF3]" />prévu</span>
-        <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm border border-dashed border-[#9C9AB3]" />à venir</span>
-        {barres.some((b) => b.course) && (
-          <span className="inline-flex items-center gap-1.5">
-            <svg viewBox="0 0 10 14" className="w-2.5 h-3.5" aria-hidden><line x1="1" y1="1" x2="1" y2="13" stroke="#2F2D4E" strokeWidth="1.2" /><path d="M1 1h7l-2 3 2 3H1z" fill="#2BB39B" /></svg>
-            une course
-          </span>
-        )}
-      </div>
-    </Carte>
-  );
-}
-
-// ─── Mes données : le Hooper du dimanche (T10) ────────────────────────────
-
-export function GraphiqueHooper({ points }: { points: PointHooper[] }) {
-  const valeurs = points.filter((p) => p.valeur !== null);
-  if (valeurs.length < 2) return null;
-  const BAS = 120;
-  const marge = 10;
-  const pas = (L - 30 - 2 * marge) / Math.max(1, points.length - 1);
-  const x = (i: number) => 30 + marge + i * pas;
-  const haut = Math.max(...points.flatMap((p) => [p.valeur ?? 0, (p.zone ?? 0) + ECART_ZONE_HOOPER])) + 2;
-  const bas = Math.max(0, Math.min(...points.flatMap((p) => (p.valeur !== null ? [p.valeur] : []).concat(p.zone !== null ? [p.zone - ECART_ZONE_HOOPER] : []))) - 2);
-  const y = (v: number) => 10 + ((haut - v) / (haut - bas)) * (BAS - 20);
-  const zone = points.map((p, i) => (p.zone !== null ? { x: x(i), hautZ: y(p.zone + ECART_ZONE_HOOPER), basZ: y(p.zone - ECART_ZONE_HOOPER) } : null))
-    .filter((z): z is { x: number; hautZ: number; basZ: number } => z !== null);
-  const ligne = points.map((p, i) => (p.valeur !== null ? `${x(i)},${y(p.valeur)}` : null)).filter(Boolean).join(' ');
-  const dernier = [...points].reverse().find((p) => p.valeur !== null) as PointHooper;
-  const auDessus = (p: PointHooper) => p.zone !== null && p.valeur !== null && p.valeur > p.zone + ECART_ZONE_HOOPER;
-  return (
-    <Carte className="space-y-2.5">
-      <Surtitre>Ton Hooper du dimanche</Surtitre>
-      <div className="flex flex-wrap items-baseline gap-2">
-        <span className="text-[1.625rem] font-extrabold text-indigo">{dernier.valeur}</span>
-        <span className="text-xs text-[#5E5C78]">
-          {laSemaine(dernier.numero, dernier.lundi)}{dernier.zone !== null ? (auDessus(dernier) ? ' · au-dessus de ta zone habituelle' : ' · dans ta zone habituelle') : ''}
-        </span>
-      </div>
-      <svg viewBox={`0 0 ${L} ${BAS + 18}`} className="block w-full h-auto" role="img" aria-label="Ton Hooper chaque dimanche, et ta zone habituelle">
-        {zone.length >= 2 && (
-          <polygon fill="#E1EFEA" points={[...zone.map((z) => `${z.x},${z.hautZ}`), ...[...zone].reverse().map((z) => `${z.x},${z.basZ}`)].join(' ')} />
-        )}
-        <line x1="30" y1={BAS} x2={L} y2={BAS} stroke="rgba(47,45,78,0.25)" />
-        <text x="0" y="16" fontSize="9" fill="#5E5C78">fatigué</text>
-        <text x="0" y={BAS - 4} fontSize="9" fill="#5E5C78">frais</text>
-        <polyline fill="none" stroke="#2F2D4E" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" points={ligne} />
-        {points.map((p, i) => p.valeur !== null && (
-          <circle key={p.lundi} cx={x(i)} cy={y(p.valeur)} r={auDessus(p) ? 5 : 3.5} fill={auDessus(p) ? '#C2410C' : '#2F2D4E'}>
-            <title>{`${laSemaine(p.numero, p.lundi)} : ${p.valeur}`}</title>
-          </circle>
-        ))}
-        {points.map((p, i) => p.course && <Drapeau key={`c-${p.lundi}`} x={x(i)} y={2} nom={p.course} />)}
-        {points.map((p, i) => (i % 2 === 0 || i === points.length - 1) && (
-          <text key={`t-${p.lundi}`} x={x(i)} y={BAS + 14} fontSize="9" fill="#5E5C78" textAnchor="middle">{etiquette(p.numero, p.lundi)}</text>
-        ))}
-      </svg>
-      <p className={clsx('text-xs leading-relaxed text-[#4A4866]')}>
-        La bande verte : ta zone habituelle (ta moyenne des 4 semaines d’avant). Plus le Hooper est haut, plus tu es
-        fatigué. Un point orange : au-dessus de ta zone, ta semaine suivante a pu être allégée.
-      </p>
     </Carte>
   );
 }

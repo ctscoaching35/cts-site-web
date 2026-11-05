@@ -46,10 +46,14 @@ export function lireStrategie(brut: unknown): Omit<Strategie, 'le'> | null {
 // L'adresse du calculateur : la durée visée et le niveau, remplacés par ses réponses gardées ; garder, la fiche de
 // course où « Garder ma stratégie » la range (dans l'app seulement).
 export function parametresCalculateur(temps: string, niveau: string, s?: Strategie | null, garder?: string): Record<string, string> {
-  return {
+  const p: Record<string, string> = {
     ...Object.fromEntries(new URLSearchParams(requeteCalculateurNutrition(temps, niveau))),
     ...(s?.entrees ?? {}), ...(garder ? { garder } : {}),
   };
+  // C31 (audits du 05/11/2026) : une durée en heures pleines (« 7h ») passe ses minutes à « 00 » ; vides, le calculateur
+  // montrait leur exemple « 30 », qui se lisait 7 h 30.
+  if (p.heures && !p.minutes) p.minutes = '00';
+  return p;
 }
 
 // Les stratégies gardées d'un objectif ; vide avant la migration du 20/10/2026 (la colonne n'existe pas encore).

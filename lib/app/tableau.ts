@@ -7,7 +7,8 @@
  *
  * Choix faits en construisant, à montrer au coach : les seuils du verdict (85 % et 65 % de la moyenne des piliers),
  * la zone habituelle du Hooper (sa moyenne des 4 dernières semaines, à 3 points près : l'écart qui fait un signal de
- * fatigue, REGLES["hooper_ecart"] du moteur), les jalons.
+ * fatigue, REGLES["hooper_ecart"] du moteur). Plus de jalons (Q9, décision coach du 05/11/2026 au soir, « A ») : la
+ * montagne et les piliers disent l'avancée, les badges la célèbrent.
  */
 import type { LigneTrame, Realise } from './ecriture';
 import { ajouterJours, type Plan } from './plan';
@@ -54,9 +55,8 @@ export function trameDesDonnees(plan: Plan): LigneTrame[] {
 
 export type Pilier = { cle: 'assiduite' | 'sorties_longues' | 'cles' | 'fraicheur'; titre: string; valeur: number; detail: string };
 export type Verdict = { libelle: string; ton: 'bien' | 'retrait' | 'retard' };
-export type Jalon = { titre: string; atteint: boolean };
 // score : la moyenne des piliers, de 0 à 1 (la montagne de l'accueil se remplit d'autant, AP2) ; null avant deux semaines.
-export type Jauge = { semaine: number | null; total: number; piliers: Pilier[]; verdict: Verdict | null; score: number | null; jalons: Jalon[] };
+export type Jauge = { semaine: number | null; total: number; piliers: Pilier[]; verdict: Verdict | null; score: number | null };
 
 const ECART_HOOPER = 3;
 const VERDICT_BIEN = 0.85;
@@ -80,7 +80,8 @@ export function jaugeDuPlan(trame: LigneTrame[], realises: Realise[], aujourdhui
   if (faits.length && prevue > 0) {
     const tenue = somme(faits.map((r) => r.charge_tenue));
     piliers.push({ cle: 'assiduite', titre: 'Assiduité', valeur: Math.min(1, tenue / prevue),
-      detail: `${pct(tenue / prevue)} de la charge prévue · ${somme(faits.map((r) => r.seances_faites))} séances faites sur ${somme(faits.map((r) => r.seances_prevues))}` });
+      // C22 (audits du 05/11/2026) : « charge tenue », le mot décidé le 04/11/2026 pour la semaine passée.
+      detail: `charge tenue : ${pct(tenue / prevue)} de la prévue · ${somme(faits.map((r) => r.seances_faites))} séances faites sur ${somme(faits.map((r) => r.seances_prevues))}` });
   }
   // Les sorties longues tenues, comme les autres piliers (décision coach du 19/10/2026 : rien de l'avenir, plus de « la
   // plus longue du plan ») : celles demandées les semaines écoulées, faites à 90 % au moins de leur durée.
@@ -107,7 +108,9 @@ export function jaugeDuPlan(trame: LigneTrame[], realises: Realise[], aujourdhui
     if (zone !== null && dernier !== null) {
       const frais = dernier <= zone + ECART_HOOPER;
       piliers.push({ cle: 'fraicheur', titre: 'Fraîcheur', valeur: frais ? 1 : 0.5,
-        detail: frais ? `Ton Hooper (${dernier}) est revenu dans ta zone habituelle.` : `Ton Hooper (${dernier}) reste au-dessus de ta zone habituelle (autour de ${Math.round(zone)}) : dors, mange, garde l'affûtage tel quel.` });
+        // C22 : sans le chiffre du Hooper, qui ne dit rien seul. BROUILLON, à valider par le coach (la seconde phrase).
+        detail: frais ? 'Ta forme du dimanche est revenue dans ta zone habituelle.'
+          : 'Ta forme du dimanche reste au-dessus de ta zone habituelle : dors, mange, garde l’affûtage tel quel.' });
     }
   }
   const comptes = piliers.filter((p) => p.cle !== 'fraicheur');
@@ -115,39 +118,7 @@ export function jaugeDuPlan(trame: LigneTrame[], realises: Realise[], aujourdhui
   const verdict: Verdict | null = score === null ? null
     : score >= VERDICT_BIEN ? { libelle: 'Sur la bonne voie', ton: 'bien' }
       : score >= VERDICT_RETRAIT ? { libelle: 'Un peu en retrait', ton: 'retrait' } : { libelle: 'En retard sur ton plan', ton: 'retard' };
-  return { semaine: rang >= 0 ? rang + 1 : null, total: trame.length, piliers, verdict, score, jalons: jalons(trame, faits, rang) };
-}
-
-// Les jalons : ce que l'athlète accomplit, sans durée fixée d'avance (décision coach du 19/10/2026 : plus de « première
-// sortie de 2 h » ni de « plus longue sortie du plan ») — une semaine complète, quatre semaines assidues d'affilée, un
-// bloc bouclé (toutes ses semaines assidues), dix séances clés réussies (quand la préparation en compte au moins dix),
-// un week-end choc bouclé (s'il y en a), l'affûtage.
-function jalons(trame: LigneTrame[], faits: Realise[], rang: number): Jalon[] {
-  const choc = new Set(trame.filter((l) => l.week_end_choc).map((l) => l.numero));
-  const assidue = (r: Realise) => r.charge_prevue > 0 && r.charge_tenue >= 0.9 * r.charge_prevue;
-  let suite = 0;
-  let quatre = false;
-  for (const r of faits) {
-    suite = assidue(r) ? suite + 1 : 0;
-    quatre ||= suite >= 4;
-  }
-  const parNumero = new Map(faits.map((r) => [r.numero, r]));
-  const blocs = [...new Set(trame.map((l) => l.bloc))].map((b) => trame.filter((l) => l.bloc === b));
-  const blocBoucle = blocs.some((semaines) => semaines.every((l) => {
-    const r = parNumero.get(l.numero);
-    return r !== undefined && assidue(r);
-  }));
-  const clesPrevues = trame.reduce((n, l) => n + l.seances_cles.length, 0);
-  const clesReussies = faits.reduce((n, r) => n + r.cles_reussies, 0);
-  const debutAffutage = trame.findIndex(enAffutage);
-  return [
-    { titre: 'Une première semaine complète', atteint: faits.some((r) => r.seances_faites >= r.seances_prevues) },
-    { titre: 'Quatre semaines assidues d’affilée', atteint: quatre },
-    { titre: 'Un bloc bouclé', atteint: blocBoucle },
-    ...(clesPrevues >= 10 ? [{ titre: 'Dix séances clés réussies', atteint: clesReussies >= 10 }] : []),
-    ...(choc.size ? [{ titre: 'Un week-end choc bouclé', atteint: faits.some((r) => choc.has(r.numero) && r.seances_faites >= r.seances_prevues) }] : []),
-    ...(debutAffutage >= 0 ? [{ titre: 'L’affûtage', atteint: rang >= debutAffutage }] : []),
-  ];
+  return { semaine: rang >= 0 ? rang + 1 : null, total: trame.length, piliers, verdict, score };
 }
 
 // Le prochain week-end choc à venir, d'après la trame du moteur, qui marque ses semaines (week_end_choc) : le coach est
@@ -162,7 +133,7 @@ export function weekEndChoc(trame: LigneTrame[], aujourdhui: string): WeekEndCho
 
 // Une barre par semaine, en minutes de course (décision coach du 19/10/2026 : les durées, la même mesure des deux
 // côtés ; la charge prévue se compte par segments et le RPE de l'athlète vaut pour toute la séance, elles ne se
-// comparent pas) : les 8 dernières faites à côté de leur prévue (celle de la semaine écrite), la semaine en cours et
+// comparent pas) : les 10 dernières faites à côté de leur prévue (celle de la semaine écrite), la semaine en cours et
 // celles à venir en pointillés (la trame), le week-end choc et l'affûtage marqués.
 // Une semaine se range par son lundi : les semaines d'un coaché se suivent d'un objectif à l'autre (décision coach du
 // 20/10/2026, « toute sa saison »), leurs numéros (S1, S2…) recommençant à chaque objectif. course : la course de la
@@ -193,7 +164,9 @@ export function barresDeVolume(trame: LigneTrame[], realises: Realise[], aujourd
   // de l'objectif dans l'app) ne s'affichent pas : elles ressemblaient à des semaines prévues (retour du coach du 20/10).
   const passees = barres.filter((b) => b.moment === 'passee');
   const premiere = passees.findIndex((b) => b.faite !== null);
-  return [...(premiere < 0 ? [] : passees.slice(premiere)).slice(-8), ...barres.filter((b) => b.moment !== 'passee')];
+  // Q15 (décision coach du 05/11/2026 au soir, « A ») : les 10 dernières semaines faites (avant : 8), comme la charge et
+  // le Hooper, puis la semaine en cours et celles à venir.
+  return [...(premiere < 0 ? [] : passees.slice(premiere)).slice(-10), ...barres.filter((b) => b.moment !== 'passee')];
 }
 
 // Le Hooper du dimanche, semaine par semaine, et sa zone habituelle.
@@ -250,4 +223,13 @@ export function blocsDuPlan(trame: LigneTrame[], plan: Plan, aujourdhui: string,
     else blocs.push({ nom: l.bloc, du: l.lundi, au: fin, moment: 'avenir', ...qualitesDuBloc(plan, l.bloc) });
   }
   return blocs.map((b) => ({ ...b, moment: b.au < aujourdhui ? 'fait' : b.du <= aujourdhui ? 'encours' : 'avenir' }));
+}
+
+// La semaine ajustée (Q7) : les règles du journal qui la disent ajustée (lib/app/tableauDuPlan.ts, ajustementDeLaSemaine).
+export const REGLES_AJUSTEMENT = new Set(['R1', 'R2', 'R3', 'R4', 'R5', 'R8', 'CH', 'C5', 'O3', 'OM4']);
+export type Ajustement = 'moteur' | 'coach' | null;
+export function ajustementDuJournal(journal: unknown, coache: boolean, retouchee = false): Ajustement {
+  const lignes = (Array.isArray(journal) ? journal : []) as { regle?: unknown; applique?: unknown }[];
+  if (coache && (retouchee || lignes.some((l) => l?.regle === 'COACH' && l.applique !== false))) return 'coach';
+  return lignes.some((l) => REGLES_AJUSTEMENT.has(String(l?.regle ?? ''))) ? 'moteur' : null;
 }

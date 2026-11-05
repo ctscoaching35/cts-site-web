@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { COOKIE_INVITATION, invitationValide } from '@/lib/planAcces';
 import { COOKIE_JOUR, demonstrationCoachOuverte, jourValide } from '@/lib/app/demonstrationCoachPorte';
-import { COOKIE_BIENVENUE, COOKIE_DEMARRAGE } from '@/lib/app/bienvenue';
+import { COOKIE_BIENVENUE, COOKIE_DEMARRAGE, COOKIE_DEMARRAGE_ANCIEN } from '@/lib/app/bienvenue';
 
 // Le proxy de Next 16 (l'ancien middleware), avant deux familles de pages.
 export async function proxy(request: NextRequest) {
@@ -38,6 +38,7 @@ function jourSimule(request: NextRequest) {
     const reponse = NextResponse.redirect(propre);
     reponse.cookies.delete(COOKIE_BIENVENUE);
     reponse.cookies.delete(COOKIE_DEMARRAGE);
+    reponse.cookies.delete(COOKIE_DEMARRAGE_ANCIEN);
     return reponse;
   }
   const jour = request.nextUrl.searchParams.get('jour');

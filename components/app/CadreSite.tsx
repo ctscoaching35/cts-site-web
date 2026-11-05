@@ -22,9 +22,11 @@ export function versApp(chemin: string, requete = ''): string {
 
 // garder : le calculateur de nutrition ouvert depuis une fiche de course (décision coach du 20/10/2026) ; son bouton
 // « Garder ma stratégie » envoie ses réponses et ses repères au cadre, qui les range puis revient à la fiche.
-export default function CadreSite({ src, titre, retour, garder }: {
+// masquer : ce que la page du site montre en plus, à cacher dans l'app (C31 : le surtitre « Calculateur gratuit » d'un
+// calculateur, écrit pour les visiteurs du site).
+export default function CadreSite({ src, titre, retour, garder, masquer = '' }: {
   src: string; titre: string; retour: { href: string; libelle: string };
-  garder?: (donnees: unknown) => Promise<{ ok: boolean; message: string }>;
+  garder?: (donnees: unknown) => Promise<{ ok: boolean; message: string }>; masquer?: string;
 }) {
   const router = useRouter();
   const cadre = useRef<HTMLIFrameElement>(null);
@@ -47,7 +49,7 @@ export default function CadreSite({ src, titre, retour, garder }: {
     if (!doc || doc.getElementById('cts-dans-l-app')) return;
     const style = doc.createElement('style');
     style.id = 'cts-dans-l-app';
-    style.textContent = 'header, footer { display: none !important; }';
+    style.textContent = `header, footer${masquer ? `, ${masquer}` : ''} { display: none !important; }`;
     doc.head.appendChild(style);
     doc.addEventListener('click', (e) => {
       const a = (e.target as Element | null)?.closest?.('a');

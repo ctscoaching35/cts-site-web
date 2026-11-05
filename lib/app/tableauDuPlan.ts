@@ -8,10 +8,10 @@ import type { Contexte } from './contexte';
 import { objectifAffiche, trameDuPlan, type LigneTrame, type Realise } from './ecriture';
 import { listeNolio } from './nolio';
 import { semainesDeLaFiche } from './semainesNolio';
-import { ajouterJours, type Semaine } from './plan';
+import { ajouterJours, type CleTest, type Semaine } from './plan';
 import { clientService } from './supabase';
-import { trameDesDonnees, type CourseDuGraphique, type Fiche } from './tableau';
-import { lectureDeDemonstration, semaineDeDemonstration, tableauDeDemonstration } from './demonstration';
+import { ajustementDuJournal, trameDesDonnees, type Ajustement, type CourseDuGraphique, type Fiche } from './tableau';
+import { ajustementDeDemonstration, lectureDeDemonstration, semaineDeDemonstration, tableauDeDemonstration } from './demonstration';
 
 // Où en est l'athlète dans Nolio (P1 à P4) ; « coache » : un objectif de son coach ; null : un plan d'avant le
 // 19/10/2026, sans Nolio.
@@ -190,4 +190,38 @@ export async function fichesDePreparation(planId: string): Promise<Set<string>> 
   const { data, error } = await clientService().from('plans').select('fiches_preparation').eq('id', planId).maybeSingle();
   if (error || !data) return new Set();
   return new Set(Object.keys(((data as { fiches_preparation?: Record<string, unknown> }).fiches_preparation ?? {})));
+}
+
+// LA SEMAINE AJUSTÉE (Q7, décision coach du 05/11/2026 au soir, « A ») : la semaine en cours que le passage du dimanche a
+// écrite d'après la semaine passée (« moteur » : les règles du journal gardé avec elle, semaines_ecrites.journal), ou,
+// pour un coaché, que son coach a retouchée (« coach » : une correction de l'aperçu du dimanche appliquée, journal COACH,
+// ou des séances changées dans Nolio, comptées chaque nuit dans la table retouches). null sinon : la semaine de la trame.
+// Les règles qui changent la semaine d'après la semaine passée : moins de 60 % faits (R1), une séance clé trop dure ou
+// écourtée (R2), la fatigue (R3), un arrêt (R4), un week-end choc réduit (R5), une séance clé manquée ou retirée (R8),
+// la semaine allégée par le coach (CH), une course dans la récupération (C5), une course qui tient lieu de week-end choc
+// (O3), la reprise après un autre objectif (OM4). Pas les doses lues (C1, chaque semaine), ni un test (TN), ni un repli.
+export async function ajustementDeLaSemaine(ctx: Contexte, numero: string): Promise<Ajustement> {
+  if (ctx.sansObjectif || ctx.aLaMain) return null;
+  if (ctx.demonstration) return ajustementDeDemonstration(ctx, numero);
+  try {
+    const service = clientService();
+    const [{ data: ecrite }, retouches] = await Promise.all([
+      service.from('semaines_ecrites').select('journal').eq('plan_id', ctx.cle).eq('numero', numero).maybeSingle(),
+      // La table retouches manque tant que sa migration n'est pas passée : rien de retouché.
+      ctx.coache ? service.from('retouches').select('familles, ajoutees').eq('plan_id', ctx.cle).eq('semaine', numero).maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+    const r = retouches.data as { familles?: Record<string, { modifiees?: number; supprimees?: number }> | null; ajoutees?: number } | null;
+    const retouchee = Boolean(r && (Number(r.ajoutees ?? 0) > 0
+      || Object.values(r.familles ?? {}).some((f) => Number(f?.modifiees ?? 0) > 0 || Number(f?.supprimees ?? 0) > 0)));
+    return ajustementDuJournal(ecrite?.journal, ctx.coache, retouchee);
+  } catch {
+    return null;
+  }
+}
+
+// LE TEST DE LA SEMAINE (Q14, décision coach du 05/11/2026 au soir, « A ») : la séance que la préparation écrit à la
+// place d'une autre pour donner un repère (son jour porte reperes.test.ecrit). Le premier de la semaine, ou null.
+export function testDeLaSemaine(semaine: Semaine | null): CleTest | null {
+  return semaine?.jours.find((j) => j.reperes?.test?.ecrit)?.reperes?.test?.cle ?? null;
 }

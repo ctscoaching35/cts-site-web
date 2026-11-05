@@ -28,6 +28,8 @@ export async function annulerDemande(demandeId: string): Promise<void> {
   if (d.gpx_chemin) await service.storage.from('plans-pdf').remove([d.gpx_chemin as string]);
   await service.from('objectifs_demandes').update({ statut: 'retiree', gpx_chemin: null }).eq('id', d.id);
   revalidatePath('/app/plan');
+  // Q17 (05/11/2026 au soir) : la demande en attente se lit et s'annule aussi sur l'accueil.
+  revalidatePath('/app');
 }
 
 // Demander le retrait d'un objectif lancé par son coach ; une seule demande à la fois par objectif.

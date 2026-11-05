@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { masquerDemarrage } from '@/lib/app/actionsBienvenue';
 import type { EtatNolio } from '@/lib/app/tableauDuPlan';
-import { Carte, Surtitre } from './Ui';
+import { Carte, EcrisNous, Surtitre } from './Ui';
 
 // « Pour bien démarrer » (décision coach du 21/10/2026 : « expliquer à l'athlète le cheminement à mettre en place pour
 // avoir l'app + Nolio ») : en haut de l'accueil, ce qui fait quoi, puis les étapes et leur état, cochées d'elles-mêmes
@@ -26,9 +26,10 @@ type Etape = { fait: boolean; titre: string; texte?: React.ReactNode };
 // jour-là, l'app lui demandera si sa charge a changé (un achat fait plus de 3 semaines avant).
 // demonstration : la démonstration (lib/app/demonstration.ts) ne retient rien sur l'appareil, ni masquée d'un appui, ni
 // d'elle-même (?demarrage=masque la montre masquée).
-export default function PourBienDemarrer({ acheteur, nolio, accord, questionnaire, installer, profil = true, lienProfil = '', seanceFaite = false, inviteLe = null, confirmer = false, demonstration = false }: {
+// planId (C12, audits du 05/11/2026) : masquée pour ce plan seulement, plus pour tous les plans suivants de l'appareil.
+export default function PourBienDemarrer({ acheteur, nolio, accord, questionnaire, installer, profil = true, lienProfil = '', seanceFaite = false, inviteLe = null, confirmer = false, demonstration = false, planId }: {
   acheteur: boolean; nolio: EtatNolio; accord: boolean; questionnaire: boolean; installer: string; profil?: boolean; lienProfil?: string;
-  seanceFaite?: boolean; inviteLe?: string | null; confirmer?: boolean; demonstration?: boolean;
+  seanceFaite?: boolean; inviteLe?: string | null; confirmer?: boolean; demonstration?: boolean; planId: string;
 }) {
   const [masquee, setMasquee] = useState(false);
   // AT2 (décision coach du 04/11/2026) : la liste se masque d'elle-même une fois ses étapes faites, l'app installée ou
@@ -36,29 +37,36 @@ export default function PourBienDemarrer({ acheteur, nolio, accord, questionnair
   // acheteur : dans l'équipe et sa montre reliée (B-PL-46) ; un coaché : son profil rempli et son accord donné.
   const enPlace = acheteur ? nolio === 'actif' && seanceFaite : accord && profil;
   useEffect(() => {
-    if (enPlace && !demonstration) masquerDemarrage().catch(() => {});
-  }, [enPlace, demonstration]);
+    if (enPlace && !demonstration) masquerDemarrage(planId).catch(() => {});
+  }, [enPlace, demonstration, planId]);
   if (masquee || enPlace) return null;
 
+  // C1 (audits du 05/11/2026, A-16) : trois lignes empilées de 44 px, avec une flèche (avant, trois liens de 16 px collés
+  // sur une ligne).
   const lienExterne = (href: string, texte: string) => (
-    <a href={href} target="_blank" rel="noopener" className="font-bold text-teal whitespace-nowrap">{texte}</a>
+    <a key={href} href={href} target="_blank" rel="noopener"
+      className="flex items-center justify-between min-h-11 border-t border-indigo/[0.06] first:border-t-0 font-bold text-teal">
+      <span>{texte}</span><span aria-hidden>›</span>
+    </a>
   );
+  // Q6-a (décision coach du 05/11/2026 au soir, « A ») : plus d'étape toujours cochée (« Ta préparation est prête », « Ton
+  // espace CTS est ouvert ») : seulement celles qui peuvent rester à faire.
   const etapes: Etape[] = acheteur ? [
-    { fait: true, titre: 'Ta préparation est prête' },
     nolio === 'actif'
       ? { fait: true, titre: 'Tu es dans l’équipe CTS sur Nolio' }
       : { fait: false, titre: 'Rejoins l’équipe CTS dans Nolio', texte: nolio === 'refuse'
-        ? 'Ton invitation n’a pas abouti : réponds simplement à ton e-mail de bienvenue, nous t’en renvoyons une.'
-        : `Nolio t’écrit${inviteLe && nolio === 'a_inviter' ? ` le ${inviteLe}, une semaine avant ta première semaine,` : ''} à l’adresse de ton achat (ou de ton compte Nolio) : accepte l’invitation, ou connecte-toi avec les `
+        // Q5 : BROUILLON, à valider par le coach.
+        ? <>Ton invitation n’a pas abouti : écris-nous, nous t’en renvoyons une.<span className="block"><EcrisNous /></span></>
+        // C12 : « t'écrira », au futur, comme l'écran de bienvenue, tant que l'invitation n'est pas partie.
+        : `${nolio === 'a_inviter' ? 'Nolio t’écrira' : 'Nolio t’écrit'}${inviteLe && nolio === 'a_inviter' ? ` le ${inviteLe}, une semaine avant ta première semaine,` : ''} à l’adresse de ton achat (ou de ton compte Nolio) : accepte l’invitation, ou connecte-toi avec les `
           + 'identifiants reçus. Regarde aussi dans tes indésirables.'
           + (confirmer && nolio === 'a_inviter' ? ' Ce jour-là, ton app te demande aussi si ce que tu cours a changé depuis ton achat.' : '') },
     seanceFaite
       ? { fait: true, titre: 'L’appli Nolio et ta montre sont reliées' }
       : { fait: false, titre: 'Installe l’appli Nolio et relie ta montre', texte: (
-        <>{lienExterne(APP_STORE, 'App Store')} · {lienExterne(GOOGLE_PLAY, 'Google Play')} · {lienExterne(MONTRE, 'Relier ta montre ›')}</>
+        <span className="block mt-1">{lienExterne(APP_STORE, 'App Store')}{lienExterne(GOOGLE_PLAY, 'Google Play')}{lienExterne(MONTRE, 'Relier ta montre')}</span>
       ) },
   ] : [
-    { fait: true, titre: 'Ton espace CTS est ouvert' },
     profil
       ? { fait: true, titre: 'Ton profil de coureur est rempli' }
       : { fait: false, titre: 'Remplis ton profil de coureur', texte: (
@@ -104,7 +112,7 @@ export default function PourBienDemarrer({ acheteur, nolio, accord, questionnair
         </p>
       )}
       <div className="flex justify-end">
-        <button type="button" onClick={() => { setMasquee(true); if (!demonstration) masquerDemarrage().catch(() => {}); }}
+        <button type="button" onClick={() => { setMasquee(true); if (!demonstration) masquerDemarrage(planId).catch(() => {}); }}
           className="min-h-11 text-[0.8125rem] font-bold text-[#5E5C78]">
           Masquer
         </button>

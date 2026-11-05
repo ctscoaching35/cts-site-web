@@ -30,7 +30,8 @@ export type Reperes = {
   // L'allure suit le seuil 1 recoupé (moteur 8.320) : « tout », ses deux bornes se décalent.
   allure_decalee?: 'tout' | 'bas' | null;
   derive_sl: boolean;
-  test: { cle: CleTest; allure_vc?: SpecAllure } | null;
+  // ecrit : la séance du jour EST le test (TN1, TN2 ; le site en lit le résultat), pas une séance qui s'y règle.
+  test: { cle: CleTest; allure_vc?: SpecAllure; ecrit?: boolean } | null;
 };
 export type TestZones = {
   cle: CleTest;
