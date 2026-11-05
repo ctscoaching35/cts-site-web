@@ -20,6 +20,7 @@ import { entreeDe } from './entree';
 import { cleLaissee, debutApres, plansALaMain, trameDuPlan, type Realise, type Trame } from './ecriture';
 import { lireTemps } from '@/lib/plan';
 import { ajouterJours, dateAbregee, dateLongue, jourMois, joursEntre, type Semaine } from './plan';
+import { lienNolioAthlete } from './liensNolio';
 import { athletesNolio, ErreurNolio, nolioConfigure, type AthleteNolio } from './nolio';
 import { clientService } from './supabase';
 import { jaugeDuPlan, weekEndChoc, type Verdict } from './tableau';
@@ -63,7 +64,6 @@ export type VueCoach = { athletes: LigneAthlete[]; aRegarder: ARegarder[] };
 
 const aujourdhui = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
 const lundiDe = (jour: string) => ajouterJours(jour, -((new Date(`${jour}T12:00:00Z`).getUTCDay() + 6) % 7));
-const NOLIO = 'https://www.nolio.io/';
 // Le week-end choc s'annonce un mois avant (FT1-3).
 const WEEK_END_CHOC_PREVENIR_JOURS = 30;
 // AC4 : la part de la charge prévue sous laquelle une semaine compte « sous le plan ».
@@ -197,7 +197,7 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     }
     // Un mot à la question ouverte du dimanche, ces 7 derniers jours (décision coach du 21/10/2026) : à lire dans Nolio.
     if ((a.questionnaires?.mot_le ?? '') >= ajouterJours(jour, -7)) {
-      aRegarder.push({ niveau: 'sante', genre: 'mot', cle: `mot:${a.id}:${a.questionnaires?.mot_le}`, athlete: a.nom, action: 'Lire dans Nolio ›', href: NOLIO, externe: true,
+      aRegarder.push({ niveau: 'sante', genre: 'mot', cle: `mot:${a.id}:${a.questionnaires?.mot_le}`, athlete: a.nom, action: 'Lire dans Nolio ›', href: lienNolioAthlete(a.nolio_athlete_id), externe: true,
         // BROUILLON (05/11/2026, à valider)
         detail: `Questionnaire du ${dateAbregee(String(a.questionnaires?.mot_le))}`,
         texte: 'a un mot pour toi dans son questionnaire du samedi.' });
@@ -207,7 +207,7 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     if (deuxDernieres.length === 2 && Number(num(deuxDernieres[0].numero)) === Number(num(deuxDernieres[1].numero)) + 1
         && deuxDernieres.every((l) => !l.sans_ajustement && ((l.journal ?? []) as Journal).some((j) => j.regle === 'R2' && j.trop_dur))
         && String(deuxDernieres[0].ecrite_le).slice(0, 10) >= ajouterJours(jour, -8)) {
-      aRegarder.push({ niveau: 'sante', genre: 'rpe', cle: `rpe:${deuxDernieres[0].plan_id}:${deuxDernieres[0].numero}`, athlete: a.nom, action: 'Lui écrire ›', href: NOLIO, externe: true,
+      aRegarder.push({ niveau: 'sante', genre: 'rpe', cle: `rpe:${deuxDernieres[0].plan_id}:${deuxDernieres[0].numero}`, athlete: a.nom, action: 'Lui écrire ›', href: lienNolioAthlete(a.nolio_athlete_id), externe: true,
         texte: 'RPE à revoir avec lui : séance clé jugée trop dure deux semaines de suite.' });
     }
     // Pas de retour (AC2, décision coach du 01/11/2026, « A ») : deux semaines de suite avec des séances faites et aucun
@@ -218,7 +218,7 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     };
     if (deuxDernieres.length === 2 && Number(num(deuxDernieres[0].numero)) === Number(num(deuxDernieres[1].numero)) + 1
         && deuxDernieres.every(sansRpe) && String(deuxDernieres[0].ecrite_le).slice(0, 10) >= ajouterJours(jour, -8)) {
-      aRegarder.push({ niveau: 'sante', genre: 'retour', cle: `retour:${deuxDernieres[0].plan_id}:${deuxDernieres[0].numero}`, athlete: a.nom, action: 'Lui écrire ›', href: NOLIO, externe: true,
+      aRegarder.push({ niveau: 'sante', genre: 'retour', cle: `retour:${deuxDernieres[0].plan_id}:${deuxDernieres[0].numero}`, athlete: a.nom, action: 'Lui écrire ›', href: lienNolioAthlete(a.nolio_athlete_id), externe: true,
         texte: 'Pas de retour depuis deux semaines : ses séances sont faites, sans aucun RPE noté.' });
     }
     // Sous le plan (AC4, décision coach du 01/11/2026, « A ») : moins de 80 % de la charge prévue tenue trois semaines de
@@ -231,7 +231,7 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     };
     if (troisDernieres.length === 3 && troisDernieres.every((l, i) => i === 0 || Number(num(troisDernieres[i - 1].numero)) === Number(num(l.numero)) + 1)
         && troisDernieres.every(sousLePlan) && String(troisDernieres[0].ecrite_le).slice(0, 10) >= ajouterJours(jour, -8)) {
-      aRegarder.push({ niveau: 'sante', genre: 'sous_plan', cle: `sous_plan:${troisDernieres[0].plan_id}:${troisDernieres[0].numero}`, athlete: a.nom, action: 'Lui écrire ›', href: NOLIO, externe: true,
+      aRegarder.push({ niveau: 'sante', genre: 'sous_plan', cle: `sous_plan:${troisDernieres[0].plan_id}:${troisDernieres[0].numero}`, athlete: a.nom, action: 'Lui écrire ›', href: lienNolioAthlete(a.nolio_athlete_id), externe: true,
         texte: 'Sous le plan depuis trois semaines : moins de 80 % de la charge prévue tenue, trois semaines de suite.' });
     }
     const demarre = Boolean(p?.demarre_le);
@@ -277,7 +277,7 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     const champsPlan = ((p?.parametres as { champs?: Record<string, unknown> } | null)?.champs) ?? {};
     const chronoRoute = o && avenir ? alerteChronoRoute(champsPlan.format, champsPlan.temps_cible, a.vc_ms) : null;
     if (chronoRoute) {
-      aRegarder.push({ niveau: 'arrive', genre: 'chrono_route', cle: `chrono_route:${o!.plan_id}:${champsPlan.temps_cible}:${a.vc_ms}`, athlete: a.nom, action: 'Lui écrire ›', href: NOLIO, externe: true,
+      aRegarder.push({ niveau: 'arrive', genre: 'chrono_route', cle: `chrono_route:${o!.plan_id}:${champsPlan.temps_cible}:${a.vc_ms}`, athlete: a.nom, action: 'Lui écrire ›', href: lienNolioAthlete(a.nolio_athlete_id), externe: true,
         texte: `${o!.course_nom} : ${chronoRoute}` });
     }
     // Les prérequis du marathon (décision 5 du marathon) : la préparation qu'il lui reste, du lundi qui vient à la course.
@@ -307,7 +307,7 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
       const dansChoc = choc ? joursEntre(jour, choc.samedi) : -1;
       if (choc && dansChoc >= 0 && dansChoc <= WEEK_END_CHOC_PREVENIR_JOURS) {
         aRegarder.push({ niveau: 'arrive', genre: 'week_end_choc', cle: `week_end_choc:${o.plan_id}:${choc.samedi}`, athlete: a.nom,
-          action: 'Lui écrire ›', href: NOLIO, externe: true,
+          action: 'Lui écrire ›', href: lienNolioAthlete(a.nolio_athlete_id), externe: true,
           texte: `son week-end choc, le ${dateLongue(choc.samedi)} et le ${dateLongue(choc.dimanche)} : préviens-le, sur un terrain le plus proche possible de celui de sa course.` });
       }
       const dans = joursEntre(jour, o.course_date);

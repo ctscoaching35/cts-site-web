@@ -15,12 +15,12 @@
  */
 import { vueDuCoach, type ARegarder, type VueCoach } from './espaceCoach';
 import { ajustementsDuCoach, type Ajustement } from './ecriture';
+import { lienNolioAthlete } from './liensNolio';
 import { ajouterJours, dateAbregee, dateLongue, joursEntre } from './plan';
 import { signauxGardes, SILENCE_JOURS, type SignauxGardes } from './signauxGardes';
 import { apresLePassage, HEURE_PASSAGE_UTC, semainesDuDimanche } from './semainesDuDimanche';
 import { clientService } from './supabase';
 
-const NOLIO = 'https://www.nolio.io/';
 const jourCourt = (iso: string) => new Date(`${iso.slice(0, 10)}T12:00:00Z`)
   .toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'numeric', timeZone: 'UTC' });
 
@@ -83,13 +83,13 @@ function santeDesSignaux(nom: string, usr: string, g: SignauxGardes, jour: strin
   for (const s of g.signaux) {
     const le = jourCourt(s.jour);
     if (s.genre === 'commentaire') {
-      sante.push({ niveau: 'sante', genre: 'commentaire', cle: `commentaire:${usr}:${s.jour}`, athlete: nom, action: 'Lire dans Nolio ›', href: NOLIO,
+      sante.push({ niveau: 'sante', genre: 'commentaire', cle: `commentaire:${usr}:${s.jour}`, athlete: nom, action: 'Lire dans Nolio ›', href: lienNolioAthlete(usr),
         externe: true, texte: `un commentaire à lire sur sa séance du ${le}.` });
     } else if (s.genre === 'sensations') {
-      sante.push({ niveau: 'sante', genre: 'sensations', cle: `sensations:${usr}:${s.jour}`, athlete: nom, action: 'Lui écrire ›', href: NOLIO,
+      sante.push({ niveau: 'sante', genre: 'sensations', cle: `sensations:${usr}:${s.jour}`, athlete: nom, action: 'Lui écrire ›', href: lienNolioAthlete(usr),
         externe: true, texte: `de mauvaises sensations ${le} (${s.detail}).` });
     } else if (s.genre === 'hooper') {
-      sante.push({ niveau: 'sante', genre: 'hooper', cle: `hooper:${usr}:${s.jour}`, athlete: nom, action: 'Lui écrire ›', href: NOLIO,
+      sante.push({ niveau: 'sante', genre: 'hooper', cle: `hooper:${usr}:${s.jour}`, athlete: nom, action: 'Lui écrire ›', href: lienNolioAthlete(usr),
         externe: true, texte: `sa fatigue monte : ${s.detail}.` });
     }
   }
@@ -97,7 +97,7 @@ function santeDesSignaux(nom: string, usr: string, g: SignauxGardes, jour: strin
   const depuis = g.derniere_activite ? joursEntre(g.derniere_activite, jour) : null;
   if (g.prevues > 0 && (depuis === null || depuis >= SILENCE_JOURS)) {
     sante.push({ niveau: 'sante', genre: 'silence', cle: `silence:${usr}:${g.derniere_activite ?? 'rien'}`, athlete: nom, action: 'Lui écrire ›',
-      href: NOLIO, externe: true,
+      href: lienNolioAthlete(usr), externe: true,
       texte: depuis === null ? 'rien de remonté de Nolio depuis plus de 10 jours : sa montre, ou il décroche.'
         : `rien de remonté de Nolio depuis ${depuis} jours (dernière activité le ${dateLongue(g.derniere_activite as string, true)}) : sa montre, ou il décroche.` });
   }

@@ -17,6 +17,7 @@ import { exigerCoach } from '@/lib/app/nolio';
 import { ajouterJours, dateLongue, jMoins, jourMois } from '@/lib/app/plan';
 import { aujourdhuiParis } from '@/lib/app/signauxSuivi';
 import { allureDepuisVitesse } from '@/lib/app/allureCoach';
+import { lienNolioAthlete } from '@/lib/app/liensNolio';
 import { clientService, espaceCoachOuvert } from '@/lib/app/supabase';
 import { enHeures, jaugeDuPlan, momentDe } from '@/lib/app/tableau';
 import { fichesDePreparation, type CourseSecondaire } from '@/lib/app/tableauDuPlan';
@@ -136,7 +137,7 @@ export default async function ObjectifCoache({ params, searchParams }: {
           )}
           {/* Une saison de fond n'a ni course ni questionnaire à refaire (décisions coach du 24/10/2026). */}
           {!o.plan.fond && <a href={lienFicheCourse(id)} target="_blank" rel="noopener" className="inline-flex items-center min-h-11 px-4 rounded-xl border border-indigo/[0.18] bg-white text-[0.8125rem] font-bold">Fiche de course</a>}
-          <a href="https://www.nolio.io/" target="_blank" rel="noopener" className="inline-flex items-center min-h-11 px-4 rounded-xl bg-indigo text-white text-[0.8125rem] font-bold">Ouvrir dans Nolio</a>
+          <a href={lienNolioAthlete(nolio)} target="_blank" rel="noopener" className="inline-flex items-center min-h-11 px-4 rounded-xl bg-indigo text-white text-[0.8125rem] font-bold">Ouvrir dans Nolio</a>
         </div>
       </div>
 
