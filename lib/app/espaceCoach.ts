@@ -17,7 +17,7 @@ import { athletesCoaches, type FicheAthlete } from './coaching';
 import { demandesDuCoach, estRetrait, type Demande } from './demandes';
 import { coursesGardees, pasEncoreIci, type CourseNolio } from './coursesNolio';
 import { entreeDe } from './entree';
-import { cleLaissee, debutApres, plansALaMain, type LigneTrame, type Realise } from './ecriture';
+import { cleLaissee, debutApres, plansALaMain, trameDuPlan, type Realise, type Trame } from './ecriture';
 import { lireTemps } from '@/lib/plan';
 import { ajouterJours, dateLongue, jourMois, joursEntre, type Semaine } from './plan';
 import { athletesNolio, ErreurNolio, nolioConfigure, type AthleteNolio } from './nolio';
@@ -43,6 +43,8 @@ export type LigneAthlete = {
   hooper: { valeur: number; tendance: 'hausse' | 'baisse' | 'stable' | null } | null;
 };
 type DemandeAthlete = Demande & { nom: string };
+// La trame du moteur (POST /v1/trame) : une saison de fond y porte sa place et le lundi de ses tests.
+type TrameLue = Trame & { fond?: { saison: number; tests_le: string; tests_les?: string[] } };
 // Les décisions du moteur ne sont plus des lignes d'« À regarder » : « Le moteur s'en est chargé » les lit dans les
 // semaines écrites (décision coach du 04/11/2026).
 export type Niveau = 'bloque' | 'sante' | 'arrive';
@@ -110,6 +112,13 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     : { data: [] };
   const avecAccord = new Set((accords ?? []).map((x) => String(x.nolio_athlete_id)));
   const parPlan = new Map((plans ?? []).map((p) => [p.id as string, p]));
+  // La trame de chaque plan (B-EC-8, bogue du 05/11/2026) : celle gardée avec lui, sinon redemandée au moteur et gardée de
+  // nouveau (trameDuPlan, comme la page du plan et l'app de l'athlète). Chaque écriture qui change ses paramètres l'efface
+  // (la semaine du dimanche, une reprise, le moteur d'une nouvelle version la nuit) : lue telle quelle, elle manquait
+  // jusqu'à l'ouverture de la page du plan — « Entre deux semaines », ni séances ni charge tenue, la saison de fond pas
+  // reconnue. Redemandée une fois, pour les seules trames effacées, puis gardée jusqu'à la prochaine écriture.
+  const trames = new Map<string, TrameLue | null>(await Promise.all((plans ?? []).map(async (p) => [p.id as string,
+    ((p.trame ?? (p.parametres ? await trameDuPlan(p.id as string).catch(() => null) : null)) as TrameLue | null)] as const)));
   // Les semaines que le moteur n'écrit pas (à la main, sans objectif), résumées chaque nuit : les deux dernières
   // complètes, pour le tableau de bord.
   const { data: horsMoteur } = fiches.length
@@ -144,7 +153,7 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     const semaines = (lignes ?? []).filter((l) => l.plan_id === o?.plan_id);
     const realises = semaines.map((l) => l.realise as Realise | null).filter((r): r is Realise => Boolean(r))
       .sort((x, y) => Number(x.numero.slice(1)) - Number(y.numero.slice(1)));
-    const trame = ((p?.trame as { semaines?: LigneTrame[] } | null)?.semaines ?? null);
+    const trame = (o && trames.get(o.plan_id)?.semaines) || null;
     const jauge = trame ? jaugeDuPlan(trame, realises, jour) : null;
     // Sa semaine en cours dans le plan ; sa semaine passée et celle d'avant : celles du plan, sinon celles résumées hors
     // moteur.
@@ -218,7 +227,7 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     }
     const demarre = Boolean(p?.demarre_le);
     // Une saison de fond : ni « Nouvel objectif » à 21 jours, ni départ ; elle se renouvelle d'elle-même.
-    const infosFond = (p?.trame as { fond?: { saison: number; tests_le: string; tests_les?: string[] } } | null)?.fond ?? null;
+    const infosFond = (o && trames.get(o.plan_id)?.fond) || null;
     const ecrit = Boolean(p?.parametres);
     const avenir = Boolean(o && o.course_date >= jour);
     if (o && avenir && ecrit && !demarre && !p?.depart_prevu && a.nolio_athlete_id) {

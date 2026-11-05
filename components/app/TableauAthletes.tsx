@@ -82,13 +82,14 @@ function Ligne({ a, signal, jour }: { a: LigneAthlete; signal: SignalAthlete; jo
   const manque = [!a.nolio && 'Nolio à associer', a.nolio && !a.accord && 'sans accord'].filter(Boolean) as string[];
   // Sa semaine : sa place dans le plan, sinon où en est son objectif.
   // La saison de fond (décisions coach du 24/10/2026) : le thème de la semaine.
+  // Un plan démarré ne dit jamais « Démarre le … » (bogue du 05/11/2026) : son départ programmé reste en base après le départ.
   const [semaine, bloc] = o?.fond && avenir ? [o.cours?.type === 'Assimilation' ? 'Semaine allégée' : o.fond.theme ? `Bloc ${o.fond.theme}` : 'Saison de fond',
       o.fond.tests_dans ? `tests dans ${o.fond.tests_dans} sem.` : 'semaine de tests']
     : !o || !avenir ? [a.aLaMain ? 'Programmé à la main' : 'Sans objectif', '']
       : o.cours && o.demarre ? [`${o.cours.numero} / ${o.total ?? '?'} · ${o.cours.type}`, o.cours.bloc]
         : !o.ecrit ? ['Envoyé en entier', '']
-          : o.prevu ? [`Démarre le ${dateCourte(o.prevu, jour)}`, 'Programmé']
-            : o.demarre ? ['Entre deux semaines', ''] : ['Pas encore démarré', ''];
+          : o.demarre ? ['Entre deux semaines', '']
+            : o.prevu ? [`Démarre le ${dateCourte(o.prevu, jour)}`, 'Programmé'] : ['Pas encore démarré', ''];
   const s = a.semaine;
   return (
     <Link href={`/app/coach/athlete/${a.id}`}
