@@ -8,6 +8,11 @@
  * - le samedi d'avant, un e-mail s'il n'a pas répondu ;
  * - le dimanche, sa première semaine s'écrit sur ses réponses : changées, le plan est recalé comme pour un coaché
  *   (lib/app/ecriture.ts, recalerSurLaConfirmation). Sans réponse, rien ne bloque : ses réponses de l'achat servent.
+ * - S10 (décision coach du 05/11/2026, « A ») : une correction refusée par le moteur parce que la plus longue sortie est
+ *   tombée sous 45 min part du plancher accepté (45 min de sortie longue, le volume corrigé s'il se lit ;
+ *   lib/app/invitation.ts, chargeAuPlancher), et le coach reçoit un e-mail avec les deux réponses. Un autre refus (une
+ *   saisie illisible) se dit à l'acheteur, qui corrige ; ses réponses de l'achat restent d'ici là.
+ * - S9 (05/11/2026) : deux questions, son volume et sa plus longue sortie ; plus l'arrêt récent.
  * Ce n'est pas une porte de plus. Les coachés gardent leur relecture de Nolio au départ. Un acheteur déjà dans l'équipe
  * par un autre plan (OM1) n'est pas réinvité : pas de carte.
  * La réponse vit dans plans.confirmation_charge (migration du 04/11/2026) ; sans elle, rien ne s'affiche ni ne part.
@@ -17,12 +22,13 @@ import { site } from '@/lib/content';
 import { API_URL } from '@/lib/plan';
 import type { Compte } from './ecriture';
 import { envoyerRappelConfirmation } from './emailBienvenue';
-import { carteOuverte, chargeChangee, chargeDe, confirmationDemandee, samediDuRappel, type Charge } from './invitation';
+import { carteOuverte, chargeAuPlancher, chargeChangee, chargeDe, chargeEnClair, confirmationDemandee, samediDuRappel, type Charge } from './invitation';
 import { ajouterJours, dateLongue } from './plan';
 import { clientService } from './supabase';
 import { enTetesMoteur } from './cleMoteur';
 
-export type Confirmation = { le: string; reponse: 'oui' | 'corrige'; charge: Charge };
+// demandee et plancher (S10) : la correction donnée, et la première semaine partie du plancher à sa place.
+export type Confirmation = { le: string; reponse: 'oui' | 'corrige'; charge: Charge; demandee?: Charge; plancher?: boolean };
 export type CarteConfirmation = { planId: string; achat: Charge; reponse: Confirmation | null; dimanche: string };
 
 // Un plan acheté qui attend son départ dans Nolio (pas celui d'un athlète en coaching, ni sorti).
@@ -33,7 +39,8 @@ const aujourdhuiParis = () => jourParis(new Date().toISOString());
 function lue(brut: unknown): Confirmation | null {
   const c = (brut ?? null) as Partial<Confirmation> | null;
   if (!c || (c.reponse !== 'oui' && c.reponse !== 'corrige') || !c.charge) return null;
-  return { le: String(c.le ?? ''), reponse: c.reponse, charge: chargeDe(c.charge as Record<string, unknown>) };
+  return { le: String(c.le ?? ''), reponse: c.reponse, charge: chargeDe(c.charge as Record<string, unknown>),
+    ...(c.plancher ? { plancher: true, demandee: chargeDe(c.demandee as Record<string, unknown> | undefined) } : {}) };
 }
 
 // La réponse gardée ; colonne : false tant que la migration du 04/11/2026 n'est pas passée.
@@ -90,26 +97,57 @@ export async function enregistrerConfirmation(planId: string, charge: Charge | n
   let reponse: Confirmation = { le: new Date().toISOString(), reponse: 'oui', charge: achat };
   if (charge && chargeChangee(achat, charge)) {
     if (!charge.volume_hebdo_actuel || !charge.sortie_longue_actuelle) {
-      return { ok: false, message: 'Donne ton volume par semaine et ta plus longue sortie des 4 dernières semaines.' };
+      return { ok: false, message: 'Donne ton volume de course par semaine et ta plus longue sortie en ce moment.' };
     }
-    // Les contrôles du questionnaire d'achat : le moteur relit les réponses (valider_champs, comme au départ).
-    const r = await fetch(`${API_URL}/v1/trame`, {
-      method: 'POST', headers: enTetesMoteur({ 'Content-Type': 'application/json' }), cache: 'no-store',
-      body: JSON.stringify({ parametres: { ...p.parametres, champs: { ...champs, ...charge } } }),
-    }).catch(() => null);
-    if (!r?.ok) {
+    // Les contrôles du questionnaire d'achat : le moteur relit les réponses (valider_champs, comme au départ) ; « refus » :
+    // sa phrase (400), null quand il ne répond pas.
+    const verifier = async (c: Charge): Promise<{ ok: true } | { ok: false; refus: string | null }> => {
+      const r = await fetch(`${API_URL}/v1/trame`, {
+        method: 'POST', headers: enTetesMoteur({ 'Content-Type': 'application/json' }), cache: 'no-store',
+        body: JSON.stringify({ parametres: { ...p.parametres, champs: { ...champs, ...c } } }),
+      }).catch(() => null);
+      if (r?.ok) return { ok: true };
       const refus = r?.status === 400 ? await r.json().then((x) => x?.message as string | undefined).catch(() => undefined) : undefined;
-      return { ok: false, message: refus
-        ? `${refus} Ta première semaine partira de tes réponses de l’achat ; pour en parler, réponds à ton e-mail de bienvenue.`
-        : 'La vérification ne répond pas pour l’instant : réessaie dans un moment.' };
+      return { ok: false, refus: refus ?? null };
+    };
+    const verdict = await verifier(charge);
+    if (verdict.ok) reponse = { ...reponse, reponse: 'corrige', charge };
+    else if (verdict.refus === null) return { ok: false, message: 'La vérification ne répond pas pour l’instant : réessaie dans un moment.' };
+    else {
+      // S10 : une plus longue sortie sous le plancher ; la première semaine part du plancher accepté.
+      const plancher = chargeAuPlancher(charge, achat);
+      const auPlancher = plancher ? await verifier(plancher) : null;
+      if (!plancher || !auPlancher?.ok) {
+        return { ok: false, message: `${verdict.refus} Ta première semaine partira de tes réponses de l’achat ; pour en parler, réponds à ton e-mail de bienvenue.` };
+      }
+      reponse = { ...reponse, reponse: 'corrige', charge: plancher, demandee: charge, plancher: true };
     }
-    reponse = { ...reponse, reponse: 'corrige', charge };
   }
   const { error } = await clientService().from('plans').update({ confirmation_charge: reponse }).eq('id', planId);
   if (error) return { ok: false, message: 'Ta réponse n’a pas pu être enregistrée : réessaie dans un moment.' };
+  if (reponse.plancher && reponse.demandee) {
+    await prevenirDuPlancher(planId, achat, reponse.demandee, reponse.charge, dimanche)
+      .catch((e) => console.error(`Confirmation au plancher de ${planId} :`, e instanceof Error ? e.message : e));
+    // BROUILLON (05/11/2026), à valider par le coach : l'acheteur n'a pas de coach attitré, « nous » le suivons.
+    return { ok: true, message: `C’est noté. Ta plus longue sortie est sous les 45 minutes que demande la préparation : ta `
+      + `première semaine s’écrira ${dimanche} au soir en partant d’une sortie longue de 45 min, le plus bas possible. Écoute tes `
+      + 'sensations ; si tu hésites, réponds à ton e-mail de bienvenue.' };
+  }
   return { ok: true, message: reponse.reponse === 'oui'
     ? `C’est noté : ta première semaine s’écrira ${dimanche} au soir sur ces réponses.`
     : `C’est noté : ta première semaine s’écrira ${dimanche} au soir sur tes nouvelles réponses.` };
+}
+
+// S10 : le coach reçoit les deux réponses (l'achat et la nouvelle) et ce qui part ; un seul e-mail par réponse enregistrée.
+async function prevenirDuPlancher(planId: string, achat: Charge, demandee: Charge, plancher: Charge, dimanche: string) {
+  const { data } = await clientService().from('plans').select('course_nom, nom:donnees->athlete->>nom').eq('id', planId).maybeSingle();
+  const { prevenirCoach } = await import('./ecriture');
+  const nom = String((data as { nom?: string | null } | null)?.nom ?? '').trim();
+  await prevenirCoach('Plan CTS : une charge corrigée sous le plancher',
+    `${nom || 'L’acheteur'} (plan « ${String(data?.course_nom ?? '')} ») a corrigé sa charge avant son départ. À l’achat : `
+    + `${chargeEnClair(achat)}. Maintenant : ${chargeEnClair(demandee)}. Sa plus longue sortie est sous les 45 min que `
+    + `demande la préparation : sa première semaine s’écrit ${dimanche} au soir sur le plancher, ${chargeEnClair(plancher)}. `
+    + 'À voir avec lui si besoin, en réponse à son e-mail de bienvenue.');
 }
 
 // Le rappel du samedi (passage quotidien) : la carte encore sans réponse, son départ ce lundi. Le passage tourne une fois

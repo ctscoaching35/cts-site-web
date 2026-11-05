@@ -60,7 +60,8 @@ export type Champs = {
   // le navigateur ; « oui » avertit (consulter avant de commencer) sans arrêter l'achat.
   coeur: string;
   // Section 2 : l'arrêt récent part avec le plan, comme la charge actuelle (second audit
-  // du moteur, D16) : il fait démarrer le plan par deux semaines sans séance dure.
+  // du moteur, D16) : il fait démarrer le plan par deux semaines sans séance dure. Depuis le 05/11/2026 (S9), au seul
+  // questionnaire du coach (coaching individualisé, demande d'un coaché) : l'achat ne le demande plus.
   coupure: string;
   // « oui » : un premier marathon (route, signalé au coach sous 20 semaines de préparation).
   premier_marathon: string;
@@ -110,13 +111,14 @@ export const textes = {
   // Charge actuelle (24/09/2026). Aucun pourcentage dans l'aide, décision du coach du
   // 26/09/2026 : l'étude dit 10 %, le plan monte par marches de 15 % au plus, et
   // l'athlète lirait les deux.
+  // S9 (décision coach du 05/11/2026, « ne complique pas les choses ») : deux questions simples, sans note dessous ; la
+  // question de l'arrêt récent quitte le questionnaire d'achat et la confirmation de charge (elle reste à celui du coach).
   charge: {
     titre: 'Ce que tu cours en ce moment',
     aide:
       'Ta plus longue sortie décide d’où ton plan démarre. C’est la seule chose qui distingue deux coureurs du même niveau : l’un tient déjà 2h30, l’autre plafonne à 1h, et ils n’ont pas à recevoir la même première semaine. Le risque de blessure monte quand une sortie dépasse nettement la plus longue des 4 dernières semaines : c’est l’un des faits les mieux établis en prévention des blessures en course à pied.',
-    volume: 'Volume de course par semaine, en ce moment',
-    sortieLongue: 'Ta plus longue sortie des 4 dernières semaines',
-    note: 'En durée de course, pas en kilomètres. Si tu n’as pas couru du tout ces 4 semaines, mets ta dernière sortie régulière.',
+    volume: 'Ton volume de course par semaine, en ce moment',
+    sortieLongue: 'Ta plus longue sortie en ce moment',
     coupure: 'As-tu arrêté de courir plus de 4 semaines au cours des 2 derniers mois ?',
   },
   gpx:

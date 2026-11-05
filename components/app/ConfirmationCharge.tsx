@@ -1,7 +1,6 @@
 'use client';
 
 import { useActionState, useState } from 'react';
-import clsx from 'clsx';
 import { confirmerMaCharge, type EtatGeste } from '@/lib/app/actionsEcriture';
 import { chargeEnClair, type Charge } from '@/lib/app/invitation';
 import { textes } from '@/lib/plan';
@@ -9,8 +8,9 @@ import { Carte, Surtitre } from './Ui';
 
 // LA CONFIRMATION DE CHARGE (décision coach du 04/11/2026 au soir, « A » ; lib/app/confirmation.ts) : de son invitation à
 // la veille de son départ, l'acheteur dont l'achat date de plus de 3 semaines relit ses réponses de l'achat sur la charge.
-// « Oui », ou il corrige : les questions et les aides du questionnaire d'achat (lib/plan.ts, textes.charge), relues par
-// le moteur. Sans réponse, rien ne bloque. dimanche : le soir où sa première semaine s'écrit, déjà en lettres.
+// « Oui », ou il corrige : les deux questions du questionnaire d'achat (lib/plan.ts, textes.charge ; S9, 05/11/2026 : sans
+// note ni arrêt récent), relues par le moteur ; une plus longue sortie sous 45 min part du plancher (S10). Sans réponse,
+// rien ne bloque. dimanche : le soir où sa première semaine s'écrit, déjà en lettres.
 // demonstration : rien n'est enregistré.
 export default function ConfirmationCharge({ planId, achat, reponse, dimanche, demonstration = false }: {
   planId: string; achat: Charge; reponse: { reponse: 'oui' | 'corrige'; charge: Charge } | null; dimanche: string;
@@ -19,7 +19,6 @@ export default function ConfirmationCharge({ planId, achat, reponse, dimanche, d
   const [etat, action, enCours] = useActionState<EtatGeste, FormData>(confirmerMaCharge.bind(null, planId), null);
   const [corriger, setCorriger] = useState(false);
   const [demo, setDemo] = useState<string | null>(null);
-  const [coupure, setCoupure] = useState(reponse?.charge.coupure ?? achat.coupure);
   const parDemo = demonstration ? (e: React.FormEvent) => { e.preventDefault(); setDemo('Démonstration : rien n’est enregistré.'); } : undefined;
   const message = demo ?? etat?.message ?? null;
   const champ = 'mt-1.5 w-full min-h-11 rounded-[10px] border border-indigo/20 px-3 text-sm font-normal text-indigo bg-white';
@@ -67,19 +66,6 @@ export default function ConfirmationCharge({ planId, achat, reponse, dimanche, d
                   <input name="sortie_longue_actuelle" required placeholder="ex. 1h30 ou 90min" defaultValue={valeurs.sortie_longue_actuelle} className={champ} />
                 </label>
               </div>
-              <p className="text-xs text-[#5E5C78] leading-relaxed">{textes.charge.note}</p>
-              <fieldset>
-                <legend className={etiquette}>{textes.charge.coupure}</legend>
-                <div className="mt-1.5 flex gap-2">
-                  {['non', 'oui'].map((v) => (
-                    <label key={v} className={clsx('flex items-center gap-2 min-h-11 px-4 rounded-xl border cursor-pointer text-sm text-indigo capitalize',
-                      coupure === v ? 'border-teal bg-teal/5' : 'border-indigo/15')}>
-                      <input type="radio" name="coupure" value={v} checked={coupure === v} onChange={() => setCoupure(v)} className="accent-teal" />
-                      {v}
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
               <button type="submit" disabled={enCours} className="min-h-11 px-5 rounded-xl bg-teal text-white text-sm font-bold disabled:opacity-50">
                 {enCours ? 'Vérification…' : 'Enregistrer'}
               </button>

@@ -99,8 +99,10 @@ export default function Questionnaire({
   // réponses du précédent (N9).
   // Le coaching individualisé n'a pas de durée (QD1, décision coach du 19/10/2026) : « auto », fixée par l'API à la
   // commande, la formule qui couvre le temps jusqu'à la course.
+  // L'acheteur ne répond plus sur l'arrêt récent (S9, 05/11/2026) : un « Nouvel objectif » prérempli d'un ancien plan ne
+  // le reprend pas.
   const [c, setC] = useState<Champs>(coach ? { ...champsVides, ...(initial as Partial<Champs>), email: emailCoach, duree_mois: 'auto' }
-    : { ...champsVides, ...((initial ?? {}) as Partial<Champs>) });
+    : { ...champsVides, ...((initial ?? {}) as Partial<Champs>), coupure: '' });
   const [gpx, setGpx] = useState<File | null>(null);
   // LA ROUTE (moteur 8.349, CTS_ROUTE_CADRAGE.md) : pour le coach seulement, un 10 km, un semi ou un marathon ; ni
   // dénivelé, ni trace, ni terrain ; le chrono visé fixe l'allure des séances spécifiques.
@@ -143,7 +145,8 @@ export default function Questionnaire({
     try {
       const brouillon = localStorage.getItem(CLE_BROUILLON);
       // La réponse de santé n'est jamais reprise d'un brouillon, même ancien.
-      if (brouillon) setC({ ...champsVides, ...JSON.parse(brouillon), blessure: '', coeur: '' });
+      // Ni l'arrêt récent d'un brouillon d'avant le 05/11/2026 (S9).
+      if (brouillon) setC({ ...champsVides, ...JSON.parse(brouillon), blessure: '', coeur: '', coupure: '' });
     } catch {
       /* brouillon illisible : on repart de zéro */
     }
@@ -155,8 +158,7 @@ export default function Questionnaire({
       // La réponse de santé reste hors du brouillon (audit du 27/09/2026, T4 ; décision
       // coach du 28/09/2026) : « elle reste sur ta page » devient vrai au pied de la
       // lettre, rien ne la garde sur l'ordinateur d'un athlète qui ne va pas au bout.
-      // L'arrêt récent, donnée d'entraînement depuis le second audit (D16), y reste
-      // comme la charge actuelle.
+      // La charge actuelle y reste (l'arrêt récent ne se demande plus à l'achat, S9).
       localStorage.setItem(CLE_BROUILLON, JSON.stringify({ ...c, blessure: undefined, coeur: undefined }));
     } catch {
       /* stockage indisponible : sans conséquence */
@@ -604,7 +606,6 @@ export default function Questionnaire({
               <input id="sortie_longue" className={inputCls} required placeholder="ex. 1h30 ou 90min" value={c.sortie_longue_actuelle} onChange={(e) => maj('sortie_longue_actuelle')(e.target.value)} />
             </div>
           </div>
-          <p className={aideCls}>{textes.charge.note}</p>
           {noteCharge && (
             <p role="status" className="bg-sand rounded-r-xl border-l-4 border-teal px-4 py-3 mt-2 text-[0.8125rem] text-indigo leading-relaxed">{noteCharge}</p>
           )}
@@ -612,7 +613,8 @@ export default function Questionnaire({
             <p role="status" className="bg-sand rounded-r-xl border-l-4 border-teal px-4 py-3 mt-2 text-[0.8125rem] text-indigo leading-relaxed">{alerteSl}</p>
           )}
         </div>
-        <div>
+        {/* L'arrêt récent (S9, décision coach du 05/11/2026) : au seul questionnaire du coach ; l'achat ne le demande plus. */}
+        {coach && <div>
           <p className="font-bold text-indigo mb-3">{textes.charge.coupure}</p>
           <div className="flex gap-3">
             {['non', 'oui'].map((v) => (
@@ -623,7 +625,7 @@ export default function Questionnaire({
               </label>
             ))}
           </div>
-        </div>
+        </div>}
       </Section>
 
       {/* La course d'abord, sa distance comprise (décision coach du 20/10/2026), puis la formule, qui n'offre que les

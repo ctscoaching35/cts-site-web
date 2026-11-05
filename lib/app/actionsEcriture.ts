@@ -307,7 +307,6 @@ export async function confirmerMaCharge(planId: string, _e: EtatGeste, form: For
   const lu = (cle: string) => String(form.get(cle) ?? '').trim().slice(0, 40);
   const charge = form.get('reponse') === 'oui' ? null : {
     volume_hebdo_actuel: lu('volume_hebdo_actuel'), sortie_longue_actuelle: lu('sortie_longue_actuelle'),
-    coupure: lu('coupure') === 'oui' ? 'oui' : 'non',
   };
   try {
     const r = await enregistrerConfirmation(planId, charge);

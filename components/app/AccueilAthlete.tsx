@@ -203,7 +203,7 @@ function confirmationDeDemonstration(ctx: Contexte): CarteConfirmation | null {
   const debut = ctx.plan.course.date_debut_plan;
   if (!debut || !carteOuverte(debut, ajouterJours(debut, -60), ctx.jour)) return null;
   return { planId: ctx.cle, reponse: null, dimanche: ajouterJours(debut, -1),
-    achat: { volume_hebdo_actuel: '5h', sortie_longue_actuelle: '2h', coupure: 'non' } };
+    achat: { volume_hebdo_actuel: '5h', sortie_longue_actuelle: '2h' } };
 }
 
 // Le lundi qui suit une date : celui où démarre l'objectif suivant, après la récupération.

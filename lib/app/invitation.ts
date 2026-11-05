@@ -6,8 +6,9 @@
  * - L'invitation part le lundi de la semaine qui précède le départ (J-7) ; un départ dans les 7 jours qui suivent l'achat
  *   (ou déjà passé : un plan rejoint en cours) l'envoie tout de suite. Les relances comptent à partir de ce jour.
  * - Un achat qui date de plus de 3 semaines au moment de l'invitation : l'app CTS demande à l'acheteur si sa charge a
- *   changé (son volume, sa plus longue sortie, un arrêt récent), de l'invitation à la veille du départ ; un rappel part le
- *   samedi d'avant s'il n'a pas répondu (lib/app/confirmation.ts). Sans réponse, rien ne bloque.
+ *   changé (son volume et sa plus longue sortie ; l'arrêt récent ne se demande plus depuis le 05/11/2026, S9), de
+ *   l'invitation à la veille du départ ; un rappel part le samedi d'avant s'il n'a pas répondu (lib/app/confirmation.ts).
+ *   Sans réponse, rien ne bloque.
  */
 import { lireTemps } from '@/lib/plan';
 import { ajouterJours, joursEntre } from './plan';
@@ -50,7 +51,9 @@ export const samediDuRappel = (debutPlan: string) => ajouterJours(lundiDe(String
 // ─── Les réponses sur la charge ───────────────────────────────────────────
 
 // Les questions du questionnaire d'achat sur la charge (lib/plan.ts, textes.charge) : celles que l'acheteur confirme.
-export const CHAMPS_CHARGE = ['volume_hebdo_actuel', 'sortie_longue_actuelle', 'coupure'] as const;
+// Sans l'arrêt récent depuis le 05/11/2026 (S9) : une réponse gardée d'avant le perd à la lecture, et l'arrêt déclaré à
+// l'achat reste dans les réponses de l'achat, intact.
+export const CHAMPS_CHARGE = ['volume_hebdo_actuel', 'sortie_longue_actuelle'] as const;
 export type Charge = Record<(typeof CHAMPS_CHARGE)[number], string>;
 
 export function chargeDe(champs: Record<string, unknown> | null | undefined): Charge {
@@ -58,7 +61,6 @@ export function chargeDe(champs: Record<string, unknown> | null | undefined): Ch
   return {
     volume_hebdo_actuel: String(c.volume_hebdo_actuel ?? '').trim(),
     sortie_longue_actuelle: String(c.sortie_longue_actuelle ?? '').trim(),
-    coupure: String(c.coupure ?? '').trim() === 'oui' ? 'oui' : 'non',
   };
 }
 
@@ -70,8 +72,26 @@ const memeDuree = (a: string, b: string) => {
 };
 export function chargeChangee(avant: Charge, apres: Charge): boolean {
   return !memeDuree(avant.volume_hebdo_actuel, apres.volume_hebdo_actuel)
-    || !memeDuree(avant.sortie_longue_actuelle, apres.sortie_longue_actuelle)
-    || avant.coupure !== apres.coupure;
+    || !memeDuree(avant.sortie_longue_actuelle, apres.sortie_longue_actuelle);
+}
+
+// UNE CORRECTION SOUS LE PLANCHER (S10, décision coach du 05/11/2026, « A » ; audit A-11) : le refus le plus courant de
+// la confirmation est une plus longue sortie tombée sous les 45 min que demande la préparation (SORTIE_LONGUE_MIN_H du
+// moteur, /v1/config sortie_longue_min) ; c'est une baisse, et garder les réponses de l'achat ferait partir la charge
+// la plus haute. La première semaine part alors du plancher accepté : 45 min de sortie longue, et le volume corrigé s'il
+// se lit (relevé à 45 min s'il est plus bas : une sortie ne dépasse pas la semaine), sinon celui de l'achat. null quand
+// la plus longue sortie corrigée n'est pas sous le plancher (une faute de saisie se corrige, le refus le dit).
+export const PLANCHER_SL_H = 0.75;
+export const PLANCHER_SL = '45min';
+export function chargeAuPlancher(corrigee: Charge, achat: Charge): Charge | null {
+  const sl = lireTemps(corrigee.sortie_longue_actuelle);
+  if (sl === null || !(sl > 0) || sl >= PLANCHER_SL_H - 1e-9) return null;
+  const volume = lireTemps(corrigee.volume_hebdo_actuel);
+  return {
+    volume_hebdo_actuel: volume === null || !(volume > 0) ? achat.volume_hebdo_actuel
+      : volume < PLANCHER_SL_H - 1e-9 ? PLANCHER_SL : corrigee.volume_hebdo_actuel,
+    sortie_longue_actuelle: PLANCHER_SL,
+  };
 }
 
 // « 5 h », « 4 h 30 », « 50 min » ; la saisie telle quelle si elle ne se lit pas.
@@ -83,9 +103,7 @@ export function dureeEnClair(brut: string): string {
   return `${Math.floor(m / 60)} h${m % 60 ? ` ${String(m % 60).padStart(2, '0')}` : ''}`;
 }
 
-// « 5 h par semaine et 2 h de sortie longue, sans arrêt de plus de 4 semaines ces 2 derniers mois ».
+// « 5 h par semaine et 2 h de sortie longue » (sans l'arrêt récent depuis le 05/11/2026, S9).
 export function chargeEnClair(c: Charge): string {
-  const arret = c.coupure === 'oui' ? 'après un arrêt de plus de 4 semaines ces 2 derniers mois'
-    : 'sans arrêt de plus de 4 semaines ces 2 derniers mois';
-  return `${dureeEnClair(c.volume_hebdo_actuel)} par semaine et ${dureeEnClair(c.sortie_longue_actuelle)} de sortie longue, ${arret}`;
+  return `${dureeEnClair(c.volume_hebdo_actuel)} par semaine et ${dureeEnClair(c.sortie_longue_actuelle)} de sortie longue`;
 }

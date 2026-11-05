@@ -61,7 +61,7 @@ export function contenuBienvenue(plan: Plan, lienApp: string, nolio: { adresse: 
         'invitation à rejoindre l’équipe CTS, à accepter ; sinon, les identifiants du compte qu’il vient de te créer, déjà ' +
         'dans l’équipe. Ta première semaine s’installe dans ton calendrier Nolio la veille de son début.' +
         (confirmer ? ' Le jour de ton invitation, ton app CTS te demandera aussi si ce que tu cours a changé depuis ton achat ' +
-          '(ton volume par semaine, ta plus longue sortie, un arrêt récent) : ta première semaine s’écrira sur ta réponse.' : '') +
+          '(ton volume par semaine, ta plus longue sortie) : ta première semaine s’écrira sur ta réponse.' : '') +
         ' Chaque samedi, Nolio te pose quelques questions sur ta semaine à venir, et la semaine suivante s’écrit le dimanche ' +
         'soir d’après tes réponses et ta semaine écoulée. Tu cours une séance un autre jour ? Déplace-la d’abord dans ton ' +
         'calendrier Nolio.',
