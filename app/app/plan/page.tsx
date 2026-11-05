@@ -13,6 +13,7 @@ import { aujourdhuiIso, dateLongue, jMoins } from '@/lib/app/plan';
 import { blocsDuPlan, jaugeDuPlan } from '@/lib/app/tableau';
 import { donneesTableau, fichesDePreparation, type CourseSecondaire } from '@/lib/app/tableauDuPlan';
 import { BlocsDeLaSaison } from '@/components/app/SaisonDeFond';
+import SemainesDuPlan from '@/components/app/SemainesDuPlan';
 
 // « Mes objectifs » (OM2, décision coach du 19/10/2026) : chaque objectif majeur du compte (les siens, ceux que son
 // coach lui prépare), en cours, à venir ou passé, et ses courses de préparation ; un toucher l'affiche ; les demandes
@@ -155,6 +156,9 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
             ))}
           </ol>
         </Carte>}
+
+        {/* S16 (décision coach du 05/11/2026) : la trame semaine par semaine que promettent les CGV, pour l'acheteur. */}
+        {!ctx.coache && !ctx.aLaMain && !plan.fond && <SemainesDuPlan trame={d.trame} jour={jour} />}
 
         {d.ecrit && !ctx.demonstration && !plan.fond && (
           <Carte id="ajouter-course" className="space-y-3 scroll-mt-20">

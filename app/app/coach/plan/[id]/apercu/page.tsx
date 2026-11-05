@@ -81,7 +81,7 @@ export default async function ApercuDimanche({ params }: { params: Promise<{ id:
             <Surtitre>Ce que le moteur change</Surtitre>
             {sortie.journal.length ? (
               <ul className="space-y-1.5 text-sm leading-relaxed text-[#3B3957] list-disc pl-5">
-                {sortie.journal.flatMap((e, i) => enClair(e, seancesSemaine).map((t, k) => <li key={`${i}-${k}`}>{t}</li>))}
+                {sortie.journal.flatMap((e, i) => enClair(e, seancesSemaine, r).map((t, k) => <li key={`${i}-${k}`}>{t}</li>))}
               </ul>
             ) : <p className="text-sm text-[#3B3957]">Rien : la semaine suit le plan.</p>}
             {textes.length > 0 && (

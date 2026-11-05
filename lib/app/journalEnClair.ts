@@ -2,7 +2,7 @@
 // l'aperçu du dimanche et le rapport du dimanche.
 import { CORRECTIONS, type Correction } from './correctionsTextes';
 import type { FamilleLue } from './classement';
-import type { Questionnaire } from './ecriture';
+import type { Questionnaire, Realise } from './ecriture';
 import { jourMois } from './plan';
 
 export const FAMILLE: Record<FamilleLue, string> = {
@@ -43,10 +43,17 @@ const jourDeLaSeance = (id: unknown) => {
   const j = String(id ?? '').split('-')[1]?.toLowerCase() ?? '';
   return JOURS[j.slice(0, 3)] ?? (j || 'la semaine');
 };
-export function enClair(e: Entree, seances?: string[]): string[] {
+// realise : la semaine écoulée (moteur, POST /v1/semaine), pour dire la règle des 60 % en charge tenue (Q17).
+export function enClair(e: Entree, seances?: string[], realise?: Pick<Realise, 'charge_prevue' | 'charge_tenue'> | null): string[] {
   const effet = typeof e.effet === 'string' ? e.effet : null;
   switch (e.regle) {
-    case 'R1': return [`Moins de 60 % de la semaine faite (${e.charge_faite_pct} % de la charge) : rien ne se rattrape, les séances clés refont la même marche.`];
+    // Q17 (décision coach du 05/11/2026) : la ligne dit la charge TENUE, la mesure du site (chaque séance comptée au plus
+    // à sa prévue) ; la règle décide toujours sur la charge faite. Sans la semaine écoulée, la charge faite, dite telle.
+    case 'R1': {
+      const tenue = typeof e.charge_tenue_pct === 'number' ? Math.round(e.charge_tenue_pct)
+        : realise?.charge_prevue ? Math.round((100 * realise.charge_tenue) / realise.charge_prevue) : null;
+      return [`Moins de 60 % de la semaine faite (${tenue !== null ? `charge tenue : ${tenue} % de la prévue` : `${e.charge_faite_pct} % de la charge faite`}) : rien ne se rattrape, les séances clés refont la même marche.`];
+    }
     case 'R2': return [`Séance ${String(e.seance ?? '')} ${[e.trop_dur && 'plus dure que prévu', e.ecourtee && 'écourtée'].filter(Boolean).join(' et ')} : sa marche est refaite, sous une autre forme.`];
     case 'R3': return [`Fatigue : ${effet ?? 'semaine allégée'}${Array.isArray(e.signaux) && e.signaux.length ? ` (${(e.signaux as string[]).join(' ; ')})` : ''}.`];
     case 'R4': return [`Arrêt${typeof e.jours === 'number' ? ` de ${e.jours} jours` : ''} : ${effet ?? ''}.`];
