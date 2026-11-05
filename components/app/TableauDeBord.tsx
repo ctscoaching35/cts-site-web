@@ -29,7 +29,7 @@ export function CarteNolio({ etat, inviteLe = null, confirmer = false, avantCour
   etat: EtatNolio; inviteLe?: string | null; confirmer?: boolean; avantCourse?: boolean;
 }) {
   if (!etat || etat === 'actif' || etat === 'coache') return null;
-  const textes: Record<'a_inviter' | 'en_cours' | 'invite' | 'refuse' | 'sorti' | 'coaching', { titre: string; texte: string; bouton: boolean }> = {
+  const textes: Record<'a_inviter' | 'en_cours' | 'invite' | 'refuse' | 'sorti' | 'arrete' | 'coaching', { titre: string; texte: string; bouton: boolean }> = {
     a_inviter: inviteLe
       ? { titre: 'Ton accès Nolio arrive une semaine avant ta préparation', bouton: false,
         texte: `Nolio t’écrira le ${dateLongue(inviteLe)} : une invitation à rejoindre l’équipe CTS si tu as déjà un compte Nolio, sinon les identifiants de ton nouveau compte. Ta première semaine s’y installe la veille de son début.${confirmer ? ' Ce jour-là, ton app te demande aussi si ce que tu cours a changé depuis ton achat.' : ''}` }
@@ -43,6 +43,9 @@ export function CarteNolio({ etat, inviteLe = null, confirmer = false, avantCour
       ? { titre: 'Tu as quitté l’équipe CTS dans Nolio', bouton: false,
         texte: 'Tes séances ne t’arrivent plus. Pour rejoindre l’équipe, réponds simplement à ton e-mail de bienvenue : nous t’envoyons une nouvelle invitation.' }
       : { titre: 'Ta préparation est terminée dans Nolio', bouton: true, texte: 'Ton compte Nolio et tes séances restent à toi.' },
+    // E3 (audits du 05/11/2026) : arrêtée par le coach après un remboursement. BROUILLON, à valider par le coach.
+    arrete: { titre: 'Ta préparation est arrêtée', bouton: true,
+      texte: 'Elle a été arrêtée après ton remboursement : plus rien ne s’écrit dans ton Nolio. Ton compte Nolio et les séances déjà passées restent à toi.' },
     // Un plan acheté, l'athlète en coaching (décision coach du 23/10/2026).
     coaching: { titre: 'Ce plan ne s’écrit pas dans Nolio', bouton: false,
       texte: 'Tu es en coaching : ton coach écrit ta préparation. Ce plan reste lisible ici ; s’il doit reprendre, ton coach le relance.' },

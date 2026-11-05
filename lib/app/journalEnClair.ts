@@ -59,6 +59,9 @@ export function enClair(e: Entree, seances?: string[]): string[] {
           : `Ta séance de ${jourDeLaSeance(e.seance)} n’a pas été faite : elle revient sous une autre forme.`];
     case 'D6': return ['Ta semaine posée dans Nolio est lue comme une semaine écrite : sa plus longue sortie, son volume, ses séances clés.'];
     case 'C5': return ['Ta seconde course arrive pendant ta récupération : semaine de course, sans séance dure.'];
+    // D7 (moteur 8.451, audits du 05/11/2026) : la semaine refusée par le contrôle du moteur, écrite par un repli.
+    case 'REPLI': return [`Le contrôle du moteur refusait cette semaine${e.refus ? ` (${String(e.refus)})` : ''} : elle part par un repli, ${
+      e.niveau === 1 ? 'la même semaine, sortie longue plafonnée' : e.niveau === 2 ? 'la semaine du plan de l’achat, sortie longue plafonnée' : 'la semaine du plan de l’achat'}.`];
     // EC3 (moteur 8.446) : les corrections du coach sur l'aperçu, appliquées ou non, et la marche refaite la semaine d'après.
     case 'COACH': {
       const quoi = (CORRECTIONS[String(e.correction) as Correction] ?? String(e.correction ?? '')).toLowerCase();

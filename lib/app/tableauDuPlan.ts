@@ -16,7 +16,8 @@ import { trameDesDonnees, type CourseDuGraphique, type Fiche } from './tableau';
 // 19/10/2026, sans Nolio.
 // coache : un objectif de coaching ; coaching : un plan acheté qui ne s'écrit pas, l'athlète étant en coaching
 // (décision coach du 23/10/2026).
-export type EtatNolio = 'a_inviter' | 'en_cours' | 'invite' | 'actif' | 'refuse' | 'sorti' | 'coache' | 'coaching' | null;
+// arrete : la préparation arrêtée par le coach, remboursée (E3, 05/11/2026 ; plans.arretee_le).
+export type EtatNolio = 'a_inviter' | 'en_cours' | 'invite' | 'actif' | 'refuse' | 'sorti' | 'arrete' | 'coache' | 'coaching' | null;
 export type DonneesTableau = {
   trame: LigneTrame[]; realises: Realise[]; fiches: Fiche[]; nolio: EtatNolio; accord: boolean; ecrit: boolean;
   // Les courses secondaires ajoutées (O2).
@@ -47,9 +48,13 @@ export async function donneesTableau(ctx: Contexte): Promise<DonneesTableau> {
   }
   const realises = (lignes ?? []).map((l) => l.realise as Realise)
     .sort((a, b) => Number(a.numero.slice(1)) - Number(b.numero.slice(1)));
+  // E3 : une préparation arrêtée (remboursée) ; sans la migration du 05/11/2026, la lecture échoue et rien ne change.
+  const arretee = !ctx.coache && p.nolio_statut === 'sorti'
+    ? Boolean((await service.from('plans').select('arretee_le').eq('id', ctx.cle).maybeSingle().then((r) => r.data, () => null))?.arretee_le)
+    : false;
   return {
     trame: trame?.semaines ?? trameDesDonnees(ctx.plan), realises, fiches: trame?.fiches ?? [],
-    nolio: ctx.coache ? 'coache' : (p.nolio_statut ?? null) as EtatNolio, accord: ctx.coache ? accordCoache : Boolean(p.accord_lecture_le),
+    nolio: ctx.coache ? 'coache' : arretee ? 'arrete' : (p.nolio_statut ?? null) as EtatNolio, accord: ctx.coache ? accordCoache : Boolean(p.accord_lecture_le),
     ecrit: true,
     courses: (((p.parametres as Record<string, unknown>).courses_secondaires ?? []) as CourseSecondaire[])
       .slice().sort((a, b) => a.date.localeCompare(b.date)),

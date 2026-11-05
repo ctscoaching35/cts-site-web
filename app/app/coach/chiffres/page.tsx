@@ -7,6 +7,7 @@ import { acheteursDesPlans } from '@/lib/app/acheteurs';
 import { chiffresDuCoaching, type ChiffresCoaching } from '@/lib/app/chiffresCoaching';
 import type { FamilleRetouche } from '@/lib/app/retouches';
 import { exigerCoach } from '@/lib/app/nolio';
+import { ArreterPreparation } from '@/components/app/GestesEcriture';
 import { CORRECTIONS, CORRECTIONS_ACTIVES, correctionsComptees, RAISONS } from '@/lib/app/corrections';
 import { ajouterJours } from '@/lib/app/plan';
 import { espaceCoachOuvert } from '@/lib/app/supabase';
@@ -306,7 +307,8 @@ async function PartiePlans() {
         <h2 className="eyebrow text-indigo/60">Les acheteurs ({acheteurs.length})</h2>
         <p className="text-sm text-indigo/70">
           Leurs séances partent toutes seules dans Nolio. Leur accord de lecture, ils le donnent eux-mêmes dans l’app. Une
-          course qui change de date avant son départ : « Modifier l’objectif ».
+          course qui change de date avant son départ : « Modifier l’objectif ». Un acheteur remboursé : « Arrêter cette
+          préparation », puis le remboursement dans Stripe.
         </p>
         {acheteurs.length > 0 && (
           <ul className="divide-y divide-indigo/10">
@@ -319,11 +321,13 @@ async function PartiePlans() {
                 </span>
                 {/* « Modifier l'objectif » (PL6, décision coach du 04/11/2026 au soir) : avant son départ seulement ; une fois
                     parti, rien de nouveau, tu vois au cas par cas. */}
-                {!a.demarre && a.statut !== 'coaching' && a.date >= jour && (
+                {!a.demarre && a.statut !== 'coaching' && a.statut !== 'sorti' && a.date >= jour && (
                   <Link href={`/app/coach/nouveau?modifier=${a.id}`} className="basis-full inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">
                     Modifier l’objectif ›
                   </Link>
                 )}
+                {/* E3 (audits du 05/11/2026) : un acheteur remboursé ; plus rien ne s'écrit ni ne part. */}
+                {a.statut !== 'coaching' && a.statut !== 'sorti' && a.date >= ajouterJours(jour, -42) && <ArreterPreparation planId={a.id} nom={a.nom} />}
               </li>
             ))}
           </ul>

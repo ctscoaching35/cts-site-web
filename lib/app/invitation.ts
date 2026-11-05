@@ -48,6 +48,20 @@ export function carteOuverte(debutPlan: string | null | undefined, jourAchat: st
 // Le samedi du rappel : celui qui précède le lundi du départ.
 export const samediDuRappel = (debutPlan: string) => ajouterJours(lundiDe(String(debutPlan).slice(0, 10)), -2);
 
+// L'ALERTE AU COACH D'UN ACHETEUR PAS ENCORE DANS L'ÉQUIPE (E1, audits du 05/11/2026, lot 1) : le samedi qui précède son
+// départ (sa première séance : le premier lundi de son plan, ou le lendemain de l'achat d'un plan rejoint), au lieu de
+// 7 jours après l'invitation, qui tombait le lundi du départ ; au moins 2 jours après l'invitation pour lui laisser le
+// temps de l'accepter, sinon avec sa relance, 3 jours après. Pure : sondée à part.
+export const JOURS_RELANCE_INVITATION = 3;
+export function jourAlerteNolio(debutPlan: string | null | undefined, jourAchat: string): string {
+  const invitation = jourDInvitation(debutPlan, jourAchat);
+  const debut = debutPlan ? String(debutPlan).slice(0, 10) : '';
+  const lendemain = ajouterJours(jourAchat, 1);
+  const depart = debut > lendemain ? debut : lendemain;
+  const samedi = ajouterJours(lundiDe(depart), -2);
+  return samedi >= ajouterJours(invitation, 2) ? samedi : ajouterJours(invitation, JOURS_RELANCE_INVITATION);
+}
+
 // ─── Les réponses sur la charge ───────────────────────────────────────────
 
 // Les questions du questionnaire d'achat sur la charge (lib/plan.ts, textes.charge) : celles que l'acheteur confirme.

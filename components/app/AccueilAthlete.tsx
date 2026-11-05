@@ -90,7 +90,7 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
   // Pas encore dans Nolio : la semaine de la préparation, et quand elle y arrive (décision coach du 20/10/2026). Sans
   // accord ou Nolio muet, plus de « bientôt » (AT1, B-AT-1) : la carte le dit autrement.
   const raison = lecture && (lecture.raison === 'sans_accord' || lecture.raison === 'muet') ? lecture.raison : null;
-  const arrivee = nolio || raison || ctx.demonstration || !ligne ? null : !ctx.coache && d.nolio !== 'actif' ? 'invitation' as const : 'bientot' as const;
+  const arrivee = nolio || raison || ctx.demonstration || !ligne || d.nolio === 'arrete' ? null : !ctx.coache && d.nolio !== 'actif' ? 'invitation' as const : 'bientot' as const;
   const jauge = jaugeDuPlan(d.trame, d.realises, jour);
   const fiches = fichesDeLaSemaine(d.fiches, jour);
   const nom = prenom(plan.athlete.nom);
@@ -155,7 +155,7 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
             dimanche={dateLongue(confirmation.dimanche)} demonstration={ctx.demonstration} />
         )}
         {/* Sa liste dit où en est l'invitation Nolio ; masquée, la carte Nolio le redit. */}
-        {etape !== 'apres' && demarrage && d.nolio !== 'sorti' && d.nolio !== 'coaching' && (
+        {etape !== 'apres' && demarrage && d.nolio !== 'sorti' && d.nolio !== 'arrete' && d.nolio !== 'coaching' && (
           <PourBienDemarrer acheteur={!ctx.coache} nolio={d.nolio} accord={d.accord} questionnaire={d.ecrit && !ctx.aLaMain} installer={installer}
             profil={profil} lienProfil={lienProfil} seanceFaite={d.realises.some((r) => r.seances_faites > 0)}
             inviteLe={inviteLe ? dateLongue(inviteLe) : null} confirmer={confirmer} />
@@ -178,7 +178,7 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
           <CetteSemaine semaine={null} ligne={null} questionnaire nolio={nolio} raison={lecture?.raison ?? null} coache
             lundi={lundiCourant} hooper={d.accord} />
         )}
-        {etape !== 'apres' && (!demarrage || d.nolio === 'sorti') && <CarteNolio etat={d.nolio} inviteLe={inviteLe} confirmer={confirmer} avantCourse={plan.course.date >= jour} />}
+        {etape !== 'apres' && (!demarrage || d.nolio === 'sorti' || d.nolio === 'arrete') && <CarteNolio etat={d.nolio} inviteLe={inviteLe} confirmer={confirmer} avantCourse={plan.course.date >= jour} />}
 
         {etape !== 'apres' && restants <= 7 && !plan.fond && (
           <Link href={lien('/app/plan/jour-j', ctx)} className="block bg-teal text-white rounded-2xl p-[18px]">

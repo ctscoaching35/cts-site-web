@@ -7,7 +7,7 @@
 import { revalidatePath } from 'next/cache';
 import { API_URL } from '@/lib/plan';
 import {
-  annulerAjustements, demarrerObjectif, donnerAccordLecture, fichesDesPreparations, objectifEcrit, plansALaMain, poserCourse, prevenirCoach, rattraperLaSemaine,
+  annulerAjustements, arreterLaPreparation, demarrerObjectif, donnerAccordLecture, fichesDesPreparations, objectifEcrit, plansALaMain, poserCourse, prevenirCoach, rattraperLaSemaine,
   retirerAccordLecture, retirerCourseDeNolio, type Course,
 } from './ecriture';
 import { enregistrerConfirmation } from './confirmation';
@@ -345,4 +345,21 @@ export async function annulerCorrections(planId: string, lundi: string, _e: Etat
   await annulerLeChoix(planId, lundi).catch(() => null);
   revalidatePath(`/app/coach/plan/${planId}/apercu`);
   return { ok: true, message: 'Corrections retirées : la semaine partira telle que le moteur l’écrit.' };
+}
+
+// E3 (audits du 05/11/2026, lot 1) : « Arrêter cette préparation (remboursée) », dans Chiffres › Plans ; réservé à un
+// coach. Le remboursement reste fait dans Stripe (docs/retractation.md).
+export async function arreterPreparationRemboursee(planId: string, _e: EtatGeste): Promise<EtatGeste> {
+  const { coachId } = await qui();
+  if (!coachId) return { ok: false, message: 'Réservé au coach.' };
+  try {
+    const soucis = await arreterLaPreparation(planId);
+    revalidatePath('/app/coach/chiffres');
+    return { ok: true, message: soucis.length
+      ? `Arrêtée : plus d’invitation ni de séance écrite. Dans Nolio, à finir à la main : ${soucis.join(' ; ')}`
+      : 'Arrêtée : plus d’invitation ni de séance écrite, ce qui était à venir a quitté son Nolio, et il a quitté ton équipe s’il n’y était que pour elle. Le remboursement se fait dans Stripe.' };
+  } catch (e) {
+    console.error(`Arrêt de la préparation ${planId} :`, e instanceof Error ? e.message : e);
+    return { ok: false, message: e instanceof Error ? e.message : 'L’arrêt n’a pas abouti : réessaie dans un moment.' };
+  }
 }

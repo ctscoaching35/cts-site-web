@@ -29,7 +29,8 @@ export async function POST(request: Request) {
       // son plan démarre comme les autres ; avant, il restait « refusé » pour toujours.
       const { data: plans } = await service.from('plans').select('id').eq('nolio_athlete_id', usr).in('nolio_statut', ['invite', 'refuse']);
       for (const p of plans ?? []) {
-        await service.from('plans').update({ nolio_statut: 'actif' }).eq('id', p.id);
+        // L'adresse Nolio donnée en plus, gardée jusqu'à l'adhésion pour l'alerte au coach (E1), s'efface ici.
+        await service.from('plans').update({ nolio_statut: 'actif', nolio_email: null }).eq('id', p.id);
         // Un départ en échec prévient le coach et se reprend chaque jour (passageQuotidien) : Nolio ne le relance pas, ce
         // qui redoublerait l'e-mail.
         await demarrerObjectif(p.id as string).catch((err) =>

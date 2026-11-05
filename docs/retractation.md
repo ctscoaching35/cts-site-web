@@ -29,10 +29,15 @@ Exemple : 49 € payés, préparation commencée le 2 mars, course le 28 juin (1
 Stripe › Paiements › le paiement de l'acheteur › « Rembourser » › montant partiel : le montant calculé. Stripe envoie
 lui-même le reçu du remboursement.
 
-## 3. L'arrêter dans Nolio
+## 3. Arrêter sa préparation
 
-Dans Nolio, retire-le de ton équipe. Le site le voit passer (l'événement « a quitté l'équipe ») et n'écrit plus rien
-pour lui. Ce qui est déjà posé reste dans son calendrier Nolio, à lui.
+*Depuis le 05/11/2026 (audits, E3).* Dans ton espace coach, **Chiffres › Plans › Les acheteurs**, sous son nom :
+« Arrêter cette préparation (remboursée) », puis « Confirmer l'arrêt ». Le site n'écrit plus rien pour lui (plus
+d'invitation s'il n'était pas encore invité, plus de semaine le dimanche), retire de son Nolio ce que la préparation y
+avait posé et qui est encore à venir, et le sort de ton équipe s'il n'y est que pour elle (jamais un coaché, jamais
+toi). Ce qui est déjà passé reste dans son calendrier Nolio, à lui. Son app lui dit que sa préparation est arrêtée.
+
+Une invitation déjà envoyée et pas encore acceptée reste dans Nolio : annule-la dans Nolio si tu le veux.
 
 Sans ce geste, sa préparation continue de s'écrire chaque dimanche jusqu'à la fin de sa récupération.
 

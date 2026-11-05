@@ -1,4 +1,4 @@
-import { passageDuDimanche, prevenirCoach, REMIS } from '@/lib/app/ecriture';
+import { nomsDesPlans, passageDuDimanche, prevenirCoach, REMIS } from '@/lib/app/ecriture';
 import { saisonsDuJour } from '@/lib/app/fond';
 import { site } from '@/lib/content';
 import { supabaseConfigure } from '@/lib/app/supabase';
@@ -31,9 +31,14 @@ export async function GET(request: Request) {
   // La dernière reprise (ou un appel à la main, sans en-tête de planification) : le coach apprend ce qui reste.
   const planif = request.headers.get('x-vercel-cron-schedule');
   if (echecs.length && (!planif || planif === DERNIERE)) {
+    // E4 (audits du 05/11/2026) : l'e-mail nomme les athlètes (dans l'e-mail au coach seulement, jamais au journal), et dit
+    // ce qui est vrai : le passage du lundi soir reprend ces semaines ; un coaché a aussi « Réessayer ».
+    const noms = await nomsDesPlans(echecs.map((c) => c.plan).filter(Boolean)).catch(() => new Map<string, string>());
+    const qui = [...new Set(echecs.map((c) => noms.get(c.plan)).filter(Boolean))].join(', ');
     await prevenirCoach(`Plans CTS : ${echecs.length} semaine${echecs.length > 1 ? 's' : ''} non écrite${echecs.length > 1 ? 's' : ''}`,
-      'Le passage du dimanche n’a pas pu écrire ou envoyer certaines semaines dans Nolio, même après ses reprises. Dès lundi, '
-      + `chacune est dans « À regarder », dans ton espace coach, avec son bouton « Réessayer » (${site.url}/app/coach).`);
+      `Le passage du dimanche n’a pas pu écrire ou envoyer certaines semaines dans Nolio, même après ses reprises${qui ? ` : ${qui}` : ''}. `
+      + 'Le passage de lundi soir les reprend, à partir de mardi, et te dit ce qui reste ; pour un coaché, tu peux aussi le faire '
+      + `toi-même dès lundi matin, « Réessayer » dans « À regarder » (${site.url}/app/coach).`);
   }
   return Response.json({ semaines: comptes.map(({ plan, quoi, erreur }) => ({ plan, quoi, erreur: erreur ?? null })) });
 }

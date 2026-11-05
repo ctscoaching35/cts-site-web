@@ -24,7 +24,7 @@ import { envoyerRelanceInvitation, EXPEDITEUR } from './emailBienvenue';
 import { lienFicheCourse } from './ficheCourse';
 import { glucidesDeLaStrategie } from './strategie';
 import { dateDe } from './trameNolio';
-import { appelNolio, coachs, listeNolio, refusNolio, sansVitesseImpossible, SPORTS_COURSE, type ReponseNolio } from './nolio';
+import { appelNolio, athletesNolio, coachs, listeNolio, moiNolio, refusNolio, sansVitesseImpossible, SPORTS_COURSE, type ReponseNolio } from './nolio';
 import { ajouterJours, joursEntre, SCHEMA_PLAN, type Plan, type Semaine } from './plan';
 import { clientService } from './supabase';
 import type { Fiche } from './tableau';
@@ -33,10 +33,11 @@ import { allure, coefficientRiegel, kmh, PROFIL_VIDE } from './zones';
 import { reperesDeBase } from './reperes';
 import { ecrireZonesNolio } from './zonesNolio';
 import { allureViseeKmh, ecrireAllureVisee } from './metriquesNolio';
-import { chargeChangee, chargeDe, jourDInvitation } from './invitation';
+import { chargeChangee, chargeDe, jourAlerteNolio, jourDInvitation, JOURS_RELANCE_INVITATION } from './invitation';
 import { lireConfirmation, rappelerLesConfirmations } from './confirmation';
 import { CONTINUITE_ACTIVE, lireLesRetouches, seancesLues, type SeanceLue } from './continuite';
 import { relierAuxPrevues } from './relier';
+import { semaineAReprendre, sortieApresArret } from './reprises';
 import { correctionsAEnvoyer, CORRECTIONS_ACTIVES, marquerAppliquees } from './corrections';
 import { derniereActivite, garderLesSignaux } from './signauxGardes';
 import { demonstrationCoachOuverte, moteurDemonstration } from './demonstrationCoach';
@@ -87,6 +88,9 @@ type SortieMoteur = {
   realise: Realise | null;
   // Le pourquoi de la semaine, pour le coach (moteur, cts_pourquoi ; demande du coach du 31/10/2026).
   pourquoi?: Pourquoi;
+  // D7 (moteur 8.451, audits du 05/11/2026) : la semaine que le contrôle du moteur refusait, écrite par un repli (1 : la
+  // même, sortie longue plafonnée ; 2 : celle du plan de l'achat, plafonnée ; 3 : celle du plan de l'achat) ; null sinon.
+  repli?: { niveau: number; effet?: string; refus?: string } | null;
 };
 export type Pourquoi = {
   profil: string[]; ou: string; semaine_passee: string | null; regles: Record<string, unknown>[];
@@ -344,7 +348,8 @@ export function semaineDu(plan: Plan, dateIso: string): Semaine | null {
 
 // La semaine en cours rattrapée à la main (« Réessayer » dans « À regarder », décision coach du 21/10/2026) : écrite et
 // envoyée comme le dimanche, à partir d'aujourd'hui, avec la même réservation qui empêche de la doubler.
-export async function rattraperLaSemaine(planId: string): Promise<string> {
+// depuis : le premier jour écrit (aujourd'hui par défaut ; le lendemain pour la reprise du soir, E4).
+export async function rattraperLaSemaine(planId: string, { depuis }: { depuis?: string } = {}): Promise<string> {
   const o = await objectifEcrit(planId);
   if (!o?.nolioAthlete) throw new Error('L’athlète n’a pas encore de compte Nolio relié.');
   if ((await plansALaMain()).has(planId)) throw new Error('Tu programmes cet athlète à la main : rien ne s’écrit dans son Nolio.');
@@ -373,7 +378,7 @@ export async function rattraperLaSemaine(planId: string): Promise<string> {
     // La première semaine d'une saison de fond, sans retours, comme le dimanche.
     const premiere = Boolean((o.parametres as { fond?: unknown }).fond) && !o.envois.some((e) => /^S\d+$/.test(e.semaine));
     const retours = premiere ? null : await lireRetours(o, ajouterJours(lundi, -35), aujourdhui);
-    await ecrireEtEnvoyer(o, s.numero, retours, { depuis: aujourdhui });
+    await ecrireEtEnvoyer(o, s.numero, retours, { depuis: depuis && depuis > aujourdhui ? depuis : aujourdhui });
   } catch (e) {
     const { data: ligne } = await service.from('nolio_envois').select('seances').eq('plan_id', planId).eq('semaine', s.numero).maybeSingle();
     if (!((ligne?.seances as unknown[] | undefined) ?? []).length) await service.from('nolio_envois').delete().eq('plan_id', planId).eq('semaine', s.numero);
@@ -512,7 +517,33 @@ async function envoyerEtRanger(o: Objectif, numero: string, sortie: SortieMoteur
   }
   await service.from('plans').update({ etat_ecriture: sortie.etat }).eq('id', o.planId);
   o.etat = sortie.etat;
+  // D7 : une semaine partie par un repli prévient le coach (la semaine est dans Nolio, à relire).
+  if (sortie.repli) await prevenirDuRepli(o, numero, sortie.repli).catch((e) => console.error(`Repli de ${o.planId} :`, e instanceof Error ? e.message : e));
   return sortie;
+}
+
+async function prevenirDuRepli(o: Objectif, numero: string, repli: NonNullable<SortieMoteur['repli']>) {
+  const nom = (await nomsDesPlans([o.planId])).get(o.planId) ?? 'Un athlète';
+  await prevenirCoach(`Plan CTS : la semaine ${numero.replace('S', '')} de ${nom} écrite par un repli`,
+    `Le contrôle du moteur refusait la semaine ${numero.replace('S', '')} de ${nom} (« ${o.plan.course.nom} »)`
+    + `${repli.refus ? ` : ${repli.refus}` : ''}. Elle est partie dans Nolio par un repli (${repli.niveau === 1
+      ? 'la même semaine, sortie longue plafonnée' : repli.niveau === 2 ? 'la semaine du plan de l’achat, sortie longue plafonnée'
+        : 'la semaine du plan de l’achat'})${repli.effet ? ` : ${repli.effet}` : ''}. Relis-la dans son Nolio${o.coache ? '' : ' (un acheteur : réponds à son e-mail de bienvenue si elle doit changer)'}.`,
+    o.coache ? o.coachId : null);
+}
+
+// Le nom de chaque plan, pour un e-mail au coach (E4, D7) : le coaché par sa fiche, l'acheteur par son plan.
+export async function nomsDesPlans(ids: string[]): Promise<Map<string, string>> {
+  const noms = new Map<string, string>();
+  if (!ids.length) return noms;
+  const service = clientService();
+  const [{ data: coaches }, { data: plans }] = await Promise.all([
+    service.from('coaching').select('plan_id, athlete_nom').in('plan_id', ids),
+    service.from('plans').select('id, nom:donnees->athlete->>nom').in('id', ids),
+  ]);
+  for (const p of plans ?? []) if (String(p.nom ?? '').trim()) noms.set(String(p.id), String(p.nom).trim());
+  for (const c of coaches ?? []) if (String(c.athlete_nom ?? '').trim()) noms.set(String(c.plan_id), String(c.athlete_nom).trim());
+  return noms;
 }
 
 // La trame posée d'avance par un départ d'avant le 24/10/2026 (le bandeau de chaque semaine jusqu'à la course) : ce
@@ -712,22 +743,25 @@ export async function demarrerObjectif(planId: string, { prevenir = true, lundi,
         await retirerDeNolio(saison, { depuis: premier });
       }
     }
+    // D9 (audits du 05/11/2026, lot 1) : les recalages du départ se refont tant qu'aucune semaine n'est partie. Avant, un
+    // départ qui échouait après avoir posé ses questionnaires ou sa course (des envois notés) ne recalait plus rien au
+    // réessai : la première semaine partait des réponses de l'achat.
+    const sansSemaine = !o.envois.some((e) => /^S\d+$/.test(e.semaine));
     // Juste après la course d'un autre objectif : calé sur ce que l'athlète y a vraiment couru.
-    if (reprise && apres && !o.envois.length) await recalerSurLePrecedent(o, apres.q.id, premier);
+    if (reprise && apres && sansSemaine) await recalerSurLePrecedent(o, apres.q.id, premier);
     // Une charge déclarée il y a plus de 4 semaines (un objectif lointain) : relue dans Nolio au départ réel.
-    else if (o.coache && !o.envois.length && String(o.parametres.declaree_le ?? '') < ajouterJours(premier, -28)) {
+    else if (o.coache && sansSemaine && String(o.parametres.declaree_le ?? '') < ajouterJours(premier, -28)) {
       await recalerSurNolio(o, premier).catch((e) => console.error(`Recalage de ${planId} :`, e instanceof Error ? e.message : e));
     }
-    // Un acheteur qui a corrigé sa charge sur la carte de son app (décision coach du 04/11/2026 au soir).
-    else if (!o.coache && !o.envois.length) {
-      await recalerSurLaConfirmation(o, premier).catch((e) => console.error(`Confirmation de ${planId} :`, e instanceof Error ? e.message : e));
-    }
-    if (o.coache && !o.envois.length) {
+    // Un acheteur qui a corrigé sa charge sur la carte de son app (décision coach du 04/11/2026 au soir). Le moteur muet
+    // fait échouer le départ (il se reprend, le recalage avec) ; un refus garde les réponses de l'achat.
+    else if (!o.coache && sansSemaine) await recalerSurLaConfirmation(o, premier);
+    if (o.coache && sansSemaine) {
       await ancrerAuDepart(o, premier).catch((e) => console.error(`Ancrage de ${planId} :`, e instanceof Error ? e.message : e));
     }
     // LE DÉPART INDIVIDUALISÉ (décisions coach du 26/10/2026) : au rang du plan, fondations sautées, semaine allégée
     // passée en charge, plus longue sortie sur 8 semaines ; ce qui a été lu, pour la carte « Son départ ».
-    if (o.coache && !o.envois.length) {
+    if (o.coache && sansSemaine) {
       await deciderLeDepart(o, premiere).catch((e) => console.error(`Départ de ${planId} :`, e instanceof Error ? e.message : e));
     }
     await dimancheDeLAcheteur(o);
@@ -737,16 +771,18 @@ export async function demarrerObjectif(planId: string, { prevenir = true, lundi,
     for (const c of ((o.parametres.courses_secondaires ?? []) as Course[])) if (c.date >= aujourdhui) await poserCourse(o, c, false);
     // PO4 : la fiche d'une course de préparation qui tombe dans sa première semaine ; les suivantes partent avec la leur.
     await fichesDesPreparations(o, ajouterJours(premiere.lundi, 6));
-    const deja = o.envois.some((e) => e.semaine === premiere.numero);
-    if (!deja) await ecrireEtEnvoyer(o, premiere.numero, null, { depuis: depart > premiere.lundi ? depart : undefined, reprise });
+    // E5 (audits du 05/11/2026, lot 1) : la semaine se juge d'après les semaines écrites, comme le dimanche ; une semaine 1
+    // envoyée à moitié (Nolio coupé en route) se complète au réessai, sans rien doubler (la mise à jour crée ce qui manque).
+    const { data: ecrite } = await service.from('semaines_ecrites').select('numero').eq('plan_id', planId).eq('numero', premiere.numero).maybeSingle();
+    if (!ecrite) await ecrireEtEnvoyer(o, premiere.numero, null, { depuis: depart > premiere.lundi ? depart : undefined, reprise });
     if (!o.coache) await rangerAcheteur(o);
   } catch (e) {
     await service.from('plans').update({ demarre_le: null }).eq('id', planId);
     if (prevenir && !o.coache) {
       await prevenirCoach('Plan CTS : une préparation n’a pas démarré dans Nolio',
         `La préparation de l’acheteur du plan « ${o.plan.course.nom} » n’a pas démarré dans Nolio : `
-        + `${e instanceof Error ? e.message : String(e)} Le site réessaie chaque jour à 18 h 30 ; sa première semaine part `
-        + 'au premier essai réussi, à partir de ce jour-là.');
+        + `${e instanceof Error ? e.message : String(e)} Le site réessaie chaque soir ; sa première semaine part (ou se `
+        + 'complète) au premier essai réussi, à partir de ce jour-là.');
     }
     throw e;
   }
@@ -787,8 +823,10 @@ async function recalerSurLaConfirmation(o: Objectif, lundi: string) {
   const parametres = { ...o.parametres, champs: { ...avant, ...reponse.charge }, declaree_le: lundi };
   try {
     await moteur('/v1/trame', { parametres });
-  } catch {
-    return;
+  } catch (e) {
+    // D9 : un refus (400) garde les réponses de l'achat ; le moteur muet fait échouer le départ, qui se reprend.
+    if (e instanceof Error && /: 400\b/.test(e.message)) return;
+    throw e;
   }
   await clientService().from('plans').update({ parametres, trame: null }).eq('id', o.planId);
   o.parametres = parametres;
@@ -1943,7 +1981,7 @@ export async function inviterAcheteur(planId: string, emailAchat: string, { prev
     if (prevenir) {
       await prevenirCoach('Plan CTS : invitation Nolio à refaire',
         `Nolio n’a pas répondu à l’invitation de l’acheteur du plan « ${p?.course_nom ?? ''} » `
-        + `(${e instanceof Error ? e.message : String(e)}). Le site réessaie chaque jour à 18 h 30 UTC.`);
+        + `(${e instanceof Error ? e.message : String(e)}). Le site réessaie chaque soir.`);
     }
     return 'a_inviter';
   }
@@ -1954,12 +1992,15 @@ export async function inviterAcheteur(planId: string, emailAchat: string, { prev
     if (prevenir) {
       await prevenirCoach('Plan CTS : invitation Nolio à refaire',
         `L’invitation dans ton équipe Nolio de l’acheteur du plan « ${p?.course_nom ?? ''} » (${email}) n’est pas partie : `
-        + `${raison} Le site réessaie chaque jour à 18 h 30 UTC ; si ton équipe est pleine, libère une place.`);
+        + `${raison} Le site réessaie chaque soir ; si ton équipe est pleine, libère une place.`);
     }
     return 'a_inviter';
   }
   const statut = r.corps?.status === 'active' ? 'actif' : 'invite';
-  await service.from('plans').update({ nolio_athlete_id: String(r.corps?.user ?? ''), nolio_statut: statut, nolio_email: null }).eq('id', planId);
+  // E1 (audits du 05/11/2026) : l'adresse Nolio donnée en plus reste jusqu'à son adhésion, pour l'alerte au coach ;
+  // effacée dès qu'il est dans l'équipe (ici, le webhook de Nolio ou la relecture de l'équipe).
+  await service.from('plans').update({ nolio_athlete_id: String(r.corps?.user ?? ''), nolio_statut: statut,
+    nolio_email: statut === 'actif' ? null : (p?.nolio_email ?? null) }).eq('id', planId);
   if (equipeId) {
     const groupe = await groupePlans(equipeId).catch(() => null);
     if (groupe) await appelNolio('POST', `team/groups/${groupe}/members/`, { user: String(r.corps?.user ?? ''), role: 'athlete' }).catch(() => null);
@@ -1994,10 +2035,10 @@ export async function reinviter(): Promise<Compte[]> {
 const jourParis = (horodatage: string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date(horodatage));
 
 // Une invitation envoyée et jamais acceptée (décision coach du 21/10/2026 : « relance puis alerte ») : 3 jours après
-// l'invitation, un e-mail à l'acheteur ; 7 jours après, un e-mail au coach, avec son adresse. Le passage tourne une fois par
-// jour : chaque envoi tombe un seul jour, sans rien garder.
-export const JOURS_RELANCE = 3;
-export const JOURS_ALERTE = 7;
+// l'invitation, un e-mail à l'acheteur. L'alerte au coach part le samedi qui précède son départ (E1, alerterLeCoach), et
+// plus 7 jours après l'invitation, le lundi du départ. Le passage tourne une fois par jour : chaque envoi tombe un seul
+// jour, sans rien garder.
+export const JOURS_RELANCE = JOURS_RELANCE_INVITATION;
 export async function relancerInvitations(): Promise<Compte[]> {
   const service = clientService();
   const aujourdhui = aujourdhuiParis();
@@ -2007,21 +2048,13 @@ export async function relancerInvitations(): Promise<Compte[]> {
   for (const p of data ?? []) {
     // Les jours depuis l'invitation (la semaine d'avant le départ pour une course lointaine), plus depuis l'achat.
     const depuis = joursEntre(jourDInvitation(p.debut_plan as string | null, jourParis(p.cree_le as string)), aujourdhui);
-    if (depuis !== JOURS_RELANCE && depuis !== JOURS_ALERTE) continue;
+    if (depuis !== JOURS_RELANCE) continue;
     try {
       const { data: u } = await service.auth.admin.getUserById(p.compte_id as string);
       const email = u?.user?.email;
       if (!email) continue;
-      if (depuis === JOURS_RELANCE) {
-        await envoyerRelanceInvitation(email, String(p.nom ?? ''), `${site.url}/app`);
-        comptes.push({ plan: p.id as string, quoi: 'invitation relancée' });
-      } else {
-        await prevenirCoach('Plan CTS : invitation Nolio toujours en attente',
-          `L’acheteur du plan « ${p.course_nom} » n’a toujours pas accepté l’invitation dans ton équipe Nolio, `
-          + `${JOURS_ALERTE} jours après son invitation : ses séances ne peuvent pas lui arriver. Il a été relancé par e-mail `
-          + `au bout de ${JOURS_RELANCE} jours. Son adresse : ${email}.`);
-        comptes.push({ plan: p.id as string, quoi: 'coach prévenu (invitation en attente)' });
-      }
+      await envoyerRelanceInvitation(email, String(p.nom ?? ''), `${site.url}/app`);
+      comptes.push({ plan: p.id as string, quoi: 'invitation relancée' });
     } catch (e) {
       comptes.push({ plan: p.id as string, quoi: 'relance non faite', erreur: e instanceof Error ? e.message : String(e) });
     }
@@ -2029,15 +2062,185 @@ export async function relancerInvitations(): Promise<Compte[]> {
   return comptes;
 }
 
+// E1 (audits du 05/11/2026, lot 1, « le filet Nolio ») : le samedi qui précède le départ d'un acheteur (jourAlerteNolio),
+// un e-mail au coach pour tout plan acheté pas encore dans l'équipe — invitation pas acceptée, refusée ou pas partie —,
+// avec l'adresse invitée ; sans lui dans l'équipe, aucune séance ne lui arrive. Un seul jour par plan, sans rien garder.
+const ETAT_INVITATION: Record<string, string> = {
+  invite: 'l’invitation est partie, il ne l’a pas encore acceptée (il a été relancé par e-mail)',
+  refuse: 'il a refusé l’invitation',
+  a_inviter: 'l’invitation n’a pas pu partir (le site réessaie chaque soir)',
+  en_cours: 'l’invitation n’a pas pu partir (le site réessaie chaque soir)',
+};
+export async function alerterLeCoach(): Promise<Compte[]> {
+  const service = clientService();
+  const aujourdhui = aujourdhuiParis();
+  const { data } = await service.from('plans').select('id, compte_id, course_nom, cree_le, debut_plan, nolio_statut, nolio_email, nom:donnees->athlete->>nom')
+    .in('nolio_statut', Object.keys(ETAT_INVITATION)).is('demarre_le', null).not('parametres', 'is', null).gte('course_date', aujourdhui);
+  const comptes: Compte[] = [];
+  for (const p of data ?? []) {
+    if (jourAlerteNolio(p.debut_plan as string | null, jourParis(p.cree_le as string)) !== aujourdhui) continue;
+    try {
+      const { data: u } = await service.auth.admin.getUserById(p.compte_id as string);
+      const adresse = String(p.nolio_email || u?.user?.email || '');
+      const debut = String(p.debut_plan ?? '').slice(0, 10);
+      const premiere = debut > ajouterJours(jourParis(p.cree_le as string), 1) ? debut : ajouterJours(jourParis(p.cree_le as string), 1);
+      const le = new Date(`${premiere > aujourdhui ? premiere : ajouterJours(aujourdhui, 1)}T12:00:00Z`)
+        .toLocaleDateString('fr-FR', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' });
+      await prevenirCoach(`Plan CTS : ${String(p.nom ?? '').trim() || 'un acheteur'} n’est pas encore dans ton équipe Nolio`,
+        `${String(p.nom ?? '').trim() || 'L’acheteur'} (plan « ${p.course_nom} ») n’est pas encore dans ton équipe Nolio, et sa `
+        + `préparation commence le ${le} : ${ETAT_INVITATION[String(p.nolio_statut)]}. L’adresse invitée : ${adresse || 'inconnue'}. `
+        + 'Sans lui dans l’équipe, aucune séance ne lui arrive : regarde l’invitation dans Nolio, ou écris-lui.');
+      comptes.push({ plan: p.id as string, quoi: 'coach prévenu (pas encore dans l’équipe)' });
+    } catch (e) {
+      comptes.push({ plan: p.id as string, quoi: 'alerte non faite', erreur: e instanceof Error ? e.message : String(e) });
+    }
+  }
+  return comptes;
+}
+
+// E1 : une adhésion que le webhook de Nolio n'a pas transmise (manquée, ou Nolio l'a envoyée pendant une mise en ligne) :
+// chaque jour, l'équipe relue (GET me/athletes/) ; un acheteur invité ou refusé qui y est déjà passe « actif » et sa
+// préparation démarre, comme à l'événement d'adhésion. Rien à lire sans plan en attente.
+export async function relireLEquipe(): Promise<Compte[]> {
+  const service = clientService();
+  const { data } = await service.from('plans').select('id, nolio_athlete_id').in('nolio_statut', ['invite', 'refuse'])
+    .not('nolio_athlete_id', 'is', null).not('parametres', 'is', null).gte('course_date', aujourdhuiParis());
+  if (!data?.length) return [];
+  const membres = new Set((await athletesNolio()).map((a) => a.id));
+  const comptes: Compte[] = [];
+  for (const p of data.filter((x) => membres.has(String(x.nolio_athlete_id)))) {
+    try {
+      await service.from('plans').update({ nolio_statut: 'actif', nolio_email: null }).eq('id', p.id).in('nolio_statut', ['invite', 'refuse']);
+      const d = await demarrerObjectif(String(p.id));
+      comptes.push({ plan: String(p.id), quoi: `adhésion relue dans l’équipe : ${'numero' in d ? `démarré (${d.numero})` : `programmé au ${d.prevu}`}` });
+    } catch (e) {
+      comptes.push({ plan: String(p.id), quoi: 'adhésion relue, départ non fait', erreur: e instanceof Error ? e.message : String(e) });
+    }
+  }
+  return comptes;
+}
+
 // ─── Le passage quotidien ─────────────────────────────────────────────────
 
-// Chaque jour : la fatigue franche de chaque plan actif (avec l'accord de lecture), les invitations à refaire, et un
-// seul e-mail au coach s'il s'est passé quelque chose chez ses coachés (ajustements du dimanche et du jour, arrêts ;
-// question 20).
-export async function passageQuotidien(): Promise<Compte[]> {
+// E4 (audits du 05/11/2026, lot 1) : le lundi soir, les semaines dues que le dimanche n'a pas écrites (Nolio ou le moteur
+// muets toute la soirée, une mise en ligne) s'écrivent, à partir du mardi, par le chemin de « Réessayer »
+// (rattraperLaSemaine : sa réservation, les séances que le coach a posées gardées). Les écrites, laissées au coach ou en
+// cours ne bougent pas ; une semaine de récupération attend « Réessayer ». Le coach reçoit les noms : reprises, et celles
+// qui restent à faire. jour : aujourd'hui (Paris), simulable.
+export async function reprendreLesSemainesDues(budgetMs = 90_000, jour = aujourdhuiParis()): Promise<Compte[]> {
+  if (!semaineAReprendre({ jour, numero: 'S', ecrite: false, laissee: false })) return [];
+  const debut = Date.now();
+  const service = clientService();
+  const comptes: Compte[] = [];
+  const reprises: string[] = [];
+  const restent: string[] = [];
+  for (const planId of await plansActifs()) {
+    if (Date.now() - debut > budgetMs) {
+      restent.push(planId);
+      continue;
+    }
+    // Rien à reprendre : la semaine du jour est écrite, ou n'est pas une semaine de préparation.
+    const o = await objectifEcrit(planId).catch(() => null);
+    const s = o ? semaineDu(o.plan, jour) : null;
+    if (!o?.nolioAthlete || !s) continue;
+    const { data: ecrite } = await service.from('semaines_ecrites').select('numero').eq('plan_id', planId).eq('numero', s.numero).maybeSingle();
+    if (!semaineAReprendre({ jour, numero: s.numero, ecrite: Boolean(ecrite), laissee: o.envois.some((e) => e.semaine === cleLaissee(jour)) })) continue;
+    try {
+      await rattraperLaSemaine(planId, { depuis: ajouterJours(jour, 1) });
+      reprises.push(planId);
+      comptes.push({ plan: planId, quoi: `${s.numero} écrite le lundi (dimanche raté)`, coache: o.coache });
+    } catch (e) {
+      // Des séances que le coach a posées entre-temps : la semaine est la sienne, rien à reprendre.
+      if (e instanceof Error && e.message.startsWith('Des séances que tu as posées')) {
+        await noterLaissee(o, jour);
+        comptes.push({ plan: planId, quoi: `${s.numero} laissée, séances du coach gardées`, coache: o.coache });
+        continue;
+      }
+      restent.push(planId);
+      comptes.push({ plan: planId, quoi: `${s.numero} toujours pas écrite`, erreur: e instanceof Error ? e.message : String(e) });
+    }
+  }
+  if (reprises.length || restent.length) {
+    const noms = await nomsDesPlans([...reprises, ...restent]);
+    const liste = (ids: string[]) => ids.map((id) => noms.get(id) ?? 'un athlète').join(', ');
+    await prevenirCoach(`Plans CTS : ${reprises.length + restent.length} semaine${reprises.length + restent.length > 1 ? 's' : ''} du dimanche reprise${reprises.length + restent.length > 1 ? 's' : ''} ce lundi`,
+      [reprises.length ? `Écrites ce soir, à partir de demain : ${liste(reprises)}.` : '',
+        restent.length ? `Toujours pas écrites : ${liste(restent)}. Pour un coaché, « Réessayer » dans « À regarder » (${site.url}/app/coach) ; pour un acheteur, le site ne réessaie plus de lui-même : préviens-le en réponse à son e-mail de bienvenue.` : '',
+      ].filter(Boolean).join('\n\n'));
+  }
+  return comptes;
+}
+
+// E3 (audits du 05/11/2026, lot 1) : « Arrêter cette préparation (remboursée) », dans Chiffres › Plans. Le remboursement
+// reste fait dans Stripe ; ici, plus rien ne part : ce que la préparation a posé et qui est encore à venir quitte son
+// Nolio (séances, notes, bandeaux, courses, questionnaires de cet objectif), le statut passe à « sorti » (plus
+// d'invitation, de relance, de dimanche, de départ), et l'acheteur quitte l'équipe s'il n'y est pour rien d'autre. Jamais
+// le coach lui-même (« (toi) »), ni un athlète qui a une fiche de coaché : il reste dans l'équipe, sa préparation s'arrête.
+// Rend ce qui n'a pas pu partir de Nolio, en phrases.
+export async function arreterLaPreparation(planId: string): Promise<string[]> {
+  const service = clientService();
+  const { data: p } = await service.from('plans').select('id, nolio_athlete_id, nolio_statut, demarre_le, parametres').eq('id', planId).maybeSingle();
+  if (!p?.parametres || !p.nolio_statut || p.nolio_statut === 'coaching') throw new Error('Ce plan n’est pas une préparation achetée en cours.');
+  const { data: coache } = await service.from('coaching').select('plan_id').eq('plan_id', planId).maybeSingle();
+  if (coache) throw new Error('C’est un objectif de coaching : retire-le depuis la fiche de l’athlète.');
+  const soucis: string[] = [];
+  const usr = (p.nolio_athlete_id ?? null) as string | null;
+  if (usr && p.demarre_le) soucis.push(...await retirerDeNolio(planId).catch((e) => [e instanceof Error ? e.message : String(e)]));
+  const { error } = await service.from('plans').update({ nolio_statut: 'sorti', depart_prevu: null, etat_ecriture: null }).eq('id', planId);
+  if (error) throw new Error(error.message);
+  // La date de l'arrêt, que l'app de l'acheteur lit (migration du 05/11/2026 ; sans elle, l'app le dit comme une sortie).
+  await service.from('plans').update({ arretee_le: new Date().toISOString() }).eq('id', planId).then(() => null, () => null);
+  if (usr && /^usr_/.test(usr)) {
+    const { data: autres } = await service.from('plans').select('id').eq('nolio_athlete_id', usr).in('nolio_statut', ['actif', 'invite']).neq('id', planId);
+    const { data: fiches } = await service.from('athletes_coaches').select('id').eq('nolio_athlete_id', usr).limit(1);
+    const moi = await moiNolio().then((m) => m.id).catch(() => null);
+    const geste = sortieApresArret({ usr, autresPlans: autres?.length ?? 0, coache: Boolean(fiches?.length), moi });
+    const equipeId = await equipeDuCoach();
+    if (geste === 'reprogrammer') {
+      // Un autre plan en cours : sa sortie suit sa dernière course.
+      await reprogrammerSortie(usr).catch((e) => soucis.push(e instanceof Error ? e.message : String(e)));
+    } else if (geste === 'retirer' && equipeId) {
+      const sorties = await listeNolio<{ id: string; user?: string }>(`team/teams/${equipeId}/expirations/`).catch(() => []);
+      for (const x of sorties.filter((y) => y.user === usr)) await appelNolio('DELETE', `team/teams/${equipeId}/expirations/${x.id}/`).catch(() => null);
+      const r = await appelNolio('DELETE', `team/teams/${equipeId}/members/${usr}/`).catch(() => null);
+      if (!r || (r.statut !== 204 && r.statut !== 200 && r.statut !== 404)) soucis.push(r ? refusNolio(r, 'sa sortie de l’équipe') : 'sa sortie de l’équipe : Nolio injoignable');
+    }
+  }
+  return soucis;
+}
+
+// Chaque jour, en tête (X1, audits du 05/11/2026, lot 2 : « les appels légers d'abord ») : les invitations à refaire, la
+// relance de J+3, l'alerte du samedi et la relecture de l'équipe (E1), le rappel du samedi de la confirmation de charge,
+// les départs du jour, et le lundi les semaines du dimanche à reprendre (E4) : avant les tâches longues, que la limite des
+// 300 s de la tâche coupe en premier.
+export async function passageQuotidienLeger(): Promise<Compte[]> {
+  const comptes: Compte[] = [];
+  const garder = async (quoi: string, f: () => Promise<Compte[]>) => {
+    comptes.push(...await f().catch((e) => [{ plan: '', quoi, erreur: e instanceof Error ? e.message : String(e) }]));
+  };
+  await garder('invitations non refaites', reinviter);
+  await garder('relances non faites', relancerInvitations);
+  await garder('alertes non faites', alerterLeCoach);
+  await garder('équipe non relue', relireLEquipe);
+  // Le samedi, la confirmation de charge restée sans réponse (décision coach du 04/11/2026 au soir).
+  await garder('confirmations non rappelées', rappelerLesConfirmations);
+  await garder('départs non faits', () => departsDuJour(90_000));
+  await garder('semaines du dimanche non reprises', () => reprendreLesSemainesDues(60_000));
+  return comptes;
+}
+
+// Chaque jour, après le reste (X1) : la fatigue franche de chaque plan actif (avec l'accord de lecture) et ses tests, en
+// temps compté (les plans restants le soir suivant), puis un seul e-mail au coach s'il s'est passé quelque chose chez ses
+// coachés (ajustements du dimanche et du jour, arrêts ; question 20).
+export async function passageQuotidienLong(budgetMs = 150_000): Promise<Compte[]> {
+  const debut = Date.now();
   const comptes: Compte[] = [];
   const tests: TestLu[] = [];
   for (const planId of await plansActifs()) {
+    if (Date.now() - debut > budgetMs) {
+      comptes.push({ plan: planId, quoi: 'fatigue remise au soir suivant' });
+      continue;
+    }
     try {
       const c = await fatigueDuJour(planId);
       if (c) comptes.push(c);
@@ -2052,11 +2255,6 @@ export async function passageQuotidien(): Promise<Compte[]> {
       comptes.push({ plan: planId, quoi: 'tests non lus', erreur: e instanceof Error ? e.message : String(e) });
     }
   }
-  comptes.push(...await reinviter());
-  comptes.push(...await relancerInvitations());
-  // Le samedi, la confirmation de charge restée sans réponse (décision coach du 04/11/2026 au soir).
-  comptes.push(...await rappelerLesConfirmations().catch((e) => [{ plan: '', quoi: 'confirmations non rappelées', erreur: e instanceof Error ? e.message : String(e) }]));
-  comptes.push(...await departsDuJour());
   await resumeAuCoach(comptes.filter((c) => c.coache && c.journal?.length), tests.filter((t) => t.coache));
   return comptes;
 }
@@ -2066,6 +2264,7 @@ const REGLES_EN_CLAIR: Record<string, string> = {
   R8: 'séance clé pas faite, refaite sous une autre forme', C5: 'semaine de course juste après la récupération, sans séance dure',
   COACH: 'ta correction avant l’envoi',
   R5: 'disponibilités', R7: 'séance en plus', O3: 'course secondaire', CH: 'charge reprise après une semaine légère',
+  REPLI: 'semaine refusée par le contrôle du moteur, écrite par un repli',
 };
 
 // Le Suivi du coach (décision 8 du document des règles) : les ajustements de ses coachés écrits ces 8 derniers jours,

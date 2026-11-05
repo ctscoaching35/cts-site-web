@@ -4,7 +4,7 @@ import { useActionState, useState } from 'react';
 import { formatRouteDe } from '@/lib/app/route';
 import { CORRECTIONS, RAISONS, type Choix } from '@/lib/app/correctionsTextes';
 import {
-  ajouterCourse, annulerCorrections, annulerSemaine, choisirCorrections, demarrerDansNolio, donnerMonAccord, modifierCourse, reessayerLaSemaine, retirerCourse, retirerMonAccord,
+  ajouterCourse, annulerCorrections, annulerSemaine, arreterPreparationRemboursee, choisirCorrections, demarrerDansNolio, donnerMonAccord, modifierCourse, reessayerLaSemaine, retirerCourse, retirerMonAccord,
   type EtatGeste,
 } from '@/lib/app/actionsEcriture';
 
@@ -238,5 +238,27 @@ export function CorrigerSemaine({ planId, lundi, choix }: { planId: string; lund
         </form>
       )}
     </div>
+  );
+}
+
+// E3 (audits du 05/11/2026) : arrêter la préparation d'un acheteur remboursé, après une confirmation ; le remboursement se
+// fait dans Stripe.
+export function ArreterPreparation({ planId, nom }: { planId: string; nom: string }) {
+  const [etat, action, enCours] = useActionState<EtatGeste, FormData>(arreterPreparationRemboursee.bind(null, planId), null);
+  if (etat?.ok) return <div className="basis-full"><Message etat={etat} /></div>;
+  return (
+    <details className="basis-full text-xs">
+      <summary className="cursor-pointer inline-flex items-center min-h-11 font-semibold text-[#5E5C78] underline underline-offset-2">Arrêter cette préparation (remboursée)</summary>
+      <form action={action} className="mt-1 space-y-2">
+        <p className="text-[#4A4866] leading-relaxed">
+          La préparation de {nom} s’arrête : plus d’invitation ni de séance écrite, ce qui est encore à venir quitte son Nolio,
+          et il quitte ton équipe s’il n’y est que pour elle. Le remboursement, lui, se fait dans Stripe.
+        </p>
+        <button type="submit" disabled={enCours} className="min-h-11 px-3 rounded-lg border border-[#E2725B]/50 font-bold text-[#B5462F] disabled:opacity-50">
+          {enCours ? 'Arrêt…' : 'Confirmer l’arrêt'}
+        </button>
+        <Message etat={etat} />
+      </form>
+    </details>
   );
 }
