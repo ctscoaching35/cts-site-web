@@ -10,7 +10,7 @@ import { Carte, CarteSombre, Surtitre } from './Ui';
 import { CarteSaison } from './SaisonDeFond';
 import { nouveauxBadges } from '@/lib/app/badges';
 import { carteDeConfirmation, confirmationAVenir, type CarteConfirmation } from '@/lib/app/confirmation';
-import { carteOuverte, invitationAVenir } from '@/lib/app/invitation';
+import { carteOuverte, chargeDe, confirmationDemandee, invitationAVenir } from '@/lib/app/invitation';
 import { mesBadges } from '@/lib/app/badgesNolio';
 import { monProfilDEntrainement } from '@/lib/app/profilEntrainement';
 import { lien, prenom, recuperationDuCoache, type Contexte, type Recuperation } from '@/lib/app/contexte';
@@ -32,7 +32,8 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
   const { plan, jour } = ctx;
   const installer = `${lien('/app/compte', ctx)}#installer`;
   // Le profil de coureur d'un coaché, rempli d'abord (décision coach du 23/10/2026) : une étape de « Pour bien démarrer ».
-  const profil = !ctx.coache || ctx.demonstration || !demarrage
+  // En démonstration, ?profil=vide : pas encore rempli.
+  const profil = ctx.demo ? !ctx.coache || !ctx.demo.profilVide : !ctx.coache || !demarrage
     || Object.keys((await monProfilDEntrainement().catch(() => null)) ?? { inconnu: true }).length > 0;
   const lienProfil = `${lien('/app/profil', ctx)}#profil-entrainement`;
   const lundiCourant = ajouterJours(jour, -((new Date(`${jour}T12:00:00Z`).getUTCDay() + 6) % 7));
@@ -55,7 +56,8 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
           {demande && (
             <Carte className="text-sm text-indigo"><p role="status">Ta demande est partie chez ton coach : il la relit et lance ta préparation.</p></Carte>
           )}
-          {demarrage && <PourBienDemarrer acheteur={false} nolio="coache" accord={Boolean(ctx.fiche?.accord)} questionnaire={false} installer={installer} profil={profil} lienProfil={lienProfil} />}
+          {demarrage && <PourBienDemarrer acheteur={false} nolio="coache" accord={Boolean(ctx.fiche?.accord)} questionnaire={false} installer={installer} profil={profil} lienProfil={lienProfil}
+            demonstration={ctx.demonstration} />}
           {recup && <CarteRecuperation recup={recup} ctx={ctx} prochain={null} />}
           {/* B-AT-2 et §8, point 9 : la carte reste, avec sa raison ; le questionnaire du samedi, qu'il reçoit. */}
           <CetteSemaine semaine={null} ligne={null} questionnaire nolio={lecture.seances} raison={lecture.raison} coache
@@ -64,7 +66,7 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
           <CarteSombre className="space-y-3">
             <Surtitre ton="clair" as="div">Ton prochain objectif</Surtitre>
             <p className="text-[0.9375rem] font-bold">Un objectif en vue ? Propose-le à ton coach.</p>
-            <Link href="/app/objectif/nouveau" className="inline-flex items-center min-h-11 px-4 rounded-full bg-white text-indigo text-[0.8125rem] font-bold">
+            <Link href={lien('/app/objectif/nouveau', ctx)} className="inline-flex items-center min-h-11 px-4 rounded-full bg-white text-indigo text-[0.8125rem] font-bold">
               Proposer un objectif
             </Link>
           </CarteSombre>
@@ -90,7 +92,7 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
   // Pas encore dans Nolio : la semaine de la préparation, et quand elle y arrive (décision coach du 20/10/2026). Sans
   // accord ou Nolio muet, plus de « bientôt » (AT1, B-AT-1) : la carte le dit autrement.
   const raison = lecture && (lecture.raison === 'sans_accord' || lecture.raison === 'muet') ? lecture.raison : null;
-  const arrivee = nolio || raison || ctx.demonstration || !ligne || d.nolio === 'arrete' ? null : !ctx.coache && d.nolio !== 'actif' ? 'invitation' as const : 'bientot' as const;
+  const arrivee = nolio || raison || lecture?.raison === 'demo' || !ligne || d.nolio === 'arrete' ? null : !ctx.coache && d.nolio !== 'actif' ? 'invitation' as const : 'bientot' as const;
   const jauge = jaugeDuPlan(d.trame, d.realises, jour);
   const fiches = fichesDeLaSemaine(d.fiches, jour);
   const nom = prenom(plan.athlete.nom);
@@ -98,12 +100,13 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
   const nouveaux = badges.etat ? nouveauxBadges(badges.etat, jour) : [];
   // Une course de préparation s'ajoute dans l'objectif, tant que la course est à venir et le plan écrit semaine par
   // semaine.
-  const ajout = d.ecrit && !ctx.demonstration && plan.course.date >= jour ? `${lien('/app/plan', ctx)}#ajouter-course` : null;
+  const ajout = d.ecrit && plan.course.date >= jour ? `${lien('/app/plan', ctx)}#ajouter-course` : null;
   // L'invitation d'un acheteur dans Nolio, le lundi de la semaine qui précède son départ (décision coach du 04/11/2026 au
   // soir, lib/app/invitation.ts) ; confirmer : ce jour-là, son app lui demandera si sa charge a changé (un achat fait
   // plus de 3 semaines avant). La carte de cette confirmation, de l'invitation à la veille du départ.
   const inviteLe = ctx.coache ? null : invitationAVenir(plan.course.date_debut_plan, jour);
-  const confirmer = Boolean(inviteLe && (ctx.demonstration || await confirmationAVenir(ctx.cle).catch(() => false)));
+  const confirmer = Boolean(inviteLe && (ctx.demo ? confirmationDemandee(plan.course.date_debut_plan, ctx.demo.achat)
+    : await confirmationAVenir(ctx.cle).catch(() => false)));
   const confirmation = ctx.coache || etape !== 'avant' ? null : ctx.demonstration ? confirmationDeDemonstration(ctx)
     : await carteDeConfirmation(ctx.cle, jour).catch(() => null);
   // L'entre-deux d'un coaché (décision coach du 20/10/2026) : sa dernière course passée, aucun objectif à venir. Son
@@ -119,13 +122,14 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
             <div className="text-xs font-semibold text-[#5E5C78] first-letter:uppercase">{dateLongue(jour)}</div>
             <h1 className="mt-1 text-[1.625rem] font-extrabold text-indigo tracking-tight">{nom ? `Bonjour ${nom}` : 'Bonjour'}</h1>
           </div>
-          {demarrage && <PourBienDemarrer acheteur={false} nolio="coache" accord={d.accord} questionnaire={false} installer={installer} profil={profil} lienProfil={lienProfil} />}
+          {demarrage && <PourBienDemarrer acheteur={false} nolio="coache" accord={d.accord} questionnaire={false} installer={installer} profil={profil} lienProfil={lienProfil}
+            demonstration={ctx.demonstration} />}
           {recup && <CarteRecuperation recup={recup} ctx={ctx} prochain={null} />}
           {!recup && (
             <CarteSombre className="space-y-3">
               <Surtitre ton="clair" as="div">Ton prochain objectif</Surtitre>
               <p className="text-[0.9375rem] font-bold">Il se prépare avec ton coach.</p>
-              <Link href="/app/objectif/nouveau" className="inline-flex items-center min-h-11 px-4 rounded-full bg-white text-indigo text-[0.8125rem] font-bold">
+              <Link href={lien('/app/objectif/nouveau', ctx)} className="inline-flex items-center min-h-11 px-4 rounded-full bg-white text-indigo text-[0.8125rem] font-bold">
                 Proposer un objectif
               </Link>
             </CarteSombre>
@@ -158,7 +162,7 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
         {etape !== 'apres' && demarrage && d.nolio !== 'sorti' && d.nolio !== 'arrete' && d.nolio !== 'coaching' && (
           <PourBienDemarrer acheteur={!ctx.coache} nolio={d.nolio} accord={d.accord} questionnaire={d.ecrit && !ctx.aLaMain} installer={installer}
             profil={profil} lienProfil={lienProfil} seanceFaite={d.realises.some((r) => r.seances_faites > 0)}
-            inviteLe={inviteLe ? dateLongue(inviteLe) : null} confirmer={confirmer} />
+            inviteLe={inviteLe ? dateLongue(inviteLe) : null} confirmer={confirmer} demonstration={ctx.demonstration} />
         )}
         {/* AT4 : la récupération du coaché, même quand son objectif suivant est déjà là. */}
         {recup && <CarteRecuperation recup={recup} ctx={ctx} prochain={plan.course.date > recup.date && !plan.fond ? lundiApres(recup.jusqua) : null} />}
@@ -197,13 +201,15 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
   );
 }
 
-// La carte de confirmation en démonstration (développement, sans Supabase) : un achat simulé deux mois avant le départ, et
-// des réponses d'exemple ; elle s'affiche la semaine qui précède le départ (?jour=).
+// La carte de confirmation en démonstration (développement, sans Supabase) : l'achat simulé (?achat=, par défaut deux mois
+// avant le départ) et des réponses d'exemple ; elle s'affiche de l'invitation à la veille du départ (?jour=), et
+// ?confirmation=oui la montre déjà répondue (« C'est noté »).
 function confirmationDeDemonstration(ctx: Contexte): CarteConfirmation | null {
   const debut = ctx.plan.course.date_debut_plan;
-  if (!debut || !carteOuverte(debut, ajouterJours(debut, -60), ctx.jour)) return null;
-  return { planId: ctx.cle, reponse: null, dimanche: ajouterJours(debut, -1),
-    achat: { volume_hebdo_actuel: '5h', sortie_longue_actuelle: '2h' } };
+  if (!debut || !ctx.demo || !carteOuverte(debut, ctx.demo.achat, ctx.jour)) return null;
+  const achat = chargeDe({ volume_hebdo_actuel: '5h', sortie_longue_actuelle: '2h' });
+  return { planId: ctx.cle, dimanche: ajouterJours(debut, -1), achat,
+    reponse: ctx.demo.confirmation ? { le: `${ctx.jour}T08:00:00Z`, reponse: 'oui', charge: achat } : null };
 }
 
 // Le lundi qui suit une date : celui où démarre l'objectif suivant, après la récupération.
@@ -226,7 +232,7 @@ function CarteRecuperation({ recup, ctx, prochain }: { recup: Recuperation; ctx:
       {prochain ? (
         <p className="text-[0.875rem] font-semibold text-indigo">Ton prochain objectif démarre le {dateLongue(prochain)}.</p>
       ) : (
-        <Link href="/app/objectif/nouveau" className="inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">
+        <Link href={lien('/app/objectif/nouveau', ctx)} className="inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">
           Proposer un objectif ›
         </Link>
       )}
@@ -257,7 +263,7 @@ function EtMaintenant({ ctx }: { ctx: Contexte }) {
       <p className="text-[0.875rem] text-[#4A4866] leading-relaxed">
         Ton prochain objectif majeur ? Une nouvelle préparation, construite pour lui.
       </p>
-      <Link href="/app/objectif/nouveau" className="flex items-center justify-center min-h-12 px-5 rounded-xl bg-teal text-white text-sm font-bold">
+      <Link href={lien('/app/objectif/nouveau', ctx)} className="flex items-center justify-center min-h-12 px-5 rounded-xl bg-teal text-white text-sm font-bold">
         Choisir mon prochain objectif
       </Link>
     </Carte>

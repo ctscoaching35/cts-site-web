@@ -15,6 +15,7 @@ import { annulerLeChoix, CORRECTIONS, CORRECTIONS_ACTIVES, garderLeChoix, RAISON
 import { coachConnecte } from './nolio';
 import { enTetesMoteur } from './cleMoteur';
 import { clientServeur, clientService } from './supabase';
+import { estPlanDeDemonstration, REFUS_DEMONSTRATION } from './demonstrationPorte';
 
 export type EtatGeste = { ok: boolean; message: string } | null;
 
@@ -89,6 +90,8 @@ export async function modifierCourse(planId: string, ancienne: string, _e: EtatG
 const cheminTrace = (planId: string, date: string) => `preparations/${planId}/${date}.gpx`;
 
 async function enregistrerCourse(planId: string, form: FormData, ancienne: string | null): Promise<EtatGeste> {
+  // La démonstration de l'app (développement seulement) : rien ne s'enregistre.
+  if (estPlanDeDemonstration(planId)) return { ok: false, message: REFUS_DEMONSTRATION };
   const { compteId, coachId } = await qui();
   const o = await objectifEcrit(planId);
   if (!o || !compteId || (o.compteId !== compteId && o.compteAthlete !== compteId && o.coachId !== coachId)) {
@@ -208,6 +211,7 @@ async function enregistrerCourse(planId: string, form: FormData, ancienne: strin
 // son coach le peut aussi) : elle quitte les paramètres et sa fiche part ; dans Nolio, sa course et le rappel de sa fiche
 // s'ils sont encore à venir. Les semaines déjà écrites gardent leurs jours ajustés ; les suivantes s'écrivent sans elle.
 export async function retirerCourse(planId: string, date: string, _e: EtatGeste): Promise<EtatGeste> {
+  if (estPlanDeDemonstration(planId)) return { ok: false, message: REFUS_DEMONSTRATION };
   const { compteId, coachId } = await qui();
   const o = await objectifEcrit(planId);
   if (!o || !compteId || (o.compteId !== compteId && o.compteAthlete !== compteId && o.coachId !== coachId)) {
@@ -269,6 +273,7 @@ export async function reessayerLaSemaine(planId: string, _e: EtatGeste): Promise
 }
 
 export async function donnerMonAccord(planId: string, _e: EtatGeste): Promise<EtatGeste> {
+  if (estPlanDeDemonstration(planId)) return { ok: false, message: REFUS_DEMONSTRATION };
   const { compteId } = await qui();
   const o = await objectifEcrit(planId);
   if (!o || !compteId || o.compteId !== compteId || o.coache) return { ok: false, message: 'Plan introuvable.' };
@@ -284,6 +289,7 @@ export async function donnerMonAccord(planId: string, _e: EtatGeste): Promise<Et
 }
 
 export async function retirerMonAccord(planId: string, _e: EtatGeste): Promise<EtatGeste> {
+  if (estPlanDeDemonstration(planId)) return { ok: false, message: REFUS_DEMONSTRATION };
   const { compteId } = await qui();
   const o = await objectifEcrit(planId);
   if (!o || !compteId || o.compteId !== compteId || o.coache) return { ok: false, message: 'Plan introuvable.' };
@@ -301,6 +307,7 @@ export async function retirerMonAccord(planId: string, _e: EtatGeste): Promise<E
 // LA CONFIRMATION DE CHARGE (décision coach du 04/11/2026 au soir, « A » ; lib/app/confirmation.ts) : la réponse de
 // l'acheteur sur la carte de son accueil, « Oui » ou sa charge corrigée. Son plan à lui seulement.
 export async function confirmerMaCharge(planId: string, _e: EtatGeste, form: FormData): Promise<EtatGeste> {
+  if (estPlanDeDemonstration(planId)) return { ok: false, message: REFUS_DEMONSTRATION };
   const { compteId } = await qui();
   const o = await objectifEcrit(planId);
   if (!o || !compteId || o.compteId !== compteId || o.coache) return { ok: false, message: 'Plan introuvable.' };

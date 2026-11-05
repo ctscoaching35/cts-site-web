@@ -7,13 +7,18 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { COOKIE_BIENVENUE, COOKIE_DEMARRAGE } from './bienvenue';
+import { demonstrationOuverte } from './demonstrationPorte';
 
+// La démonstration (développement seulement) ne pose aucun cookie : la bienvenue et « Pour bien démarrer » s'y disent
+// par l'adresse (lib/app/demonstrationPorte.ts). Avant, elle posait les vrais, qui masquaient « Pour bien démarrer »
+// pour toutes les vues suivantes du même navigateur, tous ports confondus (audit du 05/11/2026).
 export async function entrerDansLePlan(retour: string) {
-  (await cookies()).set(COOKIE_BIENVENUE, '1', { path: '/', maxAge: 395 * 24 * 60 * 60, sameSite: 'lax' });
+  if (!demonstrationOuverte()) (await cookies()).set(COOKIE_BIENVENUE, '1', { path: '/', maxAge: 395 * 24 * 60 * 60, sameSite: 'lax' });
   redirect(retour.startsWith('/app') ? retour : '/app');
 }
 
 // « Pour bien démarrer » masquée sur cet appareil : d'un appui, ou d'elle-même une fois tout en place.
 export async function masquerDemarrage() {
+  if (demonstrationOuverte()) return;
   (await cookies()).set(COOKIE_DEMARRAGE, '1', { path: '/', maxAge: 395 * 24 * 60 * 60, sameSite: 'lax' });
 }

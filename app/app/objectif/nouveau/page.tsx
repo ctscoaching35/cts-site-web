@@ -4,7 +4,8 @@ import { notFound, redirect } from 'next/navigation';
 import ProfilAthlete from '@/components/app/ProfilAthlete';
 import Questionnaire from '@/components/plan/Questionnaire';
 import { questionnairePrerempli, reponsesSansLaCourse } from '@/lib/app/coaching';
-import { plansDuCompte } from '@/lib/app/contexte';
+import { contexte, lien, plansDuCompte } from '@/lib/app/contexte';
+import { demonstrationOuverte } from '@/lib/app/demonstrationPorte';
 import { ficheDuCompte } from '@/lib/app/demandes';
 import { lignesDuProfil, profilDeLaFiche } from '@/lib/app/profilEntrainement';
 import { clientServeur, supabaseConfigure } from '@/lib/app/supabase';
@@ -15,6 +16,9 @@ export const dynamic = 'force-dynamic';
 // prérempli des dernières réponses, la course à remplir. Un acheteur paie sa nouvelle préparation ; un coaché envoie sa
 // demande à son coach, qui la relit et lance l'objectif.
 export default async function NouvelObjectif({ searchParams }: { searchParams: Promise<{ majeur?: string; discipline?: string }> }) {
+  // La démonstration (développement seulement, sans Supabase) : l'aiguillage, dans la version et au jour simulés ; le
+  // questionnaire, qui part vers le paiement ou chez le coach, ne s'y ouvre pas.
+  if (!supabaseConfigure() && demonstrationOuverte()) return demonstration(searchParams);
   if (!supabaseConfigure()) notFound();
   const supabase = await clientServeur();
   const { data } = await supabase.auth.getClaims();
@@ -108,14 +112,20 @@ export default async function NouvelObjectif({ searchParams }: { searchParams: P
 // Objectif majeur ou course de préparation : une définition, puis deux chemins. Sans objectif majeur à venir, une course
 // de préparation n'a pas encore où s'ajouter. Un acheteur : ce que chaque chemin lui apporte (une nouvelle préparation,
 // ou une course ajoutée gratuitement) ; un coaché : son coach relit.
-function Aiguillage({ enCours, coache }: { enCours: boolean; coache: boolean }) {
+// liens : en démonstration, les adresses qui gardent son état (sans elle, celles de l'app).
+function Aiguillage({ enCours, coache, liens = {} }: {
+  enCours: boolean; coache: boolean; liens?: { plan?: string; majeur?: string; route?: string };
+}) {
   const bouton = 'flex items-center justify-center min-h-12 px-5 rounded-xl text-sm font-bold';
+  const plan = liens.plan ?? '/app/plan';
+  const majeur = liens.majeur ?? '/app/objectif/nouveau?majeur=1';
+  const route = liens.route ?? '/app/objectif/nouveau?majeur=1&discipline=route';
   return (
     <div className="min-h-screen bg-sand">
       {/* §8, point 12 : la page dans l'app, avec son en-tête. */}
       <EnTeteSimple />
       <main className="mx-auto max-w-xl px-4 sm:px-6 py-8 sm:py-12 space-y-5">
-        <Link href="/app/plan" className="inline-flex items-center min-h-11 text-teal font-bold text-sm">‹ Ton objectif</Link>
+        <Link href={plan} className="inline-flex items-center min-h-11 text-teal font-bold text-sm">‹ Ton objectif</Link>
         <div className="px-2">
           <div className="eyebrow text-teal mb-3">Nouvel objectif majeur</div>
           <h1 className="text-3xl sm:text-4xl text-indigo leading-tight">Ta prochaine course</h1>
@@ -127,17 +137,17 @@ function Aiguillage({ enCours, coache }: { enCours: boolean; coache: boolean }) 
         <div className="space-y-2.5 px-2">
           {coache ? (
             <div className="grid grid-cols-2 gap-2.5">
-              <Link href="/app/objectif/nouveau?majeur=1" className={`${bouton} bg-teal text-white`}>Un trail</Link>
-              <Link href="/app/objectif/nouveau?majeur=1&discipline=route" className={`${bouton} bg-teal text-white`}>Une course sur route</Link>
+              <Link href={majeur} className={`${bouton} bg-teal text-white`}>Un trail</Link>
+              <Link href={route} className={`${bouton} bg-teal text-white`}>Une course sur route</Link>
             </div>
           ) : (
-            <Link href="/app/objectif/nouveau?majeur=1" className={`${bouton} bg-teal text-white`}>C’est mon objectif majeur</Link>
+            <Link href={majeur} className={`${bouton} bg-teal text-white`}>C’est mon objectif majeur</Link>
           )}
           {coache && <p className="text-[0.8125rem] text-indigo/60 text-center">C’est mon objectif majeur : un trail, ou un 10 km, un semi ou un marathon.</p>}
           {!coache && <p className="text-[0.8125rem] text-indigo/60 text-center">Une nouvelle préparation, construite pour cette course.</p>}
           {enCours ? (
             <>
-              <Link href="/app/plan#ajouter-course" className={`${bouton} border border-teal text-teal`}>C’est une course de préparation ›</Link>
+              <Link href={`${plan}#ajouter-course`} className={`${bouton} border border-teal text-teal`}>C’est une course de préparation ›</Link>
               {!coache && <p className="text-[0.8125rem] text-indigo/60 text-center">Elle s’ajoute gratuitement à ta préparation en cours.</p>}
             </>
           ) : (
@@ -150,5 +160,30 @@ function Aiguillage({ enCours, coache }: { enCours: boolean; coache: boolean }) 
         {coache && <p className="px-2 text-sm text-indigo/60">Ton coach relit chaque objectif majeur avant de le lancer.</p>}
       </main>
     </div>
+  );
+}
+
+// La démonstration : l'aiguillage du plan et de la version simulés ; ?majeur=1, ce que le questionnaire deviendrait.
+async function demonstration(searchParams: Promise<Record<string, string | string[] | undefined>>) {
+  const ctx = await contexte(searchParams, { sansObjectif: true });
+  const r = await searchParams;
+  if (r.majeur === '1') {
+    return (
+      <div className="min-h-screen bg-sand">
+        <EnTeteSimple />
+        <main className="mx-auto max-w-xl px-4 py-8 space-y-4">
+          <Link href={lien('/app/objectif/nouveau', ctx)} className="inline-flex items-center min-h-11 text-teal font-bold text-sm">‹ Nouvel objectif</Link>
+          <p className="text-sm text-indigo/80 leading-relaxed">
+            Démonstration : le questionnaire d’un nouvel objectif ne s’ouvre qu’avec les comptes ; il part vers le paiement (un
+            acheteur) ou chez le coach (un coaché).
+          </p>
+        </main>
+      </div>
+    );
+  }
+  return (
+    <Aiguillage enCours={!ctx.sansObjectif && ctx.plan.course.date >= ctx.jour} coache={ctx.coache}
+      liens={{ plan: lien('/app/plan', ctx), majeur: lien('/app/objectif/nouveau', ctx, { majeur: '1' }),
+        route: lien('/app/objectif/nouveau', ctx, { majeur: '1', discipline: 'route' }) }} />
   );
 }

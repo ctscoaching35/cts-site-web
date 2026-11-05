@@ -4,6 +4,7 @@ import Link from 'next/link';
 import clsx from 'clsx';
 import { useEffect } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { PARAMETRES_DEMONSTRATION } from '@/lib/app/demonstrationPorte';
 
 // Les cinq onglets (CTS_NOLIO_CADRAGE.md, AP1, décision coach du 19/10/2026) : Accueil (le tableau de bord, et
 // l'objectif qu'il ouvre), Données, Profil, Bibliothèque, Compte ; les mêmes pour un coaché et un acheteur. En bas sur
@@ -48,9 +49,10 @@ export default function BarreOnglets() {
     }
   }, [chemin]);
   if (SANS_ONGLETS.includes(chemin) || chemin.startsWith('/app/coach')) return null;
-  // Les onglets gardent le plan et le jour de la démonstration.
+  // Les onglets gardent le plan, le jour et les états de la démonstration (avant, ils perdaient « à la main », « sans
+  // objectif » et les états ; audits du 05/11/2026) ; une adresse réelle n'en a aucun.
   const garde = new URLSearchParams();
-  for (const cle of ['plan', 'jour', 'fc1', 'vc', 'fc2', 'v1', 'retours', 'coache']) {
+  for (const cle of PARAMETRES_DEMONSTRATION) {
     const valeur = params.get(cle);
     if (valeur) garde.set(cle, valeur);
   }

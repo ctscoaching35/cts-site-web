@@ -6,11 +6,14 @@ import Installation from '@/components/app/Installation';
 import { DonnerAccord, RetirerAccord } from '@/components/app/GestesEcriture';
 import { Carte, CarteSombre, Surtitre } from '@/components/app/Ui';
 import { contexte, initiales, type Recherche } from '@/lib/app/contexte';
-import { dateLongue } from '@/lib/app/plan';
+import { ajouterJours, dateLongue } from '@/lib/app/plan';
 import { clientServeur, clientService } from '@/lib/app/supabase';
 import { coachConnecte } from '@/lib/app/nolio';
 import { donneesTableau } from '@/lib/app/tableauDuPlan';
 import { plansVisibles } from '@/lib/legal';
+
+// L'adresse fictive de la démonstration : « clara@demonstration.test ».
+const prenomDemo = (nom: string) => (nom.trim().split(/\s+/)[0] ?? 'athlete').toLowerCase().normalize('NFD').replace(/[^a-z]/g, '') || 'athlete';
 
 // Les coachs de CTS, ce qui se dit d'eux (faits publiables, prénoms à l'écrit).
 const COACHS: Record<string, string> = {
@@ -25,8 +28,12 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
   const ctx = await contexte(searchParams, { sansObjectif: true });
   const d = await donneesTableau(ctx);
   const supabase = ctx.demonstration ? null : await clientServeur();
-  const claims = supabase ? (await supabase.auth.getClaims()).data?.claims : null;
-  const { data: affiche } = ctx.demonstration ? { data: null }
+  // La démonstration : une adresse fictive, et l'accord de l'état simulé (avant : « Sans accord de lecture » à côté
+  // d'une pastille verte, audit du 05/11/2026).
+  const claims = supabase ? (await supabase.auth.getClaims()).data?.claims
+    : ctx.demonstration ? { email: `${prenomDemo(ctx.plan.athlete.nom)}@demonstration.test` } : null;
+  const { data: affiche } = ctx.demonstration
+    ? { data: { parametres: {}, accord_lecture_le: d.accord ? ajouterJours(ctx.sansObjectif ? ctx.jour : ctx.plan.course.date_debut_plan, -7) : null } }
     : await clientService().from('plans').select('parametres, accord_lecture_le').eq('id', ctx.cle).maybeSingle();
   // Le coach d'un coaché : son prénom (son compte) et ce qui se dit de lui.
   let coach: { prenom: string; texte: string } | null = null;
@@ -145,14 +152,9 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
           ))}
         </nav>
 
-        {ctx.demonstration ? (
-          <p className="text-sm text-[#5E5C78]">Démonstration : le compte n’existe qu’avec Supabase configuré.</p>
-        ) : (
-          <>
-            <Deconnexion />
-            <Suppression acheteur={!ctx.coache} />
-          </>
-        )}
+        {/* En démonstration aussi : leurs actions n'y font rien (lib/app/actionsCompte.ts). */}
+        <Deconnexion />
+        <Suppression acheteur={!ctx.coache} />
         {!ctx.coache && <Avertissement avertissement={ctx.plan.avertissement} />}
       </main>
     </>

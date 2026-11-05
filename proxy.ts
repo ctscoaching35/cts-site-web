@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { COOKIE_INVITATION, invitationValide } from '@/lib/planAcces';
 import { COOKIE_JOUR, demonstrationCoachOuverte, jourValide } from '@/lib/app/demonstrationCoachPorte';
+import { COOKIE_BIENVENUE, COOKIE_DEMARRAGE } from '@/lib/app/bienvenue';
 
 // Le proxy de Next 16 (l'ancien middleware), avant deux familles de pages.
 export async function proxy(request: NextRequest) {
@@ -29,6 +30,16 @@ function invitation(request: NextRequest) {
 // La démonstration de l'espace coach (lib/app/demonstrationCoach.ts), en développement seulement : ?jour= garde le
 // jour simulé dans un cookie, pour cette page et les suivantes (?jour=reel revient au jour par défaut).
 function jourSimule(request: NextRequest) {
+  // La démonstration de l'app des athlètes (lib/app/demonstration.ts) ne pose plus de cookie ; ?reinitialiser=1 efface
+  // ceux que posait l'ancienne (la bienvenue lue, « Pour bien démarrer » masquée), sur tous les ports de ce navigateur.
+  if (demonstrationCoachOuverte() && request.nextUrl.searchParams.get('reinitialiser') === '1') {
+    const propre = request.nextUrl.clone();
+    propre.searchParams.delete('reinitialiser');
+    const reponse = NextResponse.redirect(propre);
+    reponse.cookies.delete(COOKIE_BIENVENUE);
+    reponse.cookies.delete(COOKIE_DEMARRAGE);
+    return reponse;
+  }
   const jour = request.nextUrl.searchParams.get('jour');
   if (!demonstrationCoachOuverte() || jour === null || !request.nextUrl.pathname.startsWith('/app/coach')) return NextResponse.next();
   if (!jourValide(jour)) request.cookies.delete(COOKIE_JOUR);

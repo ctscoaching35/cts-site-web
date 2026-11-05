@@ -13,6 +13,7 @@ import { aujourdhuiIso, dateLongue, jMoins } from '@/lib/app/plan';
 import { blocsDuPlan, jaugeDuPlan } from '@/lib/app/tableau';
 import { donneesTableau, fichesDePreparation, type CourseSecondaire } from '@/lib/app/tableauDuPlan';
 import { BlocsDeLaSaison } from '@/components/app/SaisonDeFond';
+import { datesDesFiches, objectifsDeDemonstration } from '@/lib/app/demonstration';
 import SemainesDuPlan from '@/components/app/SemainesDuPlan';
 
 // « Mes objectifs » (OM2, décision coach du 19/10/2026) : chaque objectif majeur du compte (les siens, ceux que son
@@ -53,10 +54,11 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
   if (ctx.sansObjectif) redirect(r.demande === 'envoyee' ? '/app?demande=envoyee' : '/app');
   const { plan, jour } = ctx;
   const d = await donneesTableau(ctx);
-  const objectifs = ctx.demonstration ? null : await mesObjectifs();
+  // En démonstration : l'objectif affiché, et l'objectif suivant demandé (?objectif=demande).
+  const objectifs = ctx.demonstration ? await objectifsDeDemonstration(ctx, d.courses) : await mesObjectifs();
   const jauge = jaugeDuPlan(d.trame, d.realises, jour);
   const courseAVenir = plan.course.date >= jour;
-  const fichesPrepa = ctx.demonstration ? new Set<string>() : await fichesDePreparation(ctx.cle);
+  const fichesPrepa = ctx.demonstration ? await datesDesFiches(ctx) : await fichesDePreparation(ctx.cle);
   const { course } = plan;
   return (
     <>
@@ -160,7 +162,7 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
         {/* S16 (décision coach du 05/11/2026) : la trame semaine par semaine que promettent les CGV, pour l'acheteur. */}
         {!ctx.coache && !ctx.aLaMain && !plan.fond && <SemainesDuPlan trame={d.trame} jour={jour} />}
 
-        {d.ecrit && !ctx.demonstration && !plan.fond && (
+        {d.ecrit && !plan.fond && (
           <Carte id="ajouter-course" className="space-y-3 scroll-mt-20">
             <Surtitre>Tes courses de préparation</Surtitre>
             {d.courses.map((c) => (
@@ -245,7 +247,7 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
                 </li>
               ))}
             </ul>
-            <Link href="/app/objectif/nouveau" className="inline-flex items-center min-h-11 text-sm font-bold text-teal">Nouvel objectif ›</Link>
+            <Link href={lien('/app/objectif/nouveau', ctx)} className="inline-flex items-center min-h-11 text-sm font-bold text-teal">Nouvel objectif ›</Link>
           </Carte>
         )}
       </main>

@@ -6,9 +6,10 @@
  *   simulé (?jour=).
  */
 import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { ficheDuCompte } from './demandes';
-import { EXEMPLES, jourParDefaut } from './demonstration';
+import { planDemo, type EtatDemo } from './demonstration';
+import { demonstrationOuverte } from './demonstrationPorte';
 import { planSansObjectif, reperesDeBase } from './reperes';
 import { COOKIE_PLAN } from './planChoisi';
 import { SCHEMA_PLAN, ajouterJours, aujourdhuiIso, type Plan } from './plan';
@@ -28,6 +29,8 @@ export type Contexte = {
   // sansObjectif : un coaché sans aucun objectif (décision coach du 20/10/2026, « tableau de bord complet ») ; plan n'a
   // alors que son nom et ses repères (reperes.ts), cle est vide, fiche dit qui il est.
   sansObjectif: boolean; fiche: FicheDuContexte | null;
+  // demo : en démonstration seulement, l'état simulé par l'adresse (lib/app/demonstration.ts) ; null sinon.
+  demo: EtatDemo | null;
 };
 export type FicheDuContexte = { id: string; coach_id: string; nolio: string | null; accord: boolean };
 
@@ -115,19 +118,25 @@ export async function contexte(recherche: Recherche, options: { sansObjectif?: b
   const jourDemande = typeof r.jour === 'string' && JOUR.test(r.jour) ? r.jour : null;
 
   if (!supabaseConfigure()) {
-    const cle = typeof r.plan === 'string' && r.plan in EXEMPLES ? r.plan : 'L4';
-    const plan = verifierSchema(EXEMPLES[cle].plan);
-    const jour = jourDemande ?? jourParDefaut(plan);
+    // La démonstration (lib/app/demonstration.ts), en développement seulement : un plan fictif (?plan=), un jour simulé
+    // (?jour=) et des états choisis par l'adresse (lib/app/demonstrationPorte.ts, PARAMETRES_DEMONSTRATION).
+    if (!demonstrationOuverte()) notFound();
+    const demo = await planDemo(typeof r.plan === 'string' ? r.plan : 'L4');
+    const plan = verifierSchema(demo.plan);
+    const jour = jourDemande ?? demo.jourNormal;
     // ?coache=1 : la version d'un coaché (ses repères posés par son coach), en démonstration seulement.
     // ?main=1 : un coaché programmé à la main ; ?sansobjectif=1 : un coaché sans objectif.
     const sansObjectif = r.sansobjectif === '1';
     if (sansObjectif && !options.sansObjectif) redirect('/app?sansobjectif=1');
+    const coache = r.coache === '1' || r.main === '1' || sansObjectif;
+    const etat = demo.etat(r, jour, coache);
     return {
-      cle: sansObjectif ? '' : cle, demonstration: true, profil: profilDemonstration(r), exemple: r.retours === 'exemple',
+      cle: sansObjectif ? '' : demo.cle, demonstration: true, profil: profilDemonstration(r), exemple: r.retours === 'exemple',
       plan: sansObjectif && plan.zones ? planSansObjectif(plan.athlete.nom, { zones: plan.zones, effort: plan.mode_emploi.effort }) : plan,
-      jour: sansObjectif ? new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris' }).format(new Date()) : jour,
-      coache: r.coache === '1' || r.main === '1' || sansObjectif, aLaMain: r.main === '1' || sansObjectif,
-      sansObjectif, fiche: null,
+      // Sans objectif, le jour simulé aussi (avant : toujours le jour réel).
+      jour: sansObjectif ? jourDemande ?? aujourdhuiIso() : jour,
+      coache, aLaMain: r.main === '1' || sansObjectif,
+      sansObjectif, fiche: sansObjectif ? { id: 'demo', coach_id: 'demo', nolio: 'demo', accord: etat.accord } : null, demo: etat,
     };
   }
 
@@ -160,7 +169,7 @@ export async function contexte(recherche: Recherche, options: { sansObjectif?: b
   const profil = choisi.coache ? await profilDuCoache(choisi.id) : await profilDuPlan(choisi.id);
   return {
     cle: choisi.id, plan: verifierSchema(ligne.donnees as Plan), jour, demonstration: false, profil, exemple: false, coache: choisi.coache,
-    aLaMain: choisi.coache && await programmeALaMain(choisi.id), sansObjectif: false, fiche: null,
+    aLaMain: choisi.coache && await programmeALaMain(choisi.id), sansObjectif: false, fiche: null, demo: null,
   };
 }
 
@@ -179,7 +188,7 @@ async function sansObjectif(compteId: string, options: { sansObjectif?: boolean 
   return {
     cle: '', plan: planSansObjectif(fiche.nom, await reperesDeBase()), jour, demonstration: false, profil: profilDeLaFiche(a),
     exemple: false, coache: true, aLaMain: true, sansObjectif: true,
-    fiche: { id: fiche.id, coach_id: fiche.coach_id, nolio, accord: Boolean(accord) },
+    fiche: { id: fiche.id, coach_id: fiche.coach_id, nolio, accord: Boolean(accord) }, demo: null,
   };
 }
 
@@ -234,7 +243,7 @@ export const prenom = (nom: string | undefined) => (nom ?? '').trim().split(/\s+
 export const initiales = (nom: string | undefined) =>
   (nom ?? '').trim().split(/\s+/).filter(Boolean).slice(0, 2).map((m) => m[0]?.toUpperCase() ?? '').join('') || 'CTS';
 
-// Un lien de l'app ; en démonstration, il garde le plan, le jour et le profil simulés.
+// Un lien de l'app ; en démonstration, il garde le plan, le jour, le profil et les états simulés.
 export const lien = (chemin: string, ctx: Contexte, extra: Record<string, string> = {}) => {
   const simule = ctx.demonstration
     ? {
@@ -247,6 +256,7 @@ export const lien = (chemin: string, ctx: Contexte, extra: Record<string, string
         ...(ctx.coache ? { coache: '1' } : {}),
         ...(ctx.aLaMain && !ctx.sansObjectif ? { main: '1' } : {}),
         ...(ctx.sansObjectif ? { sansobjectif: '1' } : {}),
+        ...(ctx.demo?.garde ?? {}),
       }
     : {};
   const params = new URLSearchParams({ ...simule, ...extra });

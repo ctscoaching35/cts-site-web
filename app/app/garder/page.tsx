@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import EnTeteSimple from '@/components/app/EnTeteSimple';
 import { garderSeanceOrigine } from '@/lib/app/ecriture';
 import { clientServeur, supabaseConfigure } from '@/lib/app/supabase';
+import { demonstrationOuverte, estPlanDeDemonstration } from '@/lib/app/demonstrationPorte';
 
 // Le veto (CTS_NOLIO_CADRAGE.md, décision du 19/10/2026 : « Garder ma séance d'origine ») : le lien de la note Nolio d'une
 // séance allégée par la fatigue mène ici ; un geste, et la séance d'origine revient dans Nolio.
@@ -12,6 +13,8 @@ type Recherche = Promise<{ plan?: string; seance?: string; fait?: string }>;
 
 async function garder(planId: string, seance: string) {
   'use server';
+  // La démonstration (développement seulement) : rien ne revient dans Nolio, l'écran qui suit seulement.
+  if (estPlanDeDemonstration(planId)) redirect(`/app/garder?plan=${planId}&seance=${encodeURIComponent(seance)}&fait=1`);
   const supabase = await clientServeur();
   const { data } = await supabase.auth.getClaims();
   const compte = data?.claims?.sub;
@@ -21,12 +24,16 @@ async function garder(planId: string, seance: string) {
 }
 
 export default async function Garder({ searchParams }: { searchParams: Recherche }) {
-  if (!supabaseConfigure()) redirect('/app');
+  // En démonstration (développement seulement, sans Supabase) : un plan de la démonstration, sans session.
+  const demonstration = !supabaseConfigure() && demonstrationOuverte();
+  if (!supabaseConfigure() && !demonstration) redirect('/app');
   const { plan, seance, fait } = await searchParams;
-  const supabase = await clientServeur();
-  const { data } = await supabase.auth.getClaims();
-  if (!data?.claims?.sub) redirect(`/app/connexion?suite=${encodeURIComponent(`/app/garder?plan=${plan ?? ''}&seance=${seance ?? ''}`)}`);
-  const valide = plan && seance && /^[0-9a-f-]{36}$/.test(plan) && /^S\d+-[a-z]+$/.test(seance);
+  if (!demonstration) {
+    const supabase = await clientServeur();
+    const { data } = await supabase.auth.getClaims();
+    if (!data?.claims?.sub) redirect(`/app/connexion?suite=${encodeURIComponent(`/app/garder?plan=${plan ?? ''}&seance=${seance ?? ''}`)}`);
+  }
+  const valide = plan && seance && (demonstration ? estPlanDeDemonstration(plan) : /^[0-9a-f-]{36}$/.test(plan)) && /^S\d+-[a-z]+$/.test(seance);
   return (
     <>
       <EnTeteSimple />

@@ -38,7 +38,7 @@ export default async function TesZones({ searchParams }: { searchParams: Recherc
   const consentementDonne = (['parole', 'vitesse_critique', 'fc_seuil2'] as const).some((c) => testFait(c, profil));
   const tests = zones.tests.filter((t) => testsProposes(zones).includes(t.cle));
   // Son accord tient lieu de la case à cocher ; en démonstration, la saisie se montre.
-  const accord = !ctx.coache || ctx.demonstration || Boolean((await maFiche())?.accord);
+  const accord = !ctx.coache || (ctx.demo ? ctx.demo.accord : Boolean((await maFiche())?.accord));
   return (
     <>
       <EnTeteApp ctx={ctx} />

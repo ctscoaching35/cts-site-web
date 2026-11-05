@@ -104,6 +104,3 @@ export async function monProfilDEntrainement(): Promise<ProfilEntrainement | nul
   return fiche ? profilDeLaFiche(fiche.id) : null;
 }
 
-export const PROFIL_DE_DEMONSTRATION: ProfilEntrainement = {
-  niveau: 'confirme', anciennete: 'plus_5', entrainement: 'structure', terrain: 'tres_pentu', jours_disponibles: ['mardi', 'mercredi', 'jeudi', 'samedi', 'dimanche'], jour_sl: 'samedi', freq_hebdo: '5',
-};

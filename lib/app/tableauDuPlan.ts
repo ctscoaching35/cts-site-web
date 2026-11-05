@@ -11,6 +11,7 @@ import { semainesDeLaFiche } from './semainesNolio';
 import { ajouterJours, type Semaine } from './plan';
 import { clientService } from './supabase';
 import { trameDesDonnees, type CourseDuGraphique, type Fiche } from './tableau';
+import { lectureDeDemonstration, semaineDeDemonstration, tableauDeDemonstration } from './demonstration';
 
 // Où en est l'athlète dans Nolio (P1 à P4) ; « coache » : un objectif de son coach ; null : un plan d'avant le
 // 19/10/2026, sans Nolio.
@@ -30,9 +31,9 @@ export type CourseSecondaire = { nom: string; date: string; distance_km: number;
 export async function donneesTableau(ctx: Contexte): Promise<DonneesTableau> {
   // Un coaché sans objectif : ni trame ni semaines écrites ; ses données sont sa saison (saisonDuCoureur).
   if (ctx.sansObjectif) {
-    return { trame: [], realises: [], fiches: [], nolio: 'coache', accord: ctx.demonstration || Boolean(ctx.fiche?.accord), ecrit: false, courses: [] };
+    return { trame: [], realises: [], fiches: [], nolio: 'coache', accord: Boolean(ctx.fiche?.accord), ecrit: false, courses: [] };
   }
-  if (ctx.demonstration) return demonstration(ctx);
+  if (ctx.demonstration) return tableauDeDemonstration(ctx);
   const service = clientService();
   // Les lectures de la base en parallèle (§8, point 13, audit du 03/11/2026 : l'accueil les enchaînait en série).
   const [{ data: p }, accordCoache, trame, { data: lignes }] = await Promise.all([
@@ -69,7 +70,7 @@ export type Saison = { realises: Realise[]; courses: CourseDuGraphique[] };
 export async function saisonDuCoureur(ctx: Contexte, d: DonneesTableau): Promise<Saison> {
   // Un coaché sans objectif : ses semaines résumées depuis Nolio, sans course en repère.
   if (ctx.sansObjectif) {
-    const realises = ctx.fiche ? await semainesDeLaFiche(ctx.fiche.id) : [];
+    const realises = ctx.fiche && !ctx.demonstration ? await semainesDeLaFiche(ctx.fiche.id) : [];
     return { realises: realises.sort((a, b) => a.lundi.localeCompare(b.lundi)), courses: [] };
   }
   const coursesDe = (nom: string, date: string, prepa: CourseSecondaire[]) => [{ date, nom }, ...prepa.map((c) => ({ date: c.date, nom: c.nom }))];
@@ -114,31 +115,11 @@ async function accordDuCoache(planId: string): Promise<boolean> {
   return Boolean(data);
 }
 
-// La démonstration (développement seulement) : la trame tirée des données, une charge visée simulée (le volume à un
-// RPE moyen de 4) et, avec ?retours=exemple, des semaines écoulées simulées pour voir la jauge et les graphiques.
-function demonstration(ctx: Contexte): DonneesTableau {
-  const trame = trameDesDonnees(ctx.plan).map((l) => ({ ...l, charge: Math.round(l.volume_h * 60 * 4) }));
-  const realises: Realise[] = !ctx.exemple ? [] : trame.filter((l) => l.lundi && ajouterJours(l.lundi, 6) < ctx.jour)
-    .map((l, i) => {
-      const prevues = l.seances_cles.length + 2;
-      const manquee = i % 5 === 4 ? 1 : 0;
-      const prevue = l.charge ?? 0;
-      return {
-        numero: l.numero, lundi: l.lundi, type: l.type, charge_prevue: prevue, charge_faite: Math.round(prevue * (manquee ? 0.8 : 1.08)),
-        charge_tenue: Math.round(prevue * (manquee ? 0.8 : 0.97)), rpe_lu: true, seances_prevues: prevues, seances_faites: prevues - manquee,
-        duree_prevue_min: Math.round(l.volume_h * 60), duree_faite_min: Math.round(l.volume_h * 60 * (manquee ? 0.8 : 1)),
-        sl_prevue_min: l.sl_min, sl_faite_min: l.sl_min, cles_prevues: l.seances_cles.length, cles_reussies: l.seances_cles.length - (i % 4 === 3 ? 1 : 0),
-        dplus_m: null, hooper: 8 + (i % 3) + (i % 7 === 6 ? 3 : 0),
-      };
-    });
-  return { trame, realises, fiches: [], nolio: 'actif', accord: true, ecrit: true, courses: [] };
-}
-
 // La semaine telle qu'elle est partie dans Nolio (semaines_ecrites, ajustements compris) ; sinon celle du plan
 // (un plan envoyé en entier, la démonstration, une semaine pas encore écrite).
 export async function semaineEcrite(ctx: Contexte, numero: string): Promise<Semaine | null> {
+  if (ctx.demonstration) return semaineDeDemonstration(ctx, numero);
   const duPlan = ctx.plan.semaines.find((s) => s.numero === numero) ?? null;
-  if (ctx.demonstration) return duPlan;
   const { data } = await clientService().from('semaines_ecrites').select('donnees').eq('plan_id', ctx.cle).eq('numero', numero).maybeSingle();
   return (data?.donnees as Semaine | undefined) ?? duPlan;
 }
@@ -154,7 +135,7 @@ export type SeanceNolio = { id: string; date: string; nom: string; minutes: numb
 export type RaisonNolio = 'lue' | 'sans_accord' | 'pas_partie' | 'muet' | 'sans_nolio' | 'demo';
 export type LectureNolio = { seances: SeanceNolio[] | null; raison: RaisonNolio };
 export async function lireSemaineNolio(ctx: Contexte, lundi: string, numero?: string): Promise<LectureNolio> {
-  if (ctx.demonstration) return { seances: null, raison: 'demo' };
+  if (ctx.demonstration) return lectureDeDemonstration(ctx, lundi, numero);
   let o: { nolioAthlete: string | null; accordLecture: boolean; coache: boolean; envois: { semaine: string }[] } | null;
   try {
     // Un coaché sans objectif : celui de sa fiche, avec son accord.

@@ -10,6 +10,7 @@ import { effacerStrategie } from '@/lib/app/actionsStrategie';
 import { contexte, lien, type Recherche } from '@/lib/app/contexte';
 import { COURSE_OBJECTIF, parametresCalculateur, STRATEGIE_EXEMPLE, strategiesDuPlan } from '@/lib/app/strategie';
 import { clientService } from '@/lib/app/supabase';
+import { ficheDeDemonstration, niveauDeDemonstration } from '@/lib/app/demonstration';
 
 // Ta fiche de course (cadrage, 3.4 ; maquette validée le 19/10/2026 : « profil, tronçons, ravitaillement ») : la fiche,
 // le profil et ses pentes, ton terrain, les tronçons, les déterminants de la performance, puis ton jour J et ta
@@ -19,7 +20,7 @@ export default async function TaCourse({ searchParams }: { searchParams: Recherc
   const { plan } = ctx;
   const { profil, terrain, determinants: d, jour_j: j } = plan;
   // Le niveau du questionnaire, pour préremplir le calculateur de nutrition (rien en démonstration).
-  const { data: q } = ctx.demonstration ? { data: null }
+  const { data: q } = ctx.demonstration ? { data: { intake: { niveau: await niveauDeDemonstration(ctx) } } }
     : await clientService().from('plans').select('intake').eq('id', ctx.cle).maybeSingle();
   const niveau = String(((q?.intake ?? {}) as Record<string, unknown>).niveau ?? '');
   // Ses stratégies gardées, une par fiche de course (décision coach du 20/10/2026).
@@ -30,9 +31,12 @@ export default async function TaCourse({ searchParams }: { searchParams: Recherc
   const t = profil.troncons;
   // ?course=AAAA-MM-JJ : la fiche d'une course de préparation (PO3), dans l'app (décision coach du 19/10/2026).
   const course = (await searchParams).course;
-  if (typeof course === 'string' && !ctx.demonstration) {
-    const { data: fp, error } = await clientService().from('plans').select('fiches_preparation').eq('id', ctx.cle).maybeSingle();
-    const fiche = !error ? ((fp as { fiches_preparation?: Record<string, FichePrep> } | null)?.fiches_preparation ?? {})[course] : undefined;
+  if (typeof course === 'string') {
+    // En démonstration, la fiche que le moteur a faite pour la course de préparation (?prepa=1).
+    const { data: fp, error } = ctx.demonstration ? { data: null, error: null }
+      : await clientService().from('plans').select('fiches_preparation').eq('id', ctx.cle).maybeSingle();
+    const fiche = ctx.demonstration ? await ficheDeDemonstration(ctx, course) ?? undefined
+      : !error ? ((fp as { fiches_preparation?: Record<string, FichePrep> } | null)?.fiches_preparation ?? {})[course] : undefined;
     if (fiche) {
       const strategiePrep = strategies[course] ?? null;
       const calculateurPrep = lien('/app/calculateurs/calculateur-nutrition', ctx,

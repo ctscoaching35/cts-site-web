@@ -8,7 +8,8 @@ import { contexte, lien, type Recherche } from '@/lib/app/contexte';
 import { type CleTest } from '@/lib/app/plan';
 import { allure, decalageSeuil1, profilCoureur, testsProposes, texteAllureLigne, texteFc } from '@/lib/app/zones';
 import { mesBadges } from '@/lib/app/badgesNolio';
-import { lignesDuProfil, monProfilDEntrainement, PROFIL_DE_DEMONSTRATION } from '@/lib/app/profilEntrainement';
+import { lignesDuProfil, monProfilDEntrainement } from '@/lib/app/profilEntrainement';
+import { profilDEntrainementDeDemonstration } from '@/lib/app/demonstration';
 import { donneesTableau } from '@/lib/app/tableauDuPlan';
 
 // Mon profil de coureur (CTS_NOLIO_CADRAGE.md dans le dépôt du moteur, AP1, AP4 ; maquette validée par le coach le
@@ -30,7 +31,9 @@ export default async function MonProfil({ searchParams }: { searchParams: Recher
   const d = await donneesTableau(ctx);
   const badges = await mesBadges(ctx);
   // Un coaché voit et modifie son profil d'entraînement (décision coach du 20/10/2026).
-  const entrainement = !ctx.coache ? null : ctx.demonstration ? PROFIL_DE_DEMONSTRATION : await monProfilDEntrainement().catch(() => null);
+  // En démonstration, celui du plan affiché (avant : 5 séances sur un plan qui en a 7) ; ?profil=vide, pas encore rempli.
+  const entrainement = !ctx.coache ? null : ctx.demonstration ? await profilDEntrainementDeDemonstration(ctx)
+    : await monProfilDEntrainement().catch(() => null);
   const coureur = profilCoureur(profil);
   const zones = plan.zones;
   const decalage = decalageSeuil1(profil, zones);

@@ -4,7 +4,7 @@ import Installation from '@/components/app/Installation';
 import { Carte, Surtitre } from '@/components/app/Ui';
 import { entrerDansLePlan } from '@/lib/app/actionsBienvenue';
 import { confirmationAVenir } from '@/lib/app/confirmation';
-import { invitationAVenir } from '@/lib/app/invitation';
+import { confirmationDemandee, invitationAVenir } from '@/lib/app/invitation';
 import { contexte, lien, prenom, type Recherche } from '@/lib/app/contexte';
 import { dateLongue } from '@/lib/app/plan';
 
@@ -27,7 +27,8 @@ export default async function Bienvenue({ searchParams }: { searchParams: Recher
   // L'invitation le lundi de la semaine qui précède le départ (décision coach du 04/11/2026 au soir) ; confirmer : ce
   // jour-là, l'app lui demandera si sa charge a changé (un achat fait plus de 3 semaines avant).
   const inviteLe = invitationAVenir(plan.course.date_debut_plan, ctx.jour);
-  const confirmer = Boolean(inviteLe && (ctx.demonstration || await confirmationAVenir(ctx.cle).catch(() => false)));
+  const confirmer = Boolean(inviteLe && (ctx.demo ? confirmationDemandee(plan.course.date_debut_plan, ctx.demo.achat)
+    : await confirmationAVenir(ctx.cle).catch(() => false)));
   return (
     <main className="mx-auto max-w-md px-4 py-8 space-y-4">
       <div className="text-center space-y-2">

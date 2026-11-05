@@ -24,9 +24,11 @@ type Etape = { fait: boolean; titre: string; texte?: React.ReactNode };
 // inviteLe : une préparation qui commence plus tard, invitée dans Nolio le lundi de la semaine qui précède son départ
 // (décision coach du 04/11/2026 au soir, lib/app/invitation.ts), en « lundi 7 décembre » déjà écrit ; confirmer : ce
 // jour-là, l'app lui demandera si sa charge a changé (un achat fait plus de 3 semaines avant).
-export default function PourBienDemarrer({ acheteur, nolio, accord, questionnaire, installer, profil = true, lienProfil = '', seanceFaite = false, inviteLe = null, confirmer = false }: {
+// demonstration : la démonstration (lib/app/demonstration.ts) ne retient rien sur l'appareil, ni masquée d'un appui, ni
+// d'elle-même (?demarrage=masque la montre masquée).
+export default function PourBienDemarrer({ acheteur, nolio, accord, questionnaire, installer, profil = true, lienProfil = '', seanceFaite = false, inviteLe = null, confirmer = false, demonstration = false }: {
   acheteur: boolean; nolio: EtatNolio; accord: boolean; questionnaire: boolean; installer: string; profil?: boolean; lienProfil?: string;
-  seanceFaite?: boolean; inviteLe?: string | null; confirmer?: boolean;
+  seanceFaite?: boolean; inviteLe?: string | null; confirmer?: boolean; demonstration?: boolean;
 }) {
   const [masquee, setMasquee] = useState(false);
   // AT2 (décision coach du 04/11/2026) : la liste se masque d'elle-même une fois ses étapes faites, l'app installée ou
@@ -34,8 +36,8 @@ export default function PourBienDemarrer({ acheteur, nolio, accord, questionnair
   // acheteur : dans l'équipe et sa montre reliée (B-PL-46) ; un coaché : son profil rempli et son accord donné.
   const enPlace = acheteur ? nolio === 'actif' && seanceFaite : accord && profil;
   useEffect(() => {
-    if (enPlace) masquerDemarrage().catch(() => {});
-  }, [enPlace]);
+    if (enPlace && !demonstration) masquerDemarrage().catch(() => {});
+  }, [enPlace, demonstration]);
   if (masquee || enPlace) return null;
 
   const lienExterne = (href: string, texte: string) => (
@@ -102,7 +104,7 @@ export default function PourBienDemarrer({ acheteur, nolio, accord, questionnair
         </p>
       )}
       <div className="flex justify-end">
-        <button type="button" onClick={() => { setMasquee(true); masquerDemarrage().catch(() => {}); }}
+        <button type="button" onClick={() => { setMasquee(true); if (!demonstration) masquerDemarrage().catch(() => {}); }}
           className="min-h-11 text-[0.8125rem] font-bold text-[#5E5C78]">
           Masquer
         </button>

@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import BarreDemonstration from './BarreDemonstration';
-import { EXEMPLES, demonstrationOuverte } from '@/lib/app/demonstration';
+import { Suspense } from 'react';
+import { demonstrationOuverte, etatsDuBandeau, notesDeLaSemaine, plansDeDemonstration } from '@/lib/app/demonstration';
 import { initiales, lien, type Contexte } from '@/lib/app/contexte';
 
 // L'en-tête de l'app (maquettes validées par le coach le 19/10/2026) : le logo, la marque, les initiales de
@@ -21,13 +21,22 @@ export default function EnTeteApp({ ctx }: { ctx: Contexte }) {
           </Link>
         </div>
       </header>
-      {ctx.demonstration && demonstrationOuverte() && (
-        <BarreDemonstration
-          exemples={Object.entries(EXEMPLES).map(([cle, x]) => ({ cle, titre: x.titre }))}
-          cle={ctx.cle}
-          jour={ctx.jour}
-        />
-      )}
+      {ctx.demonstration && demonstrationOuverte() && <Demonstration ctx={ctx} />}
     </>
+  );
+}
+
+// Le bandeau de la démonstration (développement seulement) : les plans, le jour simulé, les états à parcourir, et ce
+// que le moteur a écrit pour la semaine montrée.
+// Son composant n'est chargé qu'en développement : `next build` retire l'import (et le bandeau) du paquet servi.
+async function Demonstration({ ctx }: { ctx: Contexte }) {
+  if (process.env.NODE_ENV === 'production') return null;
+  const { default: BarreDemonstration } = await import('./BarreDemonstration');
+  const [plans, groupes, notes] = await Promise.all([plansDeDemonstration(), etatsDuBandeau(), notesDeLaSemaine(ctx)]);
+  return (
+    <Suspense>
+      <BarreDemonstration exemples={Object.entries(plans).map(([cle, x]) => ({ cle, titre: x.titre }))} cle={ctx.cle} jour={ctx.jour}
+        sansObjectif={ctx.sansObjectif} groupes={groupes} notes={notes} />
+    </Suspense>
   );
 }

@@ -7,8 +7,11 @@
 import { revalidatePath } from 'next/cache';
 import { ficheDuCompte } from './demandes';
 import { clientServeur, clientService } from './supabase';
+import { demonstrationOuverte } from './demonstrationPorte';
 
+// La démonstration de l'app (développement seulement) : aucune fiche, rien ne s'enregistre (modifierMonProfil le dit).
 async function maFiche() {
+  if (demonstrationOuverte()) return null;
   const { data } = await (await clientServeur()).auth.getClaims();
   const compteId = data?.claims?.sub as string | undefined;
   return compteId ? ficheDuCompte(compteId) : null;
@@ -48,6 +51,7 @@ export async function demanderRetrait(planId: string): Promise<void> {
 // Son profil d'entraînement, modifié par le coaché lui-même (décision coach du 20/10/2026, « le voir et le modifier ») :
 // il vaut pour ses prochains objectifs, que son coach relit et lance ; sa préparation en cours garde le sien.
 export async function modifierMonProfil(_e: { ok: boolean; message: string } | null, form: FormData): Promise<{ ok: boolean; message: string }> {
+  if (demonstrationOuverte()) return { ok: false, message: 'Démonstration : rien ne s’enregistre.' };
   const fiche = await maFiche();
   if (!fiche) return { ok: false, message: 'Ta session a expiré : reconnecte-toi.' };
   const { lireProfil, profilDeLaFiche } = await import('./profilEntrainement');

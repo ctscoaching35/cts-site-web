@@ -86,7 +86,8 @@ export async function calculerBadges(budgetMs = 240_000): Promise<CompteBadges[]
 // Les badges de l'athlète affiché : accord donné (calculés ou pas encore), ou non.
 export type MesBadges = { accord: boolean; etat: EtatBadges | null };
 export async function mesBadges(ctx: Contexte): Promise<MesBadges> {
-  if (ctx.demonstration) return { accord: true, etat: badgesDeDemonstration(ctx.jour) };
+  // La démonstration : sans accord, pas de badge ; avec, une histoire simulée (ci-dessous).
+  if (ctx.demonstration) return ctx.demo?.accord === false ? { accord: false, etat: null } : { accord: true, etat: badgesDeDemonstration(ctx.jour, ctx.demo?.badge ?? null) };
   try {
     // Un coaché sans objectif : celui de sa fiche, avec son accord.
     const o = ctx.sansObjectif
@@ -100,12 +101,14 @@ export async function mesBadges(ctx: Contexte): Promise<MesBadges> {
   }
 }
 
-// La démonstration : un coureur aux quelques années de trail, une sortie de 2 000 m D+ il y a deux jours.
-function badgesDeDemonstration(jour: string): EtatBadges {
+// La démonstration : un coureur aux quelques années de trail, et une sortie de 2 000 m D+ le dimanche `nouvelle` (le
+// dimanche avant la semaine normale de la démonstration) : son badge n'est « nouveau » que la semaine qui suit (avant,
+// il l'était à toutes les dates, audit du 05/11/2026).
+function badgesDeDemonstration(jour: string, nouvelle: string | null): EtatBadges {
   const a = (id: string, date: string, km: number, min: number, dplus: number) => ({ id, date, km, min, dplus });
   const histoire: Activite[] = [a('1', '2019-03-10', 20.3, 118, 350), a('2', '2019-10-06', 31, 190, 900),
     a('3', '2020-07-12', 24, 175, 1150), a('4', '2021-04-18', 42.4, 238, 520), a('5', '2023-06-24', 52, 395, 1900)];
   for (let i = 0; i < 160; i += 1) histoire.push(a(`p${i}`, ajouterJours('2019-01-07', i * 7), 20, 115, 260));
-  histoire.push(a('n', ajouterJours(jour, -2), 28, 230, 2050));
+  if (nouvelle) histoire.push(a('n', nouvelle, 28, 230, 2050));
   return ajouterSeances(ETAT_VIDE, histoire.filter((x) => x.date <= jour), null);
 }
