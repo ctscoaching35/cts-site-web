@@ -261,8 +261,10 @@ export async function lireRetours(o: Objectif, du: string, au: string, garder?: 
   const jours = new Set([o.plan.course.date, ...((o.parametres.courses_secondaires ?? []) as Course[]).map((c) => c.date)]);
   // Q1 : une activité que Nolio n'a pas reliée se relie à la séance du même jour, ou à celle de la semaine dont elle porte
   // le nom (lancée depuis la montre) ; sinon elle reste une sortie en plus (lib/app/relier.ts). Son nom : `name`.
+  // A-44 (audits du 05/11/2026) : le debrief (RPE, ressenti) ne se demande à Nolio qu'avec l'accord de lecture ; sans lui,
+  // les séances et leur durée seulement, comme le dit la politique de confidentialité.
   const reels = relierAuxPrevues((await listeNolio<Reel>(
-    `real/trainings/?date_from=${du}&date_to=${au}&fields=id,name,date_start,sport,duration,distance,elevation_gain,planned,debrief${qui}`))
+    `real/trainings/?date_from=${du}&date_to=${au}&fields=id,name,date_start,sport,duration,distance,elevation_gain,planned${o.accordLecture ? ',debrief' : ''}${qui}`))
     .map(sansVitesseImpossible), planifiees, SPORTS_COURSE, jours);
   // D4 et D1 : les retouches du coach, jugées sur le contenu des séances (lib/app/continuite.ts) ; avec la continuité,
   // une lecture qui échoue n'empêche pas la semaine (la règle de la révision, sans famille).
@@ -448,7 +450,7 @@ async function semaineDuMoteur(o: Objectif, numero: string, retours: Retours | n
   // Sa stratégie du jour J gardée (le calculateur de nutrition) : le ravito de ses sorties longues y arrive.
   const glucides = await glucidesDeLaStrategie(o.planId).catch(() => null);
   const lundi = o.plan.semaines.find((x) => x.numero === numero)?.lundi;
-  const faits = await testsFaitsSansValeur(o.planId, lundi).catch(() => new Set<string>());
+  const faits = await testsFaitsSansValeur(o.planId, lundi, o.accordLecture).catch(() => new Set<string>());
   // EC3 : les corrections que le coach a choisies sur l'aperçu, derrière leur interrupteur (lib/app/corrections.ts).
   const corrections = await correctionsAEnvoyer(o.planId, lundi, Boolean(options.sansAjustement));
   return moteur<SortieMoteur>('/v1/semaine', {
@@ -1607,23 +1609,32 @@ function valeursConnues(o: Objectif, lundi?: string | null, faits: Set<string> =
 // un test qu'il vient de faire ») : « À regarder » prévient le coach (« Test à revoir »), qui entre la valeur ou relance
 // l'athlète. Fait sans valeur : lu illisible ou sans réponse ; le test de la parole passé et pas encore lu (son
 // questionnaire peut arriver jusqu'à 3 jours après) aussi. Une séance de test non faite revient.
+// D5 (audits du 05/11/2026, lot 2, côté site) : sans accord de lecture, rien ne se lit ; un test de vitesse critique ou
+// de FC au seuil 2 proposé compte alors comme fait sans valeur, comme le test de la parole (avant, il revenait à chaque
+// semaine d'assimilation). Et au plus deux propositions sans valeur d'un même test sur tout le plan : ensuite il ne
+// revient plus, l'athlète donne sa valeur dans « Tes zones ».
 const TEST_FAIT_J = 42;
-async function testsFaitsSansValeur(planId: string, lundi?: string | null): Promise<Set<string>> {
+export const TESTS_SANS_VALEUR_MAX = 2;
+async function testsFaitsSansValeur(planId: string, lundi?: string | null, accordLecture = true): Promise<Set<string>> {
   if (!lundi) return new Set();
   const service = clientService();
   const depuis = ajouterJours(lundi, -TEST_FAIT_J);
   const [{ data: lus }, { data: ecrites }] = await Promise.all([
     service.from('tests_lus').select('jour_id, statut').eq('plan_id', planId),
-    service.from('semaines_ecrites').select('donnees').eq('plan_id', planId).gte('ecrite_le', `${ajouterJours(depuis, -7)}T00:00:00Z`),
+    service.from('semaines_ecrites').select('donnees').eq('plan_id', planId),
   ]);
   const statut = new Map((lus ?? []).map((l) => [l.jour_id as string, l.statut as string]));
   const faits = new Set<string>();
+  const sansValeur = new Map<string, number>();
   for (const j of (ecrites ?? []).flatMap((e) => ((e.donnees as Semaine | null)?.jours ?? []))) {
     const cle = testEcrit(j);
-    if (!cle || !j.date_iso || j.date_iso < depuis || j.date_iso >= lundi) continue;
+    if (!cle || !j.date_iso || j.date_iso >= lundi) continue;
     const s = statut.get(j.id);
-    if (s === 'illisible' || s === 'sans_reponse' || (s === undefined && cle === 'parole')) faits.add(cle);
+    if (!(s === 'illisible' || s === 'sans_reponse' || (s === undefined && (cle === 'parole' || !accordLecture)))) continue;
+    sansValeur.set(cle, (sansValeur.get(cle) ?? 0) + 1);
+    if (j.date_iso >= depuis) faits.add(cle);
   }
+  for (const [cle, n] of sansValeur) if (n >= TESTS_SANS_VALEUR_MAX) faits.add(cle);
   return faits;
 }
 

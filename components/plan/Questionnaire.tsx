@@ -304,7 +304,9 @@ export default function Questionnaire({
       });
       if (!r.ok) {
         const corps = await r.json().catch(() => null);
-        setRefus(corps?.message || 'Une erreur est survenue. Réessaie dans quelques minutes.');
+        // M-4 (audits du 05/11/2026) : la course trop proche dite par un seul texte, celui du site.
+        setRefus(corps?.raison === 'course_trop_proche' ? MESSAGE_COURSE_TROP_PROCHE
+          : corps?.message || 'Une erreur est survenue. Réessaie dans quelques minutes.');
         // Les portes (P6) : un refus du moteur, par son type.
         if (!coach && corps?.error === 'refus_metier' && corps?.message) compterEtape(porteDuRefus(String(corps.message)));
         setEnvoi(false);
@@ -375,7 +377,8 @@ export default function Questionnaire({
         window.location.href = corps.checkout_url ?? corps.page;
         return;
       }
-      setRefus(corps?.message || 'Une erreur est survenue. Réessaie dans quelques minutes.');
+      setRefus(corps?.raison === 'course_trop_proche' ? MESSAGE_COURSE_TROP_PROCHE
+        : corps?.message || 'Une erreur est survenue. Réessaie dans quelques minutes.');
     } catch {
       setRefus('Le service de génération ne répond pas. Vérifie ta connexion et réessaie.');
     }
@@ -421,6 +424,17 @@ export default function Questionnaire({
     ].filter(Boolean) as string[];
     return (
       <div className="space-y-6">
+        {/* M-14 (audits du 05/11/2026) : l'adresse, saisie une seule fois, redite en gros : tout y arrive. BROUILLON. */}
+        {!coach && (
+          <section className="bg-white rounded-2xl border-2 border-teal/40 p-5 sm:p-6">
+            <p className="text-[0.6875rem] font-bold tracking-[0.12em] uppercase text-teal mb-1">Tout arrive à cette adresse</p>
+            <p className="text-lg font-extrabold text-indigo break-all">{c.email}</p>
+            <p className="mt-1 text-[0.8125rem] text-[#4A4866] leading-relaxed">
+              La confirmation de ta commande, ton accès à l’app{autreNolio && nolioEmail.trim() ? ` ; l’invitation Nolio part à ${nolioEmail.trim()}` : ' et ton invitation Nolio'}.
+              Vérifie-la : une faute de frappe, et rien ne t’arrive.
+            </p>
+          </section>
+        )}
         <section className="bg-white rounded-2xl border border-indigo/[0.08] p-5 sm:p-6">
           <h2 className="text-[1.25rem] font-extrabold text-indigo tracking-tight mb-4">Relis tes réponses</h2>
           <dl className="divide-y divide-indigo/10">
