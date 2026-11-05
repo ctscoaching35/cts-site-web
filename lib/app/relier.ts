@@ -8,6 +8,8 @@
  * seulement. Entre deux séances possibles : celle dont le nom est le sien, puis celle du même jour, puis la plus
  * ancienne. Les jours de course n'en relient aucune. Fonction pure.
  */
+import { nomComparable } from './nomsSeances';
+
 export type ActiviteReelle = { date_start: string; sport?: string | null; planned?: string | null; name?: string | null };
 export type SeancePrevue = { id: string; date_start: string; sport?: string | null; name?: string | null };
 
@@ -19,8 +21,10 @@ const lundiDe = (jour: string) => {
   return d.toISOString().slice(0, 10);
 };
 const ecart = (a: string, b: string) => Math.round(Math.abs(Date.parse(`${a}T12:00:00Z`) - Date.parse(`${b}T12:00:00Z`)) / JOUR_MS);
-// Le même nom : sans tenir compte des espaces ni de la casse ; un nom vide ne relie rien.
-const normal = (nom: string | null | undefined) => String(nom ?? '').normalize('NFC').replace(/\s+/g, ' ').trim().toLowerCase();
+// Le même nom : sans tenir compte des espaces ni de la casse ; un nom vide ne relie rien. « Back-to-back » et « week-end
+// choc » sont le même nom (Q2, 05/11/2026 au soir : le moteur écrit le second, Nolio garde le premier pour les séances
+// déjà écrites ; lib/app/nomsSeances.ts).
+const normal = (nom: string | null | undefined) => nomComparable(nom);
 export const memeNom = (a: string | null | undefined, b: string | null | undefined) => normal(a) !== '' && normal(a) === normal(b);
 
 // reels : les activités de la période ; prevues : les séances prévues (une marge autour) ; sports : ceux de la course ;

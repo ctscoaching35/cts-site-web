@@ -4,12 +4,14 @@
  * données fabriquées, jamais sur celles d'un athlète.
  */
 import { ajouterJours } from './plan';
+import { MOTIF_WEEK_END_CHOC } from './nomsSeances';
 
 export type Seuils = { jours: number; rpe_au_dessus: number; rpe_au_dessus_sl?: number; sensations_max: number; hooper_semaines: number;
   hooper_ecart: number };
-// Une sortie longue, d'après son nom dans Nolio (« SL plaisir », « Back-to-back — Jour 1/2 (sortie longue) ») : son RPE
+// Une sortie longue, d'après son nom dans Nolio (« SL plaisir », « Back-to-back — Jour 1/2 (sortie longue) », et depuis
+// le 05/11/2026 au soir « Week-end choc — jour 1/2 (sortie longue) », Q2 : les deux noms, lib/app/nomsSeances.ts) : son RPE
 // se juge à prévu + 3 (décision coach du 21/10/2026, comme la règle R2 du moteur).
-const SORTIE_LONGUE = /^SL\b|back-to-back|sortie longue/i;
+const SORTIE_LONGUE = new RegExp(`^SL\\b|${MOTIF_WEEK_END_CHOC.source}|sortie longue`, 'i');
 // Le renfo, souvent fait sans le lecteur de Nolio (décision coach du 22/10/2026 : « pas forcément besoin de me dire
 // manqué ») : jamais « séance manquée », hors du compte des séances faites. « Renforcement musculaire » dans Nolio, le
 // sport des séances du moteur (cts_renfo.SPORT_RENFO) comme de celles du coach.

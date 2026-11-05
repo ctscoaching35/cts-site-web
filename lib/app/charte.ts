@@ -21,6 +21,8 @@ export const BANNIERE: Record<string, string> = {
   'Affûtage actif': '#0C6E5F',
   Décharge: '#0D5A4E',
   'Back-to-back': '#0C6E5F',
+  // Q2 (05/11/2026 au soir) : le même type, s'il prend le nouveau nom.
+  'Week-end choc': '#0C6E5F',
 };
 
 // Pastilles de l'en-tête de la carte (cts_base._PASTILLES) : fond, encre.
