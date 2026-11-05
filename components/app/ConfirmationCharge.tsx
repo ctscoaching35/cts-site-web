@@ -71,7 +71,7 @@ export default function ConfirmationCharge({ planId, achat, reponse, dimanche, d
               </button>
             </form>
           )}
-          {/* C23 (audits du 05/11/2026) : l'heure limite, comme l'e-mail de rappel. BROUILLON, à valider par le coach. */}
+          {/* C23 (audits du 05/11/2026) : l'heure limite, comme l'e-mail de rappel. Validé par le coach le 05/11/2026 (1A). */}
           <p className="text-xs text-[#5E5C78] leading-relaxed">
             Réponds d’ici {dimanche}, 18 h : ta première semaine s’écrit le soir même sur ta réponse ; sans réponse, sur
             celles de ton achat.

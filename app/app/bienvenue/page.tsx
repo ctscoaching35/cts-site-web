@@ -60,7 +60,7 @@ export default async function Bienvenue({ searchParams }: { searchParams: Recher
       </dl>
 
       <Carte className="text-center">
-        {/* BROUILLON, à valider par le coach (« Ta préparation a commencé le … »). */}
+        {/* Validé par le coach le 05/11/2026 (1A ; « Ta préparation a commencé le … »). */}
         <p className="text-[0.9375rem] font-bold text-indigo">{commencee ? `Ta préparation a commencé le ${dateLongue(plan.course.date_debut_plan, true).replace(/^\S+ /, '')}.` : c.debut}</p>
         <p className="mt-1 text-[0.8125rem] text-[#5E5C78]">{c.rendez_vous}</p>
       </Carte>
@@ -72,7 +72,7 @@ export default async function Bienvenue({ searchParams }: { searchParams: Recher
             préparation lointaine. */}
         {nolio !== 'actif' && nolio !== 'sorti' && nolio !== 'arrete' && nolio !== 'coaching' && (
           <p className="pt-1">
-            {/* BROUILLON, à valider par le coach (« Nolio t'a écrit »). */}
+            {/* Validé par le coach le 05/11/2026 (1A ; « Nolio t'a écrit »). */}
             {inviteLe ? `Nolio t’écrira le ${dateLongue(inviteLe)}, une semaine avant ta première semaine`
               : nolio === 'invite' || nolio === 'refuse' ? 'Nolio t’a écrit' : 'Nolio t’écrit dans quelques minutes'} :
             accepte son invitation dans l’équipe CTS, ou connecte-toi avec les identifiants reçus. Pense à regarder dans tes indésirables.

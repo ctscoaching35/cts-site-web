@@ -168,7 +168,7 @@ export function DonnerAccord({ planId, demonstration = false }: { planId: string
       className="space-y-2">
       <p className="text-[0.8rem] text-[#4A4866] leading-relaxed">
         {/* La phrase du questionnaire d'achat (PL7, décision coach du 04/11/2026), et C18 : « et voir ma semaine ici ».
-            BROUILLON, à valider par le coach (l'ajout). */}
+            Validé par le coach le 05/11/2026 (1A ; l'ajout). */}
         J’accepte que l’app lise aussi dans Nolio mon RPE, mon ressenti, mon Hooper et la trace de mes séances test
         (distance, FC), pour ajuster mon plan à ma fatigue, en tirer mes repères et voir ma semaine ici. Je peux retirer cet
         accord à tout moment.
@@ -196,8 +196,8 @@ export function RetirerAccord({ planId }: { planId: string }) {
 }
 
 // Q11 (décision coach du 05/11/2026 au soir, « A ») : la trace GPX de l'objectif, donnée depuis sa fiche de course, avec
-// le même champ que pour une course de préparation (lib/app/actionsEcriture.ts, ajouterTraceObjectif). BROUILLON, à
-// valider par le coach.
+// le même champ que pour une course de préparation (lib/app/actionsEcriture.ts, ajouterTraceObjectif). Validé par le coach
+// le 05/11/2026 (1A).
 export function AjouterTrace({ planId }: { planId: string }) {
   const [etat, action, enCours] = useActionState<EtatGeste, FormData>(ajouterTraceObjectif.bind(null, planId), null);
   if (etat?.ok) return <Message etat={etat} />;

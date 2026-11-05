@@ -39,7 +39,7 @@ export function TesBadges({ etat, accord, aujourdhui, donnerAccord = null, coach
       {!accord ? (
         <div className="space-y-1">
           <p className="text-[0.8125rem] text-[#4A4866] leading-relaxed">
-            {/* BROUILLON, à valider par le coach (la phrase du coaché). */}
+            {/* Validé par le coach le 05/11/2026 (1A ; la phrase du coaché). */}
             {coache ? 'Tes badges se débloquent tout seuls, d’après tes séances, avec ton accord : réponds « oui » au message de ton coach dans Nolio.'
               : 'Avec ton accord de lecture de Nolio, tes badges se débloquent tout seuls, d’après tes séances.'}
           </p>

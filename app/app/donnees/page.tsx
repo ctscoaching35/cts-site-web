@@ -44,7 +44,7 @@ export default async function MesDonnees({ searchParams }: { searchParams: Reche
       <main className="mx-auto max-w-2xl px-4 pt-5 pb-6 space-y-4">
         <div>
           <h1 className={TITRE}>Tes données</h1>
-          {/* C40 : une seule phrase de mise à jour, et juste. BROUILLON, à valider par le coach. */}
+          {/* C40 : une seule phrase de mise à jour, et juste. Validé par le coach le 05/11/2026 (1A). */}
           <p className="mt-1.5 text-[0.8125rem] text-[#5E5C78] leading-relaxed">
             {d.accord ? 'Lues dans Nolio avec ton accord : rangées chaque dimanche soir, complétées chaque nuit.'
               : 'Tes séances faites ou manquées et leur durée : rangées chaque dimanche soir, complétées chaque nuit.'}
@@ -60,10 +60,10 @@ export default async function MesDonnees({ searchParams }: { searchParams: Reche
         )}
         {/* Une semaine se dit par son lundi, pas par son numéro (décision coach du 19/10/2026). */}
         {d.accord && (chargePrete ? <GraphiqueCharge realises={saison.realises} courses={saison.courses} axe={axe} />
-          // C40 : sans « le dimanche soir », qui contredisait la phrase de mise à jour. BROUILLON, à valider par le coach.
+          // C40 : sans « le dimanche soir », qui contredisait la phrase de mise à jour. Validé par le coach le 05/11/2026 (1A).
           : <EnAttente titre="Ta charge d’entraînement" texte="Elle s’affiche après deux semaines faites : ton effort ressenti (RPE) multiplié par la durée de chaque séance, lus dans Nolio." />)}
         {barres.length > 0 ? <GraphiqueVolume barres={barres} />
-          // C41 : la carte du volume dit quand elle arrive, comme les deux autres. BROUILLON, à valider par le coach.
+          // C41 : la carte du volume dit quand elle arrive, comme les deux autres. Validé par le coach le 05/11/2026 (1A).
           : !(rien && !d.accord) && <EnAttente titre="Ton volume de course" texte="Il s’affiche après ta première semaine faite : tes heures de course, semaine après semaine, lues dans Nolio." />}
         {d.accord && (hooperPret ? <GraphiqueHooper points={points} axe={axe} aLaMain={ctx.aLaMain} />
           : <EnAttente titre="Ta forme du dimanche (Hooper)" texte="Elle s’affiche après deux dimanches : ta fatigue, ton sommeil, ton stress et tes courbatures, à remplir le dimanche à 8 h dans Nolio." />)}

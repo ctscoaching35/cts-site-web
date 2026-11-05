@@ -76,7 +76,7 @@ export default async function Garder({ searchParams }: { searchParams: Recherche
           )}
           {valide && !fait && (
             <>
-              {/* C45 : la séance nommée. BROUILLON, à valider par le coach. */}
+              {/* C45 : la séance nommée. Validé par le coach le 05/11/2026 (1A). */}
               <p className="text-sm text-[#4A4866] leading-relaxed">
                 {nom ? <>Ta séance de {jour}, <strong className="text-indigo">{nomAffiche(nom)}</strong>, a été allégée</> : `Ta séance de ${jour} a été allégée`} en
                 endurance fondamentale à cause de signaux de fatigue. Si tu te sens bien, tu peux la remettre telle qu’elle

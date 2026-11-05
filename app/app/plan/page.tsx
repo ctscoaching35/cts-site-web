@@ -95,7 +95,7 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
           <span className="flex flex-col gap-1">
             <span className="text-sm font-bold">Ta fiche de course</span>
             {/* Ce qu'elle contient vraiment, dans l'ordre de ses parties (retour du coach du 20/10/2026) ; C29 : sans trace,
-                ni profil ni tronçons. BROUILLON, à valider par le coach (la version sans trace). */}
+                ni profil ni tronçons. Validé par le coach le 05/11/2026 (1A ; la version sans trace). */}
             <span className="text-xs text-[#D6D5E6]">{plan.profil.sans_trace
               ? 'Déterminants de la performance, stratégie nutritionnelle ; le profil avec sa trace GPX'
               : 'Profil, tronçons, déterminants de la performance, stratégie nutritionnelle'}</span>
@@ -204,7 +204,7 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
                         className="w-full min-h-11 flex justify-between items-center gap-3 text-sm text-left disabled:cursor-default">
                         <span className="font-bold text-indigo">{o.course_nom}</span>
                         <span className={o.id === ctx.cle ? 'text-teal font-semibold' : 'text-[#5E5C78]'}>
-                          {/* C26 : « Celui-ci », plus « Affiché ». BROUILLON, à valider par le coach. */}
+                          {/* C26 : « Celui-ci », plus « Affiché ». Validé par le coach le 05/11/2026 (1A). */}
                           {o.id === ctx.cle ? 'Celui-ci' : `${o.course_date < jour ? 'Passé' : o.id === objectifs.enCours ? 'En cours' : 'À venir'} · ${dateLongue(o.course_date, true)}`}
                         </span>
                       </button>

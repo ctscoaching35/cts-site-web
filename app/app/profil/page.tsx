@@ -117,7 +117,7 @@ export default async function MonProfil({ searchParams }: { searchParams: Recher
               })}
             </ul>
             {aucunRepere ? (
-              // Q6-e : BROUILLON, à valider par le coach (le texte vient de la synthèse).
+              // Q6-e : Validé par le coach le 05/11/2026 (1A ; le texte vient de la synthèse).
               <p className="pt-2.5 pb-1 text-[0.8125rem] text-[#4A4866] leading-relaxed">
                 Tes FC et tes allures s’affichent après ton premier test.{' '}
                 {saisie && <Link href={saisie} className="font-bold text-teal whitespace-nowrap">Tes tests ›</Link>}
@@ -133,7 +133,7 @@ export default async function MonProfil({ searchParams }: { searchParams: Recher
         <Carte className="space-y-2.5">
           <Surtitre>Tes tests</Surtitre>
           {/* C34 (audits du 05/11/2026) : « son résultat se lit dans Nolio » seulement avec l'accord de lecture ; sans lui,
-              il l'entre ici. BROUILLON, à valider par le coach (la phrase sans accord). */}
+              il l'entre ici. Validé par le coach le 05/11/2026 (1A ; la phrase sans accord). */}
           <p className="text-[0.8125rem] text-[#4A4866] leading-relaxed">
             {d.ecrit && !ctx.aLaMain
               ? (d.accord || !saisie
@@ -154,7 +154,7 @@ export default async function MonProfil({ searchParams }: { searchParams: Recher
             )))}
           </ul>
           {ctx.coache && saisie && <p className="text-xs text-[#5E5C78]">{ctx.aLaMain
-            // C47 : à la main ou sans objectif, aucune semaine ne s'écrit le dimanche. BROUILLON, à valider par le coach.
+            // C47 : à la main ou sans objectif, aucune semaine ne s'écrit le dimanche. Validé par le coach le 05/11/2026 (1A).
             ? 'Un test refait de ton côté s’entre ici : tes zones changent dès maintenant, ton coach le voit sur ta fiche et en tient compte pour ta semaine suivante.'
             : 'Un test refait de ton côté s’entre ici : tes zones changent dès maintenant, tes séances à partir de la semaine écrite dimanche, et ton coach le voit sur ta fiche.'}</p>}
         </Carte>
@@ -183,7 +183,7 @@ export default async function MonProfil({ searchParams }: { searchParams: Recher
         ) : (
           <Carte className="space-y-1.5">
             <Surtitre>Ton style de coureur</Surtitre>
-            {/* C38 : BROUILLON, à valider par le coach. */}
+            {/* C38 : Validé par le coach le 05/11/2026 (1A). */}
             <p className="text-[0.8125rem] text-[#4A4866] leading-relaxed">
               Il se tire de ton test de vitesse critique : plutôt rapide ou plutôt endurant. Ta préparation en tient compte :
               ton point faible loin de ton objectif, ton point fort près de lui.
@@ -211,7 +211,7 @@ export default async function MonProfil({ searchParams }: { searchParams: Recher
                 </dl>
                 <p className="pt-1 text-[0.72rem] leading-relaxed text-[#5E5C78]">
                   {ctx.aLaMain
-                    // C47 : BROUILLON, à valider par le coach.
+                    // C47 : Validé par le coach le 05/11/2026 (1A).
                     ? 'Il sert à tes prochains objectifs ; ton coach en tient compte pour ta semaine suivante.'
                     : 'Il sert à tes prochains objectifs. Ta semaine, elle, s’ajuste chaque week-end avec ton questionnaire du samedi.'}
                 </p>

@@ -83,7 +83,7 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
               {coach.texte} {ctx.aLaMain ? `${coach.prenom} écrit tes séances dans Nolio.` : `${coach.prenom} relit ta préparation et peut reprendre la main sur une semaine à tout moment.`}
             </p>
             {/* Q5 et Q18 (décisions coach du 05/11/2026 au soir, « A ») : plus de bouton vers le site de Nolio, qui n'ouvrait
-                pas sa conversation ; ses mots restent dans Nolio, la carte le dit. BROUILLON, à valider par le coach. */}
+                pas sa conversation ; ses mots restent dans Nolio, la carte le dit. Validé par le coach le 05/11/2026 (1A). */}
             <p className="text-[0.8125rem] leading-relaxed text-white font-semibold">
               Écris-lui dans ton appli Nolio. Ses mots sur ta semaine sont dans Nolio.
             </p>
@@ -131,7 +131,7 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
               </div>
             </div>
             {/* Une course reportée (PL6, décision coach du 04/11/2026) ; Q5 (décision coach du 05/11/2026 au soir, « A ») : il
-                nous écrit, par le lien de Compte, plus « réponds à ton e-mail de bienvenue ». BROUILLON, à valider par le coach. */}
+                nous écrit, par le lien de Compte, plus « réponds à ton e-mail de bienvenue ». Validé par le coach le 05/11/2026 (1A). */}
             {!ctx.coache && (
               <div className="flex gap-3 py-3.5">
                 <span className="w-2.5 h-2.5 mt-1.5 rounded-full bg-teal shrink-0" aria-hidden />
@@ -148,7 +148,7 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
         )}
 
         {/* Q5 (décision coach du 05/11/2026 au soir, « A », et « pour les plans, pas d'interaction avec moi ») : un acheteur
-            nous écrit pour son achat ou l'app, jamais pour son entraînement. BROUILLON, à valider par le coach (le texte de
+            nous écrit pour son achat ou l'app, jamais pour son entraînement. Validé par le coach le 05/11/2026 (1A ; le texte de
             la décision). */}
         {!ctx.coache && (
           <a href={ECRIRE_A_CTS} className="flex items-center justify-between gap-3 min-h-[52px] px-[18px] py-3 bg-white rounded-2xl border border-indigo/[0.08] text-sm text-indigo">

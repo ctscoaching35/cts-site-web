@@ -38,10 +38,10 @@ export function CarteNolio({ etat, inviteLe = null, confirmer = false, avantCour
     en_cours: { titre: 'Ton accès Nolio arrive', texte: ARRIVE },
     invite: { titre: 'Accepte ton invitation Nolio',
       texte: 'Nolio t’a envoyé par e-mail une invitation à rejoindre l’équipe CTS (pense à regarder dans tes indésirables). Dès que tu l’acceptes, tes séances s’installent dans ton calendrier Nolio.' },
-    // Q5 : BROUILLON, à valider par le coach.
+    // Q5 : Validé par le coach le 05/11/2026 (1A).
     refuse: { titre: 'Ton invitation Nolio n’a pas abouti', ecrire: true, texte: 'Écris-nous : nous t’en renvoyons une.' },
     sorti: avantCourse
-      // Q5 : BROUILLON, à valider par le coach.
+      // Q5 : Validé par le coach le 05/11/2026 (1A).
       ? { titre: 'Tu as quitté l’équipe CTS dans Nolio', ecrire: true,
         texte: 'Tes séances ne t’arrivent plus. Pour rejoindre l’équipe, écris-nous : nous t’envoyons une nouvelle invitation.' }
       : { titre: 'Ta préparation est terminée dans Nolio', texte: 'Ton compte Nolio et tes séances restent à toi.' },
@@ -225,7 +225,7 @@ export function CarteObjectif({ plan, restants, jauge, etape, href, surtitre = '
       </div>
       {jauge && <Montagne score={avancee} ton={jauge.verdict?.ton ?? null} route={estRoute(plan.course.format)} />}
       {cestLeJour ? (
-        // C14 : BROUILLON, à valider par le coach.
+        // C14 : Validé par le coach le 05/11/2026 (1A).
         <p className="text-base font-bold">C’est le jour J. Bonne course !</p>
       ) : !jauge || etape === 'apres' ? null
       : etape === 'avant' ? (
@@ -312,7 +312,7 @@ export const contientLaCourse = (lundi: string | null | undefined, course: strin
   Boolean(lundi && course && course >= lundi && course <= ajouterJours(lundi, 6));
 
 // Q1 (décision coach du 05/11/2026 au soir, « A ») : les noms des séances restent ceux de Nolio ; sous « Ta semaine », les
-// mots qu'ils emploient, repliés, une ligne chacun. BROUILLON, à valider par le coach (les huit lignes).
+// mots qu'ils emploient, repliés, une ligne chacun. Validé par le coach le 05/11/2026 (1A ; les huit lignes).
 const LEXIQUE: [string, string][] = [
   ['EF', 'endurance fondamentale, RPE 3 : tu tiens une conversation sans gêne.'],
   ['SL', 'sortie longue, la plus longue de ta semaine, en endurance.'],
@@ -413,14 +413,14 @@ export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null, arri
         <Surtitre>Ta semaine</Surtitre>
         {etiquette && <span className="text-xs font-semibold" style={{ color: etiquette.couleur }}>{etiquette.texte}</span>}
       </div>
-      {/* Q7 : BROUILLON, à valider par le coach. Le pourquoi reste dans Nolio (Q18). */}
+      {/* Q7 : Validé par le coach le 05/11/2026 (1A). Le pourquoi reste dans Nolio (Q18). */}
       {ajustee && (
         <p className="pb-1.5 text-[0.8125rem] text-[#4A4866] leading-relaxed">
           {ajustee === 'coach' ? 'Ajustée par ton coach.'
             : 'Ajustée d’après ta semaine passée : le pourquoi est dans la note de ta semaine, dans Nolio.'}
         </p>
       )}
-      {/* Q14 : la semaine d'un test a sa ligne. BROUILLON, à valider par le coach. */}
+      {/* Q14 : la semaine d'un test a sa ligne. Validé par le coach le 05/11/2026 (1A). */}
       {test && (
         <div className="mb-2 p-3 rounded-xl bg-[#FFF6E5] space-y-0.5">
           <p className="text-sm font-bold text-indigo">Cette semaine : {test.titre}</p>
@@ -435,7 +435,7 @@ export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null, arri
           <p className="text-sm font-semibold text-indigo">Tes séances de la semaine sont dans Nolio.</p>
           <p className="text-[0.8125rem] text-[#4A4866] leading-relaxed">
             {coache ? 'Pour les voir ici, réponds « oui » au message de ton coach dans Nolio.'
-              // C18 : BROUILLON, à valider par le coach.
+              // C18 : Validé par le coach le 05/11/2026 (1A).
               : 'Pour les voir ici, donne ton accord de lecture.'}
           </p>
           {!coache && accord && <Link href={accord} className={LIEN}>Donner mon accord ›</Link>}
@@ -465,7 +465,7 @@ export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null, arri
         </div>
       )}
       {horsNolio ? null
-        // C9 : plus de bouton vers le site de Nolio ; BROUILLON, à valider par le coach (« dans ton appli Nolio »).
+        // C9 : plus de bouton vers le site de Nolio ; validé par le coach le 05/11/2026 (1A ; « dans ton appli Nolio »).
         : sansAccord ? note('Le détail de chaque séance est dans ton appli Nolio.')
         : muet ? note('Nolio ne répond pas pour l’instant : tes séances y sont, avec leur détail.')
         : !nolio && !jours.length && !ligne ? null

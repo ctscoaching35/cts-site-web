@@ -261,7 +261,7 @@ export function GraphiqueHooper({ points, axe, aLaMain = false }: { points: Poin
       <p className="text-xs leading-relaxed text-[#4A4866]">
         La bande verte : ta zone habituelle (ta moyenne des 4 semaines d’avant). Plus le Hooper est haut, plus tu es
         fatigué. {aLaMain
-          // C47 (audits du 05/11/2026) : BROUILLON, à valider par le coach.
+          // C47 (audits du 05/11/2026) : Validé par le coach le 05/11/2026 (1A).
           ? 'Un point orange : au-dessus de ta zone, ton coach en tient compte pour ta semaine suivante.'
           : 'Un point orange : au-dessus de ta zone, ta semaine suivante a pu être allégée.'}
       </p>

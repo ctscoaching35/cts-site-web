@@ -108,7 +108,7 @@ export function jaugeDuPlan(trame: LigneTrame[], realises: Realise[], aujourdhui
     if (zone !== null && dernier !== null) {
       const frais = dernier <= zone + ECART_HOOPER;
       piliers.push({ cle: 'fraicheur', titre: 'Fraîcheur', valeur: frais ? 1 : 0.5,
-        // C22 : sans le chiffre du Hooper, qui ne dit rien seul. BROUILLON, à valider par le coach (la seconde phrase).
+        // C22 : sans le chiffre du Hooper, qui ne dit rien seul. Validé par le coach le 05/11/2026 (1A ; la seconde phrase).
         detail: frais ? 'Ta forme du dimanche est revenue dans ta zone habituelle.'
           : 'Ta forme du dimanche reste au-dessus de ta zone habituelle : dors, mange, garde l’affûtage tel quel.' });
     }

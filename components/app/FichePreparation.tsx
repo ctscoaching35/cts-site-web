@@ -27,8 +27,8 @@ export default function CorpsFichePreparation({ fiche, calculateur, cheminFiche,
       <EnTeteCourse surtitre="Course de préparation" nom={fiche.course.nom} lignes={fiche.ta_course.lignes} />
       <Partie titre={profil.titre}>
         {profil.sans_trace ? (
-          // C29 (audits du 05/11/2026) : une phrase de coureur ; « Modifier » sa course reprend la trace. BROUILLON, à
-          // valider par le coach.
+          // C29 (audits du 05/11/2026) : une phrase de coureur ; « Modifier » sa course reprend la trace. Validé par le coach
+          // le 05/11/2026 (1A).
           <p>Sans la trace GPX de cette course, sa fiche n’a pas son profil ni ses tronçons : donne-la en modifiant ta course, dans « Ta préparation ».</p>
         ) : (
           <>

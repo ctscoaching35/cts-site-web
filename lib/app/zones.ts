@@ -232,7 +232,7 @@ export function profilCoureur(p: Pick<Profil, 'vc_ms' | 'd_prime_m'>): ProfilCou
     nom: rapide ? 'Plutôt rapide' : 'Plutôt endurant',
     // Q1 (décision coach du 05/11/2026 au soir, « A ») : des mots de coureur, sans le coefficient ni son auteur ; C38 : les
     // conseils disent ce que la préparation en fait (lu tel quel, « travaille ton point faible » invitait à ajouter des
-    // séances soi-même ; le moteur lit ce profil, lib/app/ecriture.ts, avecLeProfil). BROUILLON, à valider par le coach.
+    // séances soi-même ; le moteur lit ce profil, lib/app/ecriture.ts, avecLeProfil). Validé par le coach le 05/11/2026 (1A).
     texte: rapide
       ? 'Ta vitesse baisse plus que la moyenne quand l’effort s’allonge. Ta marge de progrès est surtout en endurance : tenir plus longtemps une plus grande part de ta vitesse.'
       : 'Tu tiens bien ta vitesse quand l’effort s’allonge. Ta marge de progrès est surtout en vitesse, sur les efforts courts.',

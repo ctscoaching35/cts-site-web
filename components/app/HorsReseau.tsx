@@ -15,7 +15,7 @@ const quand = (iso: string) => {
 // seulement — en développement, il servirait du code périmé — et en HTTPS, seule condition où
 // les navigateurs l'acceptent (localhost compris).
 // C8 (audits du 05/11/2026) : hors réseau, l'app le dit en une ligne, avec l'heure de ce qu'elle montre (rendu : l'heure
-// où le serveur a fait la page, gardée avec elle par le service worker). BROUILLON, à valider par le coach.
+// où le serveur a fait la page, gardée avec elle par le service worker). Validé par le coach le 05/11/2026 (1A).
 export default function HorsReseau({ rendu }: { rendu?: string }) {
   const [horsReseau, setHorsReseau] = useState(false);
   useEffect(() => {

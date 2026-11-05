@@ -55,7 +55,7 @@ export default function PourBienDemarrer({ acheteur, nolio, accord, questionnair
     nolio === 'actif'
       ? { fait: true, titre: 'Tu es dans l’équipe CTS sur Nolio' }
       : { fait: false, titre: 'Rejoins l’équipe CTS dans Nolio', texte: nolio === 'refuse'
-        // Q5 : BROUILLON, à valider par le coach.
+        // Q5 : Validé par le coach le 05/11/2026 (1A).
         ? <>Ton invitation n’a pas abouti : écris-nous, nous t’en renvoyons une.<span className="block"><EcrisNous /></span></>
         // C12 : « t'écrira », au futur, comme l'écran de bienvenue, tant que l'invitation n'est pas partie.
         : `${nolio === 'a_inviter' ? 'Nolio t’écrira' : 'Nolio t’écrit'}${inviteLe && nolio === 'a_inviter' ? ` le ${inviteLe}, une semaine avant ta première semaine,` : ''} à l’adresse de ton achat (ou de ton compte Nolio) : accepte l’invitation, ou connecte-toi avec les `

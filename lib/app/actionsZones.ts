@@ -91,7 +91,7 @@ async function enregistrerSurLaFiche(compteId: string, planId: string, valeurs: 
   else if (!planId) await zonesDeLaFicheVersNolio(moi.id).catch(() => null);
   revalidatePath('/app', 'layout');
   // C47 (audits du 05/11/2026) : programmé à la main ou sans objectif, aucune semaine ne s'écrit le dimanche ; c'est son
-  // coach qui en tient compte. BROUILLON, à valider par le coach.
+  // coach qui en tient compte. Validé par le coach le 05/11/2026 (1A).
   const aLaMain = !planId || (await plansALaMain().catch(() => new Set<string>())).has(planId);
   return { ok: true, message: aLaMain
     ? 'C’est enregistré, ton coach le voit : tes zones changent dès maintenant, et ton coach en tient compte pour ta semaine suivante.'

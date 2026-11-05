@@ -242,7 +242,7 @@ export async function ajouterTraceObjectif(planId: string, _e: EtatGeste, form: 
   const r = await fetch(`${API_URL}/v1/fiche-course`, { method: 'POST', body: envoi, cache: 'no-store', headers: enTetesMoteur() }).catch(() => null);
   const fiche = r?.ok ? await r.json().catch(() => null) as FicheLue | null : null;
   if (!fiche) return { ok: false, message: 'Le moteur ne répond pas : réessaie dans un moment.' };
-  // BROUILLON, à valider par le coach (les deux messages).
+  // Validé par le coach le 05/11/2026 (1A ; les deux messages).
   if (!fiche.trace || !fiche.profil) {
     return { ok: false, message: 'Ta trace ne s’est pas lue : exporte-la de nouveau depuis le site de la course, avec son altitude.' };
   }

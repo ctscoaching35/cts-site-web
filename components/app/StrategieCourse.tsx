@@ -57,7 +57,7 @@ export default function StrategieCourse({ lignes, href, fiche, ultra, externe = 
         <details>
           <summary className="cursor-pointer list-none inline-flex items-center min-h-11 text-sm font-semibold text-[#5E5C78] underline underline-offset-2">Effacer ma stratégie</summary>
           <form action={effacer} className="pb-1 space-y-2">
-            {/* BROUILLON, à valider par le coach. */}
+            {/* Validé par le coach le 05/11/2026 (1A). */}
             <p className="text-sm text-[#4A4866]">Ta stratégie gardée s’efface ; le calculateur reste là pour la refaire.</p>
             <button type="submit" className={BOUTON_DANGER}>Confirmer</button>
           </form>

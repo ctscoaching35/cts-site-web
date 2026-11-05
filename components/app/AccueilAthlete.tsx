@@ -212,7 +212,7 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
           <CarteObjectif plan={plan} restants={restants} jauge={ctx.aLaMain ? null : jauge} etape={etape} href={lien('/app/plan', ctx)}
             surtitre={etape === 'apres' ? 'Ta dernière course' : 'Ton objectif'} jourJ={jourJ}
             // Q16 (décision coach du 05/11/2026 au soir, « A ») : programmé à la main, le bouton ouvre sa fiche de course.
-            // BROUILLON, à valider par le coach (« Ta fiche de course »).
+            // Validé par le coach le 05/11/2026 (1A ; « Ta fiche de course »).
             bouton={ctx.aLaMain ? { texte: 'Ta fiche de course', href: fiche } : null}
             coache={Boolean(ctx.coache)} jour={jour} debut={d.trame.find((l) => l.lundi)?.lundi ?? null} />
         )}
@@ -228,7 +228,7 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
             )}
             <div className="space-y-1.5 pt-1">
               <p className="text-[0.875rem] text-[#4A4866] leading-relaxed">Ton prochain objectif majeur ? Une nouvelle préparation, construite pour lui.</p>
-              {/* Q3 et Q12 : « Préparer une nouvelle course », son prix dessous. BROUILLON, à valider par le coach. */}
+              {/* Q3 et Q12 : « Préparer une nouvelle course », son prix dessous. Validé par le coach le 05/11/2026 (1A). */}
               <Link href={lien('/app/objectif/nouveau', ctx)} className={`${BOUTON} w-full`}>Préparer une nouvelle course</Link>
               {prix !== null && <p className="text-xs text-center text-[#5E5C78]">Dès {prix} €, selon la durée de ta préparation.</p>}
             </div>
@@ -273,7 +273,7 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
   );
 }
 
-// Le nom du test qui part cette semaine (Q14). BROUILLON, à valider par le coach.
+// Le nom du test qui part cette semaine (Q14). Validé par le coach le 05/11/2026 (1A).
 const TITRE_DU_TEST: Record<CleTest, string> = {
   parole: 'ton test de la parole', vitesse_critique: 'ton test de vitesse critique', fc_seuil2: 'la mesure de ta FC au seuil 2',
 };
@@ -309,7 +309,7 @@ function ApresTaCourse({ nom, recup, ctx, children }: {
   return (
     <Carte className="space-y-3">
       <Surtitre>Après ta course</Surtitre>
-      {/* BROUILLON, à valider par le coach. */}
+      {/* Validé par le coach le 05/11/2026 (1A). */}
       <p className="text-[0.9375rem] font-bold text-indigo">{nom} est derrière toi : bravo pour le chemin.</p>
       {recup && (
         <div className="space-y-1">
@@ -349,7 +349,7 @@ function CarteProchainObjectif({ ctx, attente }: { ctx: Contexte; attente: Atten
   );
 }
 
-// BROUILLON, à valider par le coach (« Ta demande pour … est chez ton coach. »).
+// Validé par le coach le 05/11/2026 (1A ; « Ta demande pour … est chez ton coach. »).
 function ProchainObjectif({ ctx, attente, sombre = false }: { ctx: Contexte; attente: Attente; sombre?: boolean }) {
   if (attente) {
     // En démonstration, « Annuler » revient à l'état sans demande ; rien ne s'enregistre.

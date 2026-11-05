@@ -99,7 +99,7 @@ export default async function TesZones({ searchParams }: { searchParams: Recherc
                 <p className="text-sm text-[#4A4866]">Ce test s’ouvre une fois ta vitesse critique enregistrée.</p>
               )}
               <details open={ouvert === t.cle} className="group border-t border-indigo/[0.06]">
-                {/* BROUILLON, à valider par le coach (« Comment faire le test › », le texte de la synthèse). */}
+                {/* Validé par le coach le 05/11/2026 (1A ; « Comment faire le test › », le texte de la synthèse). */}
                 <summary className="cursor-pointer list-none flex items-center justify-between min-h-11 text-[0.8125rem] font-bold text-teal">
                   <span>Comment faire le test</span><span aria-hidden className="inline-block transition-transform group-open:rotate-90">›</span>
                 </summary>

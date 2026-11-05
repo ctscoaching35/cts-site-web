@@ -69,7 +69,7 @@ export default async function TaCourse({ searchParams }: { searchParams: Recherc
         <EnTeteCourse surtitre="Ta fiche de course" nom={plan.course.nom} lignes={plan.ta_course.lignes} />
 
         {/* C29 et Q11 (audits du 05/11/2026 ; décision coach du 05/11/2026 au soir, « A ») : sans trace, une phrase de
-            coureur à la place des phrases de fichier, et de quoi la donner. BROUILLON, à valider par le coach. */}
+            coureur à la place des phrases de fichier, et de quoi la donner. Validé par le coach le 05/11/2026 (1A). */}
         <Partie titre={profil.titre}>
           {profil.sans_trace ? (
             <>

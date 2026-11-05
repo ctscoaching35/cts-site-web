@@ -85,7 +85,7 @@ export function EffacerReperes({ planId, libelle }: { planId: string; libelle: s
     <details className="bg-white rounded-2xl border border-indigo/[0.08] px-[18px]">
       <summary className="cursor-pointer list-none flex items-center min-h-12 text-sm font-bold text-[#9A3B2C]">{libelle}</summary>
       <form action={effacerZones.bind(null, planId)} className="pb-4 space-y-2">
-        {/* BROUILLON, à valider par le coach. */}
+        {/* Validé par le coach le 05/11/2026 (1A). */}
         <p className="text-sm text-[#4A4866] leading-relaxed">Tes valeurs s’effacent : tes séances se règlent de nouveau sur ton effort ressenti.</p>
         <button type="submit" className={BOUTON_DANGER}>Confirmer</button>
       </form>

@@ -97,7 +97,7 @@ export default function SemainesDuPlan({ trame, jour, course }: { trame: LigneTr
         Nolio, d’après ta semaine écoulée : elles peuvent s’en écarter un peu.
       </p>
       <ul className={clsx(apresLaCourse && 'pb-1')}>
-        {/* BROUILLON, à valider par le coach (les deux lignes repliées). */}
+        {/* Validé par le coach le 05/11/2026 (1A ; les deux lignes repliées). */}
         {apresLaCourse ? repliees(semaines, `Revoir tes ${semaines.length} semaines`) : (
           <>
             {passees.length > 0 && repliees(passees, `${passees.length} semaine${passees.length > 1 ? 's' : ''} faite${passees.length > 1 ? 's' : ''}`)}
