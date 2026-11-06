@@ -22,6 +22,8 @@ import { lireTemps } from '@/lib/plan';
 import { ajouterJours, dateAbregee, dateLongue, jourMois, joursEntre, type Semaine } from './plan';
 import { lienNolioAthlete } from './liensNolio';
 import { athletesNolio, ErreurNolio, nolioConfigure, type AthleteNolio } from './nolio';
+import { faiteSansRpe } from './resumeSemaine';
+import { lundiDeLaSemainePassee } from './semainesDuDimanche';
 import { clientService } from './supabase';
 import { jaugeDuPlan, weekEndChoc, type Verdict } from './tableau';
 
@@ -34,14 +36,15 @@ export type LigneAthlete = {
     fond?: { saison: number; theme: string | null; tests_dans: number | null } } | null;
   // Son entrée, tant qu'elle n'est pas complète (décision coach du 22/10/2026) : « Entrée 3/5 » sur sa ligne.
   entree: { faites: number; total: number } | null;
-  // Le tableau de bord (décision coach du 24/10/2026) : sa programmation, sa semaine passée (la dernière complète, du
-  // lundi d'avant au dimanche qui le suit, déjà résumée : séances faites sur prévues, charge tenue ; ses dates sous les
-  // titres du tableau, décision 2A du 05/11/2026), son Hooper de dimanche et sa tendance. Son signal vient de « Cette
-  // semaine » (cetteSemaine.ts, signalDe).
+  // Le tableau de bord (décision coach du 24/10/2026) : sa programmation, sa semaine passée (VueCoach.semainePassee : la
+  // dernière finie, celle qui finit ce dimanche dès le passage, décision A du 06/11/2026 ; déjà résumée : séances faites
+  // sur prévues, charge tenue ; ses dates sous les titres du tableau, décision 2A du 05/11/2026), son Hooper de dimanche
+  // et sa tendance. Son signal vient de « Cette semaine » (cetteSemaine.ts, signalDe).
   // coache : false pour une fiche passée en mode plan avant le 04/11/2026 (le mode n'est plus dans l'interface) : rien ne
   // s'écrit pour elle ni ne la signale ici, elle se lit comme programmée à la main (aLaMain).
+  // sansRpe : des séances faites, aucun RPE noté (décision coach du 06/11/2026) : « sans RPE » à la place de sa charge.
   coache: boolean; aLaMain: boolean;
-  semaine: { faites: number; prevues: number; tenue: number | null } | null;
+  semaine: { faites: number; prevues: number; tenue: number | null; sansRpe: boolean } | null;
   hooper: { valeur: number; tendance: 'hausse' | 'baisse' | 'stable' | null } | null;
 };
 type DemandeAthlete = Demande & { nom: string };
@@ -60,7 +63,9 @@ export const NIVEAUX: { cle: Niveau; titre: string }[] = [
 // donne pas (la date du questionnaire d'un mot, la durée d'un arrêt).
 export type ARegarder = { niveau: Niveau; genre: string; athlete: string; texte: string; action: string; href: string;
   cle: string; planId?: string; externe?: boolean; detail?: string };
-export type VueCoach = { athletes: LigneAthlete[]; aRegarder: ARegarder[] };
+// semainePassee : le lundi de la semaine des chiffres de « Mes athlètes » (lundiDeLaSemainePassee), que la phrase sous
+// les titres du tableau date à son tour : jamais deux périodes sous une seule date.
+export type VueCoach = { athletes: LigneAthlete[]; aRegarder: ARegarder[]; semainePassee: string };
 
 const aujourdhui = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
 const lundiDe = (jour: string) => ajouterJours(jour, -((new Date(`${jour}T12:00:00Z`).getUTCDay() + 6) % 7));
@@ -122,11 +127,14 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
   // reconnue. Redemandée une fois, pour les seules trames effacées, puis gardée jusqu'à la prochaine écriture.
   const trames = new Map<string, TrameLue | null>(await Promise.all((plans ?? []).map(async (p) => [p.id as string,
     ((p.trame ?? (p.parametres ? await trameDuPlan(p.id as string).catch(() => null) : null)) as TrameLue | null)] as const)));
-  // Les semaines que le moteur n'écrit pas (à la main, sans objectif), résumées chaque nuit : les deux dernières
-  // complètes, pour le tableau de bord.
+  // La semaine passée du tableau de bord et celle d'avant (la tendance du Hooper) : le dimanche, dès le passage, celle
+  // qui finit ce soir (décision A du coach, 06/11/2026).
+  const passee = lundiDeLaSemainePassee();
+  // Les semaines que le moteur n'écrit pas (à la main, sans objectif), résumées chaque nuit (la semaine en cours et la
+  // précédente) : ces deux-là, pour le tableau de bord.
   const { data: horsMoteur } = fiches.length
-    ? await service.from('semaines_athlete').select('athlete_id, lundi, realise').in('athlete_id', fiches.map((f) => f.id))
-      .gte('lundi', ajouterJours(lundi, -14)).lt('lundi', lundi)
+    ? await service.from('semaines_athlete').select('athlete_id, lundi, realise, maj_le').in('athlete_id', fiches.map((f) => f.id))
+      .gte('lundi', ajouterJours(passee, -7)).lte('lundi', passee)
     : { data: [] };
 
   const aRegarder: ARegarder[] = demandes.map((d): ARegarder => {
@@ -159,16 +167,20 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     const trame = (o && trames.get(o.plan_id)?.semaines) || null;
     const jauge = trame ? jaugeDuPlan(trame, realises, jour) : null;
     // Sa semaine en cours dans le plan ; sa semaine passée et celle d'avant : celles du plan, sinon celles résumées hors
-    // moteur.
+    // moteur. Celle que le moteur a écrite a son résumé dès le passage qui la juge (rangé sous son numéro, realise.numero) ;
+    // une semaine de récupération, après la course, n'est pas dans la trame : son résumé se trouve par son lundi.
+    // Une semaine hors moteur ne compte qu'une fois résumée après son dimanche : le dimanche soir, la semaine qui se
+    // termine n'a encore que son résumé de la nuit d'avant, sans son dimanche ; « — » jusqu'au résumé de la nuit.
     const enCours = trame?.find((l) => l.lundi && l.lundi <= jour && ajouterJours(l.lundi, 6) >= jour) ?? null;
     const resumeDu = (le: string) => {
       const l = trame?.find((x) => x.lundi === le);
-      const r = l ? realises.find((x) => x.numero === l.numero) : undefined;
-      return r ?? ((horsMoteur ?? []).find((x) => x.athlete_id === a.id && x.lundi === le)?.realise as Realise | undefined);
+      const r = (l ? realises.find((x) => x.numero === l.numero) : undefined) ?? realises.find((x) => x.lundi === le);
+      return r ?? ((horsMoteur ?? []).find((x) => x.athlete_id === a.id && x.lundi === le
+        && String(x.maj_le ?? '').slice(0, 10) >= ajouterJours(le, 7))?.realise as Realise | undefined);
     };
-    const rPassee = resumeDu(ajouterJours(lundi, -7));
+    const rPassee = resumeDu(passee);
     const hooperPasse = rPassee?.hooper ?? null;
-    const hooperAvant = resumeDu(ajouterJours(lundi, -14))?.hooper ?? null;
+    const hooperAvant = resumeDu(ajouterJours(passee, -7))?.hooper ?? null;
     const hrefPlan = o ? `/app/coach/plan/${o.plan_id}` : `/app/coach/athlete/${a.id}`;
     const num = (n: unknown) => String(n).replace('S', '');
     // Un arrêt de course que le moteur a écrit ces 8 derniers jours et qui est pour le coach : un arrêt qui dure, deux
@@ -214,7 +226,7 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     // RPE. Le plan continue (Nolio connaît les séances faites) ; sa note du dimanche le lui demande (moteur 8.406).
     const sansRpe = (l: { realise?: unknown }) => {
       const r = l.realise as Realise | null;
-      return Boolean(r && r.seances_faites > 0 && !r.rpe_lu);
+      return Boolean(r && faiteSansRpe(r));
     };
     if (deuxDernieres.length === 2 && Number(num(deuxDernieres[0].numero)) === Number(num(deuxDernieres[1].numero)) + 1
         && deuxDernieres.every(sansRpe) && String(deuxDernieres[0].ecrite_le).slice(0, 10) >= ajouterJours(jour, -8)) {
@@ -338,7 +350,8 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
       entree: entree.complete ? null : { faites: entree.faites, total: entree.total },
       coache: true, aLaMain: a.programmation === 'main',
       semaine: rPassee && rPassee.seances_prevues ? { faites: rPassee.seances_faites, prevues: rPassee.seances_prevues,
-        tenue: rPassee.charge_prevue > 0 ? Math.round((rPassee.charge_tenue / rPassee.charge_prevue) * 100) : null } : null,
+        tenue: rPassee.charge_prevue > 0 ? Math.round((rPassee.charge_tenue / rPassee.charge_prevue) * 100) : null,
+        sansRpe: faiteSansRpe(rPassee) } : null,
       hooper: hooperPasse !== null ? { valeur: hooperPasse, tendance: hooperAvant === null ? null
         : hooperPasse >= hooperAvant + 2 ? 'hausse' : hooperPasse <= hooperAvant - 2 ? 'baisse' : 'stable' } : null,
     };
@@ -372,5 +385,5 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
   const visibles = aRegarder.filter((r) => !reglees.has(r.cle));
   const rang = (n: Niveau) => NIVEAUX.findIndex((x) => x.cle === n);
   visibles.sort((x, y) => rang(x.niveau) - rang(y.niveau));
-  return { athletes, aRegarder: visibles };
+  return { athletes, aRegarder: visibles, semainePassee: passee };
 }

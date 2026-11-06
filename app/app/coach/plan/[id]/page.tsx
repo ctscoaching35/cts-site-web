@@ -18,6 +18,7 @@ import { ajouterJours, dateLongue, jMoins, jourMois } from '@/lib/app/plan';
 import { aujourdhuiParis } from '@/lib/app/signauxSuivi';
 import { allureDepuisVitesse } from '@/lib/app/allureCoach';
 import { lienNolioAthlete } from '@/lib/app/liensNolio';
+import { faiteSansRpe } from '@/lib/app/resumeSemaine';
 import { clientService, espaceCoachOuvert } from '@/lib/app/supabase';
 import { enHeures, jaugeDuPlan, momentDe } from '@/lib/app/tableau';
 import { fichesDePreparation, type CourseSecondaire } from '@/lib/app/tableauDuPlan';
@@ -209,7 +210,8 @@ export default async function ObjectifCoache({ params, searchParams }: {
                           <span className="font-bold">{r ? `Faite · ${r.seances_faites}/${r.seances_prevues}` : `Écrite le ${dateLongue(String(w.ecrite_le).slice(0, 10), true)}`}</span>
                           {r && (
                             <span className="text-[#4A4866]">
-                              {[r.charge_prevue > 0 ? `charge tenue ${Math.round((r.charge_tenue / r.charge_prevue) * 100)}\u00a0%` : null,
+                              {/* Des s\u00e9ances faites, aucun RPE not\u00e9 : \u00ab sans RPE \u00bb \u00e0 la place de sa charge tenue. Valid\u00e9 par le coach le 06/11/2026 */}
+                              {[faiteSansRpe(r) ? 'sans RPE' : r.charge_prevue > 0 ? `charge tenue ${Math.round((r.charge_tenue / r.charge_prevue) * 100)}\u00a0%` : null,
                                 r.rpe_lu && r.charge_faite ? `charge ${Math.round(r.charge_faite).toLocaleString('fr-FR')}` : null,
                                 r.sl_faite_min ? `sortie longue ${enHeures(r.sl_faite_min)}` : null, r.hooper !== null ? `Hooper ${r.hooper}` : null].filter(Boolean).join(' · ')}
                             </span>

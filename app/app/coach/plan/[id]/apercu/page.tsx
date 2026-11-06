@@ -11,6 +11,7 @@ import { exigerCoach } from '@/lib/app/nolio';
 import { ajouterJours, aujourdhuiIso, dateLongue, jourMois } from '@/lib/app/plan';
 import { enHeures } from '@/lib/app/tableau';
 import type { Realise } from '@/lib/app/ecriture';
+import { faiteSansRpe } from '@/lib/app/resumeSemaine';
 import { espaceCoachOuvert } from '@/lib/app/supabase';
 import { CorrigerSemaine } from '@/components/app/GestesEcriture';
 import { choixDeLaSemaine, CORRECTIONS_ACTIVES } from '@/lib/app/corrections';
@@ -25,12 +26,15 @@ export const maxDuration = 60;
 // écoulée se dit une fois, dans « Ce qu'il a lu », en charge tenue (la mesure de « Mes athlètes ») : le moteur la disait
 // aussi dans son pourquoi, en charge faite.
 
-// La semaine écoulée en une phrase : séances, charge tenue, séances clés, sortie longue.
+// La semaine écoulée en une phrase : séances, charge tenue, séances clés, sortie longue. Des séances faites sans aucun RPE
+// noté : « sans RPE » à la place de sa charge tenue (décision coach du 06/11/2026).
 function semaineEcoulee(r: Realise): string {
   const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`;
   return [
     `${pluriel(r.seances_faites, 'séance')} faite${r.seances_faites > 1 ? 's' : ''} sur ${r.seances_prevues}`,
-    r.charge_prevue ? `charge tenue : ${Math.round((100 * r.charge_tenue) / r.charge_prevue)} % de la prévue` : null,
+    // Validé par le coach le 06/11/2026
+    faiteSansRpe(r) ? 'sans RPE'
+      : r.charge_prevue ? `charge tenue : ${Math.round((100 * r.charge_tenue) / r.charge_prevue)} % de la prévue` : null,
     r.cles_prevues ? `${pluriel(r.cles_reussies, 'séance')} clé${r.cles_reussies > 1 ? 's' : ''} réussie${r.cles_reussies > 1 ? 's' : ''} au bon effort sur ${r.cles_prevues}` : null,
     r.sl_prevue_min ? `sortie longue ${r.sl_faite_min ? `de ${enHeures(r.sl_faite_min)}` : 'pas faite'} pour ${enHeures(r.sl_prevue_min)} prévue` : null,
   ].filter(Boolean).join(' ; ');
@@ -130,7 +134,8 @@ export default async function ApercuDimanche({ params }: { params: Promise<{ id:
                 Boolean(a.retours.questionnaire_du && a.retours.questionnaire_du < ajouterJours(aujourdhuiIso(), -6)))}</p>}
               {r && (
                 <p className="text-sm text-[#3B3957]">
-                  Semaine écoulée : {semaineEcoulee(r)}{r.rpe_lu ? '' : ' (sans RPE lu : la charge compte le RPE prévu)'}.
+                  {/* « sans RPE » dit déjà sa charge : la parenthèse reste pour une semaine sans séance faite. */}
+                  Semaine écoulée : {semaineEcoulee(r)}{r.rpe_lu || faiteSansRpe(r) ? '' : ' (sans RPE lu : la charge compte le RPE prévu)'}.
                 </p>
               )}
               {lues === undefined ? (

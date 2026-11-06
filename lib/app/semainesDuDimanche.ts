@@ -14,6 +14,17 @@ export const apresLePassage = (d = new Date()) => d.getUTCDay() === 0 && d.getUT
 // Le lundi qui vient, d'après un jour « AAAA-MM-JJ » (le lendemain un dimanche).
 export const lundiQuiVient = (jour: string) => ajouterJours(jour, 7 - ((new Date(`${jour}T12:00:00Z`).getUTCDay() + 6) % 7));
 
+// LA SEMAINE PASSÉE de « Mes athlètes » (séances, charge tenue, Hooper, et leurs dates sous les titres ; décision A du
+// coach, 06/11/2026) : son lundi. La dernière semaine finie, du lundi au dimanche ; le dimanche à Paris, dès le premier
+// passage (le moteur vient de juger celle qui se termine), celle qui finit ce soir. Le lundi à minuit, il est encore
+// dimanche en UTC : seul le jour de Paris dit qu'on est dimanche. Un seul calcul, pour la vue et la phrase.
+export function lundiDeLaSemainePassee(d = new Date()): string {
+  const jour = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(d);
+  const rang = (new Date(`${jour}T12:00:00Z`).getUTCDay() + 6) % 7;
+  const lundi = ajouterJours(jour, -rang);
+  return rang === 6 && apresLePassage(d) ? lundi : ajouterJours(lundi, -7);
+}
+
 export type SemaineDuDimanche = { a: FicheAthlete; o: Objectif; plan: Record<string, unknown> };
 export type SemainesDuDimanche = {
   lundi: string;

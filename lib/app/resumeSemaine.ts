@@ -12,6 +12,11 @@ export type Reelle = {
 
 const minutes = (d: { value?: number } | null | undefined) => (typeof d?.value === 'number' ? Math.round(d.value / 60) : null);
 
+// Une semaine faite sans aucun RPE noté : des séances faites, aucun RPE lu. Sa charge tenue ne dit rien (0 %, ou le RPE
+// prévu pour le moteur) : l'espace coach écrit « sans RPE » à sa place (décision coach du 06/11/2026). Sans séance
+// faite, 0 % reste 0 %.
+export const faiteSansRpe = (r: Pick<Realise, 'seances_faites' | 'rpe_lu'>) => r.seances_faites > 0 && !r.rpe_lu;
+
 // Le résumé d'une semaine lue dans Nolio. Prévue : une séance du calendrier qui a une durée (pas une note) ; faite :
 // une séance réalisée. La charge (RPE × durée) ne compte que les séances dont l'athlète a donné le RPE ; prévue, celle
 // des séances qui ont un RPE prévu. Ni séances clés ni type de semaine : le coach les écrit à sa façon.

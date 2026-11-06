@@ -29,16 +29,16 @@ function categorie(a: LigneAthlete, jour: string): Exclude<Filtre, 'tous'> {
 }
 
 // « Tes athlètes » du tableau de bord : les filtres (un lien chacun, ?filtre=), puis une ligne par athlète ; signalDe, le
-// signal de chacun sur « Cette semaine ».
-export default function TableauAthletes({ athletes, signalDe, jour, filtre, base = '/app/coach/mes-athletes' }: {
-  athletes: LigneAthlete[]; signalDe: Map<string, SignalAthlete>; jour: string; filtre: Filtre; base?: string;
+// signal de chacun sur « Cette semaine » ; passee, le lundi de la semaine des chiffres, celui de la vue (VueCoach).
+export default function TableauAthletes({ athletes, signalDe, jour, passee, filtre, base = '/app/coach/mes-athletes' }: {
+  athletes: LigneAthlete[]; signalDe: Map<string, SignalAthlete>; jour: string; passee: string; filtre: Filtre; base?: string;
 }) {
   const parCategorie = (f: Filtre) => f === 'tous' ? athletes.length : athletes.filter((a) => categorie(a, jour) === f).length;
   const lignes = athletes.filter((a) => filtre === 'tous' || categorie(a, jour) === filtre);
-  // La semaine des chiffres (décision 2A du coach, 05/11/2026) : la dernière complète, du lundi d'avant au dimanche qui le suit.
-  const lundi = ajouterJours(jour, -((new Date(`${jour}T12:00:00Z`).getUTCDay() + 6) % 7));
+  // La semaine des chiffres (décision 2A du coach, 05/11/2026) : la dernière finie, du lundi au dimanche ; le dimanche, dès
+  // le passage, celle qui finit ce soir (décision A du coach, 06/11/2026). Le même lundi que les chiffres de chaque ligne.
   // « 1er nov. » finit déjà par son point ; « 1er mai », non.
-  const dimanche = dateAbregee(ajouterJours(lundi, -1));
+  const dimanche = dateAbregee(ajouterJours(passee, 6));
   return (
     <Carte className="!p-5 !pb-2">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -65,7 +65,7 @@ export default function TableauAthletes({ athletes, signalDe, jour, filtre, base
             </div>
             {/* Validé par le coach le 06/11/2026 (1A) */}
             <p className="py-1.5 text-[0.72rem] text-[#5E5C78] border-b border-indigo/[0.06]">
-              Séances, charge tenue et Hooper : semaine du {dateAbregee(ajouterJours(lundi, -7))} au {dimanche}{dimanche.endsWith('.') ? '' : '.'}
+              Séances, charge tenue et Hooper : semaine du {dateAbregee(passee)} au {dimanche}{dimanche.endsWith('.') ? '' : '.'}
             </p>
             {lignes.map((a) => <Ligne key={a.id} a={a} signal={signalDe.get(a.nom) ?? RIEN} jour={jour} />)}
           </div>
@@ -137,7 +137,8 @@ function Ligne({ a, signal, jour }: { a: LigneAthlete; signal: SignalAthlete; jo
       </span>
       <span className={s ? '' : 'text-[#5E5C78]'}>{s ? `${s.faites} / ${s.prevues}` : '—'}</span>
       <span className="inline-flex items-center gap-2">
-        {s && s.tenue !== null ? (
+        {/* Des séances faites, aucun RPE noté : ni barre ni pourcentage. Validé par le coach le 06/11/2026 */}
+        {s?.sansRpe ? <span className="text-[#5E5C78]">sans RPE</span> : s && s.tenue !== null ? (
           <>
             <span aria-hidden className="w-12 h-1.5 rounded-full bg-indigo/10 overflow-hidden">
               <span className={clsx('block h-full rounded-full', s.tenue >= 85 ? 'bg-teal' : s.tenue >= 65 ? 'bg-[#C8952E]' : 'bg-[#B4513F]')}

@@ -51,7 +51,7 @@ export default async function MesAthletes({ searchParams }: { searchParams: Prom
         </Link>
       </div>
 
-      <TableauAthletes athletes={vue.athletes} signalDe={semaine.signalDe} jour={jour} filtre={filtre} />
+      <TableauAthletes athletes={vue.athletes} signalDe={semaine.signalDe} jour={jour} passee={vue.semainePassee} filtre={filtre} />
 
       <Carte className="!p-5 space-y-2">
         <Surtitre>Dans Nolio</Surtitre>
