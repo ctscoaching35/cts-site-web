@@ -55,7 +55,7 @@ export const metadata: Metadata = {
     images: ['/photos/DSC_8334.jpg'],
   },
   robots: { index: true, follow: true },
-  icons: { icon: '/logo/cts-logo.png', apple: '/logo/cts-logo.png' },
+  icons: { icon: '/logo/cts-logo-rond-blanc.png', apple: '/pwa/apple-touch-icon.png' },
 };
 
 export const viewport: Viewport = {

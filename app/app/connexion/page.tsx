@@ -22,7 +22,7 @@ export default async function Connexion({ searchParams }: { searchParams: Promis
     <main className="mx-auto max-w-sm px-4 py-12 space-y-8">
       <div className="text-center space-y-3">
         {/* Q4 et C11 (audits du 05/11/2026) : au style de l'app, le logo sans son disque gris. */}
-        <Image src="/logo/cts-logo-white.png" alt="CTS Coaching" width={64} height={64} className="mx-auto w-16 h-16 object-contain" />
+        <Image src="/logo/cts-logo-rond-blanc.png" alt="CTS Coaching" width={64} height={64} className="mx-auto w-16 h-16 object-contain" />
         <h1 className="text-[1.625rem] font-extrabold text-indigo tracking-tight">Ton espace CTS</h1>
         {achat && (
           <p className="text-sm text-[#4A4866] leading-relaxed">

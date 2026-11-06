@@ -2333,7 +2333,7 @@ const REGLES_EN_CLAIR: Record<string, string> = {
   COACH: 'ta correction avant l’envoi',
   R5: 'disponibilités', R7: 'séance en plus', O3: 'course secondaire', CH: 'charge reprise après une semaine légère',
   REPLI: 'semaine refusée par le contrôle du moteur, écrite par un repli',
-  // BROUILLON (06/11/2026, à valider)
+  // Validé par le coach le 06/11/2026 (A)
   OM4: 'semaine de reprise allégée', S4: 'course hors de portée après la reconstruction',
   TN: 'test de vitesse critique non reproposé', REC: 'récupération',
 };
@@ -2405,7 +2405,7 @@ async function resumeAuCoach(fatigues: Compte[], tests: TestLu[] = []) {
     const journal = ((e.journal ?? []) as { regle?: string; effet?: unknown }[]).filter((j) => !PAS_UN_AJUSTEMENT.has(j.regle ?? ''));
     if (!nom || !journal.length || e.sans_ajustement) continue;
     const raisons = [...new Set(journal.map(raisonEnClair).filter(Boolean))];
-    // BROUILLON (06/11/2026, à valider) : « semaine ajustée », quand aucune de ses règles n'a de mot ni d'effet.
+    // Validé par le coach le 06/11/2026 (A) : « semaine ajustée », quand aucune de ses règles n'a de mot ni d'effet.
     lignes.push(`${nom}, ${e.numero}${raisons.length ? ` : ${raisons.join(', ')}` : ' : semaine ajustée'}.`);
   }
   for (const f of fatigues) {

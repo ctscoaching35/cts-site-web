@@ -28,7 +28,7 @@ export default function CadreCoach({ actif, aRegarder = 0, children }: {
       <aside className="flex-[1_1_220px] lg:max-w-[260px] bg-indigo text-white px-4 py-5 lg:py-6 flex flex-col gap-5">
         <Link href="/app/coach" className="flex items-center gap-2.5 px-2">
           <span className="w-10 h-10 rounded-full bg-white flex items-center justify-center shrink-0">
-            <Image src="/logo/cts-logo-white.png" alt="CTS Coaching" width={32} height={32} className="w-8 h-8 object-contain" />
+            <Image src="/logo/cts-logo-rond-blanc.png" alt="CTS Coaching" width={32} height={32} className="w-8 h-8 object-contain" />
           </span>
           <span>
             <span className="block text-xs font-bold tracking-[0.12em]">CTS COACHING</span>
