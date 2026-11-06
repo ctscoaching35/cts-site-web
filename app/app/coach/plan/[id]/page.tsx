@@ -11,7 +11,7 @@ import { garderObjectif, retirerObjectif } from '@/lib/app/actionsCoaching';
 import { objectifCoache, verifierEnvois } from '@/lib/app/coaching';
 import { courseNolio } from '@/lib/app/coursesNolio';
 import { demandesDuCoach } from '@/lib/app/demandes';
-import { annonceDepart, trameDuPlan, type Realise } from '@/lib/app/ecriture';
+import { annonceDepart, PAS_UN_AJUSTEMENT, trameDuPlan, type Realise } from '@/lib/app/ecriture';
 import { lienFicheCourse } from '@/lib/app/ficheCourse';
 import { exigerCoach } from '@/lib/app/nolio';
 import { ajouterJours, dateLongue, jMoins, jourMois } from '@/lib/app/plan';
@@ -196,7 +196,8 @@ export default async function ObjectifCoache({ params, searchParams }: {
                       du 04/11/2026 au soir, « A ») : tenue en %, la mesure de « Mes athlètes » et de l'aperçu, puis faite. */}
                   <ul className="space-y-1.5">
                     {ecritesTriees.map((w) => {
-                      const journal = ((w.journal ?? []) as { regle?: string }[]).filter((j) => j.regle !== 'COACH');
+                      // Ni les corrections du coach, ni C1 et D6, qui suivent ses retouches (décision coach du 06/11/2026).
+                      const journal = ((w.journal ?? []) as { regle?: string }[]).filter((j) => !PAS_UN_AJUSTEMENT.has(j.regle ?? ''));
                       const r = w.realise as Realise | null;
                       const ajuste = journal.length > 0 && !w.sans_ajustement;
                       const lus = (tests ?? []).filter((t) => String(t.jour_id).startsWith(`${w.numero}-`) || String(t.jour_id).startsWith(`${w.numero}:`));

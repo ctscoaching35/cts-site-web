@@ -86,7 +86,12 @@ export function enClair(e: Entree, seances?: string[], realise?: Pick<Realise, '
           .map(([f, d]) => `${FAMILLE[f as FamilleLue] ?? f} : la marche part de la séance du ${d.date ? jourMois(d.date) : '?'} (${dose(d)}) ; ${d.monte ? 'la suivante monte d’une marche' : 'la suivante la refait (RPE au-dessus du prévu)'}.`);
       }
       return [`Sortie longue : la tienne (${e.duree_coach_min} min${e.faite ? ', courue' : ', pas courue'}) fixe la suivante, ${e.plafond_min} min au plus (le plafond de sécurité, +10 %).`];
-    default: return [`${String(e.regle ?? '')} : ${effet ?? JSON.stringify(e)}`];
+    // Les autres règles (OM4, S4, TN, R5, R7, CH, O3…) : l'effet écrit par le moteur, en phrase ; jamais le code de la
+    // règle ni l'entrée brute (06/11/2026). Sans effet, aucune ligne.
+    default: {
+      const texte = (effet ?? '').trim();
+      return texte ? [`${texte.charAt(0).toUpperCase()}${texte.slice(1)}${/[.!?…]$/.test(texte) ? '' : '.'}`] : [];
+    }
   }
 }
 

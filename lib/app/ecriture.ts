@@ -2333,7 +2333,20 @@ const REGLES_EN_CLAIR: Record<string, string> = {
   COACH: 'ta correction avant l’envoi',
   R5: 'disponibilités', R7: 'séance en plus', O3: 'course secondaire', CH: 'charge reprise après une semaine légère',
   REPLI: 'semaine refusée par le contrôle du moteur, écrite par un repli',
+  // BROUILLON (06/11/2026, à valider)
+  OM4: 'semaine de reprise allégée', S4: 'course hors de portée après la reconstruction',
+  TN: 'test de vitesse critique non reproposé', REC: 'récupération',
 };
+
+// Ce qui n'est pas un ajustement du moteur : les corrections du coach (EC3, « COACH »), et ce que le moteur reprend de ses
+// retouches (décision coach du 06/11/2026, « A ») : C1, la sortie longue ou la marche reprise de ce que le coach a posé ;
+// D6, la semaine qu'il a posée, lue comme une semaine écrite. Elles restent au journal de la semaine, sans allumer
+// « Semaine ajustée », ni « Le moteur s'en est chargé », ni l'e-mail de résumé.
+export const PAS_UN_AJUSTEMENT = new Set(['COACH', 'C1', 'D6']);
+
+// Une raison en clair : son libellé, sinon l'effet écrit par le moteur, sinon rien ; jamais le code de la règle.
+const raisonEnClair = (j: { regle?: string; effet?: unknown }) =>
+  REGLES_EN_CLAIR[j.regle ?? ''] ?? (typeof j.effet === 'string' ? j.effet.trim().replace(/\.$/, '') : '');
 
 // Le Suivi du coach (décision 8 du document des règles) : les ajustements de ses coachés écrits ces 8 derniers jours,
 // chacun avec son geste : « Annuler » pour ceux du dimanche, « Garder la séance d'origine » pour une séance allégée.
@@ -2359,15 +2372,17 @@ export async function ajustementsDuCoach(coachId: string): Promise<Ajustement[]>
   }
   const liste: Ajustement[] = [];
   for (const e of ecrites ?? []) {
-    // Les corrections du coach (EC3, « COACH ») sont les siennes, pas des ajustements du moteur.
-    const journal = e.sans_ajustement ? [] : ((e.journal ?? []) as { regle?: string; jours?: number }[]).filter((j) => j.regle !== 'COACH');
+    // Les corrections du coach (EC3, « COACH ») sont les siennes, pas des ajustements du moteur ; C1 et D6 suivent ses
+    // retouches (décision coach du 06/11/2026).
+    const journal = e.sans_ajustement ? [] : ((e.journal ?? []) as { regle?: string; effet?: unknown; jours?: number }[])
+      .filter((j) => !PAS_UN_AJUSTEMENT.has(j.regle ?? ''));
     const jours = ((e.donnees as Semaine | null)?.jours ?? []) as (Semaine['jours'][number] & { origine?: { seance?: string } })[];
     const allegees = jours.filter((j) => j.origine).map((j) => ({ id: j.id, nom: j.origine?.seance ?? j.id, jour: j.jour }));
     if (!journal.length && !allegees.length) continue;
     liste.push({
       planId: e.plan_id as string, nom: nomDe.get(e.plan_id as string) ?? '', numero: e.numero as string,
       lundi: (e.donnees as Semaine | null)?.lundi ?? null,
-      raisons: [...new Set(journal.map((j) => REGLES_EN_CLAIR[j.regle ?? ''] ?? j.regle ?? ''))], bilan: e.bilan as string | null, allegees,
+      raisons: [...new Set(journal.map(raisonEnClair).filter(Boolean))], bilan: e.bilan as string | null, allegees,
       annulable: derniere.get(e.plan_id as string) === Number(String(e.numero).slice(1)),
       joursArret: journal.find((j) => j.regle === 'R4' && typeof j.jours === 'number')?.jours ?? null,
     });
@@ -2387,9 +2402,11 @@ async function resumeAuCoach(fatigues: Compte[], tests: TestLu[] = []) {
   const lignes: string[] = [];
   for (const e of ecrites ?? []) {
     const nom = nomDe.get(e.plan_id as string);
-    const journal = ((e.journal ?? []) as { regle?: string }[]).filter((j) => j.regle !== 'COACH');
+    const journal = ((e.journal ?? []) as { regle?: string; effet?: unknown }[]).filter((j) => !PAS_UN_AJUSTEMENT.has(j.regle ?? ''));
     if (!nom || !journal.length || e.sans_ajustement) continue;
-    lignes.push(`${nom}, ${e.numero} : ${[...new Set(journal.map((j) => REGLES_EN_CLAIR[j.regle ?? ''] ?? j.regle))].join(', ')}.`);
+    const raisons = [...new Set(journal.map(raisonEnClair).filter(Boolean))];
+    // BROUILLON (06/11/2026, à valider) : « semaine ajustée », quand aucune de ses règles n'a de mot ni d'effet.
+    lignes.push(`${nom}, ${e.numero}${raisons.length ? ` : ${raisons.join(', ')}` : ' : semaine ajustée'}.`);
   }
   for (const f of fatigues) {
     const nom = nomDe.get(f.plan);
