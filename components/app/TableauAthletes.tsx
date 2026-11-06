@@ -63,7 +63,7 @@ export default function TableauAthletes({ athletes, signalDe, jour, filtre, base
             <div className={clsx('grid gap-x-3 py-2.5 text-[0.656rem] font-bold tracking-[0.08em] uppercase text-[#5E5C78] border-b border-indigo/10', COLONNES)}>
               <span>Athlète</span><span>Objectif</span><span>Sa semaine</span><span>Séances</span><span>Charge tenue</span><span>Hooper</span><span>Signal</span>
             </div>
-            {/* BROUILLON (05/11/2026, à valider) */}
+            {/* Validé par le coach le 06/11/2026 (1A) */}
             <p className="py-1.5 text-[0.72rem] text-[#5E5C78] border-b border-indigo/[0.06]">
               Séances, charge tenue et Hooper : semaine du {dateAbregee(ajouterJours(lundi, -7))} au {dimanche}{dimanche.endsWith('.') ? '' : '.'}
             </p>

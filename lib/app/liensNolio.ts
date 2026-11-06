@@ -8,7 +8,7 @@
 export const NOLIO_ACCUEIL_COACH = 'https://www.nolio.io/calendar/';
 
 // La fiche d'un athlète dans Nolio, d'après son identifiant Nolio (usr).
-// À COMPLÉTER : le coach doit encore donner l'adresse d'une fiche d'athlète dans Nolio ; d'ici là, l'accueil du coach.
+// Nolio ne met pas l'athlète dans l'adresse (vérifié par le coach le 06/11/2026) : la fiche d'un athlète s'ouvre depuis le calendrier.
 export function lienNolioAthlete(usr?: string | null): string {
   void usr;
   return NOLIO_ACCUEIL_COACH;

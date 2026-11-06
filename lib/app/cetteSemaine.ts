@@ -115,13 +115,13 @@ function signalDuMoteur(l: LigneMoteur): SignalAthlete {
   const href = `/app/coach/plan/${derniere.planId}#semaine-${derniere.numero}`;
   if (l.raisons.includes('arrêt')) {
     const a = l.ajustements.find((x) => x.joursArret !== null);
-    // BROUILLON (05/11/2026, à valider)
+    // Validé par le coach le 06/11/2026 (1A)
     return { niveau: 'warn', texte: 'Arrêt de course', href,
       ...(a ? { detail: `${a.joursArret} jours sans courir${a.lundi ? ` au ${dateAbregee(a.lundi)}` : ''}` } : {}) };
   }
   const allegees = l.ajustements.flatMap((x) => x.allegees);
   const fatigue = l.raisons.includes('fatigue') || allegees.length > 0;
-  // BROUILLON (05/11/2026, à valider) : « Mardi : séance VO2 long allégée en EF » ; la fatigue du dimanche (R3), « semaine allégée ».
+  // Validé par le coach le 06/11/2026 (1A) : « Mardi : séance VO2 long allégée en EF » ; la fatigue du dimanche (R3), « semaine allégée ».
   const detail = allegees.length
     ? allegees.map((j) => `${j.jour} : séance ${j.nom.split(' — ')[0].split(' · ')[0]} allégée en EF`).join(' · ')
     : l.raisons.map((r) => (r === 'fatigue' ? 'semaine allégée' : r)).join(', ');

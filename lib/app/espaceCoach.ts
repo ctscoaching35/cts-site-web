@@ -188,7 +188,7 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
         // La durée sans courir, lue par le moteur au lundi de la semaine (R4) ; inconnue à l'approche de la course.
         const lundiArret = (l.donnees as Semaine | null)?.lundi ?? null;
         aRegarder.push({ niveau: 'sante', genre: 'arret', cle: `arret:${l.plan_id}:${l.numero}`, athlete: a.nom, action: 'Relire ›', href: hrefPlan,
-          // BROUILLON (05/11/2026, à valider)
+          // Validé par le coach le 06/11/2026 (1A)
           ...(typeof arret.jours === 'number' ? { detail: `${arret.jours} jours sans courir${lundiArret ? ` au ${dateAbregee(lundiArret)}` : ''}` } : {}),
           texte: proche
             ? `arrêt de course à l’approche de son objectif : rien ne remonte, à toi de voir son objectif avec lui.`
@@ -198,7 +198,7 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     // Un mot à la question ouverte du dimanche, ces 7 derniers jours (décision coach du 21/10/2026) : à lire dans Nolio.
     if ((a.questionnaires?.mot_le ?? '') >= ajouterJours(jour, -7)) {
       aRegarder.push({ niveau: 'sante', genre: 'mot', cle: `mot:${a.id}:${a.questionnaires?.mot_le}`, athlete: a.nom, action: 'Lire dans Nolio ›', href: lienNolioAthlete(a.nolio_athlete_id), externe: true,
-        // BROUILLON (05/11/2026, à valider)
+        // Validé par le coach le 06/11/2026 (1A)
         detail: `Questionnaire du ${dateAbregee(String(a.questionnaires?.mot_le))}`,
         texte: 'a un mot pour toi dans son questionnaire du samedi.' });
     }

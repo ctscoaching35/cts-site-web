@@ -68,7 +68,7 @@ export default async function Dimanche() {
   const courseDe = (v: Vue) => (estFond(v.plan) ? 'Saison de fond' : v.o.course_nom);
   const memesNoms = (v: Vue) => vues.filter((x) => x.a.nom === v.a.nom);
   const homonyme = (v: Vue) => memesNoms(v).filter((x) => courseDe(x) === courseDe(v)).length > 1;
-  // BROUILLON (05/11/2026, à valider) : la date de la course quand l'athlète a deux courses du même nom.
+  // Validé par le coach le 06/11/2026 (1A) : la date de la course quand l'athlète a deux courses du même nom.
   const courseDatee = (v: Vue) => `${courseDe(v)}${homonyme(v) ? `, ${dateAbregee(v.o.course_date, false)}` : ''}`;
   const nomAffiche = (v: Vue) => {
     if (memesNoms(v).length < 2) return v.a.nom;
@@ -88,7 +88,7 @@ export default async function Dimanche() {
     ? await clientService().from('nolio_accords').select('nolio_athlete_id').eq('coach_id', coach.compteId).in('nolio_athlete_id', usrs)
     : { data: [] };
   const avecAccord = new Set((accords ?? []).map((x) => String(x.nolio_athlete_id)));
-  // BROUILLON (05/11/2026, à valider) : le bilan, les deux listes et leurs raisons.
+  // Validé par le coach le 06/11/2026 (1A) : le bilan, les deux listes et leurs raisons.
   const suivent = (n: number) => (n > 1 ? 'suivent le plan' : 'suit le plan');
   const pourquoiSansSignal = (v: Vue) => (v.a.nolio_athlete_id && avecAccord.has(v.a.nolio_athlete_id) ? 'pas encore lu' : 'pas d’accord de lecture');
   return (
@@ -102,7 +102,7 @@ export default async function Dimanche() {
       </div>
       {ecrites.length === 0 ? <Carte className="!p-5"><p className="text-sm text-teal font-semibold">Aucune semaine à écrire dimanche.</p></Carte> : (
         <>
-          {/* BROUILLON (05/11/2026, à valider) */}
+          {/* Validé par le coach le 06/11/2026 (1A) */}
           <p className="text-sm text-indigo">
             <strong>{cartes.length} à regarder</strong> · {verts.length} {suivent(verts.length)} · {sansSignal.length} sans signal
           </p>
@@ -137,7 +137,7 @@ export default async function Dimanche() {
               })}
             </ul>
           )}
-          {/* BROUILLON (05/11/2026, à valider) */}
+          {/* Validé par le coach le 06/11/2026 (1A) */}
           {gardes !== null && cartes.length === 0 && verts.length > 0 && (
             <p className="text-sm text-teal font-semibold">Aucune semaine ne change dimanche.</p>
           )}
@@ -145,7 +145,7 @@ export default async function Dimanche() {
             <Carte className="!p-5">
               <details>
                 <summary className="cursor-pointer min-h-11 flex items-center justify-between gap-3">
-                  {/* BROUILLON (05/11/2026, à valider) */}
+                  {/* Validé par le coach le 06/11/2026 (1A) */}
                   <span className="text-[0.8125rem] font-extrabold tracking-[0.1em] uppercase text-[#22604F]">
                     {verts.length > 1 ? 'Suivent le plan' : 'Suit le plan'} ({verts.length})
                   </span>
@@ -161,7 +161,7 @@ export default async function Dimanche() {
             <Carte className="!p-5">
               <details>
                 <summary className="cursor-pointer min-h-11 flex items-center justify-between gap-3">
-                  {/* BROUILLON (05/11/2026, à valider) */}
+                  {/* Validé par le coach le 06/11/2026 (1A) */}
                   <span className="text-[0.8125rem] font-extrabold tracking-[0.1em] uppercase text-[#4A4866]">Sans signal ({sansSignal.length})</span>
                   <span className="text-xs text-[#5E5C78]">Voir ›</span>
                 </summary>
