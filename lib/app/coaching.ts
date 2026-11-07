@@ -16,6 +16,10 @@ import { appelNolio, convertirIdsV1, listeNolio, moiNolio, nolioConfigure, refus
 import { ficheDuCompte } from './demandes';
 import { profilPourLeQuestionnaire } from './profilEntrainement';
 import { clientServeur, clientService } from './supabase';
+import { fenetreDeCharge, semainesDeCharge, volumeDuMoment } from './charge';
+
+// Les calculs purs de la charge du moment vivent dans charge.ts (testés seuls) ; ecriture.ts lit volumeDuMoment ici.
+export { volumeDuMoment };
 
 export type Objectif = { plan_id: string; course_nom: string; course_date: string };
 export type FicheAthlete = {
@@ -138,7 +142,7 @@ export async function questionnairePrerempli(coachId: string, athleteId: string)
 
 // QD4 (décision coach du 19/10/2026) : la charge du moment d'un coaché, lue dans ses séances Nolio avec son accord du
 // Suivi, pour préremplir son questionnaire (relue et corrigible) : le volume moyen et la plus longue sortie de course
-// des 4 dernières semaines (après une course, des 4 d'avant son affûtage), et un arrêt de plus de 4 semaines sur les 2
+// des 4 dernières semaines complètes, sans les jours de course (fenetreDeCharge), et un arrêt de plus de 4 semaines sur les 2
 // derniers mois. null sans accord ; sans course ces 4 semaines, seul l'arrêt est rempli (le questionnaire demande alors
 // la dernière sortie régulière). L'arrêt ne préremplit plus le questionnaire, qui ne le demande plus (1B, décision coach
 // du 05/11/2026) : il sert encore au recalage du départ réel (lib/app/ecriture.ts, recalerSurNolio) et à la saison de fond.
@@ -156,13 +160,12 @@ export async function chargeDepuisNolio(coachId: string, usr: string | null): Pr
   const aujourdhui = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
   const du = ajouterJours(aujourdhui, -56);
   const q = (await moiNolio()).id === usr ? '' : `&athlete=${usr}`;
-  // APRÈS UNE COURSE (décision coach du 23/10/2026) : ni la course ni son affûtage ne comptent ; une compétition de son
-  // calendrier Nolio dans les 4 dernières semaines recule le calcul aux 4 semaines d'avant ses 2 semaines d'affûtage,
-  // et les jours de compétition n'y comptent pas.
+  // Les compétitions de son calendrier Nolio : leurs jours ne comptent ni dans le volume ni dans la plus longue sortie
+  // (décision coach du 23/10/2026). Plus de recul après une course (décision coach du 07/11/2026, « A » : fenetreDeCharge).
   const competitions = (await listeNolio<{ id: string; date_start: string }>(
     `planned/competitions/?date_from=${ajouterJours(aujourdhui, -70)}&date_to=${ajouterJours(aujourdhui, -1)}&fields=id,date_start${q}`)
     .catch(() => [])).map((c) => c.date_start.slice(0, 10));
-  const { debut, fin, recul } = fenetreDeCharge(aujourdhui, competitions);
+  const { debut, fin } = fenetreDeCharge(aujourdhui);
   type Reel = { id: string; date_start: string; duration?: { value?: number } | null; sport?: string | null;
     distance?: { value?: number; unit?: string } | number | null; debrief?: { rpe?: number | null } | null;
     planned?: string | null };
@@ -177,29 +180,28 @@ export async function chargeDepuisNolio(coachId: string, usr: string | null): Pr
   const toutes = reels.filter((r) => SPORTS_COURSE.includes(String(r.sport)) && r.duration?.value)
     .map((r) => ({ date: r.date_start.slice(0, 10), min: (r.duration as { value: number }).value / 60,
       rpe: r.debrief?.rpe ?? (r.planned ? rpePrevus.get(r.planned) ?? null : null) }));
-  const recentes = toutes.filter((r) => r.date >= debut && r.date < fin && !jours.has(r.date));
+  const { recentes, parSemaine } = semainesDeCharge(debut, fin, toutes, competitions);
   const course = toutes.filter((r) => r.date >= du);
   const dates = [du, ...course.map((r) => r.date).sort(), aujourdhui];
   const ecarts = dates.slice(1).map((d, i) => (new Date(`${d}T12:00:00Z`).getTime() - new Date(`${dates[i]}T12:00:00Z`).getTime()) / 86_400_000);
   const charge: Record<string, string> = { coupure: ecarts.some((e) => e > 28) ? 'oui' : 'non' };
   // Le détail, sous les champs (décision coach du 23/10/2026, « les chiffres ne collent pas ») : la période, le temps
-  // de course semaine par semaine, la plus longue sortie et sa date, et pourquoi la période recule.
+  // de course semaine par semaine, la plus longue sortie et sa date, « sans le jour de course » quand une compétition
+  // tombe dans la période (la période ne recule plus, décision coach du 07/11/2026, « A »).
   const jm = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
   const periode = `du ${jm(debut)} au ${jm(ajouterJours(fin, -1))}`;
-  const pourquoi = recul ? ` Sa course du ${jm(recul)} date de moins de 2 semaines : ce sont les 4 semaines d’avant son affûtage.` : '';
   if (!recentes.length) {
-    return { champs: charge, lu: true, detail: `Rien en course, trail ou tapis dans Nolio ${periode} : les champs gardent ses dernières réponses, à corriger.${pourquoi}` };
+    return { champs: charge, lu: true, detail: `Rien en course, trail ou tapis dans Nolio ${periode} : les champs gardent ses dernières réponses, à corriger.` };
   }
-  const parSemaine = [0, 1, 2, 3].map((i) => recentes
-    .filter((r) => r.date >= ajouterJours(debut, 7 * i) && r.date < ajouterJours(debut, 7 * (i + 1))).reduce((a, r) => a + r.min, 0));
   const volume = volumeDuMoment(parSemaine);
   charge.volume_hebdo_actuel = enHeuresMinutes(volume.retenu);
   // Sa dernière semaine déjà allégée, sous 75 % de la moyenne des 4 (décision coach du 26/10/2026 : au départ, une
   // semaine rejointe allégée devient alors une semaine de charge).
   const derniereAllegee = volume.moyenne > 0 && parSemaine[3] < 0.75 * volume.moyenne;
   // LA PLUS LONGUE SORTIE SUR 8 SEMAINES (le départ individualisé, décision coach du 26/10/2026) : s'il n'a pas eu de trou
-  // de plus de 2 semaines (ni course récente qui recule le calcul) ; sinon les 4 semaines.
-  const sansTrou = !recul && Math.max(...ecarts) <= 14;
+  // de plus de 2 semaines ; sinon les 4 semaines. Les jours de course n'y comptent jamais (une course récente ne l'empêche
+  // plus, décision coach du 07/11/2026, « A »).
+  const sansTrou = Math.max(...ecarts) <= 14;
   const fenetreSl = sansTrou ? course.filter((r) => !jours.has(r.date)) : recentes;
   const longue = fenetreSl.reduce((a, r) => (r.min > a.min ? r : a));
   charge.sortie_longue_actuelle = enHeuresMinutes(longue.min);
@@ -214,31 +216,7 @@ export async function chargeDepuisNolio(coachId: string, usr: string | null): Pr
   return { champs: charge, lu: true, derniereAllegee, seancesDures, slSemaines: sansTrou ? 8 : 4, longueMin: longue.min,
     detail: `Lu dans Nolio ${periode}, course, trail et tapis seulement (sans renfo ni autres sports${sansCourse}) : `
     + `${semaines.join(' · ')}, soit ${enHeuresMinutes(volume.moyenne)} en moyenne, ${retenu} ; plus longue sortie ${charge.sortie_longue_actuelle} le ${jm(longue.date)}`
-    + `${sansTrou ? ' (sur 8 semaines, sans coupure)' : ''} ; ${seancesDures} séance${seancesDures > 1 ? 's' : ''} dure${seancesDures > 1 ? 's' : ''} (RPE 7 ou plus) en 4 semaines.${pourquoi}` };
-}
-
-// LE VOLUME DU MOMENT (décision coach du 24/10/2026, « la moyenne est souvent peu représentative ») : sa dernière semaine,
-// jamais sous la moyenne des 4 (une semaine malade ou allégée ne fait pas partir trop bas) ni au-delà de cette moyenne
-// +30 % (un pic isolé ne fait pas partir trop haut ; la hausse brutale du volume, Nielsen 2014). semaines : les minutes
-// de course de chaque semaine, dans l'ordre, la dernière au bout. La plus longue sortie reste celle des 4 semaines.
-export function volumeDuMoment(semaines: number[]): { retenu: number; moyenne: number; pourquoi: 'derniere' | 'plafond' | 'moyenne' } {
-  const moyenne = semaines.reduce((a, b) => a + b, 0) / Math.max(1, semaines.length);
-  const derniere = semaines[semaines.length - 1] ?? 0;
-  if (derniere <= moyenne) return { retenu: moyenne, moyenne, pourquoi: 'moyenne' };
-  if (derniere > moyenne * 1.3) return { retenu: moyenne * 1.3, moyenne, pourquoi: 'plafond' };
-  return { retenu: derniere, moyenne, pourquoi: 'derniere' };
-}
-
-// Les 4 semaines sur lesquelles se lit sa charge, fin exclue : les 4 dernières ; après une compétition de moins de 4
-// semaines, les 4 d'avant ses 2 semaines d'affûtage (décision coach du 23/10/2026).
-// Les 4 dernières semaines complètes, du lundi au dimanche, comme les lignes du calendrier Nolio (décision coach du
-// 23/10/2026) ; une course il y a moins de 2 semaines, encore en récupération (« il ne faut pas remonter aussi loin ») :
-// les 4 semaines d'avant son affûtage. Le jour d'une course n'y compte jamais.
-export function fenetreDeCharge(aujourdhui: string, competitions: string[]): { debut: string; fin: string; recul: string | null } {
-  const derniere = competitions.filter((d) => d >= ajouterJours(aujourdhui, -14) && d < aujourdhui).sort().pop() ?? null;
-  const borne = derniere ? ajouterJours(derniere, -14) : aujourdhui;
-  const fin = ajouterJours(borne, -((new Date(`${borne}T12:00:00Z`).getUTCDay() + 6) % 7));
-  return { debut: ajouterJours(fin, -28), fin, recul: derniere };
+    + `${sansTrou ? ' (sur 8 semaines, sans coupure)' : ''} ; ${seancesDures} séance${seancesDures > 1 ? 's' : ''} dure${seancesDures > 1 ? 's' : ''} (RPE 7 ou plus) en 4 semaines.` };
 }
 
 // Les réponses d'un objectif, sans celles de sa course : le point de départ du suivant (N9, OM1).
