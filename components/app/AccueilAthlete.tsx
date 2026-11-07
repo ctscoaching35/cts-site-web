@@ -30,13 +30,14 @@ import {
 // 19/10/2026) : les séances vivent dans Nolio ; ici l'objectif et sa montagne, un badge tout neuf (BG3), les piliers,
 // les courses de préparation, la semaine en cours, la fiche du moment ; pour un coaché entre deux objectifs, l'accueil
 // d'entre-deux. Celui de l'athlète connecté (app/app/page.tsx).
-// demarrage : « Pour bien démarrer » (décision coach du 21/10/2026), tant qu'elle n'est pas masquée pour ce plan ;
+// demarrage : « Pour bien démarrer » (décision coach du 21/10/2026), tant qu'elle n'est pas masquée pour ce plan ; montre :
+// l'acheteur y a coché l'appli Nolio et sa montre, d'un appui (décision coach du 07/11/2026) ;
 // demande : sa demande d'objectif vient de partir ; aVenir : un objectif à venir sur son compte, demandé seulement après
 // sa dernière course.
 // Par exception (audits du 05/11/2026, Q6 et suivantes) : ce qui sort de l'ordinaire a sa ligne (la semaine ajustée, la
 // semaine d'un test, le jour J), ce qui est vide ne s'affiche pas.
-export default async function AccueilAthlete({ ctx, demarrage, demande = false, aVenir }: {
-  ctx: Contexte; demarrage: boolean; demande?: boolean; aVenir: () => Promise<boolean>;
+export default async function AccueilAthlete({ ctx, demarrage, montre = false, demande = false, aVenir }: {
+  ctx: Contexte; demarrage: boolean; montre?: boolean; demande?: boolean; aVenir: () => Promise<boolean>;
 }) {
   const { plan, jour } = ctx;
   const installer = `${lien('/app/compte', ctx)}#installer`;
@@ -195,7 +196,7 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
         {/* Sa liste dit où en est l'invitation Nolio ; masquée, la carte Nolio le redit. */}
         {etape !== 'apres' && demarrage && d.nolio !== 'sorti' && d.nolio !== 'coaching' && (
           <PourBienDemarrer acheteur={!ctx.coache} nolio={d.nolio} accord={d.accord} questionnaire={d.ecrit && !ctx.aLaMain} installer={installer}
-            profil={profil} lienProfil={lienProfil} seanceFaite={d.realises.some((r) => r.seances_faites > 0)}
+            profil={profil} lienProfil={lienProfil} seanceFaite={d.realises.some((r) => r.seances_faites > 0)} montre={montre}
             inviteLe={inviteLe ? dateLongue(inviteLe) : null} confirmer={confirmer} demonstration={ctx.demonstration} planId={ctx.cle} />
         )}
         {/* AT4 : la récupération du coaché, même quand son objectif suivant est déjà là (Q12 : la même carte que l'acheteur). */}
@@ -210,7 +211,10 @@ export default async function AccueilAthlete({ ctx, demarrage, demande = false, 
         {/* La saison de fond (décisions coach du 24/10/2026) : le bloc et le compte à rebours des tests. */}
         {plan.fond ? <CarteSaison plan={plan} ligne={ligne} jour={jour} href={lien('/app/plan', ctx)} /> : (
           <CarteObjectif plan={plan} restants={restants} jauge={ctx.aLaMain ? null : jauge} etape={etape} href={lien('/app/plan', ctx)}
-            surtitre={etape === 'apres' ? 'Ta dernière course' : 'Ton objectif'} jourJ={jourJ}
+            surtitre={etape === 'apres' ? 'Ta dernière course' : 'Ton objectif majeur'} jourJ={jourJ}
+            // « Ajouter une course › » (décision coach du 07/11/2026), coaché ou acheteur, tant que l'objectif est à venir (pas
+            // le jour J).
+            ajouter={plan.course.date > jour ? lien('/app/objectif/nouveau', ctx) : null}
             // Q16 (décision coach du 05/11/2026 au soir, « A ») : programmé à la main, le bouton ouvre sa fiche de course.
             // Validé par le coach le 05/11/2026 (1A ; « Ta fiche de course »).
             bouton={ctx.aLaMain ? { texte: 'Ta fiche de course', href: fiche } : null}

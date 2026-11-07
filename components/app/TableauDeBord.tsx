@@ -187,7 +187,8 @@ function Route({ score, ton }: { score: number | null; ton: keyof typeof REMPLI 
 
 // Un compte à rebours en « J- » jusqu'à l'objectif, sans « semaine x sur N », pour tous, plans achetés compris
 // (décisions coach du 19/10/2026 : « on part de l'objectif et on revient jusqu'au jour J »).
-// surtitre : « Ton objectif », ou « Ta dernière course » après elle.
+// surtitre : « Ton objectif majeur » (décision coach du 07/11/2026 ; avant, « Ton objectif »), ou « Ta dernière course »
+// après elle.
 // jauge : null pour un coaché que son coach programme à la main (décision coach du 20/10/2026) : ni montagne ni verdict,
 // qui suivent la trame du moteur ; le compte à rebours et sa course.
 // coache : pour un coaché, ni le début calendaire du plan ni la semaine rejointe (décision coach du 22/10/2026 : ses
@@ -195,10 +196,13 @@ function Route({ score, ton }: { score: number | null; ton: keyof typeof REMPLI 
 // jour et debut : l'avancée dans la préparation, qui remplit la montagne (AT3).
 // bouton (Q16, décision coach du 05/11/2026 au soir, « A ») : un coaché programmé à la main ouvre directement sa fiche de
 // course, sa préparation n'étant pas dans l'app ; jourJ : la fiche de course à « Ton jour J » (C14).
-export function CarteObjectif({ plan, restants, jauge, etape, href, surtitre = 'Ton objectif', coache = false, jour = null, debut = null,
-  bouton = null, jourJ = null }: {
+// ajouter (décision coach du 07/11/2026) : sous le bouton, « Ajouter une course », vers l'aiguillage « Ta prochaine course »
+// (objectif majeur ou course de préparation), tant que l'objectif est à venir.
+export function CarteObjectif({ plan, restants, jauge, etape, href, surtitre = 'Ton objectif majeur', coache = false, jour = null, debut = null,
+  bouton = null, jourJ = null, ajouter = null }: {
   plan: Plan; restants: number; jauge: Jauge | null; etape: 'avant' | 'pendant' | 'apres'; href: string; surtitre?: string;
   coache?: boolean; jour?: string | null; debut?: string | null; bouton?: { texte: string; href: string } | null; jourJ?: string | null;
+  ajouter?: string | null;
 }) {
   const depart = debut ?? plan.course.date_debut_plan;
   const total = depart ? Math.max(1, (Date.parse(`${plan.course.date}T12:00:00Z`) - Date.parse(`${depart}T12:00:00Z`)) / 86_400_000) : 0;
@@ -237,6 +241,11 @@ export function CarteObjectif({ plan, restants, jauge, etape, href, surtitre = '
         </div>
       )}
       <Link href={action.href} className={BOUTON}>{action.texte}</Link>
+      {ajouter && (
+        <Link href={ajouter} className="-mt-2 flex w-fit items-center min-h-11 text-[0.8125rem] font-bold text-[#D6D5E6]">
+          Ajouter une course ›
+        </Link>
+      )}
     </CarteSombre>
   );
 }

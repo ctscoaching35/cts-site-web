@@ -5,5 +5,9 @@ export const COOKIE_BIENVENUE = 'cts_bienvenue';
 export const COOKIE_DEMARRAGE = 'cts_demarrage_plans';
 // L'ancien, effacé par ?reinitialiser=1 de la démonstration (proxy.ts).
 export const COOKIE_DEMARRAGE_ANCIEN = 'cts_demarrage';
+// Celui qui retient, sur un appareil, les plans où « Installe l'appli Nolio et relie ta montre » est cochée d'un appui
+// (décision coach du 07/11/2026 ; components/app/PourBienDemarrer.tsx).
+export const COOKIE_MONTRE = 'cts_montre_plans';
 export const plansMasques = (valeur: string | undefined) => (valeur ?? '').split('.').filter((x) => /^[A-Za-z0-9-]{1,64}$/.test(x));
 export const demarrageMasque = (valeur: string | undefined, planId: string) => plansMasques(valeur).includes(planId);
+export const montreCochee = (valeur: string | undefined, planId: string) => plansMasques(valeur).includes(planId);

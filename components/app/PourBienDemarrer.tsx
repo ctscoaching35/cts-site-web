@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { masquerDemarrage } from '@/lib/app/actionsBienvenue';
+import { cocherMontre, masquerDemarrage } from '@/lib/app/actionsBienvenue';
 import type { EtatNolio } from '@/lib/app/tableauDuPlan';
 import { Carte, EcrisNous, Surtitre } from './Ui';
 
@@ -17,7 +17,8 @@ const GOOGLE_PLAY = 'https://play.google.com/store/apps/details?id=dupont.nolio'
 // L'aide de Nolio, marque par marque (Garmin, Coros, Suunto, Polar, Apple Watch…).
 const MONTRE = 'https://help.nolio.io/fr/collections/19748649-connecter-un-appareil-ou-une-application';
 
-type Etape = { fait: boolean; titre: string; texte?: React.ReactNode };
+// cocher : l'étape se coche (et se décoche) d'un appui sur son rond.
+type Etape = { fait: boolean; titre: string; texte?: React.ReactNode; cocher?: () => void; libelle?: string };
 
 // seanceFaite : une séance faite remontée de Nolio (avec son accord de lecture) ; elle coche l'appli Nolio et la montre
 // (décision coach du 23/10/2026).
@@ -27,15 +28,21 @@ type Etape = { fait: boolean; titre: string; texte?: React.ReactNode };
 // demonstration : la démonstration (lib/app/demonstration.ts) ne retient rien sur l'appareil, ni masquée d'un appui, ni
 // d'elle-même (?demarrage=masque la montre masquée).
 // planId (C12, audits du 05/11/2026) : masquée pour ce plan seulement, plus pour tous les plans suivants de l'appareil.
-export default function PourBienDemarrer({ acheteur, nolio, accord, questionnaire, installer, profil = true, lienProfil = '', seanceFaite = false, inviteLe = null, confirmer = false, demonstration = false, planId }: {
+// montre (décision coach du 07/11/2026) : l'acheteur a coché lui-même « Installe l'appli Nolio et relie ta montre », d'un
+// appui sur son rond, retenu sur cet appareil pour ce plan (un cookie, lib/app/actionsBienvenue.ts, cocherMontre) ; la
+// coche automatique, à la première séance faite remontée, reste. « Rejoins l'équipe CTS » ne se coche pas à la main.
+export default function PourBienDemarrer({ acheteur, nolio, accord, questionnaire, installer, profil = true, lienProfil = '', seanceFaite = false, montre = false, inviteLe = null, confirmer = false, demonstration = false, planId }: {
   acheteur: boolean; nolio: EtatNolio; accord: boolean; questionnaire: boolean; installer: string; profil?: boolean; lienProfil?: string;
-  seanceFaite?: boolean; inviteLe?: string | null; confirmer?: boolean; demonstration?: boolean; planId: string;
+  seanceFaite?: boolean; montre?: boolean; inviteLe?: string | null; confirmer?: boolean; demonstration?: boolean; planId: string;
 }) {
   const [masquee, setMasquee] = useState(false);
+  const [montreCochee, setMontreCochee] = useState(montre);
+  const relie = seanceFaite || montreCochee;
   // AT2 (décision coach du 04/11/2026) : la liste se masque d'elle-même une fois ses étapes faites, l'app installée ou
   // non (avant, sur un ordinateur, elle restait jusqu'au jour J) ; l'installation reste proposée dans Compte. Un
-  // acheteur : dans l'équipe et sa montre reliée (B-PL-46) ; un coaché : son profil rempli et son accord donné.
-  const enPlace = acheteur ? nolio === 'actif' && seanceFaite : accord && profil;
+  // acheteur : dans l'équipe et sa montre reliée (B-PL-46), ou cochée de sa main (07/11/2026) ; un coaché : son profil
+  // rempli et son accord donné.
+  const enPlace = acheteur ? nolio === 'actif' && relie : accord && profil;
   useEffect(() => {
     if (enPlace && !demonstration) masquerDemarrage(planId).catch(() => {});
   }, [enPlace, demonstration, planId]);
@@ -61,11 +68,22 @@ export default function PourBienDemarrer({ acheteur, nolio, accord, questionnair
         : `${nolio === 'a_inviter' ? 'Nolio t’écrira' : 'Nolio t’écrit'}${inviteLe && nolio === 'a_inviter' ? ` le ${inviteLe}, une semaine avant ta première semaine,` : ''} à l’adresse de ton achat (ou de ton compte Nolio) : accepte l’invitation, ou connecte-toi avec les `
           + 'identifiants reçus. Regarde aussi dans tes indésirables.'
           + (confirmer && nolio === 'a_inviter' ? ' Ce jour-là, ton app te demande aussi si ce que tu cours a changé depuis ton achat.' : '') },
-    seanceFaite
-      ? { fait: true, titre: 'L’appli Nolio et ta montre sont reliées' }
-      : { fait: false, titre: 'Installe l’appli Nolio et relie ta montre', texte: (
-        <span className="block mt-1">{lienExterne(APP_STORE, 'App Store')}{lienExterne(GOOGLE_PLAY, 'Google Play')}{lienExterne(MONTRE, 'Relier ta montre')}</span>
-      ) },
+    {
+      ...(relie
+        ? { fait: true, titre: 'L’appli Nolio et ta montre sont reliées' }
+        : { fait: false, titre: 'Installe l’appli Nolio et relie ta montre', texte: (
+          <span className="block mt-1">{lienExterne(APP_STORE, 'App Store')}{lienExterne(GOOGLE_PLAY, 'Google Play')}{lienExterne(MONTRE, 'Relier ta montre')}</span>
+        ) }),
+      // Cochée d'un appui, tant qu'aucune séance faite ne l'a cochée d'elle-même ; en démonstration, rien n'est retenu.
+      ...(seanceFaite ? {} : {
+        libelle: 'Installe l’appli Nolio et relie ta montre',
+        cocher: () => {
+          const cochee = !montreCochee;
+          setMontreCochee(cochee);
+          if (!demonstration) cocherMontre(planId, cochee).catch(() => {});
+        },
+      }),
+    },
   ] : [
     profil
       ? { fait: true, titre: 'Ton profil de coureur est rempli' }
@@ -79,6 +97,16 @@ export default function PourBienDemarrer({ acheteur, nolio, accord, questionnair
         texte: 'Réponds « oui » à son message dans Nolio : tes séances faites, ton RPE et ton Hooper remontent alors dans l’app.' },
   ];
 
+  const rond = (fait: boolean) => (
+    <span aria-hidden className={fait
+      ? 'w-[18px] h-[18px] rounded-full bg-teal flex items-center justify-center'
+      : 'block w-[18px] h-[18px] rounded-full border-2 border-indigo/25'}>
+      {fait && (
+        <svg viewBox="0 0 24 24" className="w-3 h-3" fill="none" stroke="white" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5 10 17 19 7" /></svg>
+      )}
+    </span>
+  );
+
   return (
     <Carte className="space-y-3">
       <Surtitre>Pour bien démarrer</Surtitre>
@@ -88,14 +116,14 @@ export default function PourBienDemarrer({ acheteur, nolio, accord, questionnair
       </p>
       <ol>
         {etapes.map((e) => (
-          <li key={e.titre} className="grid grid-cols-[22px_1fr] gap-x-2.5 py-2.5 border-t border-indigo/[0.06] first:border-t-0">
-            <span aria-hidden className={e.fait
-              ? 'mt-0.5 w-[18px] h-[18px] rounded-full bg-teal flex items-center justify-center'
-              : 'mt-0.5 w-[18px] h-[18px] rounded-full border-2 border-indigo/25'}>
-              {e.fait && (
-                <svg viewBox="0 0 24 24" className="w-3 h-3" fill="none" stroke="white" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5 10 17 19 7" /></svg>
-              )}
-            </span>
+          <li key={e.libelle ?? e.titre} className="grid grid-cols-[22px_1fr] gap-x-2.5 py-2.5 border-t border-indigo/[0.06] first:border-t-0">
+            {e.cocher ? (
+              // Une zone d'appui de 44 px centrée sur le rond, sans déplacer la ligne.
+              <button type="button" role="checkbox" aria-checked={e.fait} aria-label={e.libelle} onClick={e.cocher}
+                className="-ml-[13px] -mt-[11px] w-11 h-11 flex items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-teal">
+                {rond(e.fait)}
+              </button>
+            ) : <span aria-hidden className="mt-0.5">{rond(e.fait)}</span>}
             <span className="min-w-0">
               <span className={e.fait ? 'block text-sm text-[#5E5C78]' : 'block text-sm font-bold text-indigo'}>
                 {e.titre}<span className="sr-only">{e.fait ? ', fait' : ', à faire'}</span>

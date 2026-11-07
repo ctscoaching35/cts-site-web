@@ -6,7 +6,7 @@
  */
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { COOKIE_BIENVENUE, COOKIE_DEMARRAGE, plansMasques } from './bienvenue';
+import { COOKIE_BIENVENUE, COOKIE_DEMARRAGE, COOKIE_MONTRE, plansMasques } from './bienvenue';
 import { demonstrationOuverte } from './demonstrationPorte';
 
 // La démonstration (développement seulement) ne pose aucun cookie : la bienvenue et « Pour bien démarrer » s'y disent
@@ -26,4 +26,14 @@ export async function masquerDemarrage(planId: string) {
   const plans = plansMasques(jar.get(COOKIE_DEMARRAGE)?.value);
   if (!plans.includes(planId)) plans.push(planId);
   jar.set(COOKIE_DEMARRAGE, plans.slice(-20).join('.'), { path: '/', maxAge: 395 * 24 * 60 * 60, sameSite: 'lax' });
+}
+
+// « Installe l'appli Nolio et relie ta montre » cochée, ou décochée, d'un appui sur son rond (décision coach du
+// 07/11/2026) : retenue sur cet appareil, pour ce plan, comme masquerDemarrage ; rien en démonstration.
+export async function cocherMontre(planId: string, cochee: boolean) {
+  if (demonstrationOuverte() || !/^[A-Za-z0-9-]{1,64}$/.test(planId)) return;
+  const jar = await cookies();
+  const plans = plansMasques(jar.get(COOKIE_MONTRE)?.value).filter((p) => p !== planId);
+  if (cochee) plans.push(planId);
+  jar.set(COOKIE_MONTRE, plans.slice(-20).join('.'), { path: '/', maxAge: 395 * 24 * 60 * 60, sameSite: 'lax' });
 }
