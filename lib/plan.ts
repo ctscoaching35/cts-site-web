@@ -78,36 +78,36 @@ export const champsVides: Champs = {
   tapis: '',
 };
 
+// LE QUESTIONNAIRE PLUS COURT (P1-P7, décision coach du 07/11/2026, « tout A ») : des aides plus courtes, validées par le
+// coach mot pour mot ; ce qui part au moteur ne change pas.
 export const textes = {
   niveau: {
+    // P3-a (07/11/2026) : l'aide et la note sous les trois choix fusionnent en une phrase, sous le titre.
     aide:
-      'C’est la question qui calibre tout le reste : le volume de base, la longueur de tes sorties longues, la dose de travail dur, et les formats de course qui te sont ouverts. Lis les trois descriptions et coche celle dans laquelle tu te reconnais — pas celle que tu aimerais atteindre.',
+      'Coche celle où tu te reconnais aujourd’hui, pas celle que tu vises : un niveau surestimé donne un plan plus dur que ce que tu peux encaisser.',
     options: [
       {
         valeur: 'debutant',
         titre: 'Débutant',
         description:
           'Je cours depuis moins de deux ans. Je n’ai jamais suivi de plan structuré. Le fractionné ne fait pas partie de mes habitudes. Au-delà d’1h30 de course, je commence à subir.',
-        // « Au-delà de 10h » depuis S14 (05/11/2026) : la course de référence vaut aussi pour lui.
-        formats: 'Formats ouverts : Trail Court et Trail Marathon. Au-delà de 10h de course, avec une course déjà terminée d’au moins la moitié de sa taille.',
+        // P3-b (07/11/2026) : la ligne des formats sous le débutant seulement, le seul niveau qu'elle ferme ; jamais pour
+        // le coach, où tout format s'ouvre à tout niveau.
+        formats: 'Formats ouverts : Trail Court et Trail Marathon.',
       },
       {
         valeur: 'intermediaire',
         titre: 'Intermédiaire',
         description:
           'Je cours régulièrement depuis deux ans ou plus. J’ai déjà suivi un plan d’entraînement. Je pratique le fractionné. Je tiens 2h30 de course sans difficulté majeure.',
-        formats: 'Formats ouverts : tous, jusqu’à l’ultra. Au-delà de 10h de course, avec une course déjà terminée d’au moins la moitié de sa taille.',
       },
       {
         valeur: 'confirme',
         titre: 'Confirmé',
         description:
           'Je m’entraîne de façon structurée depuis plusieurs années, plusieurs fois par semaine. J’ai déjà terminé des courses longues. Les sorties de 4h font partie de ma pratique.',
-        formats: 'Formats ouverts : tous, jusqu’à l’ultra. Au-delà de 10h de course, avec une course déjà terminée d’au moins la moitié de sa taille.',
       },
-    ],
-    note:
-      'Te surestimer ne débloque pas un meilleur plan : ça produit un plan plus dur que ce que tu peux encaisser, avec le risque de blessure qui va avec.',
+    ] as { valeur: string; titre: string; description: string; formats?: string }[],
   },
   // Charge actuelle (24/09/2026). Aucun pourcentage dans l'aide, décision du coach du
   // 26/09/2026 : l'étude dit 10 %, le plan monte par marches de 15 % au plus, et
@@ -117,13 +117,13 @@ export const textes = {
   // le même soir).
   charge: {
     titre: 'Ce que tu cours en ce moment',
-    aide:
-      'Ta plus longue sortie décide d’où ton plan démarre. C’est la seule chose qui distingue deux coureurs du même niveau : l’un tient déjà 2h30, l’autre plafonne à 1h, et ils n’ont pas à recevoir la même première semaine. Le risque de blessure monte quand une sortie dépasse nettement la plus longue des 4 dernières semaines : c’est l’un des faits les mieux établis en prévention des blessures en course à pied.',
+    // P3-c (07/11/2026).
+    aide: 'Ta plus longue sortie fixe le point de départ de ton plan : il ne la dépassera que par petites marches.',
     volume: 'Ton volume de course par semaine, en ce moment',
     sortieLongue: 'Ta plus longue sortie en ce moment',
   },
-  gpx:
-    'Le profil réel du parcours (répartition des pentes) affine tout le plan. Sans trace, le plan est construit sur le D+/D− déclaré ci-dessus, et ta fiche de course n’aura pas de profil.',
+  // P3-d (07/11/2026).
+  gpx: 'Elle donne le vrai profil du parcours et affine ton plan ; sans elle, il se construit sur le D+ que tu indiques.',
   tempsCible: 'Même une estimation large vaut mieux que rien — c’est ce qui calibre l’intensité de tout le plan.',
   // Sans paragraphe d'aide (décision coach du 07/10/2026 : « ça n'apporte rien ») : les quatre
   // descriptions disent la longueur de côte.
@@ -140,10 +140,12 @@ export const textes = {
     // ailleurs.
     tapis: 'As-tu accès à un tapis de course qui monte ?',
   },
+  // La section « Ta semaine » (« Ta disponibilité » jusqu'au 07/11/2026, P2).
   disponibilite: {
     aide:
       // Le point de départ (décision coach du 20/10/2026) : le questionnaire du samedi dans Nolio les change ensuite.
-      'Ton plan se cale sur ta semaine : tes séances sur tes jours disponibles, ta sortie longue sur le jour que tu choisis, et jamais deux séances dures d’affilée. Ce sont tes jours habituels : chaque samedi, un court questionnaire dans Nolio te permet de les changer pour la semaine suivante.',
+      // P3-e (07/11/2026).
+      'Tes séances se placent sur ces jours, jamais deux séances dures d’affilée. Chaque samedi, un court questionnaire dans Nolio te permet de changer tes jours de la semaine suivante.',
   },
   sante: {
     blessure: 'Une blessure ou une douleur t’empêche-t-elle de courir normalement en ce moment ?',
@@ -220,7 +222,12 @@ const kmEffort = (km: string, dplus: string) => {
   return k > 0 ? k + (parseFloat(dplus.replace(',', '.')) || 0) / 100 : 0;
 };
 
-export function reperesChrono(c: Champs, config: ConfigPlan, coach = false): string | null {
+// LES REPÈRES EN LISTE (P4, décision coach du 07/11/2026, « A ») : une structure au lieu d'une phrase, que le
+// questionnaire affiche en petite liste ; le même calcul et les mêmes bornes plafonnées. kmEffort : arrondi ; bandes : de
+// l'élite aux proches des barrières, le temps de chacune (« moins de 6h20 », « 6h20 à 7h40 », « plus de 9h55 ») ; fin :
+// la phrase du plafond dépassé, sinon null.
+export type ReperesChrono = { kmEffort: number; bandes: { nom: string; temps: string }[]; fin: string | null };
+export function reperesChrono(c: Champs, config: ConfigPlan, coach = false): ReperesChrono | null {
   const ke = kmEffort(c.distance_km, c.dplus_m);
   if (!c.format || !(ke > 0)) return null;
   // Un repère au-delà du plafond du format le dit, au lieu de proposer un chrono que le formulaire refusera ensuite
@@ -229,15 +236,16 @@ export function reperesChrono(c: Champs, config: ConfigPlan, coach = false): str
   const [p10, p30, p60, p85] = COUPURES.map((k) => ke / (k * vitesseMediane(ke)));
   const borne = (h: number) => (plafond !== undefined && h > plafond ? `${plafond}h` : heuresMinutes(h));
   const de = (h1: number, h2: number) => (plafond !== undefined && h1 > plafond ? `plus de ${plafond}h` : `${heuresMinutes(h1)} à ${borne(h2)}`);
-  const bandes = [`élite moins de ${borne(p10)}`, `rapide ${de(p10, p30)}`, `intermédiaire ${de(p30, p60)}`, `prudent ${de(p60, p85)}`,
-    `proche des barrières plus de ${borne(p85)}`];
+  const temps = [`moins de ${borne(p10)}`, de(p10, p30), de(p30, p60), de(p60, p85), `plus de ${borne(p85)}`];
   const depasse = plafond !== undefined && p85 > plafond;
-  const fin = depasse
-    ? (coach ? ` Au-delà de ${plafond}h, c’est hors du plafond de ce plan. ${HORS_DU_MOTEUR}`
-      : ` Au-delà de ${plafond}h, c’est hors du plafond de ce plan : un coaching individualisé est plus adapté.`)
-    : coach ? '' : ' Choisis d’après ta propre expérience de course.';
-  return `Ta course fait ${Math.round(ke)} km-effort (km + D+/100). Repères de chrono, d’après les finishers de courses de cette taille : `
-    + `${bandes.join(' · ')}. Course technique, chaude ou de nuit : vise plutôt la bande d’en dessous ; très roulante : celle d’au-dessus.${fin}`;
+  const fin = !depasse ? null
+    : coach ? `Au-delà de ${plafond}h, c’est hors du plafond de ce plan. ${HORS_DU_MOTEUR}`
+      : `Au-delà de ${plafond}h, c’est hors du plafond de ce plan : un coaching individualisé est plus adapté.`;
+  return {
+    kmEffort: Math.round(ke),
+    bandes: NOMS_BANDES.map((nom, i) => ({ nom: nom.charAt(0).toUpperCase() + nom.slice(1), temps: temps[i] })),
+    fin,
+  };
 }
 
 // UN TEMPS DE TÊTE DE COURSE (S13, décision coach du 05/11/2026, « A » ; audit A-9, I5) : un temps visé sous la borne
@@ -495,6 +503,10 @@ export function alerteSortieLongue(c: Champs, config: ConfigPlan): string | null
  * 5 et 5 bis). La note annonce le plancher en direct, pour que l'athlète ne le découvre
  * pas dans un refus. Pas de motif (décision coach du 27/09/2026) :
  * aucun motif court n'est vrai pour tous les formats et tous les niveaux.
+ * La note ne dit plus que ce qui s'applique (P5, décision coach du 07/11/2026, « A ») : le minimum de l'ultra, ou celui
+ * d'une course de 100 km-effort et plus, puis le plafond du débutant ; rien pour le minimum de 3 seul. L'ultra passe
+ * avant le km-effort (une course de plus de 100 km les a toujours tous les deux). Un autre format au minimum propre,
+ * qui n'existe pas aujourd'hui, n'aurait pas de note plutôt qu'une note fausse.
  */
 export function plancherSeances(c: Champs, config: ConfigPlan): { min: number; max: number; note: string } {
   const parFormat = config.freq_min_par_format[c.format] ?? 0;
@@ -508,21 +520,15 @@ export function plancherSeances(c: Champs, config: ConfigPlan): { min: number; m
   // Plafond du niveau (second audit du 28/09/2026, D4) : le débutant, 4 séances au plus.
   // Lu dans /v1/config ; l'API reste seule juge (refus 5 ter).
   const max = config.freq_max_par_niveau?.[c.niveau] ?? 7;
-  // Sans « Pas plus que de jours cochés. » ni le coût de la 4e séance (décision coach du
-  // 07/10/2026 : « ça n'apporte rien ») ; le plafond du débutant reste, il évite un refus.
-  const bornes = max < 7 ? `En débutant, ${max} séances par semaine au plus.` : '';
-  if (!c.format) return { min, max, note: bornes };
-  if (ke !== null && parDifficulte >= parFormat && parDifficulte > 0) {
-    return {
-      min,
-      max,
-      note: `Ta course vaut ${Math.round(ke)} km-effort (distance + D+/100). À partir de ${seuil}, le plan demande au moins ${min} séances par semaine. ${bornes}`.trim(),
-    };
-  }
-  const passage = parFormat < auDela
-    ? ` À partir de ${seuil} km-effort (distance + D+/100), le minimum passe à ${auDela}.`
-    : '';
-  return { min, max, note: `Minimum ${min} séances par semaine sur ce format.${passage} ${bornes}`.trim() };
+  const parties = [
+    min <= 3 ? ''
+      : parFormat === min ? (c.format === 'UT' ? `Au moins ${min} séances par semaine pour un ultra.` : '')
+        : `Au moins ${min} séances par semaine pour une course de cette taille (${seuil} km-effort et plus).`,
+    // Sans « Pas plus que de jours cochés. » ni le coût de la 4e séance (décision coach du
+    // 07/10/2026 : « ça n'apporte rien ») ; le plafond du débutant reste, il évite un refus.
+    c.niveau === 'debutant' && max < 7 ? `${max} au plus en débutant.` : '',
+  ];
+  return { min, max, note: parties.filter(Boolean).join(' ') };
 }
 
 /** L'intake envoyé à l'API : tous les champs sauf la blessure et le cœur, qui restent sur la page. */
