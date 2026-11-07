@@ -4,7 +4,9 @@ import { useActionState } from 'react';
 import { enregistrerTestVc, type EtatCoach } from '@/lib/app/actionsCoaching';
 
 // Le test de vitesse critique d'un coaché, saisi par son coach (décision coach du 19/10/2026) : la date du test et ses
-// deux efforts, durée et distance ; le même calcul que dans l'app.
+// deux efforts, durée et distance, le 3 min d'abord (l'ordre du test depuis le 07/11/2026) ; le même calcul que dans
+// l'app. Quelles que soient ses valeurs (décision coach du 07/11/2026) : seul ce qui ne se calcule pas est refusé, et une
+// ligne d'avertissement suit le résultat d'un test hors des bornes habituelles (rien ne bloque avant l'action).
 export default function TestVcCoach({ athleteId, aujourdhui }: { athleteId: string; aujourdhui: string }) {
   const [etat, action, enCours] = useActionState<EtatCoach, FormData>(enregistrerTestVc.bind(null, athleteId), null);
   const champ = 'mt-1.5 w-full min-h-11 rounded-[10px] border border-indigo/20 px-3 text-sm font-normal text-indigo bg-white';
@@ -15,12 +17,12 @@ export default function TestVcCoach({ athleteId, aujourdhui }: { athleteId: stri
       </label>
       {[1, 2].map((i) => (
         <fieldset key={i} className="grid grid-cols-2 gap-2.5">
-          <legend className="col-span-2 text-xs font-bold text-indigo">{i === 1 ? 'Effort long (12 min)' : 'Effort court (3 min)'}</legend>
+          <legend className="col-span-2 text-xs font-bold text-indigo">{i === 1 ? 'Effort court (3 min)' : 'Effort long (12 min)'}</legend>
           <label className="block text-xs font-semibold text-indigo">Durée
-            <input name={`duree${i}`} required placeholder={i === 1 ? '12 ou 12:00' : '3 ou 3:00'} className={champ} />
+            <input name={`duree${i}`} required placeholder={i === 1 ? '3 ou 3:00' : '12 ou 12:00'} className={champ} />
           </label>
           <label className="block text-xs font-semibold text-indigo">Distance
-            <input name={`distance${i}`} required inputMode="decimal" placeholder={i === 1 ? '3150 m ou 3,15' : '1000 m ou 1'} className={champ} />
+            <input name={`distance${i}`} required inputMode="decimal" placeholder={i === 1 ? '1000 m ou 1' : '3150 m ou 3,15'} className={champ} />
           </label>
         </fieldset>
       ))}
@@ -31,6 +33,7 @@ export default function TestVcCoach({ athleteId, aujourdhui }: { athleteId: stri
         {enCours ? 'Calcul…' : 'Enregistrer le test'}
       </button>
       {etat?.message && <p className={etat.ok ? 'text-sm text-teal font-semibold' : 'text-sm text-indigo'} role="status">{etat.message}</p>}
+      {etat?.ok && etat.avertissement && <p className="text-[0.8125rem] text-[#8A5E10] leading-relaxed">{etat.avertissement}</p>}
     </form>
   );
 }

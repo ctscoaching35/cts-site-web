@@ -15,7 +15,8 @@ import { retirerFiche, supprimerPlans } from './retrait';
 import { lireAllure } from './allureCoach';
 import { clientService } from './supabase';
 
-export type EtatCoach = { message: string; ok: boolean } | null;
+// avertissement : une ligne sous le résultat, quand ce qui s'enregistre sort de l'habituel (le test de vitesse critique).
+export type EtatCoach = { message: string; ok: boolean; avertissement?: string } | null;
 
 // Sa programmation (décision coach du 20/10/2026, « tableau de bord complet ») : automatique, le moteur écrit ses
 // semaines chaque dimanche ; à la main, le coach les écrit dans Nolio, le moteur n'écrit rien et l'app reste son tableau
@@ -259,13 +260,15 @@ export async function enregistrerProfil(athleteId: string, _e: EtatCoach, form: 
 
 // Le test de vitesse critique d'un coaché, saisi par son coach (décision coach du 19/10/2026 : quand l'athlète ne le
 // fait pas, ou que la lecture automatique dans Nolio n'a pas abouti) : ses deux efforts (durée, distance), le même
-// calcul que dans l'app (lib/app/zones.ts, vitesseCritique), la date du test. La VC et la D′ (son profil de coureur,
-// AP4) vont sur sa fiche, sa source « test saisi par le coach » ; un test écrit dans ses semaines et pas encore lu
-// est marqué lu, pour que la lecture automatique ne revienne pas dessus ; ses zones Nolio suivent (ZN1).
+// calcul que dans l'app, la date du test. La VC et la D′ (son profil de coureur, AP4) vont sur sa fiche, sa source
+// « test saisi par le coach » ; un test écrit dans ses semaines et pas encore lu est marqué lu, pour que la lecture
+// automatique ne revienne pas dessus ; ses zones Nolio suivent (ZN1). Quelles que soient ses valeurs (décision coach
+// du 07/11/2026) : seul ce qui ne se calcule pas est refusé (lib/app/zones.ts, vitesseCritiqueCoach), une ligne
+// d'avertissement dit un test hors des bornes habituelles. L'accord de lecture reste exigé (E3).
 export async function enregistrerTestVc(athleteId: string, _e: EtatCoach, form: FormData): Promise<EtatCoach> {
   const coach = await coachConnecte();
   if (!coach) return { ok: false, message: 'Ta session a expiré : reconnecte-toi.' };
-  const { lireDistance, lireDuree, vitesseCritique } = await import('./zones');
+  const { lireDistance, lireDuree, vitesseCritiqueCoach } = await import('./zones');
   const jour = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
   const le = String(form.get('le') ?? '') || jour;
   const ilYA60 = new Date(Date.now() - 60 * 86_400_000).toISOString().slice(0, 10);
@@ -276,7 +279,7 @@ export async function enregistrerTestVc(athleteId: string, _e: EtatCoach, form: 
   }));
   if (efforts.some((e) => e.duree_s === null || e.distance_m === null))
     return { ok: false, message: 'Entre la durée (12 ou 12:00) et la distance (3150 m ou 3,15 km) de chaque effort.' };
-  const vc = vitesseCritique(efforts[0] as { duree_s: number; distance_m: number }, efforts[1] as { duree_s: number; distance_m: number });
+  const vc = vitesseCritiqueCoach(efforts[0] as { duree_s: number; distance_m: number }, efforts[1] as { duree_s: number; distance_m: number });
   if ('erreur' in vc) return { ok: false, message: vc.erreur };
   if (!(await accordDeLAthlete(coach.compteId, athleteId)))
     return { ok: false, message: 'Pas encore son accord : associe-le à Nolio, envoie-lui le message d’accord, puis coche « Accord reçu » dans le Suivi quand il a répondu oui.' };
@@ -288,7 +291,11 @@ export async function enregistrerTestVc(athleteId: string, _e: EtatCoach, form: 
   const { error } = await service.from('athletes_coaches').update({
     vc_ms, d_prime_m, reperes_sources: { ...fiche.reperes_sources, vc_ms: { le, source: 'test_coach' } },
   }).eq('id', athleteId).eq('coach_id', coach.compteId);
-  if (error) return { ok: false, message: 'L’enregistrement n’a pas abouti. Réessaie.' };
+  // Hors des bornes d'avant de la fiche (1,5 à 7,5 m/s, 20 à 600 m), la base refuse tant que la migration du 07/11 manque.
+  const horsDesBornesDAvant = vc_ms < 1.5 || vc_ms > 7.5 || d_prime_m < 20 || d_prime_m > 600;
+  if (error) return { ok: false, message: horsDesBornesDAvant
+    ? 'L’enregistrement n’a pas abouti : la migration du 07/11/2026 (test de vitesse critique du coach) est-elle passée ?'
+    : 'L’enregistrement n’a pas abouti. Réessaie.' };
   // Les tests de vitesse critique écrits dans ses semaines, pas encore lus : lus, par le coach.
   await marquerTestsLus(fiche, 'vitesse_critique', { vc_ms, d_prime_m, le }, 'coach');
   revalidatePath(`/app/coach/athlete/${athleteId}`);
@@ -296,5 +303,6 @@ export async function enregistrerTestVc(athleteId: string, _e: EtatCoach, form: 
   const o = dernier ? await objectifEcrit(dernier.plan_id).catch(() => null) : null;
   const soucis = o ? await zonesVersNolio(o, { vc_ms, d_prime_m }) : dernier ? [] : await zonesDeLaFicheVersNolio(athleteId);
   const { allure } = await import('./zones');
-  return { ok: true, message: `C’est enregistré : vitesse critique à ${allure(vc_ms)}/km. Ses prochaines semaines et ses zones la prennent en repère.${soucis.length ? ` Zones Nolio : ${soucis.join(' ; ')}.` : ''}` };
+  return { ok: true, message: `C’est enregistré : vitesse critique à ${allure(vc_ms)}/km. Ses prochaines semaines et ses zones la prennent en repère.${soucis.length ? ` Zones Nolio : ${soucis.join(' ; ')}.` : ''}`,
+    ...(vc.avertissement ? { avertissement: vc.avertissement } : {}) };
 }

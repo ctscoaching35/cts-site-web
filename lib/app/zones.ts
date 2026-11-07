@@ -194,6 +194,37 @@ export function vitesseCritique(a: Effort, b: Effort): { vc_ms: number; d_prime_
   return { vc_ms, d_prime_m };
 }
 
+// LE TEST SAISI PAR LE COACH (décision coach du 07/11/2026 : « Je devrais pouvoir rentrer le test avec n'importe quelle
+// valeur ») : seul ce qui ne se calcule pas est refusé — une durée ou une distance illisible, deux durées égales, un
+// effort court qui n'est pas plus rapide que le long (D′ ≤ 0, au mètre près : elle s'enregistre au mètre), ou un effort
+// long pas plus loin que le court (VC ≤ 0).
+// Le reste s'enregistre ; une ligne d'avertissement dit quand le test sort des bornes de vitesseCritique, que gardent la
+// saisie de l'athlète dans son app et la lecture automatique dans Nolio (lib/app/tests.ts). Une seule ligne, la cause la
+// plus probable d'abord. Textes à valider par le coach (CTS_TEXTES_A_VALIDER.md, L).
+export function vitesseCritiqueCoach(a: Effort, b: Effort):
+  { vc_ms: number; d_prime_m: number; avertissement: string | null } | { erreur: string } {
+  const lisible = (e: Effort) => Number.isFinite(e.duree_s) && e.duree_s > 0 && Number.isFinite(e.distance_m) && e.distance_m > 0;
+  if (!lisible(a) || !lisible(b)) return { erreur: 'Entre la durée (12 ou 12:00) et la distance (3150 m ou 3,15 km) de chaque effort.' };
+  if (a.duree_s === b.duree_s) return { erreur: 'Les deux efforts ont la même durée : la vitesse critique ne se calcule pas.' };
+  const [court, long] = a.duree_s < b.duree_s ? [a, b] : [b, a];
+  const vc_ms = (long.distance_m - court.distance_m) / (long.duree_s - court.duree_s);
+  const d_prime_m = court.distance_m - vc_ms * court.duree_s;
+  if (!(d_prime_m >= 0.5) || !(vc_ms > 0))
+    return { erreur: 'L’effort court n’est pas plus rapide que le long : la vitesse critique ne se calcule pas. Vérifie les deux distances.' };
+  const leCourt = court.duree_s === 180 ? 'Le 3 min' : 'L’effort court';
+  const leLong = long.duree_s === 720 ? 'Le 12 min' : 'L’effort long';
+  const avertissement = [court, long].some((e) => e.duree_s < 120 || e.duree_s > 900) || long.duree_s - court.duree_s < 300
+    ? 'Les durées sortent du protocole (2 à 15 min, au moins 5 min d’écart) : la vitesse critique est moins sûre.'
+    : vc_ms < 2 || vc_ms > 7
+      ? 'La vitesse critique sort des valeurs habituelles : vérifie les deux distances.'
+      : court.distance_m / court.duree_s < 1.03 * (long.distance_m / long.duree_s) || d_prime_m < 20
+        ? `${leCourt} ne semble pas couru à fond : la vitesse critique peut être un peu haute et le profil « plutôt endurant » exagéré.`
+        : d_prime_m > 600
+          ? `${leLong} ne semble pas couru à fond : la vitesse critique peut être un peu basse et le profil « plutôt rapide » exagéré.`
+          : null;
+  return { vc_ms, d_prime_m, avertissement };
+}
+
 // « 12 », « 12:00 », « 11:42 » -> secondes ; « 3150 », « 3,15 » (km) -> mètres.
 export function lireDuree(texte: string): number | null {
   const m = /^\s*(\d{1,2})(?:[:'h](\d{1,2}))?\s*$/.exec(texte);

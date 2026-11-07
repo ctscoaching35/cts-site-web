@@ -1613,12 +1613,16 @@ export async function poserCourse(o: Objectif, c: Course, principale: boolean) {
 // jamais à moins de 8 semaines de l'objectif. L'ancienne valeur sert jusque-là. Les acheteurs : la règle d'avant.
 const RETEST_J = 182;
 const RETEST_HORS_COURSE_J = 56;
+// Une valeur connue et un test fait sans valeur, à part (décision coach du 07/11/2026, « A » ; moteur 8.456) : fc_seuil1,
+// vc et fc_seuil2 ne disent que la valeur présente et fraîche ; faits_sans_valeur, les tests à ne pas reproposer. Avant,
+// un test fait sans valeur comptait comme une valeur connue : la semaine suivante, le moteur écrivait la mesure de la FC
+// au seuil 2 « à 95 % de ta vitesse critique » sans vitesse critique, et gardait les phrases de VC dans les séances.
 function valeursConnues(o: Objectif, lundi?: string | null, faits: Set<string> = new Set()) {
   const loin = o.coache && Boolean(lundi) && joursEntre(lundi as string, o.plan.course.date) > RETEST_HORS_COURSE_J;
   const frais = (cle: string) => !loin || String(o.reperesSources?.[cle]?.le ?? '').slice(0, 10) >= ajouterJours(lundi as string, -RETEST_J);
-  return { fc_seuil1: ('fc_seuil1' in o.profil && frais('fc_seuil1')) || faits.has('parole'),
-    vc: ('vc_ms' in o.profil && frais('vc_ms')) || faits.has('vitesse_critique'),
-    fc_seuil2: ('fc_seuil2' in o.profil && frais('fc_seuil2')) || faits.has('fc_seuil2'), lecture: o.accordLecture, coache: o.coache };
+  return { fc_seuil1: 'fc_seuil1' in o.profil && frais('fc_seuil1'), vc: 'vc_ms' in o.profil && frais('vc_ms'),
+    fc_seuil2: 'fc_seuil2' in o.profil && frais('fc_seuil2'), faits_sans_valeur: [...faits].sort(),
+    lecture: o.accordLecture, coache: o.coache };
 }
 
 // Un test fait sans valeur ne revient pas avant 6 semaines (décision coach du 01/11/2026 : « l'athlète ne refait jamais

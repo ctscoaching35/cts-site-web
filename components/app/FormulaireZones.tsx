@@ -32,14 +32,15 @@ export default function FormulaireZones({
         <div className="grid grid-cols-2 gap-3">
           {[1, 2].map((i) => (
             <fieldset key={i} className="space-y-2 min-w-0">
-              <legend className="text-sm font-bold text-indigo mb-1">{i === 1 ? 'Effort long' : 'Effort court'}</legend>
+              {/* Le 3 min d'abord, l'ordre du test depuis le 07/11/2026 (décision coach). */}
+              <legend className="text-sm font-bold text-indigo mb-1">{i === 1 ? 'Effort court' : 'Effort long'}</legend>
               <label className="block">
                 <span className={etiquette}>Durée</span>
-                <input name={`duree${i}`} defaultValue={i === 1 ? '12:00' : '3:00'} inputMode="numeric" className={CHAMP} />
+                <input name={`duree${i}`} defaultValue={i === 1 ? '3:00' : '12:00'} inputMode="numeric" className={CHAMP} />
               </label>
               <label className="block">
                 <span className={etiquette}>Distance (m)</span>
-                <input name={`distance${i}`} inputMode="decimal" placeholder={i === 1 ? '3150' : '950'} className={CHAMP} />
+                <input name={`distance${i}`} inputMode="decimal" placeholder={i === 1 ? '950' : '3150'} className={CHAMP} />
               </label>
             </fieldset>
           ))}
