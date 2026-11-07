@@ -10,7 +10,7 @@ import { listeNolio } from './nolio';
 import { semainesDeLaFiche } from './semainesNolio';
 import { ajouterJours, type CleTest, type Semaine } from './plan';
 import { clientService } from './supabase';
-import { ajustementDuJournal, trameDesDonnees, type Ajustement, type CourseDuGraphique, type Fiche } from './tableau';
+import { ajustementDuJournal, detailDeLaSemaine, minutesDe, trameDesDonnees, type Ajustement, type CourseDuGraphique, type Fiche } from './tableau';
 import { ajustementDeDemonstration, lectureDeDemonstration, semaineDeDemonstration, tableauDeDemonstration } from './demonstration';
 
 // Où en est l'athlète dans Nolio (P1 à P4) ; « coache » : un objectif de son coach ; null : un plan d'avant le
@@ -179,6 +179,38 @@ export async function testVcNonRepropose(ctx: Contexte): Promise<boolean> {
     // Un tableau JSON en texte : supabase-js écrirait un tableau JavaScript en tableau Postgres (« {…} »), pas en jsonb.
     .contains('journal', JSON.stringify([{ regle: 'TN', test: 'vitesse_critique' }])).limit(1);
   return !error && Boolean(data?.length);
+}
+
+// « TA PRÉPARATION », SEMAINE PAR SEMAINE (décision coach du 07/11/2026 ; components/app/SemainesDuPlan.tsx) : la semaine
+// en cours telle qu'elle est dans Nolio, la lecture de « Ta semaine » de l'accueil (sans accord : « elles sont dans
+// Nolio » ; pas encore partie ou Nolio muet : la semaine écrite par le moteur, sinon celle du plan) ; la suivante, une
+// fois écrite le dimanche soir, telle qu'elle est dans Nolio, sinon null : prévue, la trame. Un acheteur sans accord : sa
+// semaine suivante n'est « sans accord » qu'une fois partie dans Nolio (lireSemaineNolio) ; un coaché sans accord, elle
+// reste prévue.
+export type SeanceDetaillee = { cle: string; date: string | null; jour: string; nom: string; minutes: number | null };
+export type SemaineDetaillee = { seances: SeanceDetaillee[] } | 'dans_nolio' | null;
+const deNolio = (seances: SeanceNolio[]): SemaineDetaillee =>
+  ({ seances: seances.map((x) => ({ cle: x.id, date: x.date, jour: '', nom: x.nom, minutes: x.minutes })) });
+export async function semainesDetaillees(ctx: Contexte, trame: LigneTrame[], jour: string): Promise<{ encours: SemaineDetaillee; suivante: SemaineDetaillee }> {
+  const ligne = (d: 'encours' | 'suivante') => trame.find((l) => l.lundi && detailDeLaSemaine(l.lundi, jour) === d) ?? null;
+  const [enCours, suivante] = [ligne('encours'), ligne('suivante')];
+  const [lueEnCours, lueSuivante] = await Promise.all([
+    enCours ? lireSemaineNolio(ctx, enCours.lundi, enCours.numero) : null,
+    suivante ? lireSemaineNolio(ctx, suivante.lundi, suivante.numero) : null,
+  ]);
+  let encours: SemaineDetaillee = null;
+  if (enCours && lueEnCours) {
+    if (lueEnCours.seances) encours = deNolio(lueEnCours.seances);
+    else if (lueEnCours.raison === 'sans_accord') encours = 'dans_nolio';
+    else {
+      const jours = ((await semaineEcrite(ctx, enCours.numero).catch(() => null))?.jours ?? []).filter((j) => j.famille !== 'repos' && j.seance);
+      encours = jours.length ? { seances: jours.map((j) => ({ cle: j.id, date: j.date_iso ?? null, jour: j.jour, nom: j.seance,
+        minutes: minutesDe(j.duree ?? '') || null })) } : null;
+    }
+  }
+  const ecrite: SemaineDetaillee = !lueSuivante ? null : lueSuivante.seances ? deNolio(lueSuivante.seances)
+    : lueSuivante.raison === 'sans_accord' && !ctx.coache ? 'dans_nolio' : null;
+  return { encours, suivante: ecrite };
 }
 
 export async function semaineDansNolio(ctx: Contexte, lundi: string, numero?: string): Promise<SeanceNolio[] | null> {

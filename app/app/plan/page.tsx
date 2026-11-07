@@ -12,7 +12,7 @@ import { demandesDeLAthlete, estRetrait, ficheDuCompte } from '@/lib/app/demande
 import { clientServeur, clientService } from '@/lib/app/supabase';
 import { aujourdhuiIso, dateLongue } from '@/lib/app/plan';
 import { blocsDuPlan, jaugeDuPlan } from '@/lib/app/tableau';
-import { donneesTableau, fichesDePreparation, type CourseSecondaire } from '@/lib/app/tableauDuPlan';
+import { donneesTableau, fichesDePreparation, semainesDetaillees, type CourseSecondaire } from '@/lib/app/tableauDuPlan';
 import { BlocsDeLaSaison } from '@/components/app/SaisonDeFond';
 import { datesDesFiches, objectifsDeDemonstration } from '@/lib/app/demonstration';
 import SemainesDuPlan from '@/components/app/SemainesDuPlan';
@@ -50,8 +50,9 @@ async function mesObjectifs() {
 // 19/10/2026 ; Q3, décision coach du 05/11/2026 au soir : un seul nom, le bouton « Voir ma préparation », le titre « Ta
 // préparation », le retour « ‹ Ta préparation ») : ouverte depuis l'accueil, sa fiche de course, sa préparation bloc par
 // bloc (ce que chaque bloc développe ; décision coach du 19/10/2026, à la place des semaines, de leurs volumes et de leurs
-// sorties longues), ses semaines pour l'acheteur, ses courses de préparation (O2) ; puis les autres objectifs du compte
-// (OM2). Plus de jalons (Q9, « A ») : la montagne et les piliers disent l'avancée, les badges la célèbrent.
+// sorties longues), ses semaines (pour les deux versions depuis le 07/11/2026), ses courses de préparation (O2) ; puis les
+// autres objectifs du compte (OM2). Plus de jalons (Q9, « A ») : la montagne et les piliers disent l'avancée, les badges la
+// célèbrent.
 export default async function Objectif({ searchParams }: { searchParams: Recherche }) {
   const ctx = await contexte(searchParams, { sansObjectif: true });
   const r = await searchParams;
@@ -65,6 +66,11 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
   const courseAVenir = plan.course.date >= jour;
   const fichesPrepa = ctx.demonstration ? await datesDesFiches(ctx) : await fichesDePreparation(ctx.cle);
   const { course } = plan;
+  // Ses semaines (décision coach du 07/11/2026) : la semaine en cours et la suivante telles qu'elles sont dans Nolio ;
+  // ni à la main, ni pour une saison de fond, qui n'a pas de semaines une à une (« jamais semaine N sur M »).
+  const semaines = !ctx.aLaMain && !plan.fond ? await semainesDetaillees(ctx, d.trame, jour) : null;
+  // Un coaché qui a rejoint la préparation en route : ses semaines depuis son arrivée, comme ses blocs.
+  const depuis = ctx.coache ? plan.course.rejoint?.lundi ?? null : null;
   return (
     <>
       <EnTeteApp ctx={ctx} />
@@ -112,12 +118,13 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
         {/* Programmé à la main (décision coach du 20/10/2026) : pas de blocs, qui suivent la trame du moteur. */}
         {!ctx.aLaMain && !plan.fond && <Carte className="!pb-1.5">
           <Surtitre>Ta préparation, bloc par bloc</Surtitre>
-          {/* C24 : « tes séances s'écrivent chaque dimanche dans Nolio » une seule fois ; l'acheteur le lit sous ses semaines. */}
+          {/* C24 : « tes séances s'écrivent chaque dimanche » une seule fois : sous ses semaines, pour les deux versions depuis
+              le 07/11/2026 (avant, ici pour un coaché). */}
           <p className="mt-1 mb-1 text-xs text-[#5E5C78] leading-relaxed">
-            Ce que chaque bloc développe, jusqu’à ton jour J{ctx.coache ? ' ; tes séances s’écrivent chaque dimanche dans Nolio' : ''}.
+            Ce que chaque bloc développe, jusqu’à ton jour J.
           </p>
           <ol>
-            {blocsDuPlan(d.trame, plan, jour, ctx.coache ? plan.course.rejoint?.lundi ?? null : null).map((b) => (
+            {blocsDuPlan(d.trame, plan, jour, depuis).map((b) => (
               <li key={b.du} className={clsx('grid grid-cols-[22px_1fr] gap-x-2.5 py-3 border-t border-indigo/[0.06] first:border-t-0',
                 b.moment === 'encours' && 'bg-[#E1EFEA] -mx-2.5 px-2.5 rounded-xl border-t-0')}>
                 <span aria-hidden className={clsx('mt-0.5 w-[18px] h-[18px] rounded-full flex items-center justify-center',
@@ -151,8 +158,10 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
           </ol>
         </Carte>}
 
-        {/* S16 (décision coach du 05/11/2026) : la trame semaine par semaine que promettent les CGV, pour l'acheteur. */}
-        {!ctx.coache && !ctx.aLaMain && !plan.fond && <SemainesDuPlan trame={d.trame} jour={jour} course={course.date} />}
+        {/* S16 (décision coach du 05/11/2026) : la trame semaine par semaine que promettent les CGV ; pour les deux versions
+            depuis le 07/11/2026. */}
+        {semaines && <SemainesDuPlan trame={d.trame} jour={jour} course={course.date} realises={d.realises}
+          encours={semaines.encours} suivante={semaines.suivante} depuis={depuis} />}
 
         {d.ecrit && !plan.fond && (
           <Carte id="ajouter-course" className="space-y-3 scroll-mt-20">

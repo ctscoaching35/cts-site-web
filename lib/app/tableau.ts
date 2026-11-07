@@ -20,6 +20,24 @@ export type Moment = 'passee' | 'encours' | 'avenir';
 export const momentDe = (lundi: string, aujourdhui: string): Moment =>
   ajouterJours(lundi, 6) < aujourdhui ? 'passee' : lundi <= aujourdhui ? 'encours' : 'avenir';
 
+// « Ta préparation », semaine par semaine (décision coach du 07/11/2026) : les semaines faites, telles qu'elles ont été
+// faites ; la semaine en cours et la suivante, détaillées ; celles d'après, résumées à leur type et à leur volume.
+export type DetailDeSemaine = 'faite' | 'encours' | 'suivante' | 'resumee';
+export function detailDeLaSemaine(lundi: string, aujourdhui: string): DetailDeSemaine {
+  const moment = momentDe(lundi, aujourdhui);
+  if (moment !== 'avenir') return moment === 'passee' ? 'faite' : 'encours';
+  return lundi <= ajouterJours(aujourdhui, 7) ? 'suivante' : 'resumee';
+}
+
+// « environ 8 h », « environ 8 h 30 » : le volume d'une semaine résumée, à la demi-heure près (décision coach du
+// 07/11/2026) ; null sans volume.
+export function environ(minutes: number): string | null {
+  if (!(minutes > 0)) return null;
+  const arrondi = Math.max(30, Math.round(minutes / 30) * 30);
+  const heures = Math.floor(arrondi / 60);
+  return heures ? `environ ${heures} h${arrondi % 60 ? ' 30' : ''}` : 'environ 30 min';
+}
+
 export const enAffutage = (l: Pick<LigneTrame, 'type' | 'bloc'>) =>
   l.bloc === 'Affûtage' || l.type === 'Affûtage actif' || l.type === 'Décharge';
 

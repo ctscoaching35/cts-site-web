@@ -180,7 +180,9 @@ export async function lectureDeDemonstration(ctx: Contexte, lundi: string, numer
     return demo.accord ? { seances: semaineDeRecuperation(lundi), raison: 'lue' } : { seances: null, raison: 'sans_accord' };
   }
   if (!ctx.coache && (!numero || demo.nolio !== 'actif')) return { seances: null, raison: 'pas_partie' };
-  if (demo.semaine === 'pas_partie' && numero) return { seances: null, raison: 'pas_partie' };
+  // Une semaine à venir part dans Nolio le dimanche soir qui la précède (« Ta préparation », décision coach du
+  // 07/11/2026) : la démonstration la montre écrite à partir de ce dimanche (?jour=).
+  if (numero && (demo.semaine === 'pas_partie' || ajouterJours(lundi, -1) > ctx.jour)) return { seances: null, raison: 'pas_partie' };
   if (!demo.accord) return { seances: null, raison: 'sans_accord' };
   if (demo.semaine === 'muet') return { seances: null, raison: 'muet' };
   if (demo.semaine === 'vide') return { seances: [], raison: 'lue' };
