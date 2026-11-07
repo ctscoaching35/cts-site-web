@@ -352,9 +352,16 @@ def simuler(c):
     questionnaire = questionnaire_de(champs)
     jusqua_recup = None
     if not fond:
-        # La reprise après la course (lib/app/ecriture.ts, debutApres) : deux jours par heure de course, 3 à 21.
+        # La reprise après la course (lib/app/jonction.ts, debutApres ; lib/plan.ts, joursRecuperation) : deux jours par
+        # heure de course, 3 à 21 ; 14 au moins dès 3 h (décision 5 du 07/11/2026) et après un marathon sur route.
         h, _, m = champs["temps_cible"].partition("h")
-        fin = D.fromisoformat(champs["date_course"]) + datetime.timedelta(days=max(3, min(21, math.ceil(2 * (int(h) + int(m or 0) / 60)))))
+        heures = int(h) + int(m or 0) / 60
+        jours = max(3, min(21, math.ceil(2 * heures)))
+        if champs.get("format") == "R42":
+            jours = 14
+        elif heures >= 3:
+            jours = max(14, jours)
+        fin = D.fromisoformat(champs["date_course"]) + datetime.timedelta(days=jours)
         jusqua_recup = fin + datetime.timedelta(days=7 - fin.weekday())
     for n in range(1, dernier_n + 1):
         numero = f"S{n}"

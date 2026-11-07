@@ -14,7 +14,7 @@
  */
 import { cache } from 'react';
 import { site } from '@/lib/content';
-import { API_URL, dureeConseillee, dureesPossibles, joursRecuperation, lireTemps, type Champs, type ConfigPlan } from '@/lib/plan';
+import { API_URL, dureeConseillee, dureesPossibles, lireTemps, type Champs, type ConfigPlan } from '@/lib/plan';
 import {
   chargeDepuisNolio, creer, destinataire, envoyerSemaineCible, ficheAthlete, garderEnvoi, mettreAJourSemaineCible, profilDe, seancesDuMoteur,
   volumeDuMoment,
@@ -49,6 +49,9 @@ export { QUESTIONNAIRE_SEMAINE, type Questionnaire };
 import { seuilsSuivi } from './suivi';
 import type { FamilleLue, ProfilLu } from './classement';
 import { messageDoublon, objectifQuiCouvre } from './departs';
+import { debutApres, departCalcule, dureeTexte, enReprise, lundiDuRythme, saisonEnReprise, slApresCourse } from './jonction';
+
+export { debutApres };
 
 export type Etat = Record<string, unknown>;
 // compteAthlete : le compte d'un coaché invité dans l'app (T6) ; ses gestes (une course, le veto) valent comme ceux du
@@ -700,13 +703,12 @@ export async function demarrerObjectif(planId: string, { prevenir = true, lundi,
   const premierJour = debut.lundi > jourDeDepart ? debut.lundi : jourDeDepart;
   const derniere = [...o.plan.semaines].reverse().find((s) => s.lundi)?.lundi;
   if (aPartirDu && derniere && aPartirDu > derniere) throw new Error('Choisis un lundi avant la semaine de sa course.');
-  const calcule = apres && apres.lundi > aujourdhui && (!posees || apres.lundi >= posees.lundi)
-    ? { prevu: apres.lundi, apres: apres.q.course_nom, raison: 'recuperation' as const }
-    : posees && posees.lundi > premierJour ? { prevu: posees.lundi, apres: posees.derniere, raison: 'seances' as const }
-      // UN OBJECTIF LOINTAIN (décision coach du 22/10/2026) : sa préparation commence plus tard ; rien ne se pose
-      // d'avance, le départ se programme au premier lundi de sa préparation (la veille au soir, comme les autres).
-      : debut.lundi > ajouterJours(aujourdhui, 1) ? { prevu: debut.lundi, apres: debut.lundi, raison: 'preparation' as const }
-        : lundi && lundi > aujourdhui ? { prevu: lundi, apres: aujourdhui, raison: 'seances' as const } : null;
+  // UN OBJECTIF LOINTAIN (décision coach du 22/10/2026) : sa préparation commence plus tard ; rien ne se pose d'avance,
+  // le départ se programme au premier lundi de sa préparation (la veille au soir, comme les autres). Après la course d'un
+  // autre objectif aussi, quand sa semaine 1 commence plus d'une semaine après la reprise (décision 12 du 07/11/2026,
+  // « A », lib/app/jonction.ts) : la saison de fond tourne entre-temps.
+  const calcule = departCalcule({ aujourdhui, debut: debut.lundi, premierJour, lundi, posees,
+    apres: apres ? { lundi: apres.lundi, nom: apres.q.course_nom } : null });
   // LE DÉPART CHOISI PAR LE COACH (décision coach du 22/10/2026 : « en coaching individuel, il faut plus de liberté ») :
   // un lundi plus tard que le premier possible, par exemple après un objectif qu'il prépare à la main. Plus tôt, le
   // premier possible l'emporte : la préparation n'a pas de semaine avant, ses séances posées et la récupération d'un
@@ -743,7 +745,7 @@ export async function demarrerObjectif(planId: string, { prevenir = true, lundi,
   // La reprise allégée : la première semaine écrite suit de près la récupération (pas une préparation qui commence des
   // semaines plus tard, QD2).
   const premier = premiere.lundi > depart ? premiere.lundi : depart;
-  const reprise = Boolean(apres && apres.lundi >= ajouterJours(premier, -7));
+  const reprise = Boolean(apres && enReprise(apres.lundi, premier));
   // Un seul départ à la fois : le premier appel prend la main ; en cas d'échec il la rend, pour un nouvel essai.
   const service = clientService();
   const { data: pris } = await service.from('plans').update({ demarre_le: new Date().toISOString() })
@@ -752,19 +754,26 @@ export async function demarrerObjectif(planId: string, { prevenir = true, lundi,
   try {
     // La saison de fond (décisions coach du 24/10/2026) : la préparation prend la suite, la saison s'arrête la veille de
     // sa première semaine et ses séances à venir quittent Nolio.
+    // LA JONCTION DE DEUX OBJECTIFS (décisions coach du 07/11/2026, « tout A ») : le lundi d'où repart son rythme
+    // charge/allégée, sa reprise, ou la dernière allégée de la saison qu'elle coupe (lue avant que la saison s'arrête).
+    const sansSemaine = !o.envois.some((e) => /^S\d+$/.test(e.semaine));
+    let rythme = sansSemaine ? lundiDuRythme({ premier, reprise }) : null;
     if (o.coache) {
-      const { arreterLaSaison } = await import('./fond');
+      const { arreterLaSaison, semainesDeLaSaison } = await import('./fond');
       const { data: lien } = await service.from('coaching').select('athlete_id').eq('plan_id', planId).maybeSingle();
+      if (lien && sansSemaine && !rythme) {
+        rythme = lundiDuRythme({ premier, reprise, saison: await semainesDeLaSaison(String(lien.athlete_id), premiere.lundi).catch(() => []) });
+      }
       for (const saison of lien ? await arreterLaSaison(String(lien.athlete_id), premiere.lundi) : []) {
         await retirerDeNolio(saison, { depuis: premier });
       }
     }
     // D9 (audits du 05/11/2026, lot 1) : les recalages du départ se refont tant qu'aucune semaine n'est partie. Avant, un
     // départ qui échouait après avoir posé ses questionnaires ou sa course (des envois notés) ne recalait plus rien au
-    // réessai : la première semaine partait des réponses de l'achat.
-    const sansSemaine = !o.envois.some((e) => /^S\d+$/.test(e.semaine));
-    // Juste après la course d'un autre objectif : calé sur ce que l'athlète y a vraiment couru.
-    if (reprise && apres && sansSemaine) await recalerSurLePrecedent(o, apres.q.id, premier);
+    // réessai : la première semaine partait des réponses de l'achat (sansSemaine, plus haut).
+    // Juste après la course d'un autre objectif : calé sur ce que l'athlète y a vraiment couru (sa sortie longue à 75 %).
+    let slRecalee: string | null = null;
+    if (reprise && apres && sansSemaine) slRecalee = await recalerSurLePrecedent(o, apres.q.id, premier);
     // Une charge déclarée il y a plus de 4 semaines (un objectif lointain) : relue dans Nolio au départ réel.
     else if (o.coache && sansSemaine && String(o.parametres.declaree_le ?? '') < ajouterJours(premier, -28)) {
       await recalerSurNolio(o, premier).catch((e) => console.error(`Recalage de ${planId} :`, e instanceof Error ? e.message : e));
@@ -775,10 +784,12 @@ export async function demarrerObjectif(planId: string, { prevenir = true, lundi,
     if (o.coache && sansSemaine) {
       await ancrerAuDepart(o, premier).catch((e) => console.error(`Ancrage de ${planId} :`, e instanceof Error ? e.message : e));
     }
+    // Le rythme qui repart de la reprise (coaché et acheteur d'un second plan, décision 11), ou de la saison coupée.
+    if (rythme) await poserLeRythme(o, rythme).catch((e) => console.error(`Rythme de ${planId} :`, e instanceof Error ? e.message : e));
     // LE DÉPART INDIVIDUALISÉ (décisions coach du 26/10/2026) : au rang du plan, fondations sautées, semaine allégée
     // passée en charge, plus longue sortie sur 8 semaines ; ce qui a été lu, pour la carte « Son départ ».
     if (o.coache && sansSemaine) {
-      await deciderLeDepart(o, premiere).catch((e) => console.error(`Départ de ${planId} :`, e instanceof Error ? e.message : e));
+      await deciderLeDepart(o, premiere, { apresCourse: reprise, slRecalee }).catch((e) => console.error(`Départ de ${planId} :`, e instanceof Error ? e.message : e));
     }
     await dimancheDeLAcheteur(o);
     // OM3 : l'objectif et ses courses de préparation, en compétitions dans Nolio.
@@ -853,26 +864,38 @@ async function recalerSurLaConfirmation(o: Objectif, lundi: string) {
 // - « au_rang_du_plan » : ses échelles au rang du plan (un coaché a fait ses semaines avec son coach) ;
 // - « fondations_sautees » : il part en fondations après au moins une séance dure par semaine (RPE 7 ou plus) sur 4 ;
 // - « allegee_en_charge » : sa première semaine, allégée dans le plan, juste après une semaine déjà basse ;
-// - la plus longue sortie de référence : celle des 8 semaines sans coupure, si elle dépasse la déclarée.
+// - la plus longue sortie de référence : celle des 8 semaines sans coupure, si elle dépasse la déclarée ; juste après
+//   une course (apresCourse), 75 % de celle-ci (décision 6 du 07/11/2026, lib/app/jonction.ts).
+// Avec le rythme repris d'une reprise ou d'une saison (« rythme_depuis », décisions du 07/11/2026), plus d'allégée passée
+// en charge : la reprise est déjà l'allégée du cycle, la semaine qui la suit une semaine de charge.
 // Ce qui a été lu et décidé reste (« depart_lu ») pour la carte « Son départ » de l'espace coach.
 const SEANCES_DURES_MIN = 4;
-async function deciderLeDepart(o: Objectif, premiere: Semaine) {
+async function deciderLeDepart(o: Objectif, premiere: Semaine, jonction: { apresCourse?: boolean; slRecalee?: string | null } = {}) {
   const lu = await chargeDepuisNolio(o.coachId, o.nolioAthlete).catch(() => null);
   const champs = { ...((o.parametres.champs ?? {}) as Record<string, unknown>) };
+  const apresCourse = Boolean(jonction.apresCourse);
+  const rythme = typeof o.parametres.rythme_depuis === 'string' ? o.parametres.rythme_depuis : null;
   const fondationsSautees = Boolean(lu?.lu && premiere.bloc === 'Bloc fondations' && (lu.seancesDures ?? 0) >= SEANCES_DURES_MIN);
-  const allegeeEnCharge = Boolean(lu?.lu && premiere.type === 'Assimilation' && lu.derniereAllegee);
+  const allegeeEnCharge = Boolean(!rythme && lu?.lu && premiere.type === 'Assimilation' && lu.derniereAllegee);
   const declaree = lireTemps(String(champs.sortie_longue_actuelle ?? ''));
-  const slRelevee = Boolean(lu?.longueMin && lu.champs.sortie_longue_actuelle && (!declaree || lu.longueMin / 60 > declaree + 1e-9));
-  if (slRelevee) champs.sortie_longue_actuelle = lu?.champs.sortie_longue_actuelle;
+  const longueMin = lu?.longueMin ? (apresCourse ? slApresCourse(lu.longueMin) : lu.longueMin) : 0;
+  const slRelevee = Boolean(longueMin && lu?.champs.sortie_longue_actuelle && (!declaree || longueMin / 60 > declaree + 1e-9));
+  const releveeA = slRelevee ? (apresCourse ? dureeTexte(longueMin) : String(lu?.champs.sortie_longue_actuelle)) : null;
+  if (releveeA) champs.sortie_longue_actuelle = releveeA;
+  // Sa sortie longue de départ à 75 % (décision 6) : relevée ici, ou posée par le recalage sur l'objectif précédent.
+  const slApres = apresCourse ? (releveeA ?? jonction.slRecalee ?? null) : null;
+  // Le rythme posé : plus d'allégée passée en charge, même laissée par un essai de départ précédent.
+  const avant = Object.fromEntries(Object.entries(o.parametres).filter(([cle]) => !(rythme && cle === 'allegee_en_charge')));
   const parametres = {
-    ...o.parametres, champs, au_rang_du_plan: true,
+    ...avant, champs, au_rang_du_plan: true,
     ...(fondationsSautees ? { fondations_sautees: true } : {}),
     ...(allegeeEnCharge && premiere.lundi ? { allegee_en_charge: premiere.lundi } : {}),
     depart_lu: {
       le: aujourdhuiParis(), lu: Boolean(lu?.lu), detail: lu?.detail ?? null, seances_dures: lu?.seancesDures ?? null,
       derniere_allegee: lu?.derniereAllegee ?? null, sl_semaines: lu?.slSemaines ?? null,
-      sl_relevee: slRelevee ? lu?.champs.sortie_longue_actuelle ?? null : null,
+      sl_relevee: slApres ? null : releveeA, ...(slApres ? { sl_apres_course: slApres } : {}),
       fondations_sautees: fondationsSautees, allegee_en_charge: allegeeEnCharge,
+      ...(rythme ? { rythme_depuis: rythme, rythme_apres: apresCourse ? 'reprise' : 'saison' } : {}),
     },
   };
   try {
@@ -929,6 +952,21 @@ async function ancrerAuDepart(o: Objectif, lundi: string) {
   o.parametres = parametres;
 }
 
+// LE RYTHME QUI REPART DE LA REPRISE (décisions coach du 07/11/2026, « tout A » ; moteur 8.457, lib/app/jonction.ts) :
+// « rythme_depuis » dans ses paramètres, posé une fois, au départ ; validé par le moteur comme les autres recalages (la
+// trame) ; refusé, les paramètres d'avant restent. « Mon plan » le montre de lui-même : sa trame est construite avec.
+async function poserLeRythme(o: Objectif, lundi: string) {
+  if (o.parametres.rythme_depuis === lundi) return;
+  const parametres = { ...o.parametres, rythme_depuis: lundi };
+  try {
+    await moteur('/v1/trame', { parametres });
+  } catch {
+    return;
+  }
+  await clientService().from('plans').update({ parametres, trame: null }).eq('id', o.planId);
+  o.parametres = parametres;
+}
+
 // Ses 4 semaines d'entraînement avant l'affûtage de l'objectif d'avant, ni la course ni l'affûtage (décision coach du
 // 23/10/2026) : leurs volumes vraiment courus, et ses sorties longues vraiment courues.
 export function avantAffutage(semaines: Pick<Semaine, 'numero_int' | 'bloc'>[],
@@ -940,28 +978,31 @@ export function avantAffutage(semaines: Pick<Semaine, 'numero_int' | 'bloc'>[],
   return { volumes, sl };
 }
 
-async function recalerSurLePrecedent(o: Objectif, precedentId: string, lundi: string) {
+// Rend la sortie longue de départ posée (« 1h53 »), ou null.
+async function recalerSurLePrecedent(o: Objectif, precedentId: string, lundi: string): Promise<string | null> {
   const service = clientService();
   const { data } = await service.from('plans').select('etat_ecriture, donnees').eq('id', precedentId).maybeSingle();
   const etat = (data?.etat_ecriture ?? null) as { volumes_reels?: Record<string, number>; sl_reelles?: Record<string, number> } | null;
   const { volumes, sl } = avantAffutage(((data?.donnees ?? null) as Plan | null)?.semaines ?? [], etat);
-  if (!volumes.some((v) => v > 0)) return;
-  // « 4h05 », comme le moteur les écrit (cts_semaine._duree_texte).
-  const duree = (min: number) => { const m = Math.round(min); return `${Math.floor(m / 60)}h${String(m % 60).padStart(2, '0')}`; };
+  if (!volumes.some((v) => v > 0)) return null;
+  // La première sortie longue après la course (décision 6 du 07/11/2026, « A ») : 75 % de sa plus longue d'avant
+  // l'affûtage, puis la règle de saut du moteur.
+  const slDepart = sl.length ? dureeTexte(slApresCourse(Math.max(...sl))) : null;
   const champs = {
     ...((o.parametres.champs ?? {}) as Record<string, unknown>),
     // Le volume du moment (décision coach du 24/10/2026) : sa dernière semaine, bornée par la moyenne et la moyenne +30 %.
-    volume_hebdo_actuel: duree(volumeDuMoment(volumes).retenu),
-    ...(sl.length ? { sortie_longue_actuelle: duree(Math.max(...sl)) } : {}),
+    volume_hebdo_actuel: dureeTexte(volumeDuMoment(volumes).retenu),
+    ...(slDepart ? { sortie_longue_actuelle: slDepart } : {}),
   };
   const parametres = { ...o.parametres, champs, declaree_le: lundi };
   try {
     await moteur('/v1/trame', { parametres });
   } catch {
-    return;
+    return null;
   }
   await service.from('plans').update({ parametres, trame: null }).eq('id', o.planId);
   o.parametres = parametres;
+  return slDepart;
 }
 
 // C4 (audit du 03/11/2026, décision coach du 04/11/2026, « A ») : la préparation d'un objectif qui suit un autre prend sa
@@ -1026,13 +1067,7 @@ function formatDe(o: Pick<Objectif, 'parametres'>): string {
   return String(((o.parametres.champs ?? {}) as Record<string, unknown>).format ?? '');
 }
 
-// LA RÉCUPÉRATION APRÈS L'OBJECTIF (lib/plan.ts, joursRecuperation : deux jours par heure de course, 3 à 21 ; 14 après
-// un marathon sur route), jusqu'au lundi qui suit.
-export function debutApres(q: Pick<Voisin, 'course_date' | 'temps_h'> & { format?: string }): string {
-  const fin = ajouterJours(q.course_date, joursRecuperation(q.temps_h, q.format));
-  const rang = (new Date(`${fin}T12:00:00Z`).getUTCDay() + 6) % 7;
-  return ajouterJours(fin, 7 - rang);
-}
+// LA RÉCUPÉRATION APRÈS L'OBJECTIF, jusqu'au lundi qui suit : debutApres (lib/app/jonction.ts, exporté plus haut).
 
 // C5 : la course d'un autre objectif du même athlète qui tombe dans la semaine de ce lundi ou avant, pendant la
 // récupération de celui-ci ; son nom, ou null.
@@ -1235,10 +1270,11 @@ export async function passageDuDimanche(budgetMs = 240_000): Promise<Compte[]> {
         if (!prise?.length) continue;
       }
       reservee = numero;
-      const retours = fond && !o.envois.some((e) => /^S\d+$/.test(e.semaine)) ? null : await lireRetours(o, ajouterJours(lundi, -35), aujourdhui);
+      const premiereDuFond = fond && !o.envois.some((e) => /^S\d+$/.test(e.semaine));
+      const retours = premiereDuFond ? null : await lireRetours(o, ajouterJours(lundi, -35), aujourdhui);
       const sortie = recuperation
         ? await ecrireLaRecuperation(o, numero, recuperation.jusqua, retours)
-        : await ecrireEtEnvoyer(o, numero, retours);
+        : await ecrireEtEnvoyer(o, numero, retours, { reprise: premiereDuFond && await saisonApresUneCourse(o, lundi) });
       // EC3 : les corrections de cette semaine, envoyées, se comptent (« Chiffres »).
       if (s && CORRECTIONS_ACTIVES) await marquerAppliquees(planId, lundi, sortie.journal ?? []).catch(() => null);
       comptes.push({ plan: planId, quoi: `${numero} écrite${recuperation ? ' (récupération)' : ''}${reservation === 'orpheline' ? ', reprise d’une écriture coupée' : ''}`,
@@ -1296,12 +1332,22 @@ export async function apercuDuDimanche(planId: string): Promise<Apercu> {
   }
   if (s && posees) return rien('Semaine laissée : tu as déjà posé des séances cette semaine-là, elles restent les tiennes.', numero);
   if (o.coache && !fond && s) o.parametres = (await departComplete(o, s).catch(() => null)) ?? o.parametres;
-  const retours = fond && !o.envois.some((e) => /^S\d+$/.test(e.semaine)) ? null : await lireRetours(o, ajouterJours(lundi, -35), aujourdhui);
+  const premiereDuFond = fond && !o.envois.some((e) => /^S\d+$/.test(e.semaine));
+  const retours = premiereDuFond ? null : await lireRetours(o, ajouterJours(lundi, -35), aujourdhui);
   if (recuperation) {
     return { lundi, numero, quoi: 'Semaine de récupération', sortie: await recuperationDuMoteur(o, numero, recuperation.jusqua, retours), retours };
   }
   o.parametres = avecLeProfil(o);
-  return { lundi, numero, quoi: 'Semaine', sortie: await semaineDuMoteur(o, numero, retours), retours };
+  const reprise = premiereDuFond && await saisonApresUneCourse(o, lundi);
+  return { lundi, numero, quoi: 'Semaine', sortie: await semaineDuMoteur(o, numero, retours, { reprise }), retours };
+}
+
+// LA SAISON DE FOND QUI SUIT UNE RÉCUPÉRATION (décision 8 du 07/11/2026, « A » ; lib/app/jonction.ts) : sa première
+// semaine s'écrit en reprise (allégée, une seule qualité), comme la première semaine d'une préparation qui suit une course.
+// Avant, une semaine de charge, juste après la récupération.
+async function saisonApresUneCourse(o: Objectif, lundi: string): Promise<boolean> {
+  const precedents = (await autresObjectifs(o)).filter((q) => !q.fond && q.demarre);
+  return saisonEnReprise(lundi, precedents);
 }
 
 // Les retours tardifs (décision coach du 20/10/2026, « oui, chaque nuit ») : chaque nuit, le résumé des deux dernières

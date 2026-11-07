@@ -89,7 +89,9 @@ export default async function ObjectifCoache({ params, searchParams }: {
   const lundiDe = new Map((trame?.semaines ?? []).map((l) => [l.numero, l.lundi]));
   // Ce que le site a lu et décidé au départ (lib/app/ecriture.deciderLeDepart).
   type DepartLu = { le: string; lu: boolean; detail: string | null; seances_dures: number | null; sl_semaines: number | null;
-    sl_relevee: string | null; fondations_sautees: boolean; allegee_en_charge: boolean };
+    sl_relevee: string | null; fondations_sautees: boolean; allegee_en_charge: boolean;
+    // La jonction de deux objectifs (décisions coach du 07/11/2026, « tout A ») : le rythme repris, la sortie longue à 75 %.
+    rythme_depuis?: string | null; rythme_apres?: 'reprise' | 'saison'; sl_apres_course?: string | null };
   const depart = ((ecriture?.parametres as Record<string, unknown> | null)?.depart_lu ?? null) as DepartLu | null;
   const preps = (((ecriture?.parametres as Record<string, unknown> | null)?.courses_secondaires ?? []) as CourseSecondaire[])
     .slice().sort((a, b) => a.date.localeCompare(b.date));
@@ -315,6 +317,14 @@ export default async function ObjectifCoache({ params, searchParams }: {
                 <li>Au rang du plan : ses échelles partent de l’échelon que le plan prévoit à cette date ; le RPE et la fatigue les font redescendre.</li>
                 {depart.fondations_sautees && <li>Fondations sautées : il sortait d’un bloc de qualité ({depart.seances_dures} séances dures en 4 semaines), elles deviennent un développement.</li>}
                 {depart.allegee_en_charge && <li>Semaine allégée passée en charge : sa dernière semaine était déjà basse.</li>}
+                {/* À valider (CTS_TEXTES_A_VALIDER.md, la jonction du 07/11/2026). */}
+                {depart.rythme_depuis && (
+                  <li>
+                    Rythme repris {depart.rythme_apres === 'saison' ? 'de la dernière semaine allégée de sa saison de fond' : 'de sa semaine de reprise'}
+                    {' '}(le {dateLongue(depart.rythme_depuis, true)}) : puis 3 semaines de charge et 1 allégée, jusqu’à l’affûtage.
+                  </li>
+                )}
+                {depart.sl_apres_course && <li>Sortie longue de départ à {depart.sl_apres_course} : 75 % de sa plus longue d’avant sa course.</li>}
                 {depart.sl_relevee && <li>Plus longue sortie de référence relevée à {depart.sl_relevee} (sur {depart.sl_semaines} semaines).</li>}
                 {!depart.lu && <li>Rien lu dans Nolio (pas d’accord de lecture) : ses réponses déclarées servent de départ.</li>}
               </ul>

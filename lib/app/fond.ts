@@ -173,6 +173,20 @@ export async function saisonsDuJour(budgetMs = 90_000): Promise<Compte[]> {
   return comptes;
 }
 
+// Les semaines des saisons de fond du coaché avant ce lundi, telles que leurs plans les prévoient (lundi, type) : la
+// préparation qui les coupe en continue le rythme, depuis la dernière allégée (décision 7 du 07/11/2026, « A » ;
+// lib/app/jonction.ts, lundiDuRythme). Toutes ses saisons, chacune jusqu'à son dernier jour (une saison arrêtée garde
+// dans son plan les semaines qu'elle n'a pas courues).
+export async function semainesDeLaSaison(athleteId: string, lundi: string): Promise<{ lundi: string; type: string }[]> {
+  const service = clientService();
+  const { data: liens } = await service.from('coaching').select('plan_id').eq('athlete_id', athleteId);
+  const ids = (liens ?? []).map((l) => l.plan_id as string);
+  if (!ids.length) return [];
+  const { data: plans } = await service.from('plans').select('course_date, parametres, donnees').in('id', ids);
+  return (plans ?? []).filter((p) => estFond(p.parametres)).flatMap((p) => ((p.donnees as Plan | null)?.semaines ?? [])
+    .flatMap((s) => (s.lundi && s.lundi < lundi && s.lundi <= String(p.course_date) ? [{ lundi: s.lundi, type: s.type }] : [])));
+}
+
 // Une préparation prend la suite (un départ, ou une semaine déjà prise) : la saison s'arrête la veille de ce lundi.
 export async function arreterLaSaison(athleteId: string, lundi: string): Promise<string[]> {
   const service = clientService();

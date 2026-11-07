@@ -449,11 +449,15 @@ export function noteFormat(c: Champs, config: ConfigPlan, coach = false): string
 // deux jours sans séance dure ni sortie longue par heure de course, 3 au moins, 21 au plus ; 14 après un marathon sur
 // route (décision 7 du marathon, 23/10/2026). Une récupération active : deux jours de repos, puis une EF courte un jour
 // sur deux (le moteur, cts_semaine.semaine_de_recuperation).
+// AU MOINS 14 JOURS DÈS 3 H DE COURSE (la jonction de deux objectifs, décision 5 du 07/11/2026, « A » ; moteur 8.457) :
+// la descente rend le trail au moins aussi traumatisant qu'un marathon (Giandolini 2016) ; un trail de 4 h en donnait 8.
 export const RECUPERATION_MARATHON_J = 14;
 export const RECUPERATION_MAX_J = 21;
+export const RECUPERATION_LONGUE_DES_H = 3;
 export function joursRecuperation(heures: number, format?: string): number {
   if (format === 'R42') return RECUPERATION_MARATHON_J;
-  return Math.min(RECUPERATION_MAX_J, Math.max(3, Math.ceil(2 * heures)));
+  const jours = Math.min(RECUPERATION_MAX_J, Math.max(3, Math.ceil(2 * heures)));
+  return heures >= RECUPERATION_LONGUE_DES_H ? Math.max(RECUPERATION_MARATHON_J, jours) : jours;
 }
 
 export function lireTemps(brut: string): number | null {
