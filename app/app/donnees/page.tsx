@@ -10,7 +10,8 @@ import { donneesTableau, saisonDuCoureur } from '@/lib/app/tableauDuPlan';
 export const metadata: Metadata = { title: 'Tes données' };
 
 // Mes données (CTS_NOLIO_CADRAGE.md dans le dépôt du moteur, AP1, AP3, T10 ; maquette validée par le coach le
-// 19/10/2026) : la charge faite seule (RPE de séance × durée) et sa moyenne sur 4 semaines, le volume en heures fait
+// 19/10/2026) : la charge faite seule (RPE de séance × durée) et l'écart à sa moyenne sur 4 semaines (le trait de la
+// moyenne retiré le 07/11/2026), le volume en heures fait
 // contre prévu, le Hooper du dimanche et sa zone habituelle. Tout vient de la base, rangé chaque dimanche soir et refait
 // chaque nuit avec les retours tardifs (décision coach du 20/10/2026). Un
 // coaché les voit sur toute sa saison, d'un objectif à l'autre, ses courses en repère (décision coach du 20/10/2026).

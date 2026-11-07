@@ -67,8 +67,9 @@ function Drapeau({ x, y, nom }: { x: number; y: number; nom: string }) {
 
 // ─── La charge ────────────────────────────────────────────────────────────
 
-// La charge de chaque semaine écoulée (RPE de séance × durée, Foster), et sa moyenne sur 4 semaines ; sans prévu à côté
-// (décision coach du 19/10/2026 : calculée autrement, la comparaison serait biaisée). axe : les lundis des semaines
+// La charge de chaque semaine écoulée (RPE de séance × durée, Foster), et l'écart de la dernière à sa moyenne sur 4
+// semaines, en une phrase ; sans prévu à côté (décision coach du 19/10/2026 : calculée autrement, la comparaison serait
+// biaisée). Plus de trait de la moyenne ni de sa légende (décision coach du 07/11/2026). axe : les lundis des semaines
 // montrées (Q15).
 export function GraphiqueCharge({ realises, courses = [], axe }: { realises: Realise[]; courses?: CourseDuGraphique[]; axe: string[] }) {
   const [ref, W] = useLargeur();
@@ -86,11 +87,6 @@ export function GraphiqueCharge({ realises, courses = [], axe }: { realises: Rea
   const pas = (W - GAUCHE) / axe.length;
   const cx = (i: number) => GAUCHE + i * pas + pas / 2;
   const tous = pasDesEtiquettes(pas);
-  const ligne = axe.map((l, i) => {
-    const k = parLundi.get(l);
-    const m = k === undefined ? null : moyenne(k);
-    return m === null ? null : `${cx(i)},${y(m)}`;
-  }).filter(Boolean);
   return (
     <Carte className="space-y-2.5">
       <Surtitre>Ta charge d’entraînement</Surtitre>
@@ -110,7 +106,7 @@ export function GraphiqueCharge({ realises, courses = [], axe }: { realises: Rea
         );
       })()}
       <div ref={ref}>
-        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block max-w-full" role="img" aria-label="Ta charge par semaine, avec ta moyenne sur quatre semaines">
+        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block max-w-full" role="img" aria-label="Ta charge par semaine">
           {graduationsRegulieres(haut).map((g) => (
             <g key={g}>
               <line x1={GAUCHE} y1={y(g)} x2={W} y2={y(g)} stroke="rgba(47,45,78,0.08)" />
@@ -135,12 +131,10 @@ export function GraphiqueCharge({ realises, courses = [], axe }: { realises: Rea
               </g>
             );
           })}
-          {ligne.length >= 2 && <polyline points={ligne.join(' ')} fill="none" stroke="#2F2D4E" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />}
         </svg>
       </div>
       <div className="flex flex-wrap gap-x-3.5 gap-y-1 text-[0.75rem] text-[#4A4866]">
         <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-teal" />ta charge (RPE × durée)</span>
-        <span className="inline-flex items-center gap-1.5"><span className="w-3.5 h-0.5 bg-indigo" />moyenne sur 4 semaines</span>
       </div>
     </Carte>
   );

@@ -108,7 +108,8 @@ export function contenuBienvenue(plan: Plan, lienApp: string, nolio: { adresse: 
         `la première ouverture. ${connexion}`,
     ]),
     ...(nolio ? [] : ['Ta préparation est aussi jointe en PDF, à garder ou à imprimer.']),
-    'Ta course change de date, ou une question sur le service ? Réponds simplement à cet e-mail.',
+    // « Ta course change de date » retiré (décision coach du 07/11/2026).
+    'Une question sur le service ? Réponds simplement à cet e-mail.',
     // La confirmation de l'achat sur un support durable, avec la demande de début immédiat que l'acheteur a cochée
     // avant de payer et son droit de rétractation (Code de la consommation, art. L221-13 et L221-25 ; décision coach du
     // 19/10/2026 : un service, rétractable 14 jours au prorata).

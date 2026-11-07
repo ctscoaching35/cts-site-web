@@ -5,7 +5,7 @@ import { Avertissement } from '@/components/app/Texte';
 import { Deconnexion, Suppression } from '@/components/app/BoutonsCompte';
 import Installation from '@/components/app/Installation';
 import { DonnerAccord, RetirerAccord } from '@/components/app/GestesEcriture';
-import { Carte, CarteSombre, EcrisNous, Surtitre, TITRE } from '@/components/app/Ui';
+import { Carte, CarteSombre, Surtitre, TITRE } from '@/components/app/Ui';
 import { contexte, initiales, type Recherche } from '@/lib/app/contexte';
 import { ajouterJours, dateLongue } from '@/lib/app/plan';
 import { clientServeur, clientService } from '@/lib/app/supabase';
@@ -130,20 +130,8 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
                 {!ctx.coache && affiche?.parametres && !affiche.accord_lecture_le && <DonnerAccord planId={ctx.cle} demonstration={ctx.demonstration} />}
               </div>
             </div>
-            {/* Une course reportée (PL6, décision coach du 04/11/2026) ; Q5 (décision coach du 05/11/2026 au soir, « A ») : il
-                nous écrit, par le lien de Compte, plus « réponds à ton e-mail de bienvenue ». Validé par le coach le 05/11/2026 (1A). */}
-            {!ctx.coache && (
-              <div className="flex gap-3 py-3.5">
-                <span className="w-2.5 h-2.5 mt-1.5 rounded-full bg-teal shrink-0" aria-hidden />
-                <div>
-                  <p className="text-sm font-bold text-indigo">Ta course change de date ?</p>
-                  <p className="mt-0.5 text-[0.8rem] text-[#4A4866] leading-relaxed">
-                    Écris-nous avec la nouvelle date : nous voyons avec toi comment ta préparation suit.
-                  </p>
-                  <EcrisNous />
-                </div>
-              </div>
-            )}
+            {/* « Ta course change de date ? » retiré (décision coach du 07/11/2026) : la ligne « Une question sur ton achat ou
+                sur l'app ? » reste, sous la carte. */}
           </Carte>
         )}
 
