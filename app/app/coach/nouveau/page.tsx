@@ -63,7 +63,7 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
   return (
     <CadreCoach actif="athletes">
       <div className="max-w-3xl">
-        <Link href={achete ? '/app/coach/chiffres?partie=plans' : aModifier ? `/app/coach/plan/${aModifier.id}` : suite ? `/app/coach/athlete/${suite.athlete.id}` : '/app/coach/mes-athletes'} className="inline-flex items-center min-h-9 text-[0.8125rem] font-bold text-teal">
+        <Link href={achete ? '/app/coach/chiffres?partie=plans' : aModifier ? `/app/coach/plan/${aModifier.id}` : suite ? `/app/coach/athlete/${suite.athlete.id}` : '/app/coach'} className="inline-flex items-center min-h-9 text-[0.8125rem] font-bold text-teal">
           ‹ {achete ? 'Les acheteurs' : aModifier ? String(aModifier.course_nom) : suite ? suite.athlete.nom : 'Mes athlètes'}
         </Link>
         <div className="my-6 px-2">

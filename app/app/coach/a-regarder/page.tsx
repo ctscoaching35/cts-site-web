@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 
-// « À regarder » est l'accueil « Cette semaine » depuis la refonte par exception (EC1, décision coach du 04/11/2026).
+// « À regarder », devenu « Cette semaine » (EC1, 04/11/2026), puis « Urgent » (l'espace par athlète, maquette validée par
+// le coach le 08/11/2026).
 export default function ARegarderPage() {
-  redirect('/app/coach');
+  redirect('/app/coach/urgent');
 }

@@ -23,7 +23,7 @@ import { ajouterJours, dateAbregee, dateLongue, jourMois, joursEntre, type Semai
 import { lienNolioAthlete } from './liensNolio';
 import { athletesNolio, ErreurNolio, nolioConfigure, type AthleteNolio } from './nolio';
 import { faiteSansRpe } from './resumeSemaine';
-import { lundiDeLaSemainePassee } from './semainesDuDimanche';
+import { apresLePassage, lundiDeLaSemainePassee, lundiQuiVient } from './semainesDuDimanche';
 import { clientService } from './supabase';
 import { jaugeDuPlan, weekEndChoc, type Verdict } from './tableau';
 
@@ -32,7 +32,13 @@ export type LigneAthlete = {
   objectif: { plan_id: string; course_nom: string; course_date: string; demarre: boolean; prevu: string | null;
     semaine: number | null; total: number | null; verdict: Verdict | null; ecrit: boolean;
     // reprise : sa semaine en cours, écrite, est la reprise après une course (moteur 8.459, « reprise_apres_course »).
+    // Une semaine écrite au-delà de la trame (sa récupération, après la course) : celle écrite pour ce lundi.
     cours: { numero: string; type: string; bloc: string; reprise?: boolean } | null;
+    // L'espace par athlète (maquette du 08/11/2026, « Partie / Pas partie ») : sa semaine en cours partie dans Nolio (ou
+    // laissée au coach, ses séances posées avant le passage), pas partie (le point « semaine » d'« À regarder »), null
+    // quand rien ne s'écrit pour elle ; suivante : le dimanche après le passage, la semaine qui arrive, écrite ce soir.
+    partie: boolean | null;
+    suivante: { numero: string; type: string; bloc: string; reprise?: boolean; partie: boolean } | null;
     // Une saison de fond (décisions coach du 24/10/2026) : son numéro, le thème de la semaine, ses tests dans n semaines.
     fond?: { saison: number; theme: string | null; tests_dans: number | null } } | null;
   // Son entrée, tant qu'elle n'est pas complète (décision coach du 22/10/2026) : « Entrée 3/5 » sur sa ligne.
@@ -47,6 +53,9 @@ export type LigneAthlete = {
   coache: boolean; aLaMain: boolean;
   semaine: { faites: number; prevues: number; tenue: number | null; sansRpe: boolean } | null;
   hooper: { valeur: number; tendance: 'hausse' | 'baisse' | 'stable' | null } | null;
+  // Sa semaine passée entière (séances clés, sortie longue : « Sa semaine passée » de sa page) ; profilComplet : son
+  // profil de coureur rempli (sa revue du dimanche, Q3).
+  realise: Realise | null; profilComplet: boolean;
 };
 type DemandeAthlete = Demande & { nom: string };
 // La trame du moteur (POST /v1/trame) : une saison de fond y porte sa place et le lundi de ses tests.
@@ -110,11 +119,16 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     : { data: [] };
   const aLaMain = await plansALaMain();
   const lundi = lundiDe(jour);
+  // Le dimanche après le passage, la semaine qui arrive (l'espace par athlète, 08/11/2026).
+  const ceSoir = apresLePassage();
+  const lundiCeSoir = ceSoir ? lundiQuiVient(jour) : null;
   // Les semaines que le passage a laissées au coach, ses séances posées avant lui (B-EC-5) : pas « pas parties ».
   const { data: laissees } = ids.length
-    ? await service.from('nolio_envois').select('plan_id').in('plan_id', ids).eq('semaine', cleLaissee(lundi))
+    ? await service.from('nolio_envois').select('plan_id, semaine').in('plan_id', ids)
+      .in('semaine', [cleLaissee(lundi), ...(lundiCeSoir ? [cleLaissee(lundiCeSoir)] : [])])
     : { data: [] };
-  const laisseesAuCoach = new Set((laissees ?? []).map((x) => x.plan_id as string));
+  const laisseesAuCoach = new Set((laissees ?? []).filter((x) => x.semaine === cleLaissee(lundi)).map((x) => x.plan_id as string));
+  const laisseesCeSoir = new Set((laissees ?? []).filter((x) => lundiCeSoir && x.semaine === cleLaissee(lundiCeSoir)).map((x) => x.plan_id as string));
   const usrs = fiches.map((a) => a.nolio_athlete_id).filter((x): x is string => Boolean(x));
   const { data: accords } = usrs.length
     ? await service.from('nolio_accords').select('nolio_athlete_id').eq('coach_id', coachId).in('nolio_athlete_id', usrs)
@@ -158,7 +172,7 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     if (a.mode === 'plan') {
       return { id: a.id, nom: a.nom, usr: a.nolio_athlete_id, nolio: Boolean(a.nolio_athlete_id),
         accord: Boolean(a.nolio_athlete_id && avecAccord.has(a.nolio_athlete_id)), app: Boolean(a.compte_id), objectif: null,
-        entree: null, coache: false, aLaMain: true, semaine: null, hooper: null };
+        entree: null, coache: false, aLaMain: true, semaine: null, hooper: null, realise: null, profilComplet: true };
     }
     const o = prochain(a);
     const p = o ? parPlan.get(o.plan_id) : undefined;
@@ -172,7 +186,14 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     // une semaine de récupération, après la course, n'est pas dans la trame : son résumé se trouve par son lundi.
     // Une semaine hors moteur ne compte qu'une fois résumée après son dimanche : le dimanche soir, la semaine qui se
     // termine n'a encore que son résumé de la nuit d'avant, sans son dimanche ; « — » jusqu'au résumé de la nuit.
-    const enCours = trame?.find((l) => l.lundi && l.lundi <= jour && ajouterJours(l.lundi, 6) >= jour) ?? null;
+    const ecriteDu = (le: string) => semaines.find((l) => (l.donnees as Semaine | null)?.lundi === le);
+    // Une semaine écrite au-delà de la trame (sa récupération) : celle écrite pour ce lundi.
+    const horsTrame = (le: string) => {
+      const l = ecriteDu(le);
+      const d = l?.donnees as Semaine | null | undefined;
+      return d && !trame?.some((x) => x.lundi === le) ? { numero: String(l?.numero), lundi: le, type: String(d.type ?? ''), bloc: String(d.bloc ?? '') } : null;
+    };
+    const enCours = trame?.find((l) => l.lundi && l.lundi <= jour && ajouterJours(l.lundi, 6) >= jour) ?? horsTrame(lundi);
     const resumeDu = (le: string) => {
       const l = trame?.find((x) => x.lundi === le);
       const r = (l ? realises.find((x) => x.numero === l.numero) : undefined) ?? realises.find((x) => x.lundi === le);
@@ -221,6 +242,8 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
         && deuxDernieres.every((l) => !l.sans_ajustement && ((l.journal ?? []) as Journal).some((j) => j.regle === 'R2' && j.trop_dur))
         && String(deuxDernieres[0].ecrite_le).slice(0, 10) >= ajouterJours(jour, -8)) {
       aRegarder.push({ niveau: 'sante', genre: 'rpe', cle: `rpe:${deuxDernieres[0].plan_id}:${deuxDernieres[0].numero}`, athlete: a.nom, action: 'Lui écrire ›', href: lienNolioAthlete(a.nolio_athlete_id), externe: true,
+        // La ligne de « Ce qui l'attend » : maquette validée par le coach le 08/11/2026.
+        detail: 'Séance clé jugée trop dure deux semaines de suite',
         texte: 'RPE à revoir avec lui : séance clé jugée trop dure deux semaines de suite.' });
     }
     // Pas de retour (AC2, décision coach du 01/11/2026, « A ») : deux semaines de suite avec des séances faites et aucun
@@ -267,6 +290,7 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     } else if (a.nolio_athlete_id && !avecAccord.has(a.nolio_athlete_id)) {
       // « Accord reçu » se coche sur sa fiche, dans « Son entrée » (le Suivi des 7 jours est supprimé, 04/11/2026).
       aRegarder.push({ niveau: 'bloque', genre: 'accord', cle: `accord:${a.id}`, athlete: a.nom, action: 'Accord reçu ›', href: `/app/coach/athlete/${a.id}#son-entree`,
+        detail: 'Envoie-lui le message d’accord dans Nolio',
         texte: 'sans accord de lecture : envoie-lui le message d’accord dans Nolio.' });
     }
     // Sans objectif ni profil de coureur (25/10/2026 : 4 saisons de fond refusées en silence par le moteur, faute de
@@ -280,9 +304,10 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     // La semaine en cours pas partie dans Nolio (le passage du dimanche en échec, même après ses reprises). La première
     // d'une saison de fond aussi (25/10/2026 : sans semaine écrite avant, elle passait inaperçue).
     const premiereDeSaison = Boolean(infosFond && p?.demarre_le && String(p.demarre_le) <= lundi);
-    if (o && avenir && ecrit && demarre && !aLaMain.has(o.plan_id) && o.course_date >= lundi && !laisseesAuCoach.has(o.plan_id)
+    const pasPartie = Boolean(o && avenir && ecrit && demarre && !aLaMain.has(o.plan_id) && o.course_date >= lundi && !laisseesAuCoach.has(o.plan_id)
         && !semaines.some((l) => (l.donnees as Semaine | null)?.lundi === lundi)
-        && (premiereDeSaison || semaines.some((l) => String((l.donnees as Semaine | null)?.lundi ?? '') < lundi))) {
+        && (premiereDeSaison || semaines.some((l) => String((l.donnees as Semaine | null)?.lundi ?? '') < lundi)));
+    if (pasPartie && o) {
       aRegarder.push({ niveau: 'bloque', genre: 'semaine', cle: `semaine:${o.plan_id}:${lundi}`, athlete: a.nom, action: 'Réessayer ›', href: hrefPlan, planId: o.plan_id,
         texte: `sa semaine du ${jourMois(lundi)} n’est pas partie dans Nolio.` });
     }
@@ -304,13 +329,15 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
       ?.courses_secondaires) ?? []).map((c) => String(c.date)))]);
     for (const c of pasEncoreIci(coursesA.get(a.id) ?? [], dejaIci)) {
       aRegarder.push({ niveau: 'arrive', genre: 'course_nolio', cle: `course_nolio:${a.id}:${c.id}:${c.date}`, athlete: a.nom, action: 'Créer l’objectif ›',
-        href: `/app/coach/nouveau?athlete=${a.id}&course=${c.id}`, texte: `${c.nom}, le ${dateLongue(c.date, true)}, est dans Nolio sans objectif ici.` });
+        href: `/app/coach/nouveau?athlete=${a.id}&course=${c.id}`, detail: `${c.nom}, le ${dateLongue(c.date, true)}, sans objectif ici`,
+        texte: `${c.nom}, le ${dateLongue(c.date, true)}, est dans Nolio sans objectif ici.` });
     }
     // Ce qui arrive : une course de préparation dans les 14 jours, un objectif dans les 21 jours sans suite, un test raté.
     if (o && avenir && !infosFond) {
       for (const c of (((p?.parametres as { courses_secondaires?: { nom?: string; date?: string }[] } | null)?.courses_secondaires) ?? [])) {
         const dans = c.date ? joursEntre(jour, c.date) : -1;
         if (dans >= 0 && dans <= 14) aRegarder.push({ niveau: 'arrive', genre: 'preparation', cle: `preparation:${o.plan_id}:${c.date}`, athlete: a.nom, action: 'Voir ›', href: hrefPlan,
+          detail: `${c.nom ?? 'Sa course de préparation'} dans ${dans} jour${dans > 1 ? 's' : ''}`,
           texte: `${c.nom ?? 'sa course de préparation'} dans ${dans} jour${dans > 1 ? 's' : ''} (course de préparation).` });
       }
       // Le week-end choc, un mois avant (FT1-3, décision coach du 01/11/2026 : « dans mon app coach, une notification me
@@ -346,6 +373,16 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
         semaine: jauge?.semaine ?? null, total: trame?.length ?? null, verdict: jauge?.verdict ?? null, ecrit,
         cours: enCours ? { numero: enCours.numero, type: enCours.type, bloc: enCours.bloc,
           reprise: semaines.some((l) => l.numero === enCours.numero && (l.donnees as { reprise_apres_course?: unknown } | null)?.reprise_apres_course === true) } : null,
+        partie: pasPartie ? false : ecriteDu(lundi) || laisseesAuCoach.has(o.plan_id) ? true : null,
+        suivante: (() => {
+          if (!lundiCeSoir || !demarre || aLaMain.has(o.plan_id)) return null;
+          const l = trame?.find((x) => x.lundi === lundiCeSoir) ?? horsTrame(lundiCeSoir);
+          if (!l) return null;
+          const ecrite = ecriteDu(lundiCeSoir);
+          return { numero: l.numero, type: l.type, bloc: l.bloc,
+            reprise: (ecrite?.donnees as { reprise_apres_course?: unknown } | null | undefined)?.reprise_apres_course === true,
+            partie: Boolean(ecrite) || laisseesCeSoir.has(o.plan_id) };
+        })(),
         ...(infosFond ? { fond: { saison: infosFond.saison, theme: (enCours as { theme?: string } | null)?.theme ?? null,
           tests_dans: Math.max(0, Math.round(joursEntre(jour, (infosFond.tests_les ?? [infosFond.tests_le])
             .find((t) => t >= lundi) ?? infosFond.tests_le) / 7)) } } : {}) } : null,
@@ -356,6 +393,7 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
         sansRpe: faiteSansRpe(rPassee) } : null,
       hooper: hooperPasse !== null ? { valeur: hooperPasse, tendance: hooperAvant === null ? null
         : hooperPasse >= hooperAvant + 2 ? 'hausse' : hooperPasse <= hooperAvant - 2 ? 'baisse' : 'stable' } : null,
+      realise: rPassee ?? null, profilComplet,
     };
   });
   // C5 (audit du 03/11/2026, décision coach du 04/11/2026) : une course qui tombe dans la récupération de la précédente

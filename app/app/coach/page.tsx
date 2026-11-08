@@ -1,171 +1,107 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import CadreCoach from '@/components/app/CadreCoach';
-import { Carte } from '@/components/app/Ui';
-import { AnnulerSemaine, ReessayerSemaine } from '@/components/app/GestesEcriture';
-import { cetteSemaine, type CarteCoache } from '@/lib/app/cetteSemaine';
-import { equipeNolio, type ARegarder, type Niveau } from '@/lib/app/espaceCoach';
-import { marquerRegle } from '@/lib/app/actionsCoaching';
-import { dateLongue, jourMois } from '@/lib/app/plan';
+import { Carte, Surtitre } from '@/components/app/Ui';
+import TableauAthletes, { filtreDe } from '@/components/app/TableauAthletes';
+import { equipeNolio } from '@/lib/app/espaceCoach';
+import { espaceDuCoach } from '@/lib/app/mesAthletes';
+import { texteBilan } from '@/lib/app/espaceParAthlete';
+import { creerFicheDepuisNolio } from '@/lib/app/actionsCoaching';
+import { usrAcheteurs } from '@/lib/app/acheteurs';
+import { dateAbregee, dateLongue } from '@/lib/app/plan';
 import { espaceCoachOuvert } from '@/lib/app/supabase';
-import { exigerCoach } from '@/lib/app/nolio';
+import { exigerCoach, nolioConfigure } from '@/lib/app/nolio';
 
 // Toujours calculée à la visite : la page lit la session du coach.
 export const dynamic = 'force-dynamic';
 
-// « Cette semaine », l'accueil de l'espace coach (EC1, refonte par exception, décision coach du 04/11/2026, « A » ;
-// lib/app/cetteSemaine.ts) : le bilan du dimanche, puis une carte par coaché qui a besoin de lui (décision coach du
-// 04/11/2026, relecture écran par écran), ses raisons regroupées et un seul geste ; ce que le moteur a réglé seul, une
-// ligne par coaché et par semaine, replié ; ce qui arrive ; les autres ne s'affichent pas. Pensée pour le téléphone
-// d'abord (EC5).
-const RAISON: Partial<Record<Niveau, string>> = { bloque: 'Ce qui bloque', sante: 'Santé', arrive: 'À venir' };
-const PASTILLE: Partial<Record<Niveau, string>> = {
-  bloque: 'bg-[#F6E1DD] text-[#8A3326]', sante: 'bg-[#F6E3E8] text-[#8A2E4A]', arrive: 'bg-[#E3EFE9] text-[#22604F]',
-};
-const bouton = 'inline-flex items-center justify-center min-h-11 px-4 rounded-xl text-[0.8125rem] font-bold whitespace-nowrap';
-const pastille = 'text-[0.6875rem] font-bold px-2 py-0.5 rounded-full';
-
-function Geste({ r, plein }: { r: ARegarder; plein: boolean }) {
-  const style = plein ? `${bouton} bg-teal text-white` : `${bouton} bg-white text-indigo border border-indigo/20 hover:bg-sand`;
-  if (r.genre === 'semaine' && r.planId) return <ReessayerSemaine planId={r.planId} />;
-  if (r.externe) return <a href={r.href} target="_blank" rel="noopener" className={style}>{r.action}</a>;
-  return <Link href={r.href} className={style}>{r.action}</Link>;
-}
-
-function Regle({ cles }: { cles: string[] }) {
-  return (
-    <form action={marquerRegle.bind(null, cles)}>
-      <button type="submit" className={`${bouton} text-[#5E5C78] hover:text-indigo hover:bg-sand`}>Réglé</button>
-    </form>
-  );
-}
-
-// La carte d'un coaché : ses raisons, ce qui bloque d'abord, puis la santé ; le geste de la première ; « Réglé » pour toutes.
-function CarteDuCoache({ c, plein }: { c: CarteCoache; plein: boolean }) {
-  const groupes = (['bloque', 'sante'] as const).map((n) => [n, c.raisons.filter((r) => r.niveau === n)] as const).filter(([, rs]) => rs.length);
-  return (
-    <li className="flex flex-wrap items-center justify-between gap-3 py-3.5 border-t first:border-t-0 border-indigo/[0.07]">
-      <div className="min-w-0 flex-[1_1_300px] space-y-1.5">
-        <span className="block font-bold">{c.athlete}</span>
-        {groupes.map(([n, rs]) => (
-          <div key={n} className="flex flex-wrap items-start gap-x-2 gap-y-1">
-            <span className={`${pastille} mt-0.5 ${PASTILLE[n]}`}>{RAISON[n]}</span>
-            <ul className="min-w-0 flex-[1_1_220px] space-y-0.5 text-sm text-[#4A4866] leading-snug">
-              {rs.map((r) => <li key={r.cle} className="first-letter:uppercase">{r.texte}</li>)}
-            </ul>
-          </div>
-        ))}
-      </div>
-      <div className="flex items-center gap-2">
-        <Geste r={c.raisons[0]} plein={plein} />
-        <Regle cles={c.raisons.map((r) => r.cle)} />
-      </div>
-    </li>
-  );
-}
-
-// Une ligne d'« À venir ».
-function Ligne({ r }: { r: ARegarder }) {
-  return (
-    <li className="flex flex-wrap items-center justify-between gap-3 py-3.5 border-t first:border-t-0 border-indigo/[0.07]">
-      <div className="min-w-0 flex-[1_1_300px]">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-bold">{r.athlete}</span>
-          <span className={`${pastille} ${PASTILLE[r.niveau]}`}>{RAISON[r.niveau]}</span>
-        </div>
-        <p className="mt-1 text-sm text-[#4A4866] leading-snug first-letter:uppercase">{r.texte}</p>
-      </div>
-      <div className="flex items-center gap-2">
-        <Geste r={r} plein={false} />
-        <Regle cles={[r.cle]} />
-      </div>
-    </li>
-  );
-}
-
-export default async function CetteSemaine() {
+// « MES ATHLÈTES », L'ACCUEIL DE L'ESPACE COACH (décision « 1A » du coach, 08/11/2026 : « je travaille la plupart du temps
+// athlète après athlète » ; maquette validée le 08/11/2026, « tout A ») : une ligne par athlète, toute la ligne ouvre sa
+// page — sa couleur de « Dimanche » toute la semaine (Q1), son objectif, sa semaine et « Partie / Pas partie », sa
+// semaine passée, « Ce qui l'attend » en étiquettes (Q6, Q7) ; ceux qui t'attendent en tête (Q2, aussi l'ordre d'« Athlète
+// suivant ») ; le bilan du dimanche en tête, du dimanche soir au lundi soir (Q10) ; les filtres et « Dans Nolio » comme
+// avant. Remplace « Cette semaine » (l'urgent est dans « Urgent ») et « Dimanche ». Pour l'ordinateur d'abord (EC5).
+export default async function MesAthletes({ searchParams }: { searchParams: Promise<{ filtre?: string }> }) {
   if (!espaceCoachOuvert()) notFound();
   const coach = await exigerCoach();
-  const { nolio } = await equipeNolio();
-  const s = await cetteSemaine(coach.compteId, nolio ? new Set(nolio.map((x) => x.id)) : null);
-  const jour = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
+  const { filtre: demande } = await searchParams;
+  const filtre = filtreDe(demande);
+  const { nolio, erreur } = await equipeNolio();
+  // L'équipe Nolio, pour dire qui l'a quittée ; sans réponse de Nolio, personne.
+  const membres = nolio ? new Set(nolio.map((x) => x.id)) : null;
+  const espace = await espaceDuCoach(coach.compteId, membres);
+  const { vue, bilan } = espace;
+  // Les athlètes de Nolio qui n'ont pas encore de fiche (le coach lui-même, « (toi) », à part).
+  const relies = new Set(vue.athletes.map((a) => a.usr).filter(Boolean));
+  // Sans les acheteurs de plans (décision coach du 22/10/2026) : ils sont dans « Chiffres ».
+  const acheteurs = await usrAcheteurs(coach.compteId).catch(() => new Set<string>());
+  const sansFiche = (nolio ?? []).filter((x) => !relies.has(x.id) && !acheteurs.has(x.id) && !x.name.endsWith('(toi)'));
+  // Le coach lui-même (décision coach du 24/10/2026) : sa fiche de test, pour vivre l'app d'un coaché sur son Nolio.
+  const toi = (nolio ?? []).find((x) => x.name.endsWith('(toi)') && !relies.has(x.id));
+  const jour = espace.jour;
   return (
-    <CadreCoach actif="semaine" aRegarder={s.cartes.length}>
-      <div>
-        <h1 className="text-[1.75rem] font-extrabold tracking-tight">Cette semaine</h1>
-        <p className="mt-1.5 text-sm text-[#5E5C78] first-letter:uppercase">{dateLongue(jour)} · qui a besoin de toi, et pourquoi</p>
+    <CadreCoach actif="athletes" urgents={espace.urgents}>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-[1.75rem] font-extrabold tracking-tight">Mes athlètes</h1>
+          {/* Maquette validée par le coach le 08/11/2026 */}
+          <p className="mt-1.5 text-sm text-[#5E5C78] first-letter:uppercase">{dateLongue(jour)} · tes athlètes un par un, ceux qui t’attendent en tête</p>
+        </div>
+        <Link href="/app/coach/nouveau" className="inline-flex items-center min-h-12 px-5 rounded-xl bg-teal text-white text-sm font-bold">
+          + Ajouter un athlète
+        </Link>
       </div>
 
-      {s.bilan && (
-        <Link href="/app/coach/dimanche" className="flex items-center justify-between gap-3 bg-indigo text-white rounded-[14px] p-4">
+      {bilan && (
+        <Link href="/app/coach/urgent" className="flex items-center justify-between gap-3 bg-indigo text-white rounded-[14px] p-4">
           <span className="text-sm">
-            <strong>Dimanche {jourMois(s.bilan.dimanche)}</strong> : {s.bilan.parties} semaine{s.bilan.parties > 1 ? 's' : ''} partie{s.bilan.parties > 1 ? 's' : ''},{' '}
-            {s.bilan.pasParties} pas partie{s.bilan.pasParties > 1 ? 's' : ''}.
+            <strong>Dimanche {dateAbregee(bilan.dimanche, false)}</strong> : {texteBilan(bilan.parties, bilan.pasParties, espace.urgents)}
           </span>
-          <span className="text-xs text-[#D6D5E6] whitespace-nowrap">Détail ›</span>
+          <span className="text-xs text-[#D6D5E6] whitespace-nowrap">Urgent ›</span>
         </Link>
       )}
 
-      <Carte className="!p-5">
-        <h2 className="text-[0.8125rem] font-extrabold tracking-[0.1em] uppercase text-[#8A3326]">
-          À regarder · {s.cartes.length} coaché{s.cartes.length > 1 ? 's' : ''} sur {s.coaches}
-        </h2>
-        {s.cartes.length === 0 ? <p className="mt-2 text-sm text-teal font-semibold">Personne n’a besoin de toi pour l’instant.</p> : (
-          <ul className="mt-1">{s.cartes.map((c, i) => <CarteDuCoache key={c.athlete} c={c} plein={i === 0} />)}</ul>
-        )}
-        {!s.signaux && (
-          <p className="mt-3 text-xs text-[#5E5C78]">
-            Les signaux de la semaine (commentaires, sensations, Hooper, rien de remonté) ne sont pas encore gardés : la migration
-            du 04/11/2026 est à passer dans Supabase.
-          </p>
-        )}
-      </Carte>
+      <TableauAthletes lignes={espace.lignes} jour={jour} passee={vue.semainePassee} filtre={filtre} />
+      {!espace.signaux && (
+        <p className="text-xs text-[#5E5C78]">
+          Les signaux de la semaine (commentaires, sensations, Hooper, rien de remonté) ne sont pas encore gardés : la migration
+          du 04/11/2026 est à passer dans Supabase.
+        </p>
+      )}
 
-      <Carte className="!p-5">
-        <details>
-          <summary className="cursor-pointer min-h-11 flex items-center justify-between gap-3">
-            <span className="text-[0.8125rem] font-extrabold tracking-[0.1em] uppercase text-[#6E4A0C]">Le moteur s’en est chargé · {s.moteur.length}</span>
-            <span className="text-xs text-[#5E5C78]">Relire ›</span>
-          </summary>
-          <p className="text-[0.8125rem] text-[#5E5C78]">Ses décisions des semaines écrites ces 8 derniers jours, qui ne demandent rien. Chacune s’annule sur la dernière semaine écrite.</p>
-          {s.moteur.length > 0 && (
-            <ul className="mt-2">
-              {s.moteur.map((l) => (
-                <li key={`${l.athlete}-${l.lundi ?? l.planId}`} className="py-3 border-t first:border-t-0 border-indigo/[0.07] space-y-1 text-sm">
-                  <div>
-                    <Link href={`/app/coach/plan/${l.planId}`} className="font-bold hover:underline">{l.athlete}</Link>
-                    <span className="text-[#4A4866]"> · {l.lundi ? `semaine du ${jourMois(l.lundi)}` : `semaine ${l.ajustements[0].numero.slice(1)}`}{l.raisons.length > 0 && ` · ${l.raisons.join(', ')}`}</span>
-                  </div>
-                  {l.ajustements.filter((a) => a.raisons.length > 0 && a.annulable).map((a) => <AnnulerSemaine key={a.planId} planId={a.planId} numero={a.numero} />)}
-                  {l.ajustements.flatMap((a) => a.allegees.map((j) => (
-                    <p key={`${a.planId}-${j.id}`} className="text-[#4A4866]">
-                      {j.nom} allégée en EF (fatigue franche) ·{' '}
-                      <Link href={`/app/garder?plan=${a.planId}&seance=${encodeURIComponent(j.id)}`} className="font-semibold text-teal">Garder la séance d’origine</Link>
-                    </p>
-                  )))}
+      <Carte className="!p-5 space-y-2">
+        <Surtitre>Dans Nolio</Surtitre>
+        {!nolioConfigure() ? (
+          <p className="text-sm text-[#4A4866]">La clé de l’API Nolio manque dans Vercel (NOLIO_API_KEY).</p>
+        ) : erreur ? (
+          <p className="text-sm text-[#4A4866]">{erreur}</p>
+        ) : (
+          <details className="text-sm" open={sansFiche.length > 0 || Boolean(toi)}>
+            <summary className="cursor-pointer min-h-11 flex items-center font-semibold text-indigo">
+              {sansFiche.length ? `${sansFiche.length} athlète${sansFiche.length > 1 ? 's' : ''} de Nolio sans fiche ici` : 'Tous tes athlètes de Nolio ont leur fiche'}
+            </summary>
+            {/* « Créer sa fiche » (décision coach du 22/10/2026) : d'un clic, déjà reliée à Nolio. */}
+            <ul className="pb-2 text-[#4A4866] divide-y divide-indigo/[0.06]">
+              {sansFiche.map((x) => (
+                <li key={x.id} className="flex items-center justify-between gap-3 py-1.5">
+                  <span>{x.name}</span>
+                  <form action={creerFicheDepuisNolio.bind(null, x.id)}>
+                    <button type="submit" className="min-h-10 px-3 rounded-[10px] border border-teal text-teal text-[0.8125rem] font-bold">Créer sa fiche ›</button>
+                  </form>
                 </li>
               ))}
             </ul>
-          )}
-        </details>
-      </Carte>
-
-      {s.aVenir.length > 0 && (
-        <Carte className="!p-5">
-          <details>
-            <summary className="cursor-pointer min-h-11 flex items-center justify-between gap-3">
-              <span className="text-[0.8125rem] font-extrabold tracking-[0.1em] uppercase text-[#22604F]">À venir, rien d’urgent · {s.aVenir.length}</span>
-              <span className="text-xs text-[#5E5C78]">Voir ›</span>
-            </summary>
-            <ul className="mt-1">{s.aVenir.map((r) => <Ligne key={r.cle} r={r} />)}</ul>
+            {toi && (
+              <div className="flex items-center justify-between gap-3 pt-2 pb-1 border-t border-indigo/[0.06] text-[#4A4866]">
+                <span>Toi : vis l’app d’un coaché sur ton propre Nolio.</span>
+                <form action={creerFicheDepuisNolio.bind(null, toi.id)}>
+                  <button type="submit" className="min-h-10 px-3 rounded-[10px] border border-teal text-teal text-[0.8125rem] font-bold">Créer ta fiche de test ›</button>
+                </form>
+              </div>
+            )}
           </details>
-        </Carte>
-      )}
-
-      <Link href="/app/coach/mes-athletes" className="flex items-center justify-between gap-3 text-sm text-[#4A4866]">
-        <span>{s.calmes} coaché{s.calmes > 1 ? 's' : ''} sans rien à signaler.</span>
-        <span className="font-bold text-teal whitespace-nowrap">Mes athlètes ›</span>
-      </Link>
+        )}
+      </Carte>
     </CadreCoach>
   );
 }
