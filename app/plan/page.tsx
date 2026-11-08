@@ -24,10 +24,11 @@ export default async function PagePlan() {
         <div className="mb-6 px-1">
           <div className="text-[0.6875rem] font-bold tracking-[0.14em] uppercase text-teal mb-2">Plan d’entraînement trail</div>
           <h1 className="text-[1.75rem] sm:text-[2rem] font-extrabold text-indigo tracking-tight leading-tight mb-3">Ton plan, construit sur ta course</h1>
+          {/* P1 (décision coach du 07/11/2026, « A ») : la durée d'abord, puis ce qu'il reçoit. */}
           <p className="text-[0.9375rem] text-[#4A4866] leading-relaxed">
-            Sept rubriques sur ta course, ton niveau, ton terrain et tes disponibilités. Ton plan s’appuie sur les
-            dernières données en sciences de l’entraînement : chaque semaine et chaque séance en découlent, jusqu’au
-            jour J. Tes séances arrivent dans Nolio semaine après semaine, et ton app CTS te montre toute ta préparation.
+            Environ 5 minutes, sept rubriques : ta course, ton niveau, ton terrain et ta semaine. Ton plan s’appuie sur les
+            dernières données en sciences de l’entraînement. Tes séances arrivent dans Nolio chaque semaine, ajustées à ce
+            que tu as fait, et ton app CTS te montre toute ta préparation.
           </p>
         </div>
         <Questionnaire simulation={simulation} />

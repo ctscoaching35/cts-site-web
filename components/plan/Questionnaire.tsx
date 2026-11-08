@@ -138,6 +138,10 @@ export default function Questionnaire({
   const [accordLecture, setAccordLecture] = useState(false);
   const [envoi, setEnvoi] = useState(false);
   const [refus, setRefus] = useState('');
+  // Le D− replié (P6, décision coach du 07/11/2026, « A ») : ouvert au clic, ou d'office quand il a déjà une valeur.
+  const [dmoinsOuvert, setDmoinsOuvert] = useState(false);
+  // « Vérifier mes réponses » cliqué une fois : ce qui manque à « Ta semaine » se dit dessous (P5).
+  const [tente, setTente] = useState(false);
 
   useEffect(() => {
     fetch(`${API_URL}/v1/config`)
@@ -227,6 +231,22 @@ export default function Questionnaire({
   const plancher = config ? plancherSeances(c, config) : null;
   const freqMin = plancher?.min ?? 3;
   const freqMax = plancher?.max ?? 7;
+  // Les séances par semaine en boutons (P5, décision coach du 07/11/2026, « A ») : de son minimum au plus petit de 7,
+  // des jours cochés et de son plafond.
+  const valeursFreq = Array.from({ length: Math.max(0, Math.min(7, joursCoches.length, freqMax) - freqMin + 1) }, (_, i) => String(freqMin + i));
+  // Ce qui manque à « Ta semaine » : ses boutons n'ont pas de required natif, « Vérifier mes réponses » le dit, sur le
+  // modèle du récapitulatif. Pas dans la version courte, où la section n'est pas posée.
+  const manqueSemaine = court ? [] : [
+    joursCoches.length < freqMin ? `coche au moins ${freqMin} jours` : null,
+    // BROUILLON (P5, 07/11/2026) : les deux suites de « Pour continuer, … ».
+    !c.freq_hebdo ? 'choisis ton nombre de séances par semaine' : null,
+    !c.jour_sl ? 'choisis le jour de ta sortie longue' : null,
+  ].filter(Boolean) as string[];
+  // Ouvert, il le reste : vidé pendant la frappe, le champ ne disparaît pas.
+  const dmoinsVisible = dmoinsOuvert || Boolean(c.dmoins_m);
+  useEffect(() => {
+    if (c.dmoins_m) setDmoinsOuvert(true);
+  }, [c.dmoins_m]);
   const reperes = config ? reperesChrono(c, config, coach) : null;
   // La course de référence, facultative (décision coach du 23/10/2026) : elle place dans une bande ; elle n'est pas gardée.
   const [reference, setReference] = useState<CourseReference>({ km: '', dplus: '', temps: '' });
@@ -276,9 +296,16 @@ export default function Questionnaire({
       // Plafond du niveau (second audit, D4) : passer en débutant avec 5 séances ou plus
       // vide le champ, comme les autres réponses devenues invalides.
       if (n.freq_hebdo && Number(n.freq_hebdo) > (config.freq_max_par_niveau?.[n.niveau] ?? 7)) n.freq_hebdo = '';
+      // Les séances en boutons (P5, 07/11/2026) : un nombre que ses boutons ne proposent plus (moins de jours cochés, un
+      // minimum relevé par la course) se vide aussi. Pas dans la version courte, où « Ta semaine » n'est pas posée.
+      if (!court && n.freq_hebdo) {
+        const pl = plancherSeances(n, config);
+        const f = Number(n.freq_hebdo);
+        if (!(f >= pl.min && f <= Math.min(7, config.jours.filter((j) => n.jours_disponibles.includes(j)).length, pl.max))) n.freq_hebdo = '';
+      }
       return JSON.stringify(n) === JSON.stringify(p) ? p : n;
     });
-  }, [config, routeFmt, c.niveau, c.format, c.distance_km, c.jours_disponibles, c.jour_sl, c.duree_mois, c.temps_cible, c.date_course]);
+  }, [config, routeFmt, court, c.niveau, c.format, c.distance_km, c.dplus_m, c.jours_disponibles, c.jour_sl, c.duree_mois, c.temps_cible, c.date_course]);
 
   function basculerJour(j: string) {
     setC((p) => ({
@@ -291,7 +318,8 @@ export default function Questionnaire({
 
   async function versRecap(e: React.FormEvent) {
     e.preventDefault();
-    if (joursCoches.length === 0) return;
+    setTente(true);
+    if (joursCoches.length === 0 || manqueSemaine.length) return;
     setRefus('');
     setEnvoi(true);
     // Refus métier vérifiés par l'API avant le récapitulatif : l'athlète ne relit pas
@@ -526,12 +554,12 @@ export default function Questionnaire({
           <p role="alert" className="bg-white rounded-r-xl border-l-4 border-red-400 p-4 text-[0.875rem] text-indigo leading-relaxed">{refus}</p>
         )}
 
-        {/* J3 (audits du 05/11/2026, S3) : ce que tu achètes, juste avant le bouton (art. L221-14). BROUILLON. */}
+        {/* J3 (audits du 05/11/2026, S3) : ce que tu achètes, juste avant le bouton (art. L221-14). Validé par le coach le 07/11/2026. */}
         {!coach && (
           <section className="bg-white rounded-2xl border border-indigo/[0.08] p-5 sm:p-6 text-[0.875rem] text-indigo/80 leading-relaxed">
-            <p><span className="font-bold text-indigo">Ce que tu achètes :</span> une préparation construite et ajustée chaque semaine par
-              des règles automatiques, sans suivi par un coach. Tes séances arrivent dans Nolio : il te faut un compte Nolio
-              (gratuit, créé par l’invitation si tu n’en as pas).</p>
+            <p><span className="font-bold text-indigo">Ce que tu achètes :</span> une préparation construite sur tes réponses et ajustée
+              automatiquement chaque semaine à ce que tu as fait, sans suivi par un coach. Tes séances arrivent dans Nolio : il te
+              faut un compte Nolio, gratuit, créé par l’invitation si tu n’en as pas.</p>
           </section>
         )}
 
@@ -575,84 +603,22 @@ export default function Questionnaire({
     );
   }
 
+  // L'ORDRE DES SECTIONS (P2, décision coach du 07/11/2026, « A ») : la course d'abord, puis toi, ton niveau, ta formule,
+  // ton terrain, ta semaine et la santé. Le coach, la demande et la version courte suivent le même ordre, les sections
+  // absentes sautées : les numéros restent continus.
+  const ordre = ['course', !court && 'toi', 'niveau', !coach && 'formule', !court && !route && 'terrain', !court && 'semaine', !coach && 'avant']
+    .filter((s): s is string => Boolean(s));
+  const numero = (s: string) => ordre.indexOf(s) + 1;
+  // Les boutons des jours, des séances et du jour de la sortie longue (P5) : au moins 44 px de côté.
+  const boutonJourCls = (actif: boolean) => clsx('min-h-11 min-w-11 px-4 py-2.5 rounded-xl border text-sm font-semibold transition-colors',
+    actif ? 'bg-teal border-teal text-white' : 'bg-white border-indigo/20 text-indigo hover:border-indigo/50');
+
   return (
     <form onSubmit={versRecap} className="space-y-6">
-      {!court && <Section numero={1} titre="Toi">
-        <div className="grid sm:grid-cols-2 gap-6">
-          <div>
-            <label className={labelCls} htmlFor="nom">Nom / prénom</label>
-            <input id="nom" className={inputCls} required value={c.nom} onChange={(e) => maj('nom')(e.target.value)} autoComplete="name" />
-          </div>
-          {!coach && (
-            <div>
-              <label className={labelCls} htmlFor="email">E-mail</label>
-              <input id="email" type="email" className={inputCls} required value={c.email} onChange={(e) => maj('email')(e.target.value)} autoComplete="email" />
-              <p className={aideCls}>
-                C’est là que tu reçois ton accès à l’app, et c’est avec elle que tu rejoins Nolio, où arrivent tes séances.
-                Ce que nous gardons :{' '}
-                <a href="/confidentialite" target="_blank" rel="noopener" className="underline underline-offset-2">politique de confidentialité</a>.
-              </p>
-              <label className="flex gap-3 items-start mt-3 cursor-pointer">
-                <input type="checkbox" checked={autreNolio} onChange={(e) => setAutreNolio(e.target.checked)} className="mt-1 accent-teal" />
-                <span className="text-sm text-indigo/80">J’ai déjà un compte Nolio avec une autre adresse.</span>
-              </label>
-              {autreNolio && (
-                <div className="mt-2">
-                  <label className={labelCls} htmlFor="nolio_email">Adresse de ton compte Nolio</label>
-                  <input id="nolio_email" type="email" className={inputCls} value={nolioEmail}
-                    onChange={(e) => setNolioEmail(e.target.value)} autoComplete="off" />
-                </div>
-              )}
-              <label className="flex gap-3 items-start mt-3 cursor-pointer">
-                <input type="checkbox" checked={rappel} onChange={(e) => setRappel(e.target.checked)} className="mt-1 accent-teal" />
-                <span className="text-sm text-indigo/80">
-                  Envoie-moi un rappel si je ne termine pas mon questionnaire.{' '}
-                  <span className="text-indigo/60">Un seul e-mail, le lendemain. Tes réponses restent sur ton appareil.</span>
-                </span>
-              </label>
-            </div>
-          )}
-        </div>
-      </Section>}
-
-      <Section numero={court ? 1 : 2} titre={court ? (demande ? 'Ta charge du moment' : 'Sa charge du moment') : 'Ton niveau'}>
-        {!court && (
-          <>
-            <p className={aideCls}>{textes.niveau.aide}</p>
-            <div className="space-y-3">
-              {textes.niveau.options.map((o) => (
-                <Choix key={o.valeur} nom="niveau" valeur={o.valeur} courant={c.niveau} onChange={maj('niveau')}
-                  titre={o.titre} description={o.description} detail={o.formats} />
-              ))}
-            </div>
-            <p className="text-sm text-indigo/60 italic">{textes.niveau.note}</p>
-          </>
-        )}
-        <div>
-          <p className="font-bold text-indigo mb-2">{textes.charge.titre}</p>
-          <p className="text-sm text-indigo/60 leading-relaxed mb-4">{textes.charge.aide}</p>
-          <div className="grid sm:grid-cols-2 gap-6">
-            <div>
-              <label className={labelCls} htmlFor="volume">{textes.charge.volume}</label>
-              <input id="volume" className={inputCls} required placeholder="ex. 4h ou 4h30" value={c.volume_hebdo_actuel} onChange={(e) => maj('volume_hebdo_actuel')(e.target.value)} />
-            </div>
-            <div>
-              <label className={labelCls} htmlFor="sortie_longue">{textes.charge.sortieLongue}</label>
-              <input id="sortie_longue" className={inputCls} required placeholder="ex. 1h30 ou 90min" value={c.sortie_longue_actuelle} onChange={(e) => maj('sortie_longue_actuelle')(e.target.value)} />
-            </div>
-          </div>
-          {noteCharge && (
-            <p role="status" className="bg-sand rounded-r-xl border-l-4 border-teal px-4 py-3 mt-2 text-[0.8125rem] text-indigo leading-relaxed">{noteCharge}</p>
-          )}
-          {alerteSl && (
-            <p role="status" className="bg-sand rounded-r-xl border-l-4 border-teal px-4 py-3 mt-2 text-[0.8125rem] text-indigo leading-relaxed">{alerteSl}</p>
-          )}
-        </div>
-      </Section>
-
-      {/* La course d'abord, sa distance comprise (décision coach du 20/10/2026), puis la formule, qui n'offre que les
-          durées que cette course admet. Le coaching individualisé n'a pas de formule à choisir (19/10/2026). */}
-      <Section numero={court ? 2 : 3} titre={court && !demande ? 'Sa course' : 'Ta course'}>
+      {/* La course d'abord, sa distance comprise (décision coach du 20/10/2026 ; en tête depuis le 07/11/2026, P2), puis
+          la formule, qui n'offre que les durées que cette course admet. Le coaching individualisé n'a pas de formule à
+          choisir (19/10/2026). */}
+      <Section numero={numero('course')} titre={court && !demande ? 'Sa course' : 'Ta course'}>
         {(discipline === 'route' || (!discipline && coach && !demande)) && (
           <div role="group" aria-label={discipline === 'route' ? 'Distance' : 'Discipline'} className="inline-flex flex-wrap p-1 rounded-xl bg-sand-dark gap-1">
             {([...(discipline === 'route' ? [] : [[null, 'Trail']]), ...FORMATS_ROUTE.map((f) => [f.code, discipline === 'route' ? (f.code === 'R10' ? '10 km' : f.nom) : f.code === 'R10' ? 'Route · 10 km' : f.nom])] as [string | null, string][]).map(([code, nom]) => (
@@ -702,17 +668,31 @@ export default function Questionnaire({
           </div>
         </div>
         {!route && <>
-        <div className="grid grid-cols-2 gap-4 items-end">
-          <div>
-            <label className={labelCls} htmlFor="dplus">D+ (m)</label>
-            <input id="dplus" type="number" step="1" min="0" inputMode="numeric" className={inputCls} required value={c.dplus_m} onChange={(e) => maj('dplus_m')(e.target.value)} />
+        {/* Le D− replié sous le D+ (P6, décision coach du 07/11/2026, « A ») : la plupart des courses arrivent où elles
+            partent. Vide, il part vide, comme avant. */}
+        <div>
+          <div className="grid grid-cols-2 gap-4 items-end">
+            <div>
+              <label className={labelCls} htmlFor="dplus">D+ (m)</label>
+              <input id="dplus" type="number" step="1" min="0" inputMode="numeric" className={inputCls} required value={c.dplus_m} onChange={(e) => maj('dplus_m')(e.target.value)} />
+            </div>
+            {dmoinsVisible && (
+              <div>
+                <label className={labelCls} htmlFor="dmoins">D− (m)</label>
+                <input id="dmoins" type="number" step="1" min="0" inputMode="numeric" className={inputCls}
+                  value={c.dmoins_m} onChange={(e) => maj('dmoins_m')(e.target.value)} />
+              </div>
+            )}
           </div>
-          <div>
-            <label className={labelCls} htmlFor="dmoins">D− (m)</label>
-            <input id="dmoins" type="number" step="1" min="0" inputMode="numeric" className={inputCls} value={c.dmoins_m} onChange={(e) => maj('dmoins_m')(e.target.value)} />
-          </div>
+          {dmoinsVisible ? (
+            <p className="text-sm text-indigo/60 mt-2">Laissé vide, D− = D+.</p>
+          ) : (
+            <button type="button" onClick={() => { setDmoinsOuvert(true); requestAnimationFrame(() => document.getElementById('dmoins')?.focus()); }}
+              className="inline-flex items-center min-h-11 mt-1 text-sm font-semibold text-teal underline underline-offset-2">
+              Arrivée plus haute ou plus basse que le départ ?
+            </button>
+          )}
         </div>
-        <p className="text-sm text-indigo/60 -mt-3">D− facultatif : laissé vide, on suppose D− = D+.</p>
         <div>
           <label className={labelCls} htmlFor="gpx">Trace GPX de la course — facultatif</label>
           <input id="gpx" type="file" accept=".gpx" className="block text-sm text-indigo" onChange={(e) => choisirTrace(e.target.files?.[0] ?? null)} />
@@ -730,7 +710,22 @@ export default function Questionnaire({
           {!coach && !route && tempsDeTete(c) && (
             <p role="status" className="bg-sand rounded-r-xl border-l-4 border-[#E3A23B] px-4 py-3 mt-2 text-[0.8125rem] text-indigo leading-relaxed">{PHRASE_TEMPS_DE_TETE}</p>
           )}
-          {reperes && !route && <p className="text-sm text-teal mt-2 leading-relaxed">{reperes}</p>}
+          {/* Les repères en liste (P4, décision coach du 07/11/2026, « A »). */}
+          {reperes && !route && (
+            <div className="text-sm text-teal mt-2 leading-relaxed">
+              <p>Repères pour une course de {reperes.kmEffort} km-effort (km + D+/100), d’après ses finishers :</p>
+              <dl className="mt-1 tabular-nums">
+                {reperes.bandes.map((b) => (
+                  <div key={b.nom} className="flex flex-wrap gap-x-1.5">
+                    <dt className="font-semibold">{b.nom}<span aria-hidden="true"> ·</span></dt>
+                    <dd>{b.temps}</dd>
+                  </div>
+                ))}
+              </dl>
+              <p className="mt-1">Technique, chaude ou de nuit : vise la bande d’en dessous ; très roulante, celle d’au-dessus.</p>
+              {reperes.fin && <p className="mt-1">{reperes.fin}</p>}
+            </div>
+          )}
           {!route && (
             <details className="mt-3" open={Boolean(reference.km || reference.temps || refMin)}>
               <summary className="cursor-pointer inline-flex items-center min-h-11 text-sm font-semibold text-teal">
@@ -747,7 +742,7 @@ export default function Questionnaire({
               <p className={aideCls}>
                 {refMin
                   ? `Un ultra, ou une course visée en plus de 10 h, se prépare après une course plus courte déjà terminée : elle doit valoir au moins ${refMin} km-effort (km + D+/100), la moitié de celle-ci. Elle n’est pas gardée.`
-                  : 'Elle situe le coureur dans une bande, ramenée à la taille de cette course ; elle n’est pas gardée.'}
+                  : 'Elle te place dans une de ces bandes, ramenée à la taille de ta course ; elle n’est pas gardée.'}
               </p>
             </details>
           )}
@@ -764,7 +759,79 @@ export default function Questionnaire({
         </div>
       </Section>
 
-      {!coach && <Section numero={4} titre="Ta formule">
+      {!court && <Section numero={numero('toi')} titre="Toi">
+        <div className="grid sm:grid-cols-2 gap-6">
+          <div>
+            <label className={labelCls} htmlFor="nom">Nom / prénom</label>
+            <input id="nom" className={inputCls} required value={c.nom} onChange={(e) => maj('nom')(e.target.value)} autoComplete="name" />
+          </div>
+          {!coach && (
+            <div>
+              <label className={labelCls} htmlFor="email">E-mail</label>
+              <input id="email" type="email" className={inputCls} required value={c.email} onChange={(e) => maj('email')(e.target.value)} autoComplete="email" />
+              {/* P3-f (décision coach du 07/11/2026). */}
+              <p className={aideCls}>
+                Tu y reçois ton accès à l’app et ton invitation Nolio, où arrivent tes séances. Ce que nous gardons :{' '}
+                <a href="/confidentialite" target="_blank" rel="noopener" className="underline underline-offset-2">politique de confidentialité</a>.
+              </p>
+              <label className="flex gap-3 items-start mt-3 cursor-pointer">
+                <input type="checkbox" checked={autreNolio} onChange={(e) => setAutreNolio(e.target.checked)} className="mt-1 accent-teal" />
+                <span className="text-sm text-indigo/80">J’ai déjà un compte Nolio avec une autre adresse.</span>
+              </label>
+              {autreNolio && (
+                <div className="mt-2">
+                  <label className={labelCls} htmlFor="nolio_email">Adresse de ton compte Nolio</label>
+                  <input id="nolio_email" type="email" className={inputCls} value={nolioEmail}
+                    onChange={(e) => setNolioEmail(e.target.value)} autoComplete="off" />
+                </div>
+              )}
+              <label className="flex gap-3 items-start mt-3 cursor-pointer">
+                <input type="checkbox" checked={rappel} onChange={(e) => setRappel(e.target.checked)} className="mt-1 accent-teal" />
+                <span className="text-sm text-indigo/80">
+                  Envoie-moi un rappel si je ne termine pas mon questionnaire.{' '}
+                  <span className="text-indigo/60">Un seul e-mail, le lendemain. Tes réponses restent sur ton appareil.</span>
+                </span>
+              </label>
+            </div>
+          )}
+        </div>
+      </Section>}
+
+      <Section numero={numero('niveau')} titre={court ? (demande ? 'Ta charge du moment' : 'Sa charge du moment') : 'Ton niveau'}>
+        {!court && (
+          <>
+            <p className={aideCls}>{textes.niveau.aide}</p>
+            <div className="space-y-3">
+              {textes.niveau.options.map((o) => (
+                <Choix key={o.valeur} nom="niveau" valeur={o.valeur} courant={c.niveau} onChange={maj('niveau')}
+                  titre={o.titre} description={o.description} detail={coach ? undefined : o.formats} />
+              ))}
+            </div>
+          </>
+        )}
+        <div>
+          <p className="font-bold text-indigo mb-2">{textes.charge.titre}</p>
+          <p className="text-sm text-indigo/60 leading-relaxed mb-4">{textes.charge.aide}</p>
+          <div className="grid sm:grid-cols-2 gap-6">
+            <div>
+              <label className={labelCls} htmlFor="volume">{textes.charge.volume}</label>
+              <input id="volume" className={inputCls} required placeholder="ex. 4h ou 4h30" value={c.volume_hebdo_actuel} onChange={(e) => maj('volume_hebdo_actuel')(e.target.value)} />
+            </div>
+            <div>
+              <label className={labelCls} htmlFor="sortie_longue">{textes.charge.sortieLongue}</label>
+              <input id="sortie_longue" className={inputCls} required placeholder="ex. 1h30 ou 90min" value={c.sortie_longue_actuelle} onChange={(e) => maj('sortie_longue_actuelle')(e.target.value)} />
+            </div>
+          </div>
+          {noteCharge && (
+            <p role="status" className="bg-sand rounded-r-xl border-l-4 border-teal px-4 py-3 mt-2 text-[0.8125rem] text-indigo leading-relaxed">{noteCharge}</p>
+          )}
+          {alerteSl && (
+            <p role="status" className="bg-sand rounded-r-xl border-l-4 border-teal px-4 py-3 mt-2 text-[0.8125rem] text-indigo leading-relaxed">{alerteSl}</p>
+          )}
+        </div>
+      </Section>
+
+      {!coach && <Section numero={numero('formule')} titre="Ta formule">
         <fieldset>
           <legend className={labelCls}>Durée du plan</legend>
           {durees.length ? (
@@ -796,7 +863,7 @@ export default function Questionnaire({
         </fieldset>
       </Section>}
 
-      {!court && !route && <Section numero={coach ? 4 : 5} titre="Ton terrain d’entraînement">
+      {!court && !route && <Section numero={numero('terrain')} titre="Ton terrain d’entraînement">
         <div className="grid sm:grid-cols-2 gap-3">
           {textes.terrain.options.map((o) => (
             <Choix key={o.valeur} nom="terrain" valeur={o.valeur} courant={c.terrain} onChange={maj('terrain')}
@@ -820,41 +887,55 @@ export default function Questionnaire({
         )}
       </Section>}
 
-      {!court && <Section numero={coach ? (route ? 4 : 5) : 6} titre="Ta disponibilité">
+      {/* « Ta semaine » (« Ta disponibilité » jusqu'au 07/11/2026, P2) ; les séances et le jour de la sortie longue en
+          boutons (P5), comme les jours. */}
+      {!court && <Section numero={numero('semaine')} titre="Ta semaine">
         <p className={aideCls}>{textes.disponibilite.aide}</p>
-        <div>
-          <span className={labelCls}>Jours disponibles pour t’entraîner</span>
+        <div role="group" aria-labelledby="jours-titre">
+          <span id="jours-titre" className={labelCls}>Jours disponibles pour t’entraîner</span>
           <div className="flex flex-wrap gap-2">
             {config.jours.map((j) => (
               <button type="button" key={j} onClick={() => basculerJour(j)} aria-pressed={c.jours_disponibles.includes(j)}
-                className={clsx('px-4 py-2.5 rounded-xl border text-sm font-semibold transition-colors',
-                  c.jours_disponibles.includes(j) ? 'bg-teal border-teal text-white' : 'bg-white border-indigo/20 text-indigo hover:border-indigo/50')}>
+                className={boutonJourCls(c.jours_disponibles.includes(j))}>
                 {NOMS_JOURS[j]}
               </button>
             ))}
           </div>
-          {joursCoches.length === 0 && <p className="text-sm text-indigo/60 mt-2">Coche au moins un jour.</p>}
         </div>
-        <div className="grid sm:grid-cols-2 gap-6">
-          <div>
-            <label className={labelCls} htmlFor="jour_sl">Jour de la sortie longue</label>
-            <select id="jour_sl" className={inputCls} required value={c.jour_sl} onChange={(e) => maj('jour_sl')(e.target.value)} disabled={joursCoches.length === 0}>
-              <option value="">— choisir —</option>
-              {joursCoches.map((j) => <option key={j} value={j}>{NOMS_JOURS[j]}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className={labelCls} htmlFor="freq">Séances par semaine</label>
-            <input id="freq" type="number" min={freqMin} max={Math.max(freqMin, Math.min(7, joursCoches.length, freqMax))} className={inputCls} required
-              value={c.freq_hebdo} onChange={(e) => maj('freq_hebdo')(e.target.value)} />
-            {plancher?.note && <p className={aideCls}>{plancher.note}</p>}
-          </div>
+        <div role="group" aria-labelledby="freq-titre">
+          <span id="freq-titre" className={labelCls}>Séances par semaine</span>
+          {valeursFreq.length ? (
+            <div className="flex flex-wrap gap-2">
+              {valeursFreq.map((v) => (
+                <button type="button" key={v} onClick={() => maj('freq_hebdo')(v)} aria-pressed={c.freq_hebdo === v}
+                  className={boutonJourCls(c.freq_hebdo === v)}>
+                  {v}
+                </button>
+              ))}
+            </div>
+          ) : joursCoches.length < freqMin && (
+            <p className="text-sm text-indigo/60">Coche au moins {freqMin} jours.</p>
+          )}
+          {plancher?.note && <p className={aideCls}>{plancher.note}</p>}
         </div>
+        {joursCoches.length > 0 && (
+          <div role="group" aria-labelledby="jour-sl-titre">
+            <span id="jour-sl-titre" className={labelCls}>Jour de la sortie longue</span>
+            <div className="flex flex-wrap gap-2">
+              {joursCoches.map((j) => (
+                <button type="button" key={j} onClick={() => maj('jour_sl')(j)} aria-pressed={c.jour_sl === j}
+                  className={boutonJourCls(c.jour_sl === j)}>
+                  {NOMS_JOURS[j]}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </Section>}
 
       {/* La blessure en cours (décision coach du 19/10/2026) : gardée pour les plans achetés (le garde-fou d'O1 et des
           CGV), retirée du coaching individualisé, où le coach connaît son athlète et où rien n'était transmis. */}
-      {!coach && <Section numero={7} titre="Avant de commencer">
+      {!coach && <Section numero={numero('avant')} titre="Avant de commencer">
         {(['blessure', 'coeur'] as const).map((q) => (
           <div key={q}>
             <p className="font-bold text-indigo mb-3">{textes.sante[q]}</p>
@@ -894,10 +975,16 @@ export default function Questionnaire({
       {refus && (
         <p role="alert" className="bg-white rounded-r-xl border-l-4 border-red-400 p-4 text-[0.875rem] text-indigo leading-relaxed">{refus}</p>
       )}
-      <div className="flex justify-end">
-        <button type="submit" className={boutonCls} disabled={joursCoches.length === 0 || envoi || (!coach && c.blessure === 'oui') || tropProche}>
+      <div className="flex flex-col items-end gap-2">
+        {/* Le bouton reste actif quand « Ta semaine » est incomplète (P5) : au clic, ce qui manque se dit dessous, sur le
+            modèle du récapitulatif ; les autres champs gardent leur contrôle natif. */}
+        <button type="submit" className={boutonCls} onClick={() => setTente(true)}
+          disabled={(court && joursCoches.length === 0) || envoi || (!coach && c.blessure === 'oui') || tropProche}>
           {envoi ? 'Vérification…' : 'Vérifier mes réponses →'}
         </button>
+        {tente && manqueSemaine.length > 0 && (
+          <p role="alert" className="text-[0.8125rem] text-[#4A4866] text-right">Pour continuer, {manqueSemaine.join(', puis ')}.</p>
+        )}
       </div>
     </form>
   );
