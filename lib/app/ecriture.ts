@@ -2077,6 +2077,16 @@ export async function planActifDansLEquipe(compteId: string, planId: string): Pr
   return (data?.[0]?.nolio_athlete_id as string | number | undefined) || null;
 }
 
+// UN ACHETEUR DÉJÀ DANS L'ÉQUIPE PAR SA FICHE DE COACHÉ (inviterAcheteur, la même requête) : « coaching », son plan
+// attend, rien n'en part dans Nolio ; « plan », une fiche passée en mode plan avant le 04/11/2026, son plan démarre ; null
+// sans fiche reliée à Nolio. L'e-mail de bienvenue ne lui annonce pas d'invitation (décision coach du 08/11/2026).
+export async function ficheDansLEquipe(compteId: string): Promise<'coaching' | 'plan' | null> {
+  const { data } = await clientService().from('athletes_coaches').select('mode').eq('compte_id', compteId)
+    .not('nolio_athlete_id', 'is', null).limit(1);
+  const fiche = data?.[0];
+  return fiche ? (fiche.mode !== 'plan' ? 'coaching' : 'plan') : null;
+}
+
 // L'invitation de l'acheteur dans l'équipe, au paiement (P1) : l'adresse Nolio qu'il a donnée, sinon celle de l'achat.
 // Un compte existant reçoit l'invitation de Nolio ; une adresse inconnue reçoit un compte créé, déjà dans l'équipe :
 // son plan part tout de suite. Refusée ou Nolio indisponible : nouvel essai chaque jour, le coach prévenu une fois

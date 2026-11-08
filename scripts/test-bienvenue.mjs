@@ -48,11 +48,16 @@ test('D6 : un début lointain (34 jours) dit quoi faire d’ici là, et le jour 
     + '2026. D’ici là, continue ce que tu cours en ce moment : ton app te demandera le 7 décembre si ça a changé.'), texte);
 });
 
-test('D6 : un début proche, ou entre 15 et 28 jours (l’app ne demande rien) : pas de phrase', () => {
-  for (const debut of ['2026-11-16', '2026-11-30', '2026-12-07']) {
+test('D6 : un début proche, pas de phrase ; entre 15 et 28 jours (l’app ne demande rien), sa première moitié seule', () => {
+  const { texte: proche } = contenuBienvenue(plan('2026-11-16', 'Ta préparation commence bientôt.'), LIEN,
+    { adresse: 'nadia@example.invalid' }, '2026-11-10');
+  assert.ok(!proche.includes('D’ici là'), proche);
+  // Décision coach du 08/11/2026 (texte validé le même jour) : « D'ici là, continue ce que tu cours en ce moment. »
+  for (const debut of ['2026-11-30', '2026-12-07']) {
     const { texte } = contenuBienvenue(plan(debut, 'Ta préparation commence bientôt.'), LIEN,
       { adresse: 'nadia@example.invalid' }, '2026-11-10');
-    assert.ok(!texte.includes('D’ici là'), `${debut} : ${texte}`);
+    assert.ok(texte.includes('Ta préparation commence bientôt. D’ici là, continue ce que tu cours en ce moment.\n'), `${debut} : ${texte}`);
+    assert.ok(!texte.includes('ton app te demandera'), `${debut} : ${texte}`);
   }
   // Un plan d'avant l'écriture semaine par semaine (sans Nolio) : rien non plus.
   const { texte } = contenuBienvenue(plan('2026-12-14', 'Ta préparation commence le 14 décembre 2026.'), LIEN, null, '2026-11-10');
@@ -66,4 +71,36 @@ test('D4 : déjà dans l’équipe, pas d’invitation annoncée ; sinon, l’in
   assert.ok(!deja.includes('Nolio t’écrira') && !deja.includes('invitation à rejoindre'), deja);
   const nouveau = contenuBienvenue(p, LIEN, { adresse: 'antoine@example.invalid' }, '2027-02-09').texte;
   assert.ok(nouveau.includes('Nolio t’écrira à antoine@example.invalid') && !nouveau.includes(DEJA), nouveau);
+});
+
+const COACHE = 'Tes séances arrivent dans ton calendrier Nolio ; ta première semaine s’y installe la veille de son début.';
+
+test('déjà dans l’équipe sans second plan (un coaché qui achète un plan) : plus aucune mention d’invitation', () => {
+  for (const coache of ['coaching', 'plan']) {
+    for (const [debut, jour] of [['2027-02-15', '2027-02-09'], ['2026-12-14', '2026-11-10']]) {
+      const { texte, html } = contenuBienvenue(plan(debut, 'Ta préparation commence bientôt.', 'Camille Test'), LIEN,
+        { adresse: 'camille@example.invalid', coache }, jour);
+      assert.ok(texte.includes(COACHE), texte);
+      assert.ok(!/invit/i.test(texte) && !/invit/i.test(html), `${coache} ${debut} : ${texte}`);
+    }
+  }
+  // Un coaché en mode plan, un début lointain : l'app lui demande sa charge, le jour dit par sa date (la tournure de D6).
+  const { texte } = contenuBienvenue(plan('2026-12-14', 'Ta préparation commence le 14 décembre 2026.', 'Camille Test'), LIEN,
+    { adresse: 'camille@example.invalid', coache: 'plan' }, '2026-11-10');
+  assert.ok(texte.includes('D’ici là, continue ce que tu cours en ce moment : ton app te demandera le 7 décembre si ça a changé.'), texte);
+  assert.ok(texte.includes(' Le 7 décembre, ton app CTS te demandera aussi si ce que tu cours a changé depuis ton achat'), texte);
+  // En coaching, son plan attend : l'app ne lui demande rien, l'e-mail ne le promet pas.
+  const enCoaching = contenuBienvenue(plan('2026-12-14', 'Ta préparation commence le 14 décembre 2026.', 'Camille Test'), LIEN,
+    { adresse: 'camille@example.invalid', coache: 'coaching' }, '2026-11-10').texte;
+  assert.ok(enCoaching.includes('D’ici là, continue ce que tu cours en ce moment.\n') && !enCoaching.includes('te demandera'), enCoaching);
+});
+
+test('le second plan : « comme pour ta préparation précédente », et rien de promis que l’app ne demandera pas', () => {
+  const { texte } = contenuBienvenue(plan('2026-12-14', 'Ta préparation commence le 14 décembre 2026.', 'Antoine Test'), LIEN,
+    { adresse: 'antoine@example.invalid', dejaDansLEquipe: true }, '2026-11-10');
+  assert.ok(texte.includes(DEJA) && !/invit/i.test(texte) && !texte.includes('te demandera'), texte);
+  // Un acheteur à inviter garde « Le jour de ton invitation… ».
+  const nouveau = contenuBienvenue(plan('2026-12-14', 'Ta préparation commence le 14 décembre 2026.'), LIEN,
+    { adresse: 'nadia@example.invalid' }, '2026-11-10').texte;
+  assert.ok(nouveau.includes(' Le jour de ton invitation, ton app CTS te demandera aussi'), nouveau);
 });
