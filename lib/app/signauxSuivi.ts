@@ -69,7 +69,8 @@ export function signaux(prevues: Prevue[], realisees: Realisee[], hooper: Valeur
     if (moyenne !== null && derniere.value >= moyenne + s.hooper_ecart)
       liste.push({
         genre: 'hooper', jour: derniere.date_start, seance: 'Hooper',
-        detail: `indice ${derniere.value} pour ${Math.round(moyenne * 10) / 10} en moyenne sur ${s.hooper_semaines} semaines`,
+        // La moyenne à la française, « 8,8 » (défaut relevé sur la maquette du 08/11/2026).
+        detail: `indice ${derniere.value} pour ${(Math.round(moyenne * 10) / 10).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} en moyenne sur ${s.hooper_semaines} semaines`,
       });
   }
   liste.sort((a, b) => a.jour.localeCompare(b.jour));

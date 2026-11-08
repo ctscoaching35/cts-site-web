@@ -25,6 +25,14 @@ const blocsEgaux = (d: Dose) => {
 export const dose = (d: Dose) => (!d.reps || d.reps <= 1 ? `${Math.round(d.minutes ?? 0)} min`
   : blocsEgaux(d) ? `${d.reps} × ${d.bloc_min} min` : `${Math.round(d.minutes ?? 0)} min en ${d.reps} répétitions`);
 
+// Les noms des séances écrites, par leur identifiant (« S13-mardi » -> « Seuil 1 côte 5-15 % · 30 min — 6 × 5 min »),
+// tirés des semaines écrites d'un objectif (semaines_ecrites.donnees) : pour enClair.
+export function nomsDesSeances(semaines: ({ jours?: { id?: string; seance?: string }[] } | null | undefined)[]): (id: string) => string | undefined {
+  const noms = new Map<string, string>();
+  for (const s of semaines) for (const j of s?.jours ?? []) if (j.id && j.seance) noms.set(j.id, j.seance);
+  return (id) => noms.get(id);
+}
+
 // Les réponses du questionnaire du samedi, en clair (décision coach du 01/11/2026) : Nolio affiche les cases du choix multiple
 // toujours vides, même cochées ; le site les lit par leur rang et les montre ici. du : le jour de la réponse ; ancienne :
 // pas de réponse cette semaine, ce sont les jours de la dernière (S11, décision coach du 05/11/2026).
@@ -52,8 +60,10 @@ const jourDeLaSeance = (id: unknown) => {
   const j = String(id ?? '').split('-')[1]?.toLowerCase() ?? '';
   return JOURS[j.slice(0, 3)] ?? (j || 'la semaine');
 };
-// realise : la semaine écoulée (moteur, POST /v1/semaine), pour dire la règle des 60 % en charge tenue (Q17).
-export function enClair(e: Entree, seances?: string[], realise?: Pick<Realise, 'charge_prevue' | 'charge_tenue'> | null): string[] {
+// realise : la semaine écoulée (moteur, POST /v1/semaine), pour dire la règle des 60 % en charge tenue (Q17). nomDe : le
+// nom d'une séance écrite par son identifiant (« S13-mardi »), lu dans les semaines écrites de l'objectif.
+export function enClair(e: Entree, seances?: string[], realise?: Pick<Realise, 'charge_prevue' | 'charge_tenue'> | null,
+  nomDe?: (id: string) => string | undefined): string[] {
   const effet = typeof e.effet === 'string' ? e.effet : null;
   switch (e.regle) {
     // Q17 (décision coach du 05/11/2026) : la ligne dit la charge TENUE, la mesure du site (chaque séance comptée au plus
@@ -63,7 +73,14 @@ export function enClair(e: Entree, seances?: string[], realise?: Pick<Realise, '
         : realise?.charge_prevue ? Math.round((100 * realise.charge_tenue) / realise.charge_prevue) : null;
       return [`Moins de 60 % de la semaine faite (${tenue !== null ? `charge tenue : ${tenue} % de la prévue` : `${e.charge_faite_pct} % de la charge faite`}) : rien ne se rattrape, les séances clés refont la même marche.`];
     }
-    case 'R2': return [`Séance ${String(e.seance ?? '')} ${[e.trop_dur && 'plus dure que prévu', e.ecourtee && 'écourtée'].filter(Boolean).join(' et ')} : sa marche est refaite, sous une autre forme.`];
+    // Le nom de la séance et son jour, jamais son identifiant brut (« Séance S13-mardi », défaut relevé sur la maquette du
+    // 08/11/2026) : « Séance Seuil 1 côte 5-15 % de mardi » ; sans son nom, « Séance de mardi ». Une séance allégée en cours
+    // de semaine (A8) n'a pas tenu sa marche non plus.
+    case 'R2': {
+      const nom = nomDe?.(String(e.seance ?? ''))?.split(' — ')[0].split(' · ')[0].trim();
+      const quoi = [e.trop_dur && 'plus dure que prévu', e.ecourtee && 'écourtée'].filter(Boolean).join(' et ') || (e.allegee ? 'allégée' : '');
+      return [`Séance ${nom ? `${nom} ` : ''}de ${jourDeLaSeance(e.seance)}${quoi ? ` ${quoi}` : ''} : sa marche est refaite, sous une autre forme.`];
+    }
     case 'R3': return [`Fatigue : ${effet ?? 'semaine allégée'}${Array.isArray(e.signaux) && e.signaux.length ? ` (${(e.signaux as string[]).join(' ; ')})` : ''}.`];
     case 'R4': return [`Arrêt${typeof e.jours === 'number' ? ` de ${e.jours} jours` : ''} : ${effet ?? ''}.`];
     // C3 et C5 (moteur 8.445, décisions coach du 04/11/2026).
