@@ -38,6 +38,7 @@ import { lireConfirmation, rappelerLesConfirmations } from './confirmation';
 import { CONTINUITE_ACTIVE, lireLesRetouches, seancesLues, type SeanceLue } from './continuite';
 import { relierAuxPrevues } from './relier';
 import { semaineAReprendre, sortieApresArret } from './reprises';
+import { plusLonguesParSemaine } from './charge';
 import { correctionsAEnvoyer, CORRECTIONS_ACTIVES, marquerAppliquees } from './corrections';
 import { derniereActivite, garderLesSignaux } from './signauxGardes';
 import { demonstrationCoachOuverte, moteurDemonstration } from './demonstrationCoach';
@@ -508,6 +509,30 @@ async function chargesAvant(planId: string, lundi: string | null | undefined): P
   return lundis.map((l) => duMoteur.get(l) ?? (deNolio.get(l)?.rpe_complet ? deNolio.get(l)!.charge_faite : null));
 }
 
+// LA SORTIE LONGUE D'UNE SAISON DE FOND PART DE CE QU'IL A COURU (moteur 8.460, décision « B » du coach du 08/11/2026 au
+// soir) : la plus longue sortie courue de chacune des 4 semaines d'avant celle qui s'écrit, la plus ancienne d'abord, lue
+// dans Nolio (course, trail et tapis, sans les jours de course ; la durée seulement, comme lireRetours sans l'accord de
+// lecture) ; le moteur la prend pour les semaines que son état n'a pas, celles d'avant la saison (la fin de sa
+// préparation, sa récupération). Avant, la saison partait de 60 % de la plus longue de sa dernière préparation : 1h15
+// pour une préparation dont la plus longue faisait 2 h. Seulement les 4 premières semaines d'une saison (ensuite l'état a
+// tout) ; null hors d'une saison, ou si Nolio ne répond pas (le moteur garde alors les 60 %).
+async function plusLonguesAvant(o: Objectif, lundi: string | null | undefined): Promise<number[] | null> {
+  const debutSaison = (o.parametres as { fond?: { debut?: string } }).fond?.debut;
+  if (!debutSaison || !lundi || !o.nolioAthlete || joursEntre(String(debutSaison).slice(0, 10), lundi) >= 28) return null;
+  const debut = ajouterJours(lundi, -28);
+  const veille = ajouterJours(lundi, -1);
+  const qui = await requeteAthlete(o);
+  const competitions = (await listeNolio<{ id: string; date_start: string }>(
+    `planned/competitions/?date_from=${debut}&date_to=${veille}&fields=id,date_start${qui}`)).map((c) => c.date_start.slice(0, 10));
+  type Reel = { id: string; date_start: string; sport?: string | null; duration?: { value?: number } | null;
+    distance?: { value?: number; unit?: string } | number | null };
+  const reels = (await listeNolio<Reel>(`real/trainings/?date_from=${debut}&date_to=${veille}&fields=id,date_start,duration,distance,sport${qui}`))
+    .map(sansVitesseImpossible);
+  const seances = reels.filter((r) => SPORTS_COURSE.includes(String(r.sport)) && r.duration?.value)
+    .map((r) => ({ date: r.date_start.slice(0, 10), min: (r.duration as { value: number }).value / 60 }));
+  return plusLonguesParSemaine(debut, seances, competitions);
+}
+
 // La semaine écrite par le moteur, rien d'envoyé ni de gardé.
 async function semaineDuMoteur(o: Objectif, numero: string, retours: Retours | null, options: {
   sansAjustement?: boolean; reprise?: boolean;
@@ -524,6 +549,7 @@ async function semaineDuMoteur(o: Objectif, numero: string, retours: Retours | n
     sans_ajustement: Boolean(options.sansAjustement),
     valeurs: valeursConnues(o, lundi, faits), reprise: Boolean(options.reprise),
     charges_avant: await chargesAvant(o.planId, lundi).catch(() => null),
+    sl_avant: await plusLonguesAvant(o, lundi).catch(() => null),
   });
 }
 

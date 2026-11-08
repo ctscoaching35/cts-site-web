@@ -23,7 +23,7 @@ registerHooks({
     }
   },
 });
-const { fenetreDeCharge, semainesDeCharge, volumeDuMoment } = await import('../lib/app/charge.ts');
+const { fenetreDeCharge, plusLonguesParSemaine, semainesDeCharge, volumeDuMoment } = await import('../lib/app/charge.ts');
 
 test('les 4 dernières semaines complètes, du lundi au dimanche, la fin au lundi de la semaine en cours', () => {
   assert.deepEqual(fenetreDeCharge('2026-11-07'), { debut: '2026-10-05', fin: '2026-11-02' }); // un samedi
@@ -58,4 +58,21 @@ test('le volume du moment : sa dernière semaine, bornée par la moyenne et la m
   const pic = volumeDuMoment([100, 100, 100, 400]);
   assert.equal(pic.pourquoi, 'plafond');
   assert.ok(Math.abs(pic.retenu - 175 * 1.3) < 1e-9);
+});
+
+// La saison de fond part de ce qu'il a couru (moteur 8.460, décision « B » du coach du 08/11/2026 au soir) : la plus
+// longue sortie de chacune des 4 semaines d'avant, la plus ancienne d'abord, sans les jours de course.
+test('la plus longue sortie de chaque semaine : fin de préparation, course, récupération (sans le jour de course)', () => {
+  const lundi = '2026-11-16'; // la première semaine de sa saison de fond
+  const debut = '2026-10-19';
+  const course = '2026-11-01';
+  const seances = [
+    { date: '2026-10-18', min: 200 }, // la veille de la fenêtre
+    { date: '2026-10-21', min: 50 }, { date: '2026-10-25', min: 120.4 }, // l'affûtage : sa dernière sortie longue, 2 h
+    { date: '2026-10-28', min: 35 }, { date: course, min: 330 }, // la semaine de la course : la course ne compte pas
+    { date: '2026-11-05', min: 40 }, { date: '2026-11-08', min: 45 }, // la récupération
+    { date: lundi, min: 75 }, // la semaine qui s'écrit : hors de la fenêtre
+  ];
+  assert.deepEqual(plusLonguesParSemaine(debut, seances, [course]), [120, 35, 45, 0]);
+  assert.deepEqual(plusLonguesParSemaine(debut, [], []), [0, 0, 0, 0], 'rien couru : 0 chaque semaine');
 });
