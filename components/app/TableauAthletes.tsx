@@ -146,7 +146,6 @@ function Ligne({ e, jour }: { e: EtatAthlete; jour: string }) {
   const pastille = 'inline-block text-[0.66rem] font-bold px-2 py-0.5 rounded-full whitespace-nowrap';
   // Ce qui lui manque (« app à inviter » reste sur sa page, décision coach du 04/11/2026).
   const manque = [!a.nolio && 'Nolio à associer', a.nolio && !a.accord && 'sans accord'].filter(Boolean) as string[];
-  const s = a.semaine;
   return (
     <div className={clsx('relative grid gap-x-3.5 items-start min-h-16 py-3 text-[0.84rem] border-b last:border-b-0 border-indigo/[0.06] hover:bg-sand/50', COLONNES)}>
       <span className="min-w-0 flex gap-2.5">

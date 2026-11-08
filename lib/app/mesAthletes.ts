@@ -154,7 +154,9 @@ export async function espaceDuCoach(coachId: string, membres: Set<string> | null
         // La maquette validée par le coach le 08/11/2026 : sa ligne dans « Mes athlètes », et dans « Urgent ».
         detail: 'Reprises ce soir à 20 h et 22 h ; sinon « Réessayer »', sous: 'Ce soir, elle se refait aux reprises de 20 h et 22 h.',
         texte: `sa semaine du ${jourMois(dimanche.lundi)} n’est pas partie dans Nolio.` })) : [];
-    const points: Point[] = [...vue.aRegarder.filter((r) => r.athlete === a.nom && r.niveau === 'bloque'), ...pasParties,
+    // Le dimanche après le passage, « Semaine pas partie » parle de la semaine qui arrive : celle qui finit ce soir ne se
+    // rattrape plus (« Réessayer » l'écrirait à partir d'aujourd'hui).
+    const points: Point[] = [...vue.aRegarder.filter((r) => r.athlete === a.nom && r.niveau === 'bloque' && !(ceSoir && r.genre === 'semaine')), ...pasParties,
       ...vue.aRegarder.filter((r) => r.athlete === a.nom && r.niveau === 'sante'), ...sante,
       ...vue.aRegarder.filter((r) => r.athlete === a.nom && r.niveau === 'arrive')];
     const decisions = moteur.filter((l) => l.athlete === a.nom).sort((x, y) => String(y.lundi ?? '').localeCompare(String(x.lundi ?? '')));
