@@ -37,6 +37,7 @@ import { chargeChangee, chargeDe, jourAlerteNolio, jourDInvitation, JOURS_RELANC
 import { lireConfirmation, rappelerLesConfirmations } from './confirmation';
 import { CONTINUITE_ACTIVE, lireLesRetouches, seancesLues, type SeanceLue } from './continuite';
 import { relierAuxPrevues } from './relier';
+import { derniereCourse, JOURS_DERNIERE_COURSE, rienDeLu } from './derniereCourse';
 import { semaineAReprendre, sortieApresArret } from './reprises';
 import { correctionsAEnvoyer, CORRECTIONS_ACTIVES, marquerAppliquees } from './corrections';
 import { derniereActivite, garderLesSignaux } from './signauxGardes';
@@ -73,6 +74,9 @@ export type Retours = {
   questionnaire_du?: string;
   // La continuité (audit du 30/10/2026) : les séances faites des 4 dernières semaines, classées par leur structure.
   lues?: SeanceLue[];
+  // La dernière course lue dans Nolio (course, trail, tapis ; moteur 8.460, lib/app/derniereCourse.ts) : l'arrêt (R4) se
+  // lit même quand elle précède le plan ou sort de la fenêtre lue ; absente sans aucune course lue.
+  derniere_course?: string;
 };
 // « Nolio fait foi » (décisions coach du 20/10/2026) : la semaine telle qu'elle est dans Nolio, que le moteur juge
 // (cts_ajustements.semaine_reelle) : chaque séance qu'il a écrite et qui y est encore, avec sa durée et son RPE (une
@@ -124,7 +128,8 @@ export type Revue = {
 export function revueDe(sortie: Pick<SortieMoteur, 'pourquoi' | 'realise'>, retours: Retours | null, quoi: string, premiere = false): Revue {
   return {
     quoi, pourquoi: sortie.pourquoi ?? null, realise: sortie.realise ?? null,
-    lu: retours === null ? { sansRetours: true } : {
+    // Une première semaine qui ne porte que la dernière course (8.460) : « rien n'est lu », comme sans retours.
+    lu: retours === null || rienDeLu(retours) ? { sansRetours: true } : {
       ...(retours.questionnaire ? { questionnaire: retours.questionnaire } : {}),
       ...(retours.questionnaire_du ? { questionnaire_du: retours.questionnaire_du } : {}),
       ...(retours.lues ? { lues: retours.lues } : {}),
@@ -376,7 +381,19 @@ export async function lireRetours(o: Objectif, du: string, au: string, garder?: 
     console.error(`Séances lues de ${o.planId} :`, e instanceof Error ? e.message : e);
     return undefined;
   }) : undefined;
-  return { seances, hooper, nolio: { prevues, ajoutees }, ...reponse, ...(lues ? { lues } : {}) };
+  // La dernière course lue (8.460), jours de course compris (une course est une course) : le moteur la garde dans son état.
+  const derniere = derniereCourse(reels, SPORTS_COURSE, au);
+  return { seances, hooper, nolio: { prevues, ajoutees }, ...reponse, ...(lues ? { lues } : {}),
+    ...(derniere ? { derniere_course: derniere } : {}) };
+}
+
+// La dernière course de l'athlète dans Nolio, sur les 90 jours qui finissent à `au` (lib/app/derniereCourse.ts) : la date
+// seulement, lue sans débrief (comme les séances et leur durée sans accord de lecture) ; null sans aucune course.
+async function derniereCourseLue(o: Objectif, au: string): Promise<string | null> {
+  const qui = await requeteAthlete(o);
+  const reels = await listeNolio<{ id: string; date_start: string; sport?: string | null }>(
+    `real/trainings/?date_from=${ajouterJours(au, -JOURS_DERNIERE_COURSE)}&date_to=${au}&fields=id,date_start,sport${qui}`);
+  return derniereCourse(reels, SPORTS_COURSE, au);
 }
 
 // Le questionnaire du samedi, lu dans Nolio. Les réponses envoyées seulement (is_confirmed) : Nolio liste aussi les
@@ -385,8 +402,14 @@ export async function lireRetours(o: Objectif, du: string, au: string, garder?: 
 // DERNIÈRE réponse, plus ceux de l'achat : les 8 dernières semaines sont lues en une fois (questionnaireDeLaSemaine).
 async function lireLeQuestionnaire(o: Objectif, au: string, qui?: string): Promise<Pick<Retours, 'questionnaire' | 'questionnaire_du'>> {
   const athlete = qui ?? await requeteAthlete(o);
+  // Une lecture qui échoue se dit dans les journaux (08/11/2026 : « Pas de réponse au questionnaire du samedi » d'un
+  // coaché dont la réponse du samedi se voyait dans Nolio ; un échec de Nolio ne laissait aucune trace, rien ne le
+  // distinguait d'une absence de réponse). La semaine s'écrit toujours, sur ses jours habituels.
   const resultats = (await listeNolio<{ id: string; name?: string; date_start: string; is_confirmed?: boolean; items: { question: string; value: unknown }[] }>(
-    `real/quiz_results/?date_from=${ajouterJours(au, -JOURS_DERNIERE_REPONSE)}&date_to=${au}${athlete}`).catch(() => [])).filter((r) => r.is_confirmed !== false);
+    `real/quiz_results/?date_from=${ajouterJours(au, -JOURS_DERNIERE_REPONSE)}&date_to=${au}${athlete}`).catch((e) => {
+    console.error(`Questionnaire du samedi de ${o.planId} non lu :`, e instanceof Error ? e.message : e);
+    return [];
+  })).filter((r) => r.is_confirmed !== false);
   const reponse = questionnaireDeLaSemaine(resultats, au, String(o.parametres.declaree_le ?? ''));
   return reponse ? { questionnaire: reponse.questionnaire, questionnaire_du: reponse.du } : {};
 }
@@ -398,9 +421,18 @@ async function lireLeQuestionnaire(o: Objectif, au: string, qui?: string): Promi
 // vérifié sur 8.459) n'y lit ni arrêt (R4 : aucune séance faite connue, ni dans son état), ni séance manquée (R1, R2 et
 // R3 attendent une semaine écrite), ni résumé ; il place la semaine sur ses jours et son nombre de séances. Sans
 // réponse : rien, comme avant. Le passage du dimanche, son aperçu et « Réessayer » la lisent ainsi tous les trois.
+// L'ARRÊT D'AVANT LE PLAN (moteur 8.460, défaut vu par le coach le 08/11/2026) : avec elle, la date de sa dernière course
+// lue dans Nolio (90 jours) ; le moteur la garde dans son état, sans rien changer à cette première semaine, et dit
+// l'arrêt au premier dimanche si l'athlète ne court plus. Une lecture qui échoue n'empêche rien (la date manque, comme
+// avant) ; sans réponse ni course lue : rien, comme avant.
 async function retoursDeLaPremiere(o: Objectif, au: string): Promise<Retours | null> {
   const reponse = await lireLeQuestionnaire(o, au);
-  return reponse.questionnaire ? { seances: [], hooper: [], ...reponse } : null;
+  const derniere = await derniereCourseLue(o, au).catch((e) => {
+    console.error(`Dernière course de ${o.planId} :`, e instanceof Error ? e.message : e);
+    return null;
+  });
+  if (!reponse.questionnaire && !derniere) return null;
+  return { seances: [], hooper: [], ...reponse, ...(derniere ? { derniere_course: derniere } : {}) };
 }
 
 

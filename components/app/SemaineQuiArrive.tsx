@@ -7,6 +7,7 @@ import { AnnulerSemaine, ReessayerSemaine } from './GestesEcriture';
 import { Carte, Surtitre } from './Ui';
 import { PAS_UN_AJUSTEMENT, type Pourquoi, type Realise } from '@/lib/app/ecriture';
 import { enClair } from '@/lib/app/journalEnClair';
+import { rienDeLu } from '@/lib/app/derniereCourse';
 import type { Lu } from './CeQuIlALu';
 import type { Semaine } from '@/lib/app/plan';
 import type { Prevision } from '@/lib/app/prevision';
@@ -170,7 +171,7 @@ export default function SemainesQuiArrivent({ semaines, prevision, vers, aLaMain
             {a && sortie && (
               <Replies pourquoi={sortie.pourquoi ?? null} realise={sortie.realise}
                 ancienne={reponseAncienne(a.retours?.questionnaire_du, aujourdhuiIso())}
-                lu={a.retours === null ? { sansRetours: true } : { questionnaire: a.retours?.questionnaire, questionnaire_du: a.retours?.questionnaire_du,
+                lu={rienDeLu(a.retours) ? { sansRetours: true } : { questionnaire: a.retours?.questionnaire, questionnaire_du: a.retours?.questionnaire_du,
                   lues: a.retours?.lues, ...(a.premiere ? { premiere: true } : {}) }} />
             )}
             {apercuComplet}
