@@ -59,11 +59,15 @@ export default function SemainesDuPlan({ trame, jour, course, realises = [], enc
   const prevue = (l: LigneTrame) => {
     const sl = l.seances_cles.filter((s) => s.famille === 'sl');
     const cles = l.seances_cles.filter((s) => s.famille !== 'sl');
+    // Le bloc de trois jours (D3 ; décision coach du 08/11/2026) : « trois jours de suite », « au plus long des trois
+    // jours » ; le bloc de deux jours ne change pas.
+    const trois = sl.length >= 3;
+    const jours = sl.map((s) => JOUR(s.jour).toLowerCase());
     return (
       <>
         {l.week_end_choc && (
-          <p><span className="font-bold text-indigo">Week-end choc</span> : deux sorties longues de suite
-            {sl.length >= 2 ? `, ${sl.map((s) => JOUR(s.jour).toLowerCase()).join(' et ')}` : ''}, annoncées d’avance.</p>
+          <p><span className="font-bold text-indigo">Week-end choc</span> : {trois ? 'trois jours de suite' : 'deux sorties longues de suite'}
+            {sl.length >= 2 ? `, ${jours.length > 2 ? `${jours.slice(0, -1).join(', ')} et ${jours[jours.length - 1]}` : jours.join(' et ')}` : ''}, {trois ? 'annoncés' : 'annoncées'} d’avance.</p>
         )}
         {cles.length > 0 ? (
           <ul className="space-y-0.5">
@@ -75,7 +79,7 @@ export default function SemainesDuPlan({ trame, jour, course, realises = [], enc
         {!l.week_end_choc && sl.length > 0 && (
           <p><span className="font-semibold text-indigo">{JOUR(sl[0].jour)}</span> · {nomAffiche(sl[0].seance)}</p>
         )}
-        {l.sl_min ? <p className="text-xs text-[#5E5C78]">Sortie longue : {enHeures(l.sl_min)}{l.week_end_choc ? ' au plus long des deux jours' : ''}.</p> : null}
+        {l.sl_min ? <p className="text-xs text-[#5E5C78]">Sortie longue : {enHeures(l.sl_min)}{l.week_end_choc ? ` au plus long des ${trois ? 'trois' : 'deux'} jours` : ''}.</p> : null}
       </>
     );
   };

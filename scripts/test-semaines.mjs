@@ -68,15 +68,15 @@ test('avant le départ : la première semaine détaillée si elle commence lundi
 
 // D3 (cas fictifs du 09/11/2026, décision coach du 08/11/2026, « A ») : le week-end choc de trois jours dit d'avance.
 const sl = (jour) => ({ jour, seance: 'Week-end choc', famille: 'sl' });
-test('le week-end choc de trois jours : une ligne qui dit le vendredi à poser', () => {
+test('le week-end choc de trois jours : une ligne qui le dit d’avance (validée le 08/11/2026)', () => {
   // Nadia, 100 miles : sa semaine 19, du lundi 19 avril 2027.
   assert.equal(ligneTroisJours({ lundi: '2027-04-19', seances_cles: [sl('Vendredi'), sl('Samedi'), sl('Dimanche')] }),
-    'Ton week-end choc dure trois jours, du vendredi 23 au dimanche 25 avril : pose ta journée de vendredi.');
+    'Ton week-end choc se court sur trois jours, du vendredi 23 au dimanche 25 avril : fais au mieux selon ton emploi du temps.');
   // À cheval sur deux mois ; le premier du mois.
   assert.equal(ligneTroisJours({ lundi: '2027-04-26', seances_cles: [sl('Vendredi'), sl('Samedi'), sl('Dimanche')] }),
-    'Ton week-end choc dure trois jours, du vendredi 30 avril au dimanche 2 mai : pose ta journée de vendredi.');
+    'Ton week-end choc se court sur trois jours, du vendredi 30 avril au dimanche 2 mai : fais au mieux selon ton emploi du temps.');
   assert.equal(ligneTroisJours({ lundi: '2027-09-27', seances_cles: [sl('Vendredi'), sl('Samedi'), sl('Dimanche')] }),
-    'Ton week-end choc dure trois jours, du vendredi 1er au dimanche 3 octobre : pose ta journée de vendredi.');
+    'Ton week-end choc se court sur trois jours, du vendredi 1er au dimanche 3 octobre : fais au mieux selon ton emploi du temps.');
 });
 
 test('le week-end choc de deux jours, une semaine ordinaire : pas de ligne', () => {

@@ -42,7 +42,8 @@ export function environ(minutes: number): string | null {
 // le second week-end choc d'une course de plus de 24 h (moteur, FT1-6) court du vendredi au dimanche, et l'athlète peut
 // ne pas avoir coché ce vendredi (voulu) ; sa semaine dans « Ta préparation » le dit dès qu'elle est à venir, sans la
 // déplier (components/app/SemainesDuPlan.tsx). La séance du vendredi le dit aussi en tête (moteur 8.459). Pas au
-// questionnaire (règle du coach du 01/11/2026). BROUILLON, à valider par le coach. null pour toute autre semaine.
+// questionnaire (règle du coach du 01/11/2026). Texte validé par le coach le 08/11/2026 (« pose ta journée » refusé).
+// null pour toute autre semaine.
 const JOURS_SEMAINE = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
 const jourEtMoisDe = (iso: string) => new Date(`${iso}T12:00:00Z`)
   .toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', timeZone: 'UTC' }).replace(/^1 /, '1er ');
@@ -54,8 +55,8 @@ export function ligneTroisJours(l: Pick<LigneTrame, 'lundi' | 'seances_cles'>): 
   const de = ajouterJours(l.lundi, premier);
   const a = ajouterJours(l.lundi, dernier);
   const debut = de.slice(0, 7) === a.slice(0, 7) ? jourEtMoisDe(de).split(' ')[0] : jourEtMoisDe(de);
-  return `Ton week-end choc dure trois jours, du ${JOURS_SEMAINE[premier]} ${debut} au ${JOURS_SEMAINE[dernier]} `
-    + `${jourEtMoisDe(a)} : pose ta journée de ${JOURS_SEMAINE[premier]}.`;
+  return `Ton week-end choc se court sur trois jours, du ${JOURS_SEMAINE[premier]} ${debut} au ${JOURS_SEMAINE[dernier]} `
+    + `${jourEtMoisDe(a)} : fais au mieux selon ton emploi du temps.`;
 }
 
 export const enAffutage = (l: Pick<LigneTrame, 'type' | 'bloc'>) =>
