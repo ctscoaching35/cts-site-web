@@ -27,7 +27,7 @@ import types
 
 MOTEUR = os.path.expanduser(os.environ.get("CTS_MOTEUR", "~/Site CTS"))
 SITE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SORTIE = os.path.join(SITE, "lib", "app", "exemples", "coach.json")
+SORTIE = os.environ.get("CTS_SORTIE") or os.path.join(SITE, "lib", "app", "exemples", "coach.json")
 sys.path.insert(0, MOTEUR)
 sys.path.insert(0, os.path.join(MOTEUR, "exemples", "corpus_lecture"))
 os.chdir(MOTEUR)
@@ -69,28 +69,28 @@ cts_fond.datetime = _horloge
 # k : la semaine du plan au lundi de démonstration. Scénarios : ce que leurs séances simulées font dire au site et au
 # moteur. Les adresses sont en .test, les identifiants Nolio inventés.
 COACHES = [
-    {"id": "demo-lea", "nom": "Léa Martin", "profil": "L4", "k": 8, "app": True,
+    {"id": "demo-lea", "d_prime": 220, "nom": "Léa Martin", "profil": "L4", "k": 8, "app": True,
      "scenario": "tout va bien", "reperes": (152, 3.33, 171, 2.92)},
-    {"id": "demo-hugo", "nom": "Hugo Bernard", "profil": "L4", "k": 8,
+    {"id": "demo-hugo", "d_prime": 140, "nom": "Hugo Bernard", "profil": "L4", "k": 8,
      "scenario": "séance clé manquée, un commentaire à lire, une course de préparation", "reperes": (158, 3.47, 176, 3.03),
      "preparation": {"nom": "GRF18", "date": "2026-11-21", "distance_km": 18, "dplus_m": 366, "chrono": "1h40",
                      "temps_h": 1.6667, "discipline": "trail", "mode": "gestion"}},
-    {"id": "demo-ines", "nom": "Inès Moreau", "profil": "L5", "k": 13,
+    {"id": "demo-ines", "d_prime": 120, "nom": "Inès Moreau", "profil": "L5", "k": 13,
      "scenario": "plus dur que prévu, RPE à revoir", "reperes": (149, 3.06, 167, 2.69)},
-    {"id": "demo-thomas", "nom": "Thomas Petit", "profil": "L0", "k": 10,
+    {"id": "demo-thomas", "d_prime": 250, "nom": "Thomas Petit", "profil": "L0", "k": 10,
      "scenario": "mauvaises sensations, Hooper qui monte, fatigue franche", "reperes": (155, 3.56, 174, 3.11),
      "course_b": {"nom": "Les Lucioles", "date": "2026-12-05", "distance_km": 14.7, "dplus_m": 481}},
-    {"id": "demo-camille", "nom": "Camille Roux", "profil": "L2", "k": 6, "mot": "2026-11-07",
+    {"id": "demo-camille", "d_prime": 110, "nom": "Camille Roux", "profil": "L2", "k": 6, "mot": "2026-11-07",
      "scenario": "un mot pour toi, semaine du dimanche pas partie", "reperes": (161, 3.61, 178, 3.17)},
-    {"id": "demo-julien", "nom": "Julien Fabre", "profil": "L6", "k": 9,
+    {"id": "demo-julien", "d_prime": 160, "nom": "Julien Fabre", "profil": "L6", "k": 9,
      "scenario": "silencieux depuis 8 jours, semaine posée à la main par le coach", "reperes": (147, 3.28, 166, 2.86)},
     {"id": "demo-manon", "nom": "Manon Girard", "profil": "L7", "pas_demarre": True, "sans_accord": True,
      "scenario": "sans accord de lecture, objectif pas encore démarré", "reperes": None},
-    {"id": "demo-antoine", "nom": "Antoine Dubois", "profil": "L1", "k": 11,
+    {"id": "demo-antoine", "d_prime": 120, "nom": "Antoine Dubois", "profil": "L1", "k": 11,
      "scenario": "course dans 10 jours, rien après, objectif suivant demandé", "reperes": (163, 2.78, 179, 2.44)},
-    {"id": "demo-sarah", "nom": "Sarah Lambert", "profil": "L3", "couru": D(2026, 11, 7),
+    {"id": "demo-sarah", "d_prime": 200, "nom": "Sarah Lambert", "profil": "L3", "couru": D(2026, 11, 7),
      "scenario": "en récupération après sa course", "reperes": (151, 3.19, 170, 2.78)},
-    {"id": "demo-nicolas", "nom": "Nicolas Faure", "fond": D(2026, 10, 12), "k": 5,
+    {"id": "demo-nicolas", "d_prime": 130, "nom": "Nicolas Faure", "fond": D(2026, 10, 12), "k": 5,
      "scenario": "sans objectif : saison de fond", "reperes": (156, 3.39, 173, 2.97),
      "course_a": {"nom": "Trail Alsace 47k", "date": "2027-06-05", "distance_km": 47, "dplus_m": 1772}},
 ]
@@ -304,8 +304,14 @@ def plan_reduit(donnees):
         r = reduite(s)
         r["jours"] = []
         semaines.append(r)
+    # Ses zones (« Ses zones » de la page de l'athlète, l'onglet Profil de son app) : le tableau et le recoupement du
+    # seuil 1, et les noms des zones du mode d'emploi.
+    zones = donnees.get("zones") or {}
     return {"schema": donnees["schema"], "version_moteur": donnees["version_moteur"], "athlete": donnees["athlete"],
             "course": donnees["course"], **({"fond": donnees["fond"]} if donnees.get("fond") else {}),
+            **({"zones": {k: zones[k] for k in ("tableau", "recoupement", "tests_disponibles", "fc_seuil2_hors_plan") if k in zones},
+                "mode_emploi": {"effort": {"zones": ((donnees.get("mode_emploi") or {}).get("effort") or {}).get("zones") or []}}}
+               if zones else {}),
             "semaines": semaines, "pour_aller_plus_loin": {"fiches": []}}
 
 
@@ -501,7 +507,7 @@ def main():
         sortie["apercus"] += r["apercus"]
         sortie["nolio"][c["id"]] = r["nolio"]
         sortie["athletes"].append({k: v for k, v in c.items() if k in ("id", "nom", "profil", "k", "scenario", "app",
-                                                                         "pas_demarre", "sans_accord", "reperes",
+                                                                         "pas_demarre", "sans_accord", "reperes", "d_prime",
                                                                          "course_b", "course_a", "mot", "couru", "fond")}
                                   | {"champs": r["plan"]["intake"]})
         journaux = [(l["numero"], [j.get("regle") for j in l["journal"]]) for l in r["semaines_ecrites"] if l["journal"]]

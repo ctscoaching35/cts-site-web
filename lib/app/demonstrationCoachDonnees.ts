@@ -12,10 +12,13 @@ import { COACH_DEMONSTRATION, LUNDI_DEMONSTRATION } from './demonstrationCoachPo
 import { QUESTIONNAIRE_SEMAINE } from './ecriture';
 import { ajouterJours } from './plan';
 import { signaux, type Prevue, type Realisee, type Seuils, type ValeurHooper } from './signauxSuivi';
+import { classerSeanceNommee } from './classement';
+import type { SeanceLue } from './continuite';
+import type { Revue } from './ecriture';
 
 type Ligne = Record<string, unknown>;
 type Athlete = {
-  id: string; nom: string; profil?: string; k?: number; scenario: string; app?: boolean; pas_demarre?: boolean;
+  id: string; nom: string; profil?: string; k?: number; scenario: string; app?: boolean; pas_demarre?: boolean; d_prime?: number;
   sans_accord?: boolean; reperes: [number, number, number, number] | null; mot?: string; couru?: string; fond?: string;
   course_b?: { nom: string; date: string; distance_km: number; dplus_m: number };
   course_a?: { nom: string; date: string; distance_km: number; dplus_m: number };
@@ -49,8 +52,10 @@ const jourParis = (t: number) => new Intl.DateTimeFormat('en-CA', { timeZone: 'E
 
 // Les acheteurs de plans (« Chiffres », onglet Plans), fictifs eux aussi, et un membre de l'équipe Nolio sans fiche.
 const ACHETEURS = [
-  { id: 'demo-achat-perrin', nom: 'Lucas Perrin', course: 'GRF18', date: '2027-06-05', statut: 'actif', demarre: '2026-10-25T17:05:00.000Z', accord: true },
-  { id: 'demo-achat-vidal', nom: 'Emma Vidal', course: 'Les Lucioles', date: '2027-06-05', statut: 'invite', demarre: null, accord: false },
+  { id: 'demo-achat-perrin', nom: 'Lucas Perrin', course: 'GRF18', date: '2027-06-05', statut: 'actif', demarre: '2026-10-25T17:05:00.000Z', accord: true,
+    mois: 6, paye: '2026-10-20T08:00:00.000Z', centimes: 4900 },
+  { id: 'demo-achat-vidal', nom: 'Emma Vidal', course: 'Les Lucioles', date: '2027-06-05', statut: 'invite', demarre: null, accord: false,
+    mois: 4, paye: '2026-11-02T09:30:00.000Z', centimes: 4900 },
 ];
 const SANS_FICHE = { id: 'usr_demoromane', name: 'Romane Leroy' };
 
@@ -79,7 +84,8 @@ export function tables(): Record<string, Ligne[]> {
     const c = a.champs;
     return {
       id: a.id, coach_id: COACH, nom: a.nom, nolio_athlete_id: usr(a), fc_seuil1: fc1, vc_ms: vc, fc_seuil2: fc2, v_seuil1_ms: v1,
-      d_prime_m: null, compte_id: compteDe(a), mode: 'coaching', mode_le: null, programmation: 'auto',
+      // Sa D′, tirée de son test de vitesse critique (« Son style de coureur », la page de l'athlète, 08/11/2026).
+      d_prime_m: a.reperes ? a.d_prime ?? null : null, compte_id: compteDe(a), mode: 'coaching', mode_le: null, programmation: 'auto',
       // Son week-end posé dans Nolio jusqu'au dimanche suivant ; un mot à la question ouverte du samedi.
       questionnaires: { jusqua: a.pas_demarre ? null : ajouterJours(lundi, 13), mot_le: a.mot ?? null, mot_note: a.mot ? `${a.mot}T09:00:00.000Z` : null },
       profil: { niveau: c.niveau, terrain: c.terrain, jours_disponibles: c.jours_disponibles, jour_sl: c.jour_sl, freq_hebdo: c.freq_hebdo },
@@ -98,11 +104,12 @@ export function tables(): Record<string, Ligne[]> {
     ...ACHETEURS.map((a) => ({
       id: a.id, compte_id: `demo-compte-${a.id}`, coach_id: COACH, course_nom: a.course, course_date: a.date, nolio_statut: a.statut,
       demarre_le: a.demarre, accord_lecture_le: a.accord ? '2026-10-20T08:00:00.000Z' : null, nolio_athlete_id: `usr_${a.id.replace(/-/g, '')}`,
-      achat_id: a.id, donnees: { athlete: { nom: a.nom } }, parametres: null, intake: {}, cree_le: '2026-10-20T08:00:00.000Z',
+      achat_id: a.id, donnees: { athlete: { nom: a.nom } }, parametres: null, intake: { duree_mois: String(a.mois) }, cree_le: a.paye,
     })),
   ];
   const ecrites = d.semaines_ecrites.filter(vu).map((l) => ({
     ...l, realise: l._realise_des && Date.parse(String(l._realise_des)) > maintenant ? null : l.realise,
+    revue: revueDe(l),
   }));
   const t: Record<string, Ligne[]> = {
     comptes: [{ id: COACH, nom: 'Coach Démonstration' }],
@@ -121,7 +128,7 @@ export function tables(): Record<string, Ligne[]> {
     }].filter(vu),
     signaux_suivi: signauxDuSoir(maintenant),
     retouches: retouches(lundi).filter(vu),
-    mesures: mesures(lundi), achats: achats(lundi), relances: [{ accord_le: ajouterJours(lundi, -4) }, { accord_le: ajouterJours(lundi, -18) }],
+    mesures: mesures(lundi), achats: achats(), relances: [{ accord_le: ajouterJours(lundi, -4) }, { accord_le: ajouterJours(lundi, -18) }],
     a_regarder_regles: [], corrections_semaine: [], tests_lus: [], semaines_athlete: [], zones: [], badges: [],
   };
   gardees = { minute, tables: t };
@@ -192,9 +199,49 @@ function mesures(lundi: string): Ligne[] {
   }
   return lignes;
 }
-function achats(lundi: string): Ligne[] {
-  return [3, 10, 17, 31, 52].map((j, i) => ({ paye_le: `${ajouterJours(lundi, -j)}T12:00:00.000Z`, montant_centimes: [5900, 7900, 9900, 5900, 7900][i],
-    stripe_session: `cs_demo_${i}` }));
+// Les achats des deux acheteurs fictifs (« Chiffres » : la comptabilité des plans), rangés comme le webhook les range.
+function achats(): Ligne[] {
+  return ACHETEURS.map((a) => ({ id: a.id, compte_id: `demo-compte-${a.id}`, paye_le: a.paye, montant_centimes: a.centimes, devise: 'eur',
+    stripe_session: `cs_demo_${a.id.slice(11)}` }));
+}
+
+// LA REVUE DU DIMANCHE (Q4, 08/11/2026 : semaines_ecrites.revue, gardée au passage) : pour les semaines écrites dont la
+// démonstration a le détail, le pourquoi du moteur (celui de son aperçu, écrit par le moteur) et ce qu'il a lu — sa
+// réponse du samedi (ses jours habituels), la semaine écoulée, ses séances de qualité des 4 semaines d'avant, classées
+// comme le site les classe quand Nolio ne rend pas leurs étapes (lib/app/continuite.ts : leur nom, leur RPE, leur durée).
+function revueDe(l: Ligne): Revue | null {
+  const d = donnees();
+  const semaine = l.donnees as { lundi?: string; jours?: unknown[] } | null;
+  const lundi = semaine?.lundi;
+  if (!lundi || !semaine?.jours?.length) return null;
+  const planId = String(l.plan_id);
+  const ecriteLe = String(l.ecrite_le);
+  const apercu = d.apercus.filter((x) => x.plan_id === planId && x.numero === l.numero && x.des <= ecriteLe)
+    .sort((x, y) => x.des.localeCompare(y.des)).pop();
+  const plan = d.plans.find((x) => x.id === planId);
+  const a = d.athletes.find((x) => x.id === plan?.athlete_id);
+  if (!a) return null;
+  const c = a.champs;
+  const n = d.nolio[a.id];
+  const au = ajouterJours(lundi, -1);
+  const du = ajouterJours(au, -27);
+  const [fc1, vc, fc2] = a.reperes ?? [null, null, null];
+  const faites = new Map(n.reelles.filter((r) => r.planned).map((r) => [String(r.planned), r]));
+  const lues: SeanceLue[] = n.prevues.filter((p) => String(p.date_start) >= du && String(p.date_start) <= au && faites.has(String(p.id))
+    && (p.rpe == null || Number(p.rpe) >= 5)).flatMap((p) => {
+    const duree = Math.round(Number((p.duration as { value?: number } | null)?.value ?? 0) / 60);
+    const k = classerSeanceNommee(String(p.name ?? ''), [], { vc_ms: vc, fc_seuil1: fc1, fc_seuil2: fc2 }, (p.rpe as number | null) ?? null, duree);
+    const r = faites.get(String(p.id)) as { debrief?: { rpe?: number | null } } | undefined;
+    return k ? [{ date: String(p.date_start).slice(0, 10), famille: k.famille, minutes: k.minutes, reps: k.reps, bloc_min: k.bloc_min,
+      rpe_prevu: (p.rpe as number | null) ?? null, rpe: a.sans_accord ? null : r?.debrief?.rpe ?? null, moteur: true }] : [];
+  });
+  const avant = d.semaines_ecrites.find((x) => x.plan_id === planId && Number(String(x.numero).slice(1)) === Number(String(l.numero).slice(1)) - 1);
+  const sortie = apercu?.sortie as { pourquoi?: Revue['pourquoi'] } | undefined;
+  return {
+    quoi: 'Semaine', pourquoi: sortie?.pourquoi ?? null, realise: (avant?.realise ?? null) as Revue['realise'],
+    lu: { questionnaire: { jours: (c.jours_disponibles ?? []) as string[], jour_sl: c.jour_sl ? String(c.jour_sl) : null, nb_seances: Number(c.freq_hebdo) || null },
+      questionnaire_du: ajouterJours(lundi, -2), lues },
+  };
 }
 
 // ─── Nolio ────────────────────────────────────────────────────────────────────────────────────────────────────────
