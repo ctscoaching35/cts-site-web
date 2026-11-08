@@ -28,12 +28,14 @@ type Etape = { fait: boolean; titre: string; texte?: React.ReactNode; cocher?: (
 // demonstration : la démonstration (lib/app/demonstration.ts) ne retient rien sur l'appareil, ni masquée d'un appui, ni
 // d'elle-même (?demarrage=masque la montre masquée).
 // planId (C12, audits du 05/11/2026) : masquée pour ce plan seulement, plus pour tous les plans suivants de l'appareil.
+// adapte : sa préparation s'écrit chaque semaine (la ligne « Ta préparation s'adapte chaque semaine », textes validés par
+// le coach le 08/11/2026, dans les deux versions) ; faux à la main ou sans objectif, où rien ne s'écrit le dimanche.
 // montre (décision coach du 07/11/2026) : l'acheteur a coché lui-même « Installe l'appli Nolio et relie ta montre », d'un
 // appui sur son rond, retenu sur cet appareil pour ce plan (un cookie, lib/app/actionsBienvenue.ts, cocherMontre) ; la
 // coche automatique, à la première séance faite remontée, reste. « Rejoins l'équipe CTS » ne se coche pas à la main.
-export default function PourBienDemarrer({ acheteur, nolio, accord, questionnaire, installer, profil = true, lienProfil = '', seanceFaite = false, montre = false, inviteLe = null, confirmer = false, demonstration = false, planId }: {
+export default function PourBienDemarrer({ acheteur, nolio, accord, questionnaire, installer, profil = true, lienProfil = '', seanceFaite = false, montre = false, inviteLe = null, confirmer = false, demonstration = false, planId, adapte = true }: {
   acheteur: boolean; nolio: EtatNolio; accord: boolean; questionnaire: boolean; installer: string; profil?: boolean; lienProfil?: string;
-  seanceFaite?: boolean; montre?: boolean; inviteLe?: string | null; confirmer?: boolean; demonstration?: boolean; planId: string;
+  seanceFaite?: boolean; montre?: boolean; inviteLe?: string | null; confirmer?: boolean; demonstration?: boolean; planId: string; adapte?: boolean;
 }) {
   const [masquee, setMasquee] = useState(false);
   const [montreCochee, setMontreCochee] = useState(montre);
@@ -87,8 +89,10 @@ export default function PourBienDemarrer({ acheteur, nolio, accord, questionnair
   ] : [
     profil
       ? { fait: true, titre: 'Ton profil de coureur est rempli' }
+      // Validé par le coach le 08/11/2026 (avant : « Ton niveau et ta semaine habituelle, une seule fois : tes objectifs
+      // partent de lui. »).
       : { fait: false, titre: 'Remplis ton profil de coureur', texte: (
-        <>Ton niveau et ta semaine habituelle, une seule fois : tes objectifs partent de lui.{' '}
+        <>Ton niveau, ton terrain et ta semaine habituelle : un mémo pour ton coach, pas un engagement. Tu peux le modifier quand tu veux.{' '}
           <Link href={lienProfil} className="font-bold text-teal whitespace-nowrap">Le remplir ›</Link></>
       ) },
     accord
@@ -114,6 +118,13 @@ export default function PourBienDemarrer({ acheteur, nolio, accord, questionnair
         <strong className="text-indigo">Nolio</strong> : tes séances, au jour le jour, jusqu’à ta montre.{' '}
         <strong className="text-indigo">L’app CTS</strong> : ta course, ta préparation, tes données et tes fiches.
       </p>
+      {/* Validé par le coach le 08/11/2026, dans les deux versions (coaché et acheteur). */}
+      {adapte && (
+        <p className="text-[0.8125rem] text-[#4A4866] leading-relaxed">
+          Ta préparation s’adapte chaque semaine : le samedi, un court questionnaire dans Nolio te demande tes jours et ton nombre
+          de séances ; le dimanche soir, ta semaine s’écrit d’après tes réponses et ce que tu as couru.
+        </p>
+      )}
       <ol>
         {etapes.map((e) => (
           <li key={e.libelle ?? e.titre} className="grid grid-cols-[22px_1fr] gap-x-2.5 py-2.5 border-t border-indigo/[0.06] first:border-t-0">

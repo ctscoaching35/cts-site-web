@@ -73,7 +73,7 @@ export default async function AccueilAthlete({ ctx, demarrage, montre = false, d
             <ProchainObjectif ctx={ctx} attente={attente} />
           </ApresTaCourse> : <CarteProchainObjectif ctx={ctx} attente={attente} />}
           {demarrage && <PourBienDemarrer acheteur={false} nolio="coache" accord={Boolean(ctx.fiche?.accord)} questionnaire={false} installer={installer} profil={profil} lienProfil={lienProfil}
-            demonstration={ctx.demonstration} planId="sans-objectif" />}
+            demonstration={ctx.demonstration} adapte={!ctx.aLaMain} planId="sans-objectif" />}
           {/* B-AT-2 et §8, point 9 : la carte reste, avec sa raison ; le questionnaire du samedi, qu'il reçoit. */}
           <CetteSemaine semaine={null} ligne={null} questionnaire nolio={lecture.seances} raison={lecture.raison} coache
             lundi={lundiCourant} hooper={Boolean(ctx.fiche?.accord)} jour={jour} />
@@ -169,7 +169,7 @@ export default async function AccueilAthlete({ ctx, demarrage, montre = false, d
             <ProchainObjectif ctx={ctx} attente={attente} />
           </ApresTaCourse> : <CarteProchainObjectif ctx={ctx} attente={attente} />}
           {demarrage && <PourBienDemarrer acheteur={false} nolio="coache" accord={d.accord} questionnaire={false} installer={installer} profil={profil} lienProfil={lienProfil}
-            demonstration={ctx.demonstration} planId={ctx.cle} />}
+            demonstration={ctx.demonstration} adapte={!ctx.aLaMain} planId={ctx.cle} />}
           <CetteSemaine semaine={null} ligne={null} questionnaire nolio={lectureEntreDeux.seances} raison={lectureEntreDeux.raison}
             coache lundi={lundiCourant} hooper={d.accord} jour={jour} />
           {/* Q3 : « Voir ma préparation », un seul nom (avant : « Revoir ta préparation »). */}
@@ -197,7 +197,7 @@ export default async function AccueilAthlete({ ctx, demarrage, montre = false, d
         {etape !== 'apres' && demarrage && d.nolio !== 'sorti' && d.nolio !== 'coaching' && (
           <PourBienDemarrer acheteur={!ctx.coache} nolio={d.nolio} accord={d.accord} questionnaire={d.ecrit && !ctx.aLaMain} installer={installer}
             profil={profil} lienProfil={lienProfil} seanceFaite={d.realises.some((r) => r.seances_faites > 0)} montre={montre}
-            inviteLe={inviteLe ? dateLongue(inviteLe) : null} confirmer={confirmer} demonstration={ctx.demonstration} planId={ctx.cle} />
+            inviteLe={inviteLe ? dateLongue(inviteLe) : null} confirmer={confirmer} demonstration={ctx.demonstration} adapte={!ctx.aLaMain} planId={ctx.cle} />
         )}
         {/* AT4 : la récupération du coaché, même quand son objectif suivant est déjà là (Q12 : la même carte que l'acheteur). */}
         {recup && (
