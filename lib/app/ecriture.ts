@@ -861,7 +861,13 @@ export async function demarrerObjectif(planId: string, { prevenir = true, lundi,
     // E5 (audits du 05/11/2026, lot 1) : la semaine se juge d'après les semaines écrites, comme le dimanche ; une semaine 1
     // envoyée à moitié (Nolio coupé en route) se complète au réessai, sans rien doubler (la mise à jour crée ce qui manque).
     const { data: ecrite } = await service.from('semaines_ecrites').select('numero').eq('plan_id', planId).eq('numero', premiere.numero).maybeSingle();
-    if (!ecrite) await ecrireEtEnvoyer(o, premiere.numero, null, { depuis: depart > premiere.lundi ? depart : undefined, reprise });
+    // LA PREMIÈRE SEMAINE D'UN DÉPART LIT LA RÉPONSE DU SAMEDI (vu par le coach le 08/11/2026 : un coaché qui enchaîne un
+    // second objectif avait répondu lundi, mercredi, vendredi, samedi, sortie longue le vendredi ; sa semaine de reprise
+    // est partie sur les jours de son profil). Comme la première semaine d'une saison de fond (retoursDeLaPremiere) : la
+    // réponse seule, sans séances ni Hooper ; le moteur n'y lit ni arrêt ni séance manquée (vérifié sur 8.459, en
+    // reprise comme sans). Sans réponse (un premier achat), rien, comme avant ; une lecture qui échoue n'empêche rien.
+    const retoursDepart = await retoursDeLaPremiere(o, aujourdhui).catch(() => null);
+    if (!ecrite) await ecrireEtEnvoyer(o, premiere.numero, retoursDepart, { depuis: depart > premiere.lundi ? depart : undefined, reprise });
     if (!o.coache) await rangerAcheteur(o);
   } catch (e) {
     await service.from('plans').update({ demarre_le: null }).eq('id', planId);
