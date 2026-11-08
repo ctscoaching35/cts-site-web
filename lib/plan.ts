@@ -234,8 +234,16 @@ export function reperesChrono(c: Champs, config: ConfigPlan, coach = false): Rep
   // (audit du 27/09/2026, C21 ; décision coach du 28/09/2026 : « dire la vérité au bon endroit »).
   const plafond = config.temps_max_par_format[c.format];
   const [p10, p30, p60, p85] = COUPURES.map((k) => ke / (k * vitesseMediane(ke)));
-  const borne = (h: number) => (plafond !== undefined && h > plafond ? `${plafond}h` : heuresMinutes(h));
-  const de = (h1: number, h2: number) => (plafond !== undefined && h1 > plafond ? `plus de ${plafond}h` : `${heuresMinutes(h1)} à ${borne(h2)}`);
+  // Une borne qui s'affiche au plafond (à 5 min près, l'arrondi de heuresMinutes) se dit au plafond : une bande qui y
+  // commence est au-delà (« plus de 7h »), une qui y finit s'arrête à « 7h » ; deux bornes qui se confondent, une seule
+  // valeur. Avant, un Trail Court très plafonné (29 km, 4 000 m D+) affichait « 5h50 à 7h00 » puis « 7h00 à 7h ».
+  const auPlafond = (h: number) => plafond !== undefined && Math.round(h * 12) / 12 >= plafond;
+  const borne = (h: number) => (auPlafond(h) ? `${plafond}h` : heuresMinutes(h));
+  const de = (h1: number, h2: number) => {
+    if (auPlafond(h1)) return `plus de ${plafond}h`;
+    const [a, b] = [heuresMinutes(h1), borne(h2)];
+    return a === b ? a : `${a} à ${b}`;
+  };
   const temps = [`moins de ${borne(p10)}`, de(p10, p30), de(p30, p60), de(p60, p85), `plus de ${borne(p85)}`];
   const depasse = plafond !== undefined && p85 > plafond;
   const fin = !depasse ? null

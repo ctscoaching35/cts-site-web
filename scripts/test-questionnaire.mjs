@@ -59,9 +59,21 @@ test('repères : au-delà du plafond du format, « plus de 7h » et la fin de l�
   assert.equal(r.fin, 'Au-delà de 7h, c’est hors du plafond de ce plan : un coaching individualisé est plus adapté.');
   assert.equal(reperesChrono(course('TC', '29', '2500'), CONFIG, true).fin,
     'Au-delà de 7h, c’est hors du plafond de ce plan. Le moteur ne construit pas ce cas : à préparer toi-même, hors du parcours automatique.');
-  // Plus loin au-delà : les bandes qui commencent après le plafond deviennent « plus de 7h », comme avant.
+  // Plus loin au-delà : les bandes qui commencent après le plafond deviennent « plus de 7h », comme avant ; une borne
+  // qui s'affiche au plafond (7h00) aussi : plus de « 5h50 à 7h00 » ni de « 7h00 à 7h » (le défaut du 07/11/2026).
   assert.deepEqual(reperesChrono(course('TC', '29', '4000'), CONFIG).bandes.map((b) => b.temps),
-    ['moins de 5h50', '5h50 à 7h00', '7h00 à 7h', 'plus de 7h', 'plus de 7h']);
+    ['moins de 5h50', '5h50 à 7h', 'plus de 7h', 'plus de 7h', 'plus de 7h']);
+  // Toutes les bornes, sur une grille de Trails Courts plafonnés : jamais « à » entre deux valeurs qui se confondent, ni
+  // de « 7h00 ».
+  for (const km of ['20', '25', '29', '33']) {
+    for (const dplus of ['1500', '2500', '3200', '4000', '5000']) {
+      for (const t of reperesChrono(course('TC', km, dplus), CONFIG).bandes.map((b) => b.temps)) {
+        assert.ok(!t.includes('7h00'), `${km} km, ${dplus} m : ${t}`);
+        const m = /^(\S+) à (\S+)$/.exec(t);
+        assert.ok(!m || m[1] !== m[2], `${km} km, ${dplus} m : ${t}`);
+      }
+    }
+  }
 });
 
 test('repères : rien sans format ni distance', () => {
