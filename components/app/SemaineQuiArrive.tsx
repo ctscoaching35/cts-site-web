@@ -20,16 +20,20 @@ type Vers = { date: string; nom: string } | null;
 
 const pastille = 'text-[0.6875rem] font-bold px-2 py-0.5 rounded-full whitespace-nowrap';
 
-function LaSemaine({ semaine, journal, realise, textes, nomDe, annuler, course, vers }: {
+// fond : une saison de fond n'a pas de course (sa date est une sentinelle) : son J- compte vers son prochain objectif, s'il
+// en a un (vers) ; une course passée (sa récupération) n'a pas de J-.
+function LaSemaine({ semaine, journal, realise, textes, nomDe, annuler, course, fond, vers }: {
   semaine: Semaine; journal: Record<string, unknown>[]; realise: Realise | null; textes: string[];
-  nomDe?: (id: string) => string | undefined; annuler: { planId: string; numero: string } | null; course: string; vers: Vers;
+  nomDe?: (id: string) => string | undefined; annuler: { planId: string; numero: string } | null; course: string; fond: boolean; vers: Vers;
 }) {
   const noms = semaine.jours.map((j) => j.seance);
+  const versLa = fond ? vers?.date : course;
+  const jMoinsVers = versLa && semaine.lundi && versLa >= semaine.lundi ? versLa : undefined;
   const lignes = journal.flatMap((e) => enClair(e, noms, realise, nomDe));
   return (
     <div className="flex flex-wrap gap-5 items-start">
       <div className="flex-[1_1_340px] min-w-0 space-y-2">
-        <BanniereSemaine semaine={semaine} course={vers?.date ?? course} vers={vers?.nom} />
+        <BanniereSemaine semaine={semaine} course={jMoinsVers} vers={fond && jMoinsVers ? vers?.nom : undefined} />
         <ul className="divide-y divide-indigo/10 text-sm">
           {semaine.jours.map((j) => (
             <li key={j.id} className="flex gap-3 px-1 py-2">
@@ -101,11 +105,11 @@ export default function SemainesQuiArrivent({ semaines, prevision, vers, aLaMain
                   <span className={`${pastille} bg-[#E3EFE9] text-[#22604F]`}>Partie dans Nolio</span>
                   <span className="text-xs text-[#5E5C78]">{heureDuPassage(l.ecrite_le)}</span>
                 </div>
-                <LaSemaine semaine={l.donnees} journal={journal} realise={s.realise} textes={textes} nomDe={s.nomDe} course={s.course} vers={versDe}
+                <LaSemaine semaine={l.donnees} journal={journal} realise={s.realise} textes={textes} nomDe={s.nomDe} course={s.course} fond={s.fond} vers={versDe}
                   annuler={ajustee && s.derniere && /^S\d+$/.test(l.numero) ? { planId: s.planId, numero: l.numero } : null} />
               </Carte>
               {r ? (
-                <Replies pourquoi={r.pourquoi} lu={r.lu} realise={r.realise} ancienne={reponseAncienne(r.lu.questionnaire_du, l.ecrite_le)} />
+                <Replies pourquoi={r.pourquoi ?? null} lu={r.lu ?? null} realise={r.realise ?? null} ancienne={reponseAncienne(r.lu?.questionnaire_du, l.ecrite_le)} />
               ) : (
                 <p className="text-[0.8125rem] text-[#5E5C78]">
                   {s.revueGardee
@@ -145,7 +149,7 @@ export default function SemainesQuiArrivent({ semaines, prevision, vers, aLaMain
                 <>
                   {/* La phrase de « Dimanche » (Q1) : ce que le moteur prévoit d'après ses signaux du soir. */}
                   {prevision.prevoit && (
-                    <p className="text-sm text-[#4A4866]">Dimanche soir : {prevision.prevoit.charAt(0).toLowerCase()}{prevision.prevoit.slice(1)}{prevision.pourquoi ? ` (${prevision.pourquoi})` : ''}.</p>
+                    <p className="text-sm text-[#4A4866]">{prevision.prevoit}{prevision.pourquoi ? ` (${prevision.pourquoi})` : ''}.</p>
                   )}
                   <Link href={`?apercu=${s.planId}#semaine-qui-arrive`} scroll={false}
                     className="inline-flex items-center justify-center min-h-11 px-4 rounded-xl border border-teal text-teal text-[0.8125rem] font-bold">
@@ -158,7 +162,7 @@ export default function SemainesQuiArrivent({ semaines, prevision, vers, aLaMain
               {a && sortie && (
                 <>
                   <p className="text-sm text-[#5E5C78]">Calculée maintenant comme dimanche soir, avec ce qui est remonté dans Nolio. Rien n’est envoyé.</p>
-                  <LaSemaine semaine={sortie.semaine} journal={sortie.journal} realise={sortie.realise} nomDe={s.nomDe} course={s.course} vers={versDe}
+                  <LaSemaine semaine={sortie.semaine} journal={sortie.journal} realise={sortie.realise} nomDe={s.nomDe} course={s.course} fond={s.fond} vers={versDe}
                     textes={sortie.bilan ? [sortie.bilan] : sortie.notes.map((n) => n.texte)} annuler={null} />
                 </>
               )}
