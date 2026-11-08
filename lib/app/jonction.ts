@@ -5,7 +5,7 @@
  * (node --test scripts/test-jonction.mjs).
  */
 import { joursRecuperation } from '../plan';
-import { ajouterJours } from './plan';
+import { ajouterJours, dateLongue } from './plan';
 
 const rangDuJour = (jour: string) => (new Date(`${jour}T12:00:00Z`).getUTCDay() + 6) % 7;
 export const lundiDe = (jour: string) => ajouterJours(jour, -rangDuJour(jour));
@@ -80,3 +80,64 @@ export const dureeTexte = (minutes: number) => {
 export function saisonEnReprise(lundi: string, precedents: { course_date: string; temps_h: number; format?: string }[]): boolean {
   return precedents.some((q) => q.course_date < lundi && enReprise(debutApres(q), lundi));
 }
+
+// « 5h30 », « 5:30 », « 18h » : le temps visé de l'intake, en heures ; 0 illisible (la récupération de 3 jours).
+export function heuresDuTemps(brut: unknown): number {
+  const m = /^\s*(\d{1,3})\s*[h:]\s*(\d{0,2})/.exec(String(brut ?? ''));
+  return m ? Number(m[1]) + Number(m[2] || 0) / 60 : 0;
+}
+
+type Couru = { course_date: string; temps_h: number; format?: string };
+
+// L'OBJECTIF PRÉCÉDENT D'UN DÉPART (OM4, demarrerObjectif) : parmi les autres objectifs du même athlète, ceux dont la
+// course vient avant celle-ci, moins de 60 jours avant `aujourdhui`, celui au lundi de reprise le plus tardif. Sa
+// récupération couvre la course de celui-ci (C5, moteur 8.445) : le lundi de la semaine de course, qui part avec la
+// reprise. null sans précédent.
+export function precedentDuDepart<T extends Couru>(courseDate: string, autres: T[], aujourdhui: string): { q: T; lundi: string } | null {
+  const lundiCourse = lundiDe(courseDate);
+  return autres.filter((q) => q.course_date < courseDate && q.course_date >= ajouterJours(aujourdhui, -60))
+    .map((q) => ({ q, lundi: debutApres(q) })).sort((a, b) => b.lundi.localeCompare(a.lundi))
+    .map((x) => (courseDate < x.lundi ? { ...x, lundi: lundiCourse } : x))[0] ?? null;
+}
+
+// LA RÉCUPÉRATION FINIE (« Dimanche » et « Cette semaine », décision coach du 08/11/2026) : un objectif couru n'a plus
+// de semaine à écrire pour ce lundi, ni du plan (sa course est dans sa dernière semaine) ni de récupération
+// (ecriture.semaineDeRecuperation : jusqu'au lundi de reprise). La règle de apercuDuDimanche et passageDuDimanche.
+export const recuperationFinie = (q: Couru, lundi: string) => q.course_date < lundi && lundi >= debutApres(q);
+
+// LA CONTINUITÉ ENTRE DEUX OBJECTIFS, À L'ÉCRAN DU COACH (décisions coach du 08/11/2026, « Je valide ») : l'objectif qui
+// part au lundi de reprise d'un autre, en reprise allégée, son rythme et sa sortie longue repris de ses semaines d'avant
+// cette course (la jonction, décisions du 07/11/2026). depart : le lundi de sa première semaine, programmé (depart_prevu)
+// ou parti ; null tant qu'il n'est ni l'un ni l'autre. Une saison de fond n'est ni l'une ni l'autre course.
+export type ObjectifVoisin = Couru & { id: string; course_nom: string; fond: boolean; depart: string | null };
+
+// L'objectif après la récupération duquel `y` part : son départ tombe au lundi de reprise de son précédent (le calcul
+// de son départ, la veille), hors d'une course qui tombe dans cette récupération (C5 : sa semaine de course, pas une
+// reprise allégée). Pas quand il part plus tard (préparation lointaine, séances posées, un lundi choisi). null sinon.
+export function partApres(y: ObjectifVoisin, tous: ObjectifVoisin[]): ObjectifVoisin | null {
+  if (y.fond || !y.depart) return null;
+  const apres = precedentDuDepart(y.course_date, tous.filter((q) => q.id !== y.id && !q.fond), ajouterJours(y.depart, -1));
+  return apres && apres.lundi === y.depart && y.course_date >= debutApres(apres.q) ? apres.q : null;
+}
+
+// L'objectif qui part après la récupération de `x` (partApres), le premier qui vient ; null sinon.
+export function partEnSuite(x: ObjectifVoisin, tous: ObjectifVoisin[]): ObjectifVoisin | null {
+  if (x.fond) return null;
+  return tous.filter((y) => y.id !== x.id && partApres(y, tous)?.id === x.id)
+    .sort((a, b) => a.course_date.localeCompare(b.course_date))[0] ?? null;
+}
+
+// Les textes de la continuité, validés par le coach le 08/11/2026. La suite d'un objectif couru, sa récupération finie :
+// l'objectif qui part en suite (son nom, en lien vers sa page), sinon plus rien.
+export function texteDeLaSuite(suite: { course_nom: string; depart: string } | null): { avant: string; course: string | null; apres: string } {
+  return suite
+    ? { avant: 'Sa récupération est finie : la suite est son ', course: suite.course_nom,
+      apres: `, qui démarre le ${dateLongue(suite.depart, true)} dans sa continuité.` }
+    : { avant: 'Sa récupération est finie : plus rien ne s’écrit pour cet objectif.', course: null, apres: '' };
+}
+export const enUneLigne = (t: { avant: string; course: string | null; apres: string }) => `${t.avant}${t.course ?? ''}${t.apres}`;
+// L'objectif qui part après la récupération d'un précédent, avant son départ : sa page, puis son aperçu, le dimanche.
+export const texteProgrammeApres = (depart: string, precedent: string) =>
+  `Programmé : il démarre tout seul le ${dateLongue(depart, true)}, après la récupération de son ${precedent} : une semaine de reprise allégée, puis le rythme et la sortie longue repris de ses semaines d’avant cette course.`;
+export const texteDepartLundiApres = (precedent: string) =>
+  `Départ lundi, après la récupération de son ${precedent} : sa première semaine, une reprise allégée, part avec son départ dimanche soir.`;

@@ -7,6 +7,7 @@ import { objectifCoache } from '@/lib/app/coaching';
 import { apercuDuDimanche } from '@/lib/app/ecriture';
 import { dose, enClair, FAMILLE, reponsesDuSamedi } from '@/lib/app/journalEnClair';
 import PourquoiSemaine from '@/components/app/PourquoiSemaine';
+import SuiteDeLObjectif from '@/components/app/SuiteDeLObjectif';
 import { exigerCoach } from '@/lib/app/nolio';
 import { ajouterJours, aujourdhuiIso, dateLongue, jourMois } from '@/lib/app/plan';
 import { enHeures } from '@/lib/app/tableau';
@@ -78,7 +79,8 @@ export default async function ApercuDimanche({ params }: { params: Promise<{ id:
         </p>
       </div>
       {erreur && <Carte className="!p-5"><p className="text-sm text-[#8A3326] font-semibold">{erreur}</p></Carte>}
-      {a && !sortie && <Carte className="!p-5"><p className="text-sm font-semibold">{a.quoi}</p></Carte>}
+      {/* L'objectif couru, sa récupération finie (décision coach du 08/11/2026) : sa suite, en lien vers sa page. */}
+      {a && !sortie && <Carte className="!p-5"><p className="text-sm font-semibold">{a.suite !== undefined ? <SuiteDeLObjectif suite={a.suite} /> : a.quoi}</p></Carte>}
       {sortie && (
         <>
           <Carte className="!p-5 space-y-2">

@@ -49,7 +49,8 @@ export { QUESTIONNAIRE_SEMAINE, type Questionnaire };
 import { seuilsSuivi } from './suivi';
 import type { FamilleLue, ProfilLu } from './classement';
 import { messageDoublon, objectifQuiCouvre } from './departs';
-import { debutApres, departCalcule, dureeTexte, enReprise, lundiDuRythme, saisonEnReprise, slApresCourse } from './jonction';
+import { debutApres, departCalcule, dureeTexte, enReprise, heuresDuTemps as heures, lundiDuRythme, partApres, partEnSuite,
+  precedentDuDepart, saisonEnReprise, slApresCourse, enUneLigne, texteDeLaSuite, texteDepartLundiApres, type ObjectifVoisin } from './jonction';
 
 export { debutApres };
 
@@ -691,13 +692,12 @@ export async function demarrerObjectif(planId: string, { prevenir = true, lundi,
   if (enRoute) {
     throw new Error(`Cet objectif tombe avant ${enRoute.course_nom} (${enRoute.course_date}), déjà en route : ajoute-le plutôt comme course de préparation, ou retire l’autre objectif.`);
   }
-  const precedents = autres.filter((q) => q.course_date < o.plan.course.date && q.course_date >= ajouterJours(aujourdhui, -60));
+  // Les précédents : course avant celle-ci, moins de 60 jours avant aujourd'hui (precedentDuDepart, lib/app/jonction.ts ;
+  // l'écran du coach le refait pour dire la continuité, continuiteDe).
   // C5 (décision coach du 04/11/2026, « A » ; moteur 8.445) : une course qui tombe dans la récupération de la précédente
   // part au lundi de sa semaine de course, avec la reprise : le moteur écrit cette semaine en semaine de course, sans rien
   // de dur. Avant, son départ attendait la fin de la récupération, après elle : rien ne s'écrivait pour elle.
-  const lundiCourse = lundiDe(o.plan.course.date);
-  const apres = precedents.map((q) => ({ q, lundi: debutApres(q) })).sort((a, b) => b.lundi.localeCompare(a.lundi))
-    .map((x) => (o.plan.course.date < x.lundi ? { ...x, lundi: lundiCourse } : x))[0];
+  const apres = precedentDuDepart(o.plan.course.date, autres, aujourdhui) ?? undefined;
   // PC1 : les séances que le coach a déjà posées restent ; l'écriture attend le lundi qui suit la dernière.
   const posees = await seancesDejaPosees(o, aujourdhui);
   const premierJour = debut.lundi > jourDeDepart ? debut.lundi : jourDeDepart;
@@ -1030,8 +1030,9 @@ async function dureeAuDepart(o: Objectif, depart: string) {
 
 // Les autres objectifs écrits semaine par semaine du même athlète (sa fiche de coaché, ou son compte d'acheteur).
 // fond : une saison de fond (le garde-fou des départs en double ne la compte pas : elle s'arrête quand une préparation part).
+// depart_prevu : son départ programmé (gardé après le départ).
 type Voisin = { id: string; course_nom: string; course_date: string; temps_h: number; demarre: boolean; debut: string | null;
-  format: string; fond: boolean };
+  format: string; fond: boolean; depart_prevu: string | null };
 async function autresObjectifs(o: Objectif): Promise<Voisin[]> {
   const service = clientService();
   const { data: coaching } = await service.from('coaching').select('plan_id, athlete_id');
@@ -1046,21 +1047,57 @@ async function autresObjectifs(o: Objectif): Promise<Voisin[]> {
   }
   ids = ids.filter((id) => id !== o.planId);
   if (!ids.length) return [];
-  const { data } = await service.from('plans').select('id, course_nom, course_date, intake, demarre_le, debut:donnees->semaines->0->>lundi, fond:parametres->fond')
+  const { data } = await service.from('plans')
+    .select('id, course_nom, course_date, intake, demarre_le, depart_prevu, debut:donnees->semaines->0->>lundi, fond:parametres->fond')
     .in('id', ids).not('parametres', 'is', null);
   return (data ?? []).map((p) => ({
     id: p.id as string, course_nom: p.course_nom as string, course_date: p.course_date as string,
     temps_h: heures((p.intake as Record<string, unknown> | null)?.temps_cible), demarre: Boolean(p.demarre_le),
     debut: (p.debut ?? null) as string | null, format: String((p.intake as Record<string, unknown> | null)?.format ?? ''),
-    fond: Boolean((p as { fond?: unknown }).fond),
+    fond: Boolean((p as { fond?: unknown }).fond), depart_prevu: (p.depart_prevu ?? null) as string | null,
   }));
 }
 
-// « 5h30 », « 5:30 », « 18h » : des heures ; 0 illisible.
-function heures(brut: unknown): number {
-  const m = /^\s*(\d{1,3})\s*[h:]\s*(\d{0,2})/.exec(String(brut ?? ''));
-  return m ? Number(m[1]) + Number(m[2] || 0) / 60 : 0;
+// LA CONTINUITÉ ENTRE DEUX OBJECTIFS, À L'ÉCRAN DU COACH (décisions coach du 08/11/2026, « Je valide » ; cas réel : un
+// semi couru le 1/11, un trail qui démarre le 9/11 dans sa continuité). La programmation enchaînait déjà (la jonction,
+// 8.457) ; l'écran le dit : sur la page et l'aperçu de l'objectif couru, sa suite ; sur ceux de l'objectif qui part
+// après lui, avant son départ, la reprise. precedent : l'objectif après la récupération duquel celui-ci part (partApres) ;
+// suivant : celui qui part après la récupération de celui-ci, et son lundi de départ (partEnSuite) ; objectifApres : un
+// autre objectif (pas une saison de fond) dont la course vient après la sienne ; reprise : son lundi de reprise. Le lundi
+// de départ d'un objectif : son départ programmé, sinon, parti sans être programmé, sa première semaine écrite.
+export type Continuite = {
+  precedent: { id: string; course_nom: string } | null; suivant: { id: string; course_nom: string; depart: string } | null;
+  objectifApres: boolean; reprise: string;
+};
+export async function continuiteDe(planId: string): Promise<Continuite | null> {
+  const o = await objectifEcrit(planId);
+  return o ? continuiteDeLObjectif(o) : null;
 }
+async function continuiteDeLObjectif(o: Objectif): Promise<Continuite> {
+  const service = clientService();
+  const autres = await autresObjectifs(o);
+  const { data: p } = await service.from('plans').select('demarre_le, depart_prevu, intake').eq('id', o.planId).maybeSingle();
+  const partis = [o.planId, ...autres.filter((q) => q.demarre && !q.depart_prevu).map((q) => q.id)];
+  const { data: ecrites } = await service.from('semaines_ecrites').select('plan_id, lundi:donnees->>lundi').in('plan_id', partis);
+  const premiere = (id: string) => ((ecrites ?? []) as { plan_id: string; lundi: string | null }[])
+    .filter((e) => e.plan_id === id && e.lundi).map((e) => e.lundi as string).sort()[0] ?? null;
+  const fond = Boolean((o.parametres as { fond?: unknown }).fond);
+  // Ses heures et son format comme autresObjectifs les lit (le départ d'un autre le prend ainsi pour précédent).
+  const moi: ObjectifVoisin = { id: o.planId, course_nom: o.plan.course.nom, course_date: o.plan.course.date, temps_h: o.tempsH,
+    format: String((p?.intake as Record<string, unknown> | null)?.format ?? ''), fond, depart: (p?.depart_prevu as string | null) ?? (p?.demarre_le ? premiere(o.planId) : null) };
+  const tous: ObjectifVoisin[] = [moi, ...autres.map((q) => ({ id: q.id, course_nom: q.course_nom, course_date: q.course_date,
+    temps_h: q.temps_h, format: q.format, fond: q.fond, depart: q.depart_prevu ?? (q.demarre ? premiere(q.id) : null) }))];
+  const precedent = partApres(moi, tous);
+  const suivant = partEnSuite(moi, tous);
+  return {
+    precedent: precedent ? { id: precedent.id, course_nom: precedent.course_nom } : null,
+    suivant: suivant?.depart ? { id: suivant.id, course_nom: suivant.course_nom, depart: suivant.depart } : null,
+    objectifApres: !fond && autres.some((q) => !q.fond && q.course_date > o.plan.course.date),
+    reprise: debutApres({ course_date: o.plan.course.date, temps_h: o.tempsH, format: formatDe(o) }),
+  };
+}
+
+// « 5h30 », « 5:30 », « 18h » : des heures ; 0 illisible (heuresDuTemps, lib/app/jonction.ts, importé plus haut).
 
 // Le format d'un objectif (« R42 » pour un marathon sur route), tel que ses paramètres le gardent.
 function formatDe(o: Pick<Objectif, 'parametres'>): string {
@@ -1298,7 +1335,10 @@ export async function passageDuDimanche(budgetMs = 240_000): Promise<Compte[]> {
 // laissée et pourquoi, ou celle que le moteur écrirait, avec ce qu'il a lu. Rien n'est envoyé ni gardé, ni dans Nolio
 // ni dans la base : le profil du coureur et le départ complété se calculent sans s'écrire. Ce qui sera couru ou rempli
 // d'ici dimanche soir peut encore la changer.
-export type Apercu = { lundi: string; numero: string | null; quoi: string; sortie?: SortieMoteur; retours?: Retours | null };
+// suite (la continuité entre deux objectifs, décisions coach du 08/11/2026) : l'objectif couru, sa récupération finie,
+// l'objectif qui part en suite (son lien sur l'aperçu), null sans objectif suivant ; absente sinon.
+export type Apercu = { lundi: string; numero: string | null; quoi: string; sortie?: SortieMoteur; retours?: Retours | null;
+  suite?: Continuite['suivant'] };
 export async function apercuDuDimanche(planId: string): Promise<Apercu> {
   const aujourdhui = aujourdhuiParis();
   // Le lundi qui vient (le dimanche, celui du lendemain).
@@ -1310,14 +1350,24 @@ export async function apercuDuDimanche(planId: string): Promise<Apercu> {
   if ((await plansALaMain()).has(planId)) return rien('Programmé à la main : le moteur n’écrit rien.');
   const { data: p } = await clientService().from('plans').select('demarre_le, depart_prevu, nolio_statut').eq('id', planId).single();
   if (!p?.demarre_le) {
-    return rien(p?.depart_prevu && String(p.depart_prevu) <= lundi
-      ? 'Départ lundi : sa première semaine part avec son départ, dimanche soir.' : 'Pas encore démarré dans Nolio.');
+    if (!p?.depart_prevu || String(p.depart_prevu) > lundi) return rien('Pas encore démarré dans Nolio.');
+    // Après la récupération d'un objectif précédent (décision coach du 08/11/2026) : sa première semaine, une reprise.
+    const { precedent } = await continuiteDeLObjectif(o);
+    return rien(precedent ? texteDepartLundiApres(precedent.course_nom) : 'Départ lundi : sa première semaine part avec son départ, dimanche soir.');
   }
   if (!o.coache && p.nolio_statut !== 'actif') return rien('Pas actif dans Nolio : rien ne s’écrit.');
   const s = semaineDu(o.plan, lundi);
   const recuperation = s ? null : semaineDeRecuperation(o, lundi);
   const numero = s?.numero ?? recuperation?.numero ?? null;
-  if (!numero) return rien('Pas de semaine à écrire lundi.');
+  if (!numero) {
+    // L'objectif couru, sa récupération finie (décision coach du 08/11/2026) : sa suite, ou plus rien ; un autre objectif
+    // plus loin, qui ne part pas dans sa continuité (une préparation lointaine, pas encore programmée) : comme avant.
+    if (!(o.parametres as { fond?: unknown }).fond && o.plan.course.date < lundi) {
+      const c = await continuiteDeLObjectif(o);
+      if (c.suivant || !c.objectifApres) return { ...rien(enUneLigne(texteDeLaSuite(c.suivant))), suite: c.suivant };
+    }
+    return rien('Pas de semaine à écrire lundi.');
+  }
   const suivante = recuperation ? await courseDansLaRecuperation(o, lundi) : null;
   if (suivante) return rien(`Récupération arrêtée : ${suivante} tombe cette semaine, sa semaine de course prend la place.`, numero);
   const reservation = await etatDeLaReservation(o, numero);

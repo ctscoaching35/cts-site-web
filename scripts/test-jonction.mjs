@@ -26,8 +26,9 @@ registerHooks({
 });
 const { joursRecuperation } = await import('../lib/plan.ts');
 const { ajouterJours } = await import('../lib/app/plan.ts');
-const { debutApres, departCalcule, dureeTexte, enReprise, lundiDuRythme, preparationLointaine, saisonEnReprise, slApresCourse } =
-  await import('../lib/app/jonction.ts');
+const { debutApres, departCalcule, dureeTexte, enReprise, lundiDuRythme, preparationLointaine, saisonEnReprise, slApresCourse,
+  heuresDuTemps, precedentDuDepart, recuperationFinie, partApres, partEnSuite, texteDeLaSuite, enUneLigne, texteProgrammeApres,
+  texteDepartLundiApres } = await import('../lib/app/jonction.ts');
 
 // L'objectif 1 de la mesure du coach (06/11/2026) : un trail marathon de 5h30, couru le dimanche 18/04/2027.
 const COURSE_1 = '2027-04-18';
@@ -144,4 +145,78 @@ test('décision 8 : la saison de fond qui suit une récupération commence par l
   assert.equal(saisonEnReprise('2027-05-17', precedents), false);
   assert.equal(saisonEnReprise(REPRISE, []), false, 'une saison sans course avant');
   assert.equal(saisonEnReprise(REPRISE, [{ course_date: '2027-06-20', temps_h: 5.5, format: 'TM' }]), false);
+});
+
+// LA CONTINUITÉ ENTRE DEUX OBJECTIFS À L'ÉCRAN DU COACH (décisions coach du 08/11/2026) : le cas qu'il a vu, en fictif. Un
+// semi couru le dimanche 1/11/2026 en 1h40 (4 jours : reprise le lundi 9/11), un trail en mars 2027 programmé au 9/11.
+const SEMI = { id: 'semi', course_nom: 'Semi de la Rance', course_date: '2026-11-01', temps_h: heuresDuTemps('1h40'), format: 'R21',
+  fond: false, depart: '2026-09-07' };
+const TRAIL = { id: 'trail', course_nom: 'Trail des Monts', course_date: '2027-03-21', temps_h: heuresDuTemps('5h30'), format: 'TM',
+  fond: false, depart: '2026-11-09' };
+
+test('continuité : les heures du temps visé, comme avant (ecriture.heures)', () => {
+  assert.equal(heuresDuTemps('5h30'), 5.5);
+  assert.equal(heuresDuTemps('5:30'), 5.5);
+  assert.equal(heuresDuTemps('18h'), 18);
+  assert.equal(heuresDuTemps(''), 0);
+  assert.equal(heuresDuTemps(null), 0);
+});
+
+test('continuité 1a : la récupération finie pour le lundi qui vient, la règle du passage du dimanche', () => {
+  assert.equal(debutApres(SEMI), '2026-11-09');
+  assert.equal(recuperationFinie(SEMI, '2026-11-02'), false, 'sa semaine de récupération');
+  assert.equal(recuperationFinie(SEMI, '2026-11-09'), true, 'le dimanche 8/11, pour le lundi 9/11 : plus listé');
+  assert.equal(recuperationFinie(SEMI, '2026-11-16'), true);
+  assert.equal(recuperationFinie(SEMI, '2026-10-26'), false, 'la semaine de sa course');
+  // Un trail de 5h30 : 14 jours, deux semaines de récupération.
+  const tm = { course_date: '2026-11-01', temps_h: 5.5, format: 'TM' };
+  assert.equal(recuperationFinie(tm, '2026-11-09'), false);
+  assert.equal(recuperationFinie(tm, '2026-11-16'), true);
+});
+
+test('continuité : le précédent d’un départ, celui de demarrerObjectif', () => {
+  assert.deepEqual(precedentDuDepart(TRAIL.course_date, [SEMI], '2026-11-08'), { q: SEMI, lundi: '2026-11-09' });
+  assert.equal(precedentDuDepart(TRAIL.course_date, [SEMI], '2027-01-05'), null, 'plus de 60 jours après sa course');
+  assert.equal(precedentDuDepart(SEMI.course_date, [TRAIL], '2026-11-08'), null, 'une course après la sienne');
+  // C5 : une course dans la récupération de la précédente part au lundi de sa semaine de course.
+  const dix = { ...TRAIL, id: 'dix', course_date: '2026-11-07', depart: '2026-11-02' };
+  assert.deepEqual(precedentDuDepart(dix.course_date, [SEMI], '2026-11-01'), { q: SEMI, lundi: '2026-11-02' });
+  // Deux précédents : le lundi de reprise le plus tardif.
+  const avant = { ...SEMI, id: 'avant', course_date: '2026-10-04' };
+  assert.equal(precedentDuDepart(TRAIL.course_date, [avant, SEMI], '2026-11-08').q.id, 'semi');
+});
+
+test('continuité 1b à 1d : la suite d’un objectif couru et le départ après sa récupération', () => {
+  const tous = [SEMI, TRAIL];
+  assert.equal(partApres(TRAIL, tous)?.id, 'semi');
+  assert.equal(partEnSuite(SEMI, tous)?.id, 'trail');
+  assert.equal(partApres(SEMI, tous), null);
+  assert.equal(partEnSuite(TRAIL, tous), null);
+  // Parti sans départ programmé (démarré la veille) : son lundi de départ est celui de sa première semaine, le même.
+  assert.equal(partApres({ ...TRAIL, depart: '2026-11-09' }, tous)?.id, 'semi');
+  // Pas programmé : rien à dire.
+  assert.equal(partApres({ ...TRAIL, depart: null }, [SEMI, { ...TRAIL, depart: null }]), null);
+  // Plus tard que le lundi de reprise (une préparation lointaine, des séances posées, un lundi choisi) : le texte d'avant.
+  for (const depart of ['2026-11-16', '2027-01-04']) {
+    const plusTard = { ...TRAIL, depart };
+    assert.equal(partApres(plusTard, [SEMI, plusTard]), null, depart);
+    assert.equal(partEnSuite(SEMI, [SEMI, plusTard]), null, depart);
+  }
+  // C5 : sa semaine de course, pas une reprise allégée.
+  const dix = { ...TRAIL, id: 'dix', course_date: '2026-11-07', depart: '2026-11-02' };
+  assert.equal(partApres(dix, [SEMI, dix]), null);
+  // Une saison de fond n'est ni précédente ni suivante.
+  const fond = { ...TRAIL, id: 'fond', course_nom: 'Saison de fond', fond: true };
+  assert.equal(partEnSuite(SEMI, [SEMI, fond]), null);
+  assert.equal(partApres(TRAIL, [{ ...SEMI, fond: true }, TRAIL]), null);
+});
+
+test('continuité : les textes validés le 08/11/2026', () => {
+  assert.equal(enUneLigne(texteDeLaSuite({ course_nom: 'Trail des Monts', depart: '2026-11-09' })),
+    'Sa récupération est finie : la suite est son Trail des Monts, qui démarre le lundi 9 novembre 2026 dans sa continuité.');
+  assert.equal(enUneLigne(texteDeLaSuite(null)), 'Sa récupération est finie : plus rien ne s’écrit pour cet objectif.');
+  assert.equal(texteProgrammeApres('2026-11-09', 'Semi de la Rance'),
+    'Programmé : il démarre tout seul le lundi 9 novembre 2026, après la récupération de son Semi de la Rance : une semaine de reprise allégée, puis le rythme et la sortie longue repris de ses semaines d’avant cette course.');
+  assert.equal(texteDepartLundiApres('Semi de la Rance'),
+    'Départ lundi, après la récupération de son Semi de la Rance : sa première semaine, une reprise allégée, part avec son départ dimanche soir.');
 });

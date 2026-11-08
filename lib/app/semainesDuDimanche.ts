@@ -4,6 +4,7 @@
  * lecture, pour que les deux écrans comptent la même chose. Tout vient de la base. Côté serveur seulement.
  */
 import { athletesCoaches, type FicheAthlete, type Objectif } from './coaching';
+import { heuresDuTemps, recuperationFinie } from './jonction';
 import { ajouterJours } from './plan';
 import { clientService } from './supabase';
 
@@ -39,15 +40,28 @@ export async function semainesDuDimanche(coachId: string, jour: string): Promise
   const service = clientService();
   const lundi = lundiQuiVient(jour);
   const fiches = (await athletesCoaches(coachId)).filter((a) => a.nolio_athlete_id);
-  // Les objectifs encore en route, et ceux d'une course passée depuis moins de 6 semaines (sa récupération).
+  // Les objectifs encore en route, et ceux d'une course passée depuis moins de 6 semaines (sa récupération, tant qu'elle
+  // n'est pas finie).
   const objectifs = fiches.flatMap((a) => a.objectifs.filter((o) => o.course_date >= ajouterJours(jour, -42)).map((o) => ({ a, o })));
   const ids = objectifs.map((x) => x.o.plan_id);
   const { data: plans } = ids.length
-    ? await service.from('plans').select('id, parametres, demarre_le, depart_prevu').in('id', ids) : { data: [] };
+    ? await service.from('plans').select('id, parametres, demarre_le, depart_prevu, intake').in('id', ids) : { data: [] };
   const parId = new Map((plans ?? []).map((p) => [p.id as string, p as Record<string, unknown>]));
+  // Un objectif couru dont la récupération est finie pour ce lundi (décision coach du 08/11/2026) : plus listé. Avant, il
+  // restait 6 semaines après sa course, et l'athlète passait deux fois en « Sans signal » une fois l'objectif suivant parti.
+  // Son temps visé et son format, comme les lit le passage du dimanche (ecriture.objectifEcrit, semaineDeRecuperation).
+  // Une saison de fond n'a pas de récupération (le passage ne l'écrit pas, plansEnRecuperation) : finie, plus listée.
+  const fini = (o: Objectif, plan: Record<string, unknown>) => {
+    const parametres = plan.parametres as Record<string, unknown>;
+    if (parametres.fond) return o.course_date < lundi;
+    const champs = (parametres.champs ?? {}) as Record<string, unknown>;
+    return recuperationFinie({ course_date: o.course_date, temps_h: heuresDuTemps((plan.intake as Record<string, unknown> | null)?.temps_cible),
+      format: String(champs.format ?? '') }, lundi);
+  };
   const lignes = objectifs.flatMap(({ a, o }) => {
     const plan = parId.get(o.plan_id);
-    return plan?.parametres && (plan.demarre_le || (plan.depart_prevu && String(plan.depart_prevu) <= lundi)) ? [{ a, o, plan }] : [];
+    return plan?.parametres && (plan.demarre_le || (plan.depart_prevu && String(plan.depart_prevu) <= lundi)) && !fini(o, plan)
+      ? [{ a, o, plan }] : [];
   });
   // Une fiche passée en mode plan avant le 04/11/2026 (le mode n'est plus dans l'interface) : rien ne s'écrit pour elle,
   // comme pour une programmation à la main.

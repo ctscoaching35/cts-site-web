@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import BanniereSemaine from '@/components/app/BanniereSemaine';
 import CadreCoach from '@/components/app/CadreCoach';
 import EnvoiSemaine from '@/components/app/EnvoiSemaine';
+import SuiteDeLObjectif from '@/components/app/SuiteDeLObjectif';
 import { AjouterCourse, AnnulerSemaine, DemarrerNolio, ModifierCourse, RetirerCourse } from '@/components/app/GestesEcriture';
 import { estRoute, Montagne } from '@/components/app/TableauDeBord';
 import { Carte, CarteSombre, PastilleDate, Surtitre } from '@/components/app/Ui';
@@ -11,7 +12,8 @@ import { garderObjectif, retirerObjectif } from '@/lib/app/actionsCoaching';
 import { objectifCoache, verifierEnvois } from '@/lib/app/coaching';
 import { courseNolio } from '@/lib/app/coursesNolio';
 import { demandesDuCoach } from '@/lib/app/demandes';
-import { annonceDepart, PAS_UN_AJUSTEMENT, trameDuPlan, type Realise } from '@/lib/app/ecriture';
+import { annonceDepart, continuiteDe, PAS_UN_AJUSTEMENT, trameDuPlan, type Realise } from '@/lib/app/ecriture';
+import { texteProgrammeApres } from '@/lib/app/jonction';
 import { lienFicheCourse } from '@/lib/app/ficheCourse';
 import { exigerCoach } from '@/lib/app/nolio';
 import { ajouterJours, dateLongue, jMoins, jourMois } from '@/lib/app/plan';
@@ -81,6 +83,13 @@ export default async function ObjectifCoache({ params, searchParams }: {
   const premierLundi = debutPrepa && debutPrepa > lundiQuiVient ? debutPrepa : lundiQuiVient;
   const dernierLundi = [...o.plan.semaines].reverse().find((s) => s.lundi)?.lundi ?? o.plan.course.date;
   const lundiDepart = ecriture?.depart_prevu ? String(ecriture.depart_prevu) : lointain && debutPrepa ? debutPrepa : annonce?.lundi ?? '';
+  // LA CONTINUITÉ ENTRE DEUX OBJECTIFS (décisions coach du 08/11/2026) : avant son départ programmé, la récupération d'un
+  // objectif précédent après laquelle il part ; couru, sa suite une fois sa récupération finie (le dimanche qui la
+  // termine, la veille de son lundi de reprise). Pas pour une saison de fond.
+  const continuite = ecriture?.parametres && !o.plan.fond && (ecriture.demarre_le ? o.plan.course.date < jour : ecriture.depart_prevu)
+    ? await continuiteDe(id).catch(() => null) : null;
+  const suiteFinie = Boolean(ecriture?.demarre_le && continuite && jour >= ajouterJours(continuite.reprise, -1)
+    && (continuite.suivant || !continuite.objectifApres));
   const realises = (ecrites ?? []).map((w) => w.realise as Realise | null).filter((r): r is Realise => Boolean(r))
     .sort((a, b) => Number(a.numero.slice(1)) - Number(b.numero.slice(1)));
   const jauge = trame ? jaugeDuPlan(trame.semaines, realises, jour) : null;
@@ -171,7 +180,10 @@ export default async function ObjectifCoache({ params, searchParams }: {
                     </p>
                   )}
                   {ecriture.depart_prevu && (
-                    <p className="text-[0.8125rem] font-semibold text-teal">Programmé : il démarre tout seul le {dateLongue(String(ecriture.depart_prevu), true)}.</p>
+                    <p className="text-[0.8125rem] font-semibold text-teal">
+                      {continuite?.precedent ? texteProgrammeApres(String(ecriture.depart_prevu), continuite.precedent.course_nom)
+                        : `Programmé : il démarre tout seul le ${dateLongue(String(ecriture.depart_prevu), true)}.`}
+                    </p>
                   )}
                   <DemarrerNolio planId={id} actif={Boolean(nolio)} lundi={lundiDepart} premier={premierLundi} dernier={dernierLundi}
                     programme={Boolean(ecriture.depart_prevu)} />
@@ -193,6 +205,11 @@ export default async function ObjectifCoache({ params, searchParams }: {
                         </Link>
                       </div>
                     </div>
+                  )}
+                  {!prochaine && suiteFinie && continuite && (
+                    <p className="p-3.5 rounded-xl bg-[#E1EFEA] text-[0.8125rem] leading-relaxed text-[#0B4A40]">
+                      <SuiteDeLObjectif suite={continuite.suivant} />
+                    </p>
                   )}
                   {/* Une ligne par semaine écrite (décision coach du 04/11/2026) : son lundi, faite x/y, sa charge, sa sortie
                       longue, son Hooper, ses ajustements ; sa note « Ta semaine » s'ouvre au clic. Sa charge (décision coach

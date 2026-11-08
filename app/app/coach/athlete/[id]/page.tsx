@@ -158,7 +158,8 @@ export default async function FicheAthleteCoache({ params }: { params: Promise<{
           {gardes === null ? (
             <p className="text-sm text-[#4A4866]">Ses signaux ne sont pas encore gardés : la migration du 04/11/2026 est à passer.</p>
           ) : !septJours ? (
-            <p className="text-sm text-[#4A4866]">Pas encore lus : ils se lisent chaque soir quand un objectif ou une saison est en route. « Relire maintenant » les lit tout de suite.</p>
+            // « Ses 7 jours » vide : validé par le coach le 08/11/2026 (la continuité entre deux objectifs, 1e).
+            <p className="text-sm text-[#4A4866]">Rien de lu pour l’instant. Ses séances et son Hooper des 7 derniers jours se lisent dans Nolio chaque soir, dès qu’un objectif ou une saison a démarré. « Relire maintenant » les lit tout de suite.</p>
           ) : (
             <>
               <p className="text-sm text-[#3B3957]">
