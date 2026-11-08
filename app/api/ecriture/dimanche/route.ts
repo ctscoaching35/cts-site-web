@@ -38,7 +38,7 @@ export async function GET(request: Request) {
     await prevenirCoach(`Plans CTS : ${echecs.length} semaine${echecs.length > 1 ? 's' : ''} non écrite${echecs.length > 1 ? 's' : ''}`,
       `Le passage du dimanche n’a pas pu écrire ou envoyer certaines semaines dans Nolio, même après ses reprises${qui ? ` : ${qui}` : ''}. `
       + 'Le passage de lundi soir les reprend, à partir de mardi, et te dit ce qui reste ; pour un coaché, tu peux aussi le faire '
-      + `toi-même dès lundi matin, « Réessayer » dans « À regarder » (${site.url}/app/coach).`);
+      + `toi-même dès lundi matin, « Réessayer » dans « Urgent » (${site.url}/app/coach/urgent).`);
   }
   return Response.json({ semaines: comptes.map(({ plan, quoi, erreur }) => ({ plan, quoi, erreur: erreur ?? null })) });
 }

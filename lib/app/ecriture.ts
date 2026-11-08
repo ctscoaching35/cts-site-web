@@ -2332,7 +2332,7 @@ export async function reprendreLesSemainesDues(budgetMs = 90_000, jour = aujourd
     const liste = (ids: string[]) => ids.map((id) => noms.get(id) ?? 'un athlète').join(', ');
     await prevenirCoach(`Plans CTS : ${reprises.length + restent.length} semaine${reprises.length + restent.length > 1 ? 's' : ''} du dimanche reprise${reprises.length + restent.length > 1 ? 's' : ''} ce lundi`,
       [reprises.length ? `Écrites ce soir, à partir de demain : ${liste(reprises)}.` : '',
-        restent.length ? `Toujours pas écrites : ${liste(restent)}. Pour un coaché, « Réessayer » dans « À regarder » (${site.url}/app/coach) ; pour un acheteur, le site ne réessaie plus de lui-même : préviens-le en réponse à son e-mail de bienvenue.` : '',
+        restent.length ? `Toujours pas écrites : ${liste(restent)}. Pour un coaché, « Réessayer » dans « Urgent » (${site.url}/app/coach/urgent) ; pour un acheteur, le site ne réessaie plus de lui-même : préviens-le en réponse à son e-mail de bienvenue.` : '',
       ].filter(Boolean).join('\n\n'));
   }
   return comptes;
@@ -2562,6 +2562,6 @@ async function resumeAuCoach(fatigues: Compte[], tests: TestLu[] = []) {
   const valeurs = tests.map((t) => nomDe.get(t.plan) && `${nomDe.get(t.plan)} : ${t.texte.split('.')[0]}.`).filter(Boolean) as string[];
   if (!lignes.length && !valeurs.length) return;
   await prevenirCoach(`Tes coachés : ${lignes.length + valeurs.length} nouveauté${lignes.length + valeurs.length > 1 ? 's' : ''} aujourd’hui`,
-    [lignes.length ? `${lignes.join('\n')}\n\nTout est dans « À regarder » (${site.url}/app/coach) ; chaque ajustement s’annule dans ton Suivi.` : '',
+    [lignes.length ? `${lignes.join('\n')}\n\nTout est dans « Mes athlètes » (${site.url}/app/coach), sur la page de chaque athlète ; chaque ajustement s’y annule, dans « Sa semaine qui arrive ».` : '',
       valeurs.length ? `Tests lus, valeurs posées sur leur fiche :\n${valeurs.join('\n')}` : ''].filter(Boolean).join('\n\n'));
 }
