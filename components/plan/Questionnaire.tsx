@@ -238,7 +238,7 @@ export default function Questionnaire({
   // modèle du récapitulatif. Pas dans la version courte, où la section n'est pas posée.
   const manqueSemaine = court ? [] : [
     joursCoches.length < freqMin ? `coche au moins ${freqMin} jours` : null,
-    // BROUILLON (P5, 07/11/2026) : les deux suites de « Pour continuer, … ».
+    // Les deux suites de « Pour continuer, … » (P5), validées par le coach le 08/11/2026.
     !c.freq_hebdo ? 'choisis ton nombre de séances par semaine' : null,
     !c.jour_sl ? 'choisis le jour de ta sortie longue' : null,
   ].filter(Boolean) as string[];
