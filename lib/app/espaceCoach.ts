@@ -31,7 +31,8 @@ export type LigneAthlete = {
   id: string; nom: string; usr: string | null; nolio: boolean; accord: boolean; app: boolean;
   objectif: { plan_id: string; course_nom: string; course_date: string; demarre: boolean; prevu: string | null;
     semaine: number | null; total: number | null; verdict: Verdict | null; ecrit: boolean;
-    cours: { numero: string; type: string; bloc: string } | null;
+    // reprise : sa semaine en cours, écrite, est la reprise après une course (moteur 8.459, « reprise_apres_course »).
+    cours: { numero: string; type: string; bloc: string; reprise?: boolean } | null;
     // Une saison de fond (décisions coach du 24/10/2026) : son numéro, le thème de la semaine, ses tests dans n semaines.
     fond?: { saison: number; theme: string | null; tests_dans: number | null } } | null;
   // Son entrée, tant qu'elle n'est pas complète (décision coach du 22/10/2026) : « Entrée 3/5 » sur sa ligne.
@@ -343,7 +344,8 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
       app: Boolean(a.compte_id),
       objectif: o ? { plan_id: o.plan_id, course_nom: o.course_nom, course_date: o.course_date, demarre, prevu: (p?.depart_prevu as string | null) ?? null,
         semaine: jauge?.semaine ?? null, total: trame?.length ?? null, verdict: jauge?.verdict ?? null, ecrit,
-        cours: enCours ? { numero: enCours.numero, type: enCours.type, bloc: enCours.bloc } : null,
+        cours: enCours ? { numero: enCours.numero, type: enCours.type, bloc: enCours.bloc,
+          reprise: semaines.some((l) => l.numero === enCours.numero && (l.donnees as { reprise_apres_course?: unknown } | null)?.reprise_apres_course === true) } : null,
         ...(infosFond ? { fond: { saison: infosFond.saison, theme: (enCours as { theme?: string } | null)?.theme ?? null,
           tests_dans: Math.max(0, Math.round(joursEntre(jour, (infosFond.tests_les ?? [infosFond.tests_le])
             .find((t) => t >= lundi) ?? infosFond.tests_le) / 7)) } } : {}) } : null,

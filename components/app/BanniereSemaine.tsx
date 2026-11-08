@@ -1,5 +1,6 @@
 import { jMoins, type Semaine } from '@/lib/app/plan';
 import { BANNIERE } from '@/lib/app/charte';
+import { typeCoteCoach } from '@/lib/app/nomsSeances';
 
 // La bannière de semaine, en carte claire (décision coach du 07/10/2026, « option A ») : la semaine et
 // ses dates en surtitre, le type en titre, le bloc en pastille, le volume et les séances en grand, et
@@ -18,7 +19,8 @@ export default function BanniereSemaine({ semaine, course, vers }: { semaine: Se
         {course && semaine.lundi ? `${jMoins(semaine.lundi, course)}${vers ? ` avant ${vers}` : ''}` : total ? `Semaine ${n} sur ${total}` : semaine.numero} · {semaine.dates}
       </div>
       <div className="flex flex-wrap items-center gap-2 mt-1">
-        <span className="text-xl font-extrabold text-indigo">{semaine.type}</span>
+        {/* Le type en mots (décisions coach du 08/11/2026) : « Semaine allégée », « Semaine de reprise » (la semaine écrite). */}
+        <span className="text-xl font-extrabold text-indigo">{typeCoteCoach(semaine.type, Boolean(semaine.reprise_apres_course))}</span>
         <span className="text-xs font-semibold text-indigo bg-[#E4E3EE] px-2.5 py-1 rounded-full">
           {semaine.theme ? `Saison de fond · Bloc ${semaine.theme}` : semaine.bloc}
         </span>

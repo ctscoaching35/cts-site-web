@@ -14,6 +14,7 @@ import { courseNolio } from '@/lib/app/coursesNolio';
 import { demandesDuCoach } from '@/lib/app/demandes';
 import { annonceDepart, continuiteDe, PAS_UN_AJUSTEMENT, trameDuPlan, type Realise } from '@/lib/app/ecriture';
 import { texteProgrammeApres } from '@/lib/app/jonction';
+import { typeCoteCoach } from '@/lib/app/nomsSeances';
 import { lienFicheCourse } from '@/lib/app/ficheCourse';
 import { exigerCoach } from '@/lib/app/nolio';
 import { ajouterJours, dateLongue, jMoins, jourMois } from '@/lib/app/plan';
@@ -196,7 +197,7 @@ export default async function ObjectifCoache({ params, searchParams }: {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-bold">S’écrit le {dateLongue(ajouterJours(prochaine.lundi, -1), true)}, vers 18 h</p>
                         <p className="mt-1 text-[0.8125rem] text-[#4A4866] leading-relaxed">
-                          D’après sa semaine et son questionnaire du matin. {prochaine.type}
+                          D’après sa semaine et son questionnaire du matin. {typeCoteCoach(prochaine.type)}
                           {prochaine.seances_cles.length ? ` · ${prochaine.seances_cles.map((c) => c.seance.split(' — ')[0]).join(' · ')}` : ''}
                           {prochaine.sl_min ? ` · sortie longue de ${enHeures(prochaine.sl_min)} annoncée` : ''}.
                         </p>

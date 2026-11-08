@@ -3,7 +3,7 @@ import clsx from 'clsx';
 import type { LigneTrame } from '@/lib/app/ecriture';
 import { BANNIERE, FAMILLES } from '@/lib/app/charte';
 import { lien, type Contexte } from '@/lib/app/contexte';
-import { estSemaineDeWeekEndChoc, nomAffiche } from '@/lib/app/nomsSeances';
+import { estSemaineDeWeekEndChoc, nomAffiche, SEMAINE_DE_REPRISE } from '@/lib/app/nomsSeances';
 import { ajouterJours, dateLongue, slugFiche, type Jour, type Plan, type Semaine } from '@/lib/app/plan';
 import { enHeures, type Fiche, type Jauge } from '@/lib/app/tableau';
 import type { CourseSecondaire, EtatNolio, RaisonNolio, SeanceNolio } from '@/lib/app/tableauDuPlan';
@@ -315,7 +315,10 @@ const couleurDuJour = (j: Jour) => j.couleur ?? FAMILLES[j.famille]?.filet ?? '#
 const TYPE_EN_CLAIR: Record<string, string> = {
   Charge: 'Semaine de charge', Assimilation: 'Semaine allégée', Décharge: 'Semaine allégée', 'Affûtage actif': 'Affûtage',
 };
-export const typeEnClair = (type: string) => TYPE_EN_CLAIR[type] ?? (estSemaineDeWeekEndChoc(type) ? 'Semaine de charge' : type);
+// reprise : la première semaine écrite après une course (« reprise_apres_course » de la semaine écrite, moteur 8.459 ;
+// « Semaine de reprise », décision coach du 08/11/2026, « A »).
+export const typeEnClair = (type: string, reprise = false) =>
+  (reprise ? SEMAINE_DE_REPRISE : TYPE_EN_CLAIR[type] ?? (estSemaineDeWeekEndChoc(type) ? 'Semaine de charge' : type));
 // La semaine qui contient la course (C13).
 export const contientLaCourse = (lundi: string | null | undefined, course: string | null | undefined) =>
   Boolean(lundi && course && course >= lundi && course <= ajouterJours(lundi, 6));
@@ -379,7 +382,8 @@ export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null, arri
   const lundiDeLaSemaine = ligne?.lundi || semaine?.lundi || lundi;
   const etiquette = contientLaCourse(lundiDeLaSemaine, course) ? { texte: 'Semaine de course', couleur: '#0C6E5F' }
     : ajustee ? { texte: 'Semaine ajustée', couleur: '#8A5E10' }
-      : ligne ? { texte: typeEnClair(ligne.type), couleur: BANNIERE[ligne.type] ?? '#4F6F69' } : null;
+      : ligne ? { texte: typeEnClair(ligne.type, Boolean(semaine?.reprise_apres_course && semaine.numero === ligne.numero)),
+        couleur: BANNIERE[ligne.type] ?? '#4F6F69' } : null;
   // Une ligne de la semaine : le jour (aujourd'hui en avant, les jours passés grisés, C15), la couleur de la séance, son
   // nom et, dans sa colonne, sa durée totale (C16 : le nom garde le temps de travail de Nolio, « Seuil 2 court · 18 min —
   // 9 × 2 min », la colonne dit la séance entière, « 51 min »).

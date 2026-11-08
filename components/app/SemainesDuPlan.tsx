@@ -29,9 +29,11 @@ const jourEtMois = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateStr
 const jourDeLaDate = (iso: string) => JOUR(new Date(`${iso}T12:00:00Z`).toLocaleDateString('fr-FR', { weekday: 'long', timeZone: 'UTC' }));
 const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`;
 
-export default function SemainesDuPlan({ trame, jour, course, realises = [], encours = null, suivante = null, depuis = null }: {
+// reprises : les lundis des semaines écrites de reprise après une course (« Semaine de reprise », décision coach du
+// 08/11/2026 ; lib/app/tableauDuPlan.ts, donneesTableau).
+export default function SemainesDuPlan({ trame, jour, course, realises = [], encours = null, suivante = null, depuis = null, reprises = [] }: {
   trame: LigneTrame[]; jour: string; course: string; realises?: Realise[]; encours?: SemaineDetaillee; suivante?: SemaineDetaillee;
-  depuis?: string | null;
+  depuis?: string | null; reprises?: string[];
 }) {
   const semaines = trame.filter((l) => l.lundi && (!depuis || l.lundi >= depuis));
   if (!semaines.length) return null;
@@ -129,7 +131,7 @@ export default function SemainesDuPlan({ trame, jour, course, realises = [], enc
     );
     const droite = (
       <span className="shrink-0 max-w-[52%] flex flex-wrap items-center justify-end gap-x-2 gap-y-0.5 text-right text-xs font-semibold">
-        <span style={{ color: deCourse ? '#0C6E5F' : BANNIERE[l.type] ?? '#4F6F69' }}>{deCourse ? 'Semaine de course' : typeEnClair(l.type)}</span>
+        <span style={{ color: deCourse ? '#0C6E5F' : BANNIERE[l.type] ?? '#4F6F69' }}>{deCourse ? 'Semaine de course' : typeEnClair(l.type, reprises.includes(l.lundi))}</span>
         {l.week_end_choc && detail !== 'faite' && detail !== 'encours' && <span className="text-indigo whitespace-nowrap">· week-end choc</span>}
         {volume && (
           <span className="text-indigo tabular-nums whitespace-nowrap">

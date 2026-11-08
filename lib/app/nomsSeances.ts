@@ -48,3 +48,12 @@ export const MOTIF_WEEK_END_CHOC = /back-to-back|week-end choc/i;
 
 // Le type d'une semaine dans la trame : « Back-to-back » (l'ancien) ou « Week-end choc » (le nouveau, s'il change aussi).
 export const estSemaineDeWeekEndChoc = (type: string | null | undefined) => MOTIF_WEEK_END_CHOC.test(String(type ?? ''));
+
+// LE NOM D'UNE SEMAINE (décisions coach du 08/11/2026, « A ») : « Semaine de reprise » (validé) pour la première semaine
+// écrite après une course, partout où le site nomme la semaine ; le moteur 8.459 le marque dans la semaine écrite
+// (« reprise_apres_course », CONTRAT_API_CTS.md), la trame ne le porte pas : une semaine pas encore écrite garde son nom.
+// Le type reste « Assimilation » pour la programmation.
+export const SEMAINE_DE_REPRISE = 'Semaine de reprise';
+// Côté coach, « Assimilation » brut devient « Semaine allégée », comme côté athlète ; les autres types restent tels quels.
+export const typeCoteCoach = (type: string, reprise = false) =>
+  (reprise ? SEMAINE_DE_REPRISE : type === 'Assimilation' ? 'Semaine allégée' : type);

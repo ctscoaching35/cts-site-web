@@ -2,6 +2,7 @@ import Link from 'next/link';
 import clsx from 'clsx';
 import { Carte, CarteSombre, Surtitre, BOUTON } from './Ui';
 import type { LigneTrame } from '@/lib/app/ecriture';
+import { SEMAINE_DE_REPRISE } from '@/lib/app/nomsSeances';
 import { ajouterJours, dateLongue, joursEntre, type Plan } from '@/lib/app/plan';
 
 // La saison de fond dans l'app (décisions coach du 24/10/2026, mesure 7 : « le bloc et le compte à rebours des tests »,
@@ -18,7 +19,9 @@ const enSemaines = (jours: number) => {
 };
 
 // L'accueil : à la place de « Ton prochain objectif majeur ».
-export function CarteSaison({ plan, ligne, jour, href }: { plan: Plan; ligne: LigneTrame | null; jour: string; href: string }) {
+// reprise : sa semaine écrite est la reprise après une course (« Semaine de reprise », décision coach du 08/11/2026).
+export function CarteSaison({ plan, ligne, jour, href, reprise = false }: { plan: Plan; ligne: LigneTrame | null; jour: string; href: string;
+  reprise?: boolean }) {
   const fond = plan.fond as NonNullable<Plan['fond']>;
   const tests = Boolean(ligne?.tests);
   const theme = ligne?.theme ?? null;
@@ -28,7 +31,7 @@ export function CarteSaison({ plan, ligne, jour, href }: { plan: Plan; ligne: Li
       <div className="flex justify-between items-start gap-3">
         <div className="min-w-0">
           <h2 className="text-[1.625rem] font-extrabold leading-tight">
-            {tests ? 'Semaine de tests' : ligne?.type === 'Assimilation' ? 'Semaine allégée' : theme ? `Bloc ${theme}` : `Saison ${fond.saison}`}
+            {tests ? 'Semaine de tests' : reprise ? SEMAINE_DE_REPRISE : ligne?.type === 'Assimilation' ? 'Semaine allégée' : theme ? `Bloc ${theme}` : `Saison ${fond.saison}`}
           </h2>
           <p className="mt-1.5 text-[0.8125rem] text-[#D6D5E6]">Du {dateCourte(fond.debut)} au {dateCourte(fond.fin)}</p>
         </div>

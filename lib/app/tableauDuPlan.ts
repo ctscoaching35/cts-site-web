@@ -23,6 +23,9 @@ export type DonneesTableau = {
   trame: LigneTrame[]; realises: Realise[]; fiches: Fiche[]; nolio: EtatNolio; accord: boolean; ecrit: boolean;
   // Les courses secondaires ajoutées (O2).
   courses: CourseSecondaire[];
+  // Les lundis des semaines écrites de reprise après une course (moteur 8.459, « reprise_apres_course » ; « Semaine de
+  // reprise », décision coach du 08/11/2026).
+  reprises?: string[];
 };
 // chrono : le chrono visé (PO3), absent d'une course ajoutée avant le 19/10/2026.
 export type CourseSecondaire = { nom: string; date: string; distance_km: number; dplus_m: number; chrono?: string | null;
@@ -41,14 +44,15 @@ export async function donneesTableau(ctx: Contexte): Promise<DonneesTableau> {
     // Un coaché : ses séances sont dans Nolio, son accord est celui du Suivi de son coach (T5).
     ctx.coache ? accordDuCoache(ctx.cle) : Promise.resolve(false),
     trameDuPlan(ctx.cle).catch(() => null),
-    service.from('semaines_ecrites').select('numero, realise').eq('plan_id', ctx.cle).not('realise', 'is', null),
+    service.from('semaines_ecrites').select('numero, realise, lundi:donnees->>lundi, reprise:donnees->>reprise_apres_course').eq('plan_id', ctx.cle),
   ]);
   if (!p?.parametres) {
     return { trame: trameDesDonnees(ctx.plan), realises: [], fiches: [], nolio: ctx.coache ? 'coache' : null, accord: false, ecrit: false,
       courses: [] };
   }
-  const realises = (lignes ?? []).map((l) => l.realise as Realise)
+  const realises = (lignes ?? []).map((l) => l.realise as Realise | null).filter((r): r is Realise => Boolean(r))
     .sort((a, b) => Number(a.numero.slice(1)) - Number(b.numero.slice(1)));
+  const reprises = (lignes ?? []).filter((l) => String(l.reprise) === 'true' && l.lundi).map((l) => String(l.lundi));
   // E3 : une préparation arrêtée (remboursée) ; sans la migration du 05/11/2026, la lecture échoue et rien ne change.
   const arretee = !ctx.coache && p.nolio_statut === 'sorti'
     ? Boolean((await service.from('plans').select('arretee_le').eq('id', ctx.cle).maybeSingle().then((r) => r.data, () => null))?.arretee_le)
@@ -59,6 +63,7 @@ export async function donneesTableau(ctx: Contexte): Promise<DonneesTableau> {
     ecrit: true,
     courses: (((p.parametres as Record<string, unknown>).courses_secondaires ?? []) as CourseSecondaire[])
       .slice().sort((a, b) => a.date.localeCompare(b.date)),
+    reprises,
   };
 }
 

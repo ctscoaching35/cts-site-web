@@ -209,7 +209,8 @@ export default async function AccueilAthlete({ ctx, demarrage, montre = false, d
         )}
         {/* AT2 (décision coach du 04/11/2026) : l'objectif, puis « Ta semaine », puis le reste. */}
         {/* La saison de fond (décisions coach du 24/10/2026) : le bloc et le compte à rebours des tests. */}
-        {plan.fond ? <CarteSaison plan={plan} ligne={ligne} jour={jour} href={lien('/app/plan', ctx)} /> : (
+        {plan.fond ? <CarteSaison plan={plan} ligne={ligne} jour={jour} href={lien('/app/plan', ctx)}
+          reprise={Boolean(semaine?.reprise_apres_course && semaine.numero === ligne?.numero)} /> : (
           <CarteObjectif plan={plan} restants={restants} jauge={ctx.aLaMain ? null : jauge} etape={etape} href={lien('/app/plan', ctx)}
             surtitre={etape === 'apres' ? 'Ta dernière course' : 'Ton objectif majeur'} jourJ={jourJ}
             // « Ajouter une course › » (décision coach du 07/11/2026), coaché ou acheteur, tant que l'objectif est à venir (pas

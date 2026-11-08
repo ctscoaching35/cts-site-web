@@ -3,6 +3,7 @@ import clsx from 'clsx';
 import { Carte, Surtitre } from './Ui';
 import type { LigneAthlete } from '@/lib/app/espaceCoach';
 import type { SignalAthlete } from '@/lib/app/cetteSemaine';
+import { SEMAINE_DE_REPRISE, typeCoteCoach } from '@/lib/app/nomsSeances';
 import { ajouterJours, dateAbregee, jMoins } from '@/lib/app/plan';
 
 // Les pastilles et le signal de chaque ligne (maquette validée par le coach le 24/10/2026).
@@ -108,10 +109,12 @@ function Ligne({ a, signal, jour }: { a: LigneAthlete; signal: SignalAthlete; jo
   // Sa semaine : sa place dans le plan, sinon où en est son objectif.
   // La saison de fond (décisions coach du 24/10/2026) : le thème de la semaine.
   // Un plan démarré ne dit jamais « Démarre le … » (bogue du 05/11/2026) : son départ programmé reste en base après le départ.
-  const [semaine, bloc] = o?.fond && avenir ? [o.cours?.type === 'Assimilation' ? 'Semaine allégée' : o.fond.theme ? `Bloc ${o.fond.theme}` : 'Saison de fond',
+  // Le type en mots (décisions coach du 08/11/2026) : « Semaine allégée », « Semaine de reprise » (sa semaine écrite).
+  const [semaine, bloc] = o?.fond && avenir ? [o.cours?.reprise ? SEMAINE_DE_REPRISE : o.cours?.type === 'Assimilation' ? 'Semaine allégée'
+      : o.fond.theme ? `Bloc ${o.fond.theme}` : 'Saison de fond',
       o.fond.tests_dans ? `tests dans ${o.fond.tests_dans} sem.` : 'semaine de tests']
     : !o || !avenir ? [a.aLaMain ? 'Programmé à la main' : 'Sans objectif', '']
-      : o.cours && o.demarre ? [`${o.cours.numero} / ${o.total ?? '?'} · ${o.cours.type}`, o.cours.bloc]
+      : o.cours && o.demarre ? [`${o.cours.numero} / ${o.total ?? '?'} · ${typeCoteCoach(o.cours.type, o.cours.reprise)}`, o.cours.bloc]
         : !o.ecrit ? ['Envoyé en entier', '']
           : o.demarre ? ['Entre deux semaines', '']
             : o.prevu ? [`Démarre le ${dateCourte(o.prevu, jour)}`, 'Programmé'] : ['Pas encore démarré', ''];

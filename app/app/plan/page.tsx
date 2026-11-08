@@ -161,7 +161,7 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
         {/* S16 (décision coach du 05/11/2026) : la trame semaine par semaine que promettent les CGV ; pour les deux versions
             depuis le 07/11/2026. */}
         {semaines && <SemainesDuPlan trame={d.trame} jour={jour} course={course.date} realises={d.realises}
-          encours={semaines.encours} suivante={semaines.suivante} depuis={depuis} />}
+          encours={semaines.encours} suivante={semaines.suivante} depuis={depuis} reprises={d.reprises} />}
 
         {d.ecrit && !plan.fond && (
           <Carte id="ajouter-course" className="space-y-3 scroll-mt-20">

@@ -84,3 +84,13 @@ test('le week-end choc de deux jours, une semaine ordinaire : pas de ligne', () 
   assert.equal(ligneTroisJours({ lundi: '2027-04-19', seances_cles: [sl('Dimanche'), { jour: 'Mardi', seance: 'Seuil 2', famille: 'qualite' }] }), null);
   assert.equal(ligneTroisJours({ lundi: '2027-04-19', seances_cles: [] }), null);
 });
+
+test('les noms des semaines côté coach : « Semaine allégée », « Semaine de reprise » (décisions coach du 08/11/2026)', async () => {
+  const { typeCoteCoach, SEMAINE_DE_REPRISE } = await import('../lib/app/nomsSeances.ts');
+  assert.equal(typeCoteCoach('Assimilation'), 'Semaine allégée');
+  assert.equal(typeCoteCoach('Assimilation', true), 'Semaine de reprise');
+  assert.equal(SEMAINE_DE_REPRISE, 'Semaine de reprise');
+  // Les autres types restent tels quels (la décision ne touche que « Assimilation »).
+  assert.equal(typeCoteCoach('Charge'), 'Charge');
+  assert.equal(typeCoteCoach('Affûtage actif'), 'Affûtage actif');
+});
