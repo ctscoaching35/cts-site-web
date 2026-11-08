@@ -6,6 +6,7 @@
  * Compte), jamais « Accord reçu ». Quelqu'un qui a aussi une fiche de coaché reste un coaché. Côté serveur seulement.
  */
 import { clientService } from './supabase';
+import type { Vente } from './comptabilite';
 
 export type Acheteur = {
   id: string; nom: string; course: string; date: string; statut: string | null; demarre: string | null; accord: boolean;
@@ -26,6 +27,31 @@ export async function acheteursDesPlans(): Promise<Acheteur[]> {
     demarre: p.demarre_le ? String(p.demarre_le).slice(0, 10) : null, accord: Boolean(p.accord_lecture_le),
     usr: (p.nolio_athlete_id as string | null) ?? null,
   }));
+}
+
+// LES VENTES DE PLANS (« Chiffres », la comptabilité, maquette du 08/11/2026) : chaque achat payé, son montant réellement
+// payé (code promo déduit) et le plan rangé avec lui (formule, acheteur, statut Nolio, arrêtée). Sans les achats simulés par
+// le coach (décision coach du 24/10/2026). Sans la migration du 05/11/2026 (arretee_le), rien n'est dit arrêté.
+export async function ventesDesPlans(): Promise<Vente[]> {
+  const service = clientService();
+  const { data: achats } = await service.from('achats').select('id, paye_le, montant_centimes, stripe_session')
+    .not('stripe_session', 'like', 'coach\\_%').order('paye_le');
+  if (!achats?.length) return [];
+  const champs = 'id, achat_id, course_nom, intake, nolio_statut, nom:donnees->athlete->>nom';
+  const ids = achats.map((a) => String(a.id));
+  const avec = await service.from('plans').select(`${champs}, arretee_le`).in('achat_id', ids);
+  const plans = avec.error ? (await service.from('plans').select(champs).in('achat_id', ids)).data : avec.data;
+  const parAchat = new Map((plans ?? []).map((p) => [String(p.achat_id), p as Record<string, unknown>]));
+  return achats.filter((a) => a.paye_le).map((a) => {
+    const p = parAchat.get(String(a.id));
+    const mois = Number((p?.intake as Record<string, unknown> | null)?.duree_mois);
+    return {
+      id: String(a.id), payeLe: String(a.paye_le), centimes: Number(a.montant_centimes ?? 0),
+      nom: p ? String(p.nom ?? '').trim() || null : null, course: p ? String(p.course_nom ?? '') || null : null,
+      formule: Number.isFinite(mois) && mois > 0 ? mois : null, statut: (p?.nolio_statut as string | null) ?? null,
+      arretee: Boolean(p?.arretee_le),
+    };
+  });
 }
 
 // Les comptes Nolio des acheteurs, hors ceux qui ont aussi une fiche de coaché chez ce coach.

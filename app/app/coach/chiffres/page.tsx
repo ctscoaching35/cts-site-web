@@ -3,7 +3,9 @@ import clsx from 'clsx';
 import { notFound } from 'next/navigation';
 import CadreCoach from '@/components/app/CadreCoach';
 import { chiffresParSemaine } from '@/lib/app/mesure';
-import { acheteursDesPlans } from '@/lib/app/acheteurs';
+import { acheteursDesPlans, ventesDesPlans } from '@/lib/app/acheteurs';
+import { euros, moisDe, moisPrecedent, nomDuMois, parMois, periodeDe, total, ventesDe, type Vente } from '@/lib/app/comptabilite';
+import { coachingsParMois } from '@/lib/app/stripeLecture';
 import { chiffresDuCoaching, type ChiffresCoaching } from '@/lib/app/chiffresCoaching';
 import type { FamilleRetouche } from '@/lib/app/retouches';
 import { exigerCoach } from '@/lib/app/nolio';
@@ -15,10 +17,11 @@ import { espaceCoachOuvert } from '@/lib/app/supabase';
 // Toujours calculée à la visite : la page lit la session du coach.
 export const dynamic = 'force-dynamic';
 
-// « Chiffres » (maquette validée par le coach le 24/10/2026 ; décisions coach du 04/11/2026) : deux onglets. Le coaching
-// individualisé : en tête un seul chiffre, la part des semaines envoyées qu'il n'a pas retouchées dans Nolio (4 dernières
-// semaines, et sa tendance), puis ses retouches par semaine et par famille. Les plans : le tunnel de la vente
-// (CTS_LANCEMENT_CADRAGE.md dans le dépôt du moteur, L4), semaine par semaine sur 12 semaines, et les acheteurs. Les
+// « CHIFFRES », SA COMPTABILITÉ (l'espace par athlète, maquette validée par le coach le 08/11/2026, Q11 à Q13 « A » ;
+// première étape) : en tête, ce que les plans ont encaissé, par mois, d'après ce que le site connaît (lib/app/
+// comptabilite.ts) ; « Les plans », leurs ventes, puis repliés le tunnel de la vente, les portes et les acheteurs (Q13) ;
+// « Les coachings », qui se brancheront sur son Stripe (lib/app/stripeLecture.ts, Q11, Q12) ; en bas, replié, le compte de
+// ses retouches dans Nolio (la boussole du moteur, maquette validée le 24/10/2026, décisions coach du 04/11/2026). Les
 // visites du site et leur provenance : Vercel › Analytics.
 const COLONNES: [string, string][] = [
   ['offre', 'Page des plans'], ['questionnaire', 'Questionnaires'], ['recap', 'Récapitulatifs'],
@@ -48,29 +51,110 @@ const STATUT_NOLIO: Record<string, string> = {
 };
 const pourcent = (x: number) => `${Math.round(100 * x)} %`;
 
-export default async function Chiffres({ searchParams }: { searchParams: Promise<{ partie?: string }> }) {
+export default async function Chiffres({ searchParams }: { searchParams: Promise<{ periode?: string }> }) {
   if (!espaceCoachOuvert()) notFound();
   const coach = await exigerCoach();
-  const plans = (await searchParams).partie === 'plans';
-  const onglets: [boolean, string, string][] = [[!plans, 'Coaching individualisé', '/app/coach/chiffres'], [plans, 'Plans', '/app/coach/chiffres?partie=plans']];
+  const jour = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
+  const moisEnCours = jour.slice(0, 7);
+  const periode = periodeDe((await searchParams).periode, moisEnCours);
+  const [ventes, coachings] = await Promise.all([ventesDesPlans().catch(() => [] as Vente[]), coachingsParMois()]);
+  const choisies = ventesDe(ventes, periode);
+  const t = total(choisies);
+  const annee = periode.length === 4;
+  const enMots = annee ? `en ${periode}` : `en ${nomDuMois(periode, false).toLowerCase()}`;
+  const precedent = moisPrecedent(moisEnCours);
+  const periodes: [string, string, string][] = [
+    [moisEnCours, nomDuMois(moisEnCours), '/app/coach/chiffres'],
+    ...(precedent.startsWith(moisEnCours.slice(0, 4)) ? [[precedent, nomDuMois(precedent, false), `/app/coach/chiffres?periode=${precedent}`] as [string, string, string]] : []),
+    [moisEnCours.slice(0, 4), 'Sur l’année', '/app/coach/chiffres?periode=annee'],
+  ];
+  const lignes = parMois(ventes, moisEnCours);
+  const anneeEntiere = total(ventesDe(ventes, moisEnCours.slice(0, 4)));
+  // Les autres mois vendus, repliés sous la période choisie.
+  const autresMois = annee ? [] : [...new Set(ventes.map((v) => moisDe(v.payeLe)))].filter((m) => m !== periode).sort().reverse();
   return (
     <CadreCoach actif="chiffres">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-[1.75rem] font-extrabold tracking-tight">Chiffres</h1>
-          <p className="mt-1.5 text-sm text-[#5E5C78]">Le coaching individualisé et les plans, chacun de son côté.</p>
+          {/* Maquette validée par le coach le 08/11/2026 */}
+          <p className="mt-1.5 text-sm text-[#5E5C78]">Ta comptabilité : ce que les plans et les coachings ont encaissé.</p>
         </div>
-        <nav aria-label="Partie" className="inline-flex p-1 gap-1 rounded-[14px] bg-[#E6E9E1]">
-          {onglets.map(([actif, titre, href]) => (
-            <Link key={titre} href={href} aria-current={actif ? 'page' : undefined}
+        <nav aria-label="Période" className="inline-flex p-1 gap-1 rounded-[14px] bg-[#E6E9E1]">
+          {periodes.map(([cle, titre, href]) => (
+            <Link key={cle} href={href} aria-current={cle === periode ? 'page' : undefined}
               className={clsx('inline-flex items-center min-h-11 px-4 rounded-[11px] text-sm',
-                actif ? 'bg-white text-indigo font-extrabold shadow-sm' : 'text-[#4A4866] font-semibold')}>
+                cle === periode ? 'bg-white text-indigo font-extrabold shadow-sm' : 'text-[#4A4866] font-semibold')}>
               {titre}
             </Link>
           ))}
         </nav>
       </div>
-      {plans ? <PartiePlans /> : <PartieCoaching coachId={coach.compteId} />}
+
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+        <div className="bg-white rounded-[14px] border border-indigo/[0.08] p-4">
+          <div className="text-[1.75rem] font-extrabold">{euros(t.centimes)}</div>
+          <div className="text-[0.78rem] text-[#5E5C78]">plans · {t.ventes} vente{t.ventes > 1 ? 's' : ''} {enMots}</div>
+        </div>
+        <div className="bg-white rounded-[14px] border border-indigo/[0.08] p-4">
+          <div className="text-[1.75rem] font-extrabold text-[#5E5C78]">—</div>
+          <div className="text-[0.78rem] text-[#5E5C78]">coachings · à brancher sur ton Stripe</div>
+        </div>
+      </div>
+
+      <section className="bg-white rounded-2xl border border-indigo/[0.08] p-5 space-y-3">
+        <h2 className="text-[0.6875rem] font-bold tracking-[0.14em] uppercase text-teal">Par mois</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[420px] text-sm">
+            <thead>
+              <tr className="text-left text-[0.6875rem] uppercase tracking-[0.08em] text-[#5E5C78]">
+                <th className="py-2.5 pr-3 font-bold">Mois</th><th className="py-2.5 px-3 text-right font-bold">Plans</th>
+                <th className="py-2.5 pl-3 text-right font-bold">Coachings</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-indigo/[0.06]">
+              {lignes.map((m) => (
+                <tr key={m.mois}>
+                  <td className="py-3 pr-3 font-semibold whitespace-nowrap">{nomDuMois(m.mois)}{m.mois === moisEnCours ? ' (en cours)' : ''}</td>
+                  <td className="py-3 px-3 text-right tabular-nums">{m.ventes ? `${euros(m.centimes)} · ${m.ventes}` : euros(0)}</td>
+                  <td className="py-3 pl-3 text-right text-[#5E5C78]">—</td>
+                </tr>
+              ))}
+              <tr>
+                <td className="py-3 pr-3 font-bold whitespace-nowrap">{moisEnCours.slice(0, 4)}, à ce jour</td>
+                <td className="py-3 px-3 text-right font-bold tabular-nums">{anneeEntiere.ventes ? `${euros(anneeEntiere.centimes)} · ${anneeEntiere.ventes}` : euros(0)}</td>
+                <td className="py-3 pl-3 text-right text-[#5E5C78]">—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="text-[0.8125rem] text-[#5E5C78]">Montants encaissés, codes promo déduits ; les frais Stripe et les remboursements ne sont pas lus aujourd’hui.</p>
+      </section>
+
+      <PartiePlans ventes={choisies} autres={autresMois.map((m) => [m, ventesDe(ventes, m)] as const)} jour={jour} />
+
+      <section className="bg-white rounded-2xl border border-indigo/[0.08] p-5 space-y-2">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h2 className="text-[0.6875rem] font-bold tracking-[0.14em] uppercase text-teal">Les coachings</h2>
+          <span className="text-xs text-[#5E5C78]">payés par tes coachés par Stripe, via Nolio</span>
+        </div>
+        <p className="text-sm text-[#4A4866] leading-relaxed">
+          {coachings.etat === 'a_brancher'
+            ? 'Ils se liront dans ton Stripe, en totaux par mois, avec une clé restreinte en lecture seule que tu crées dans Stripe et colles dans Vercel. Aujourd’hui, le site ne lit rien des coachings.'
+            : 'Ta clé Stripe en lecture seule est posée : la lecture des coachings arrive à la prochaine étape. Aujourd’hui, le site ne lit rien des coachings.'}
+        </p>
+      </section>
+
+      {/* La boussole des améliorations du moteur, repliée en bas (Q13 ; venue de l'onglet « Coaching individualisé »). */}
+      <details className="group bg-white rounded-2xl border border-indigo/[0.08]">
+        <summary className="cursor-pointer list-none min-h-14 px-5 flex items-center justify-between gap-3">
+          <span className="text-[0.6875rem] font-bold tracking-[0.14em] uppercase text-teal">Tes retouches dans Nolio</span>
+          <span className="text-xs text-[#5E5C78]">Ouvrir <span aria-hidden className="inline-block group-open:rotate-90">›</span></span>
+        </summary>
+        <div className="px-1 pb-1 space-y-3">
+          <PartieCoaching coachId={coach.compteId} />
+        </div>
+      </details>
     </CadreCoach>
   );
 }
@@ -220,68 +304,88 @@ function Retouches({ r, enCours }: { r: ChiffresCoaching['retouches']; enCours: 
   );
 }
 
-// Les plans : le tunnel de la vente et les acheteurs.
-async function PartiePlans() {
+// « Les plans » (Q13 « A ») : les ventes de la période, une ligne chacune, les autres mois repliés ; puis, repliés, le tunnel
+// de la vente, les portes et les acheteurs (avec « Modifier l'objectif » et « Arrêter cette préparation »).
+const STATUT_VENTE = (v: Vente) => (v.arretee ? 'Arrêtée, remboursée' : STATUT_NOLIO[v.statut ?? ''] ?? (v.statut ? 'Nolio' : 'Pas encore rangé'));
+function LigneVente({ v }: { v: Vente }) {
+  return (
+    <li className="flex flex-wrap justify-between gap-x-3 gap-y-1 py-2.5 text-sm">
+      <span className="text-indigo"><strong>{v.nom ?? 'Acheteur'}</strong>{v.course ? ` · ${v.course}` : ''}{v.formule ? ` · formule ${v.formule} mois` : ''}</span>
+      <span className="text-[#4A4866]"><strong className="text-indigo tabular-nums">{euros(v.centimes)}</strong> · {date(v.payeLe.slice(0, 10))} · {STATUT_VENTE(v)}</span>
+    </li>
+  );
+}
+function Replie({ titre, children }: { titre: string; children: React.ReactNode }) {
+  return (
+    <details className="group border-t border-indigo/[0.07]">
+      <summary className="cursor-pointer list-none min-h-12 flex items-center justify-between gap-3 text-sm font-semibold text-indigo">
+        <span>{titre}</span><span className="text-xs text-[#5E5C78]">Voir <span aria-hidden className="inline-block group-open:rotate-90">›</span></span>
+      </summary>
+      <div className="pb-3 space-y-2">{children}</div>
+    </details>
+  );
+}
+
+async function PartiePlans({ ventes, autres, jour }: { ventes: Vente[]; autres: (readonly [string, Vente[]])[]; jour: string }) {
   const semaines = await chiffresParSemaine();
   const acheteurs = await acheteursDesPlans().catch(() => []);
-  const jour = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
-  const encaisse = semaines.reduce((t, s) => t + s.euros, 0);
-  const compteurs: [string, string][] = [
-    [String(acheteurs.length), `plan${acheteurs.length > 1 ? 's' : ''} acheté${acheteurs.length > 1 ? 's' : ''}`],
-    [`${encaisse.toLocaleString('fr-FR')} €`, 'encaissés, 12 dernières semaines'],
-    [String(acheteurs.filter((a) => a.statut === 'actif').length), 'acheteurs dans l’équipe Nolio'],
-    [String(acheteurs.filter((a) => a.accord).length), 'accords de lecture donnés'],
-  ];
   return (
-    <>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-3">
-        {compteurs.map(([n, texte]) => (
-          <div key={texte} className="bg-white rounded-[14px] border border-indigo/[0.08] p-4">
-            <div className="text-[1.75rem] font-extrabold">{n}</div>
-            <div className="text-[0.78rem] text-[#5E5C78]">{texte}</div>
-          </div>
-        ))}
+    <section className="bg-white rounded-2xl border border-indigo/[0.08] p-5 space-y-2">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <h2 className="text-[0.6875rem] font-bold tracking-[0.14em] uppercase text-teal">Les plans</h2>
+        <span className="text-xs text-[#5E5C78]">vendus sur le site, encaissés sur ton Stripe</span>
       </div>
-      <p className="text-sm text-indigo/70 leading-relaxed">
-        Combien de personnes passent chaque étape, semaine par semaine. Les étapes sont comptées sans aucune
-        donnée personnelle, une fois par visite. Les visites du site et leur provenance (Instagram, recherche…)
-        sont dans Vercel, onglet Analytics.
-      </p>
-      {semaines.length === 0 ? (
-        <p className="text-sm text-indigo/70 bg-white rounded-2xl border border-indigo/[0.08] p-4">Rien encore : les chiffres arrivent avec les premières visites.</p>
-      ) : (
-        <div className="bg-white rounded-2xl border border-indigo/[0.08] overflow-x-auto">
-          <table className="w-full text-sm text-indigo">
-            <thead>
-              <tr className="text-left text-xs uppercase tracking-cts text-indigo/60">
-                <th className="p-3 whitespace-nowrap">Semaine du</th>
-                {COLONNES.map(([, nom]) => <th key={nom} className="p-3 text-right whitespace-nowrap">{nom}</th>)}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-indigo/10">
-              {semaines.map((s) => (
-                <tr key={s.lundi}>
-                  <td className="p-3 whitespace-nowrap font-semibold">{date(s.lundi)}</td>
-                  {COLONNES.map(([cle]) => (
-                    <td key={cle} className="p-3 text-right tabular-nums">
-                      {cle === 'euros' ? `${s.euros.toLocaleString('fr-FR')} €` : s[cle as keyof typeof s]}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {ventes.length === 0 ? <p className="py-1 text-sm text-[#5E5C78]">Aucune vente sur cette période.</p> : (
+        <ul className="divide-y divide-indigo/[0.06]">{ventes.map((v) => <LigneVente key={v.id} v={v} />)}</ul>
       )}
+      {autres.map(([mois, liste]) => (
+        <Replie key={mois} titre={`${nomDuMois(mois, mois.slice(0, 4) !== jour.slice(0, 4))} : ${liste.length} vente${liste.length > 1 ? 's' : ''}`}>
+          <ul className="divide-y divide-indigo/[0.06]">{liste.map((v) => <LigneVente key={v.id} v={v} />)}</ul>
+        </Replie>
+      ))}
+
+      <Replie titre="Le tunnel de la vente, 12 semaines">
+        <p className="text-sm text-indigo/70 leading-relaxed">
+          Combien de personnes passent chaque étape, semaine par semaine. Les étapes sont comptées sans aucune
+          donnée personnelle, une fois par visite. Les visites du site et leur provenance (Instagram, recherche…)
+          sont dans Vercel, onglet Analytics.
+        </p>
+        {semaines.length === 0 ? (
+          <p className="text-sm text-indigo/70">Rien encore : les chiffres arrivent avec les premières visites.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-indigo">
+              <thead>
+                <tr className="text-left text-xs uppercase tracking-cts text-indigo/60">
+                  <th className="p-3 whitespace-nowrap">Semaine du</th>
+                  {COLONNES.map(([, nom]) => <th key={nom} className="p-3 text-right whitespace-nowrap">{nom}</th>)}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-indigo/10">
+                {semaines.map((s) => (
+                  <tr key={s.lundi}>
+                    <td className="p-3 whitespace-nowrap font-semibold">{date(s.lundi)}</td>
+                    {COLONNES.map(([cle]) => (
+                      <td key={cle} className="p-3 text-right tabular-nums">
+                        {cle === 'euros' ? `${s.euros.toLocaleString('fr-FR')} €` : s[cle as keyof typeof s]}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Replie>
 
       {/* Les portes (P6) : combien de visites bloquent sur chacune, semaine par semaine. */}
-      {semaines.length > 0 && (
-        <section className="space-y-2">
-          <p className="text-sm text-indigo/70 leading-relaxed">
-            Les portes : combien de visites bloquent sur chacune, une fois par visite, avant le paiement. C’est ce que
-            chaque porte coûte en ventes.
-          </p>
-          <div className="bg-white rounded-2xl border border-indigo/[0.08] overflow-x-auto">
+      <Replie titre="Les portes du questionnaire">
+        <p className="text-sm text-indigo/70 leading-relaxed">
+          Les portes : combien de visites bloquent sur chacune, une fois par visite, avant le paiement. C’est ce que
+          chaque porte coûte en ventes.
+        </p>
+        {semaines.length > 0 && (
+          <div className="overflow-x-auto">
             <table className="w-full text-sm text-indigo">
               <thead>
                 <tr className="text-left text-xs uppercase tracking-cts text-indigo/60">
@@ -299,12 +403,11 @@ async function PartiePlans() {
               </tbody>
             </table>
           </div>
-        </section>
-      )}
+        )}
+      </Replie>
 
       {/* Les acheteurs (décision coach du 22/10/2026) : à part du coaching, en lecture ; leur accord est le leur. */}
-      <section className="bg-white rounded-2xl border border-indigo/[0.08] p-4 space-y-2">
-        <h2 className="eyebrow text-indigo/60">Les acheteurs ({acheteurs.length})</h2>
+      <Replie titre={`Les acheteurs (${acheteurs.length})`}>
         <p className="text-sm text-indigo/70">
           Leurs séances partent toutes seules dans Nolio. Leur accord de lecture, ils le donnent eux-mêmes dans l’app. Une
           course qui change de date avant son départ : « Modifier l’objectif ». Un acheteur remboursé : « Arrêter cette
@@ -332,7 +435,7 @@ async function PartiePlans() {
             ))}
           </ul>
         )}
-      </section>
-    </>
+      </Replie>
+    </section>
   );
 }
