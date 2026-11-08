@@ -13,8 +13,17 @@ export const FAMILLE: Record<FamilleLue, string> = {
 export type Entree = Record<string, unknown>;
 export type Dose = { date?: string; minutes?: number; reps?: number; bloc_min?: number; monte?: boolean };
 
-// Une dose lue, en clair : « 3 × 12 min », ou « 25 min » d'un seul bloc.
-export const dose = (d: Dose) => (d.reps && d.reps > 1 ? `${d.reps} × ${d.bloc_min} min` : `${Math.round(d.minutes ?? 0)} min`);
+// Une dose lue, en clair : « 3 × 12 min », ou « 25 min » d'un seul bloc. Des blocs inégaux (décision coach du 08/11/2026 :
+// une pyramide, IT 4-3-2-2-1-1′, 13 min en 6 blocs, s'affichait « 6 × 2.2 min », leur moyenne) : « 13 min en 6
+// répétitions ». La dose lue ne porte pas ses blocs (lib/app/classement.ts : ses minutes, ses répétitions et la durée
+// moyenne d'un bloc, que le moteur reçoit telles quelles) : des blocs égaux se reconnaissent à une durée d'une minute ou
+// d'une demi-minute entière qui refait le total ; une pyramide à la moyenne ronde (3-2-1-1-2-3′) n'est pas reconnue.
+const blocsEgaux = (d: Dose) => {
+  const b = d.bloc_min ?? 0;
+  return b > 0 && Number.isInteger(b * 2) && Math.abs((d.reps ?? 1) * b - (d.minutes ?? 0)) < 0.051 * (d.reps ?? 1);
+};
+export const dose = (d: Dose) => (!d.reps || d.reps <= 1 ? `${Math.round(d.minutes ?? 0)} min`
+  : blocsEgaux(d) ? `${d.reps} × ${d.bloc_min} min` : `${Math.round(d.minutes ?? 0)} min en ${d.reps} répétitions`);
 
 // Les réponses du questionnaire du samedi, en clair (décision coach du 01/11/2026) : Nolio affiche les cases du choix multiple
 // toujours vides, même cochées ; le site les lit par leur rang et les montre ici. du : le jour de la réponse ; ancienne :
