@@ -140,7 +140,8 @@ export default async function ApercuDimanche({ params }: { params: Promise<{ id:
                   Semaine écoulée : {semaineEcoulee(r)}{r.rpe_lu || faiteSansRpe(r) ? '' : ' (sans RPE lu : la charge compte le RPE prévu)'}.
                 </p>
               )}
-              {lues === undefined ? (
+              {/* La première semaine d'une saison de fond (08/11/2026) : son questionnaire seul, dit plus haut ; rien d'autre. */}
+              {a?.premiere ? null : lues === undefined ? (
                 <p className="text-sm text-[#3B3957]">{a?.retours === null ? 'Première semaine : rien n’est lu.' : 'Ses séances de qualité n’ont pas pu être lues : la marche suit le plan.'}</p>
               ) : lues.length === 0 ? (
                 <p className="text-sm text-[#3B3957]">Aucune séance de qualité faite sur les 4 dernières semaines.</p>

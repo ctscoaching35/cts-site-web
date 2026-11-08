@@ -296,13 +296,7 @@ export async function lireRetours(o: Objectif, du: string, au: string, garder?: 
       .map((v) => ({ date: v.date_start.slice(0, 10), valeur: v.value as number }));
   }
   garder?.({ planifiees, reels, hooper: valeursHooper });
-  // Les réponses envoyées seulement (is_confirmed) : Nolio liste aussi les questionnaires ouverts et pas envoyés, aux
-  // valeurs de brouillon (25/10/2026 : un « 3 » lu « −6 » avant l'envoi).
-  // S11 (décision coach du 05/11/2026, audit A-18) : sans réponse cette semaine, la semaine s'écrit sur les jours de sa
-  // DERNIÈRE réponse, plus ceux de l'achat : les 8 dernières semaines sont lues en une fois (questionnaireDeLaSemaine).
-  const resultats = (await listeNolio<{ id: string; name?: string; date_start: string; is_confirmed?: boolean; items: { question: string; value: unknown }[] }>(
-    `real/quiz_results/?date_from=${ajouterJours(au, -JOURS_DERNIERE_REPONSE)}&date_to=${au}${qui}`).catch(() => [])).filter((r) => r.is_confirmed !== false);
-  const reponse = questionnaireDeLaSemaine(resultats, au, String(o.parametres.declaree_le ?? ''));
+  const reponse = await lireLeQuestionnaire(o, au, qui);
   const minutes = (d: { value?: number } | null | undefined) => (typeof d?.value === 'number' ? Math.round(d.value / 60) : null);
   const rpe = (x: unknown) => (typeof x === 'number' ? x : null);
   // Course ou trail, dans la période, hors jours de course (la course n'est pas une charge d'entraînement).
@@ -341,8 +335,31 @@ export async function lireRetours(o: Objectif, du: string, au: string, garder?: 
     console.error(`Séances lues de ${o.planId} :`, e instanceof Error ? e.message : e);
     return undefined;
   }) : undefined;
-  return { seances, hooper, nolio: { prevues, ajoutees },
-    ...(reponse ? { questionnaire: reponse.questionnaire, questionnaire_du: reponse.du } : {}), ...(lues ? { lues } : {}) };
+  return { seances, hooper, nolio: { prevues, ajoutees }, ...reponse, ...(lues ? { lues } : {}) };
+}
+
+// Le questionnaire du samedi, lu dans Nolio. Les réponses envoyées seulement (is_confirmed) : Nolio liste aussi les
+// questionnaires ouverts et pas envoyés, aux valeurs de brouillon (25/10/2026 : un « 3 » lu « −6 » avant l'envoi).
+// S11 (décision coach du 05/11/2026, audit A-18) : sans réponse cette semaine, la semaine s'écrit sur les jours de sa
+// DERNIÈRE réponse, plus ceux de l'achat : les 8 dernières semaines sont lues en une fois (questionnaireDeLaSemaine).
+async function lireLeQuestionnaire(o: Objectif, au: string, qui?: string): Promise<Pick<Retours, 'questionnaire' | 'questionnaire_du'>> {
+  const athlete = qui ?? await requeteAthlete(o);
+  const resultats = (await listeNolio<{ id: string; name?: string; date_start: string; is_confirmed?: boolean; items: { question: string; value: unknown }[] }>(
+    `real/quiz_results/?date_from=${ajouterJours(au, -JOURS_DERNIERE_REPONSE)}&date_to=${au}${athlete}`).catch(() => [])).filter((r) => r.is_confirmed !== false);
+  const reponse = questionnaireDeLaSemaine(resultats, au, String(o.parametres.declaree_le ?? ''));
+  return reponse ? { questionnaire: reponse.questionnaire, questionnaire_du: reponse.du } : {};
+}
+
+// LA PREMIÈRE SEMAINE D'UNE SAISON DE FOND (bogue vu par le coach le 08/11/2026, correction « A ») : sans semaine écrite
+// avant, ses retours restaient nuls, pour que le moteur ne lise pas un arrêt ; le questionnaire du samedi partait avec,
+// et la semaine s'écrivait sur les jours et le nombre de séances de l'inscription (4 séances écrites, réponse « 3 »).
+// Maintenant la réponse du questionnaire seule, sans séances, Hooper ni semaine Nolio : le moteur (cts_semaine,
+// vérifié sur 8.459) n'y lit ni arrêt (R4 : aucune séance faite connue, ni dans son état), ni séance manquée (R1, R2 et
+// R3 attendent une semaine écrite), ni résumé ; il place la semaine sur ses jours et son nombre de séances. Sans
+// réponse : rien, comme avant. Le passage du dimanche, son aperçu et « Réessayer » la lisent ainsi tous les trois.
+async function retoursDeLaPremiere(o: Objectif, au: string): Promise<Retours | null> {
+  const reponse = await lireLeQuestionnaire(o, au);
+  return reponse.questionnaire ? { seances: [], hooper: [], ...reponse } : null;
 }
 
 
@@ -382,9 +399,9 @@ export async function rattraperLaSemaine(planId: string, { depuis }: { depuis?: 
     if (!prise?.length) throw new Error('Cette semaine est déjà en train de partir : regarde dans une minute.');
   }
   try {
-    // La première semaine d'une saison de fond, sans retours, comme le dimanche.
+    // La première semaine d'une saison de fond, avec son questionnaire seul, comme le dimanche.
     const premiere = Boolean((o.parametres as { fond?: unknown }).fond) && !o.envois.some((e) => /^S\d+$/.test(e.semaine));
-    const retours = premiere ? null : await lireRetours(o, ajouterJours(lundi, -35), aujourdhui);
+    const retours = premiere ? await retoursDeLaPremiere(o, aujourdhui) : await lireRetours(o, ajouterJours(lundi, -35), aujourdhui);
     await ecrireEtEnvoyer(o, s.numero, retours, { depuis: depuis && depuis > aujourdhui ? depuis : aujourdhui });
   } catch (e) {
     const { data: ligne } = await service.from('nolio_envois').select('seances').eq('plan_id', planId).eq('semaine', s.numero).maybeSingle();
@@ -1274,7 +1291,8 @@ export async function passageDuDimanche(budgetMs = 240_000): Promise<Compte[]> {
       }
       // LA SAISON DE FOND (décisions coach du 24/10/2026) : une préparation qui a pris cette semaine arrête la saison ;
       // des séances que le coach a déjà posées cette semaine restent, rien ne s'y écrit (comme la récupération) ; sa
-      // première semaine s'écrit sans les retours, comme un départ (sans semaine écrite avant, le moteur lirait un arrêt).
+      // première semaine s'écrit sans les retours, comme un départ (sans semaine écrite avant, le moteur lirait un arrêt),
+      // mais avec la réponse du questionnaire du samedi (08/11/2026).
       const fond = Boolean((o.parametres as { fond?: unknown }).fond);
       if (fond) {
         const { arreterLaSaison, semainePriseParUnObjectif } = await import('./fond');
@@ -1308,7 +1326,8 @@ export async function passageDuDimanche(budgetMs = 240_000): Promise<Compte[]> {
       }
       reservee = numero;
       const premiereDuFond = fond && !o.envois.some((e) => /^S\d+$/.test(e.semaine));
-      const retours = premiereDuFond ? null : await lireRetours(o, ajouterJours(lundi, -35), aujourdhui);
+      // Sa première semaine : la réponse du questionnaire du samedi seule (retoursDeLaPremiere, 08/11/2026).
+      const retours = premiereDuFond ? await retoursDeLaPremiere(o, aujourdhui) : await lireRetours(o, ajouterJours(lundi, -35), aujourdhui);
       const sortie = recuperation
         ? await ecrireLaRecuperation(o, numero, recuperation.jusqua, retours)
         : await ecrireEtEnvoyer(o, numero, retours, { reprise: premiereDuFond && await saisonApresUneCourse(o, lundi) });
@@ -1337,8 +1356,9 @@ export async function passageDuDimanche(budgetMs = 240_000): Promise<Compte[]> {
 // d'ici dimanche soir peut encore la changer.
 // suite (la continuité entre deux objectifs, décisions coach du 08/11/2026) : l'objectif couru, sa récupération finie,
 // l'objectif qui part en suite (son lien sur l'aperçu), null sans objectif suivant ; absente sinon.
+// premiere : la première semaine d'une saison de fond, lue avec son questionnaire seul (retoursDeLaPremiere).
 export type Apercu = { lundi: string; numero: string | null; quoi: string; sortie?: SortieMoteur; retours?: Retours | null;
-  suite?: Continuite['suivant'] };
+  suite?: Continuite['suivant']; premiere?: boolean };
 export async function apercuDuDimanche(planId: string): Promise<Apercu> {
   const aujourdhui = aujourdhuiParis();
   // Le lundi qui vient (le dimanche, celui du lendemain).
@@ -1383,13 +1403,14 @@ export async function apercuDuDimanche(planId: string): Promise<Apercu> {
   if (s && posees) return rien('Semaine laissée : tu as déjà posé des séances cette semaine-là, elles restent les tiennes.', numero);
   if (o.coache && !fond && s) o.parametres = (await departComplete(o, s).catch(() => null)) ?? o.parametres;
   const premiereDuFond = fond && !o.envois.some((e) => /^S\d+$/.test(e.semaine));
-  const retours = premiereDuFond ? null : await lireRetours(o, ajouterJours(lundi, -35), aujourdhui);
+  const retours = premiereDuFond ? await retoursDeLaPremiere(o, aujourdhui) : await lireRetours(o, ajouterJours(lundi, -35), aujourdhui);
   if (recuperation) {
     return { lundi, numero, quoi: 'Semaine de récupération', sortie: await recuperationDuMoteur(o, numero, recuperation.jusqua, retours), retours };
   }
   o.parametres = avecLeProfil(o);
   const reprise = premiereDuFond && await saisonApresUneCourse(o, lundi);
-  return { lundi, numero, quoi: 'Semaine', sortie: await semaineDuMoteur(o, numero, retours, { reprise }), retours };
+  return { lundi, numero, quoi: 'Semaine', sortie: await semaineDuMoteur(o, numero, retours, { reprise }), retours,
+    ...(premiereDuFond ? { premiere: true } : {}) };
 }
 
 // LA SAISON DE FOND QUI SUIT UNE RÉCUPÉRATION (décision 8 du 07/11/2026, « A » ; lib/app/jonction.ts) : sa première
