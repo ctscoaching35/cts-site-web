@@ -3,7 +3,7 @@ import type { LigneTrame, Realise } from '@/lib/app/ecriture';
 import { BANNIERE } from '@/lib/app/charte';
 import { nomAffiche } from '@/lib/app/nomsSeances';
 import { ajouterJours } from '@/lib/app/plan';
-import { detailDeLaSemaine, enHeures, environ } from '@/lib/app/tableau';
+import { detailDeLaSemaine, enHeures, environ, ligneTroisJours } from '@/lib/app/tableau';
 import type { SemaineDetaillee } from '@/lib/app/tableauDuPlan';
 import { contientLaCourse, typeEnClair } from './TableauDeBord';
 import { Carte, Surtitre } from './Ui';
@@ -139,6 +139,8 @@ export default function SemainesDuPlan({ trame, jour, course, realises = [], enc
         {corps && <span aria-hidden className="text-[#5E5C78] inline-block group-open:rotate-90">›</span>}
       </span>
     );
+    // D3 (lib/app/tableau.ts, ligneTroisJours) : visible sans déplier, tant que la semaine n'est pas faite.
+    const troisJours = detail !== 'faite' ? ligneTroisJours(l) : null;
     return (
       <li key={l.numero} className="border-t border-indigo/[0.06] first:border-t-0">
         {corps ? (
@@ -149,6 +151,7 @@ export default function SemainesDuPlan({ trame, jour, course, realises = [], enc
         ) : (
           <div className="min-h-11 py-2.5 flex items-center justify-between gap-3">{titre}{droite}</div>
         )}
+        {troisJours && <p className="-mt-1 pb-2.5 pl-0.5 text-xs font-semibold text-[#8A5E10] leading-snug">{troisJours}</p>}
       </li>
     );
   };

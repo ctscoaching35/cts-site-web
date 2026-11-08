@@ -1996,6 +1996,16 @@ export async function prevenirCoach(sujet: string, texte: string, coachId: strin
 // quotidien l'invite le jour venu (reinviter). Ses relances comptent à partir de ce jour (lib/app/invitation.ts).
 export { jourDInvitation };
 
+// UN ACHETEUR DÉJÀ DANS L'ÉQUIPE PAR UN PLAN PRÉCÉDENT (OM1) : un autre de ses plans y est actif, relié à son compte
+// Nolio ; rend son identifiant d'athlète Nolio, ou null. inviterAcheteur ne l'invite pas de nouveau ; l'e-mail de
+// bienvenue ne lui annonce pas d'invitation (lib/app/rangement.ts ; D4, cas fictifs du 09/11/2026, décision coach du
+// 08/11/2026, « A »). La même requête pour les deux.
+export async function planActifDansLEquipe(compteId: string, planId: string): Promise<string | number | null> {
+  const { data } = await clientService().from('plans').select('nolio_athlete_id').eq('compte_id', compteId)
+    .eq('nolio_statut', 'actif').not('nolio_athlete_id', 'is', null).neq('id', planId).limit(1);
+  return (data?.[0]?.nolio_athlete_id as string | number | undefined) || null;
+}
+
 // L'invitation de l'acheteur dans l'équipe, au paiement (P1) : l'adresse Nolio qu'il a donnée, sinon celle de l'achat.
 // Un compte existant reçoit l'invitation de Nolio ; une adresse inconnue reçoit un compte créé, déjà dans l'équipe :
 // son plan part tout de suite. Refusée ou Nolio indisponible : nouvel essai chaque jour, le coach prévenu une fois
@@ -2030,12 +2040,11 @@ export async function inviterAcheteur(planId: string, emailAchat: string, { prev
   }
   // Un acheteur déjà dans l'équipe (un plan précédent, OM1) : pas de nouvelle invitation, son objectif démarre (OM4 le
   // programme après la course en cours) ; sa sortie de l'équipe suit la nouvelle course (P3).
-  const { data: membre } = await service.from('plans').select('nolio_athlete_id').eq('compte_id', p.compte_id)
-    .eq('nolio_statut', 'actif').not('nolio_athlete_id', 'is', null).neq('id', planId).limit(1);
-  if (membre?.[0]?.nolio_athlete_id) {
-    await service.from('plans').update({ nolio_athlete_id: membre[0].nolio_athlete_id, nolio_statut: 'actif', nolio_email: null }).eq('id', planId);
+  const membre = await planActifDansLEquipe(String(p.compte_id), planId);
+  if (membre) {
+    await service.from('plans').update({ nolio_athlete_id: membre, nolio_statut: 'actif', nolio_email: null }).eq('id', planId);
     // B-PL-33 : sa sortie de l'équipe suit dès maintenant sa nouvelle course, avant son départ programmé.
-    await reprogrammerSortie(String(membre[0].nolio_athlete_id))
+    await reprogrammerSortie(String(membre))
       .catch((e) => console.error(`Sortie de l’équipe du plan ${planId} :`, e instanceof Error ? e.message : e));
     await demarrerObjectif(planId);
     return 'actif';

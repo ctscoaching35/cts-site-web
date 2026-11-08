@@ -143,6 +143,9 @@ export type Semaine = {
   passee: boolean;
   lundi: string | null;
   jours: Jour[];
+  // La semaine écrite de reprise après la course d'un autre objectif (moteur 8.459, OM4) : son bandeau Nolio parle de la
+  // course (lib/app/coaching.ts, seancesDuMoteur, la rend au moteur).
+  reprise_apres_course?: boolean;
 };
 
 // Une partie de texte : un titre et ses puces (Jour J, mode d'emploi, déterminants).

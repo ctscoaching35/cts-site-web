@@ -19,7 +19,7 @@
  */
 import type { EmailOtpType } from '@supabase/supabase-js';
 import { API_URL } from '@/lib/plan';
-import { compteDuCoach, prevenirCoach } from './ecriture';
+import { compteDuCoach, planActifDansLEquipe, prevenirCoach } from './ecriture';
 import { envoyerBienvenue, type Commande } from './emailBienvenue';
 import { retirerRelance } from './relance';
 import type { Plan } from './plan';
@@ -180,8 +180,11 @@ export async function rangerLePlan(sessionId: string, origine: string) {
         payeLe: achat.paye_le, dureeMois: Number(corps.resume.duree_mois) || null,
       };
       try {
+        // D4 (cas fictifs du 09/11/2026) : déjà dans l'équipe par un plan précédent, pas d'invitation annoncée.
+        const dejaDansLEquipe = corps.parametres
+          ? Boolean(await planActifDansLEquipe(compteId, plan.id).catch(() => null)) : false;
         const parti = await envoyerBienvenue(email, donnees, `${origine}/app`, reponsePdf && pdf ? { nom: nomDuPdf(reponsePdf), contenu: pdf } : null,
-          corps.parametres ? { adresse: corps.acheteur?.nolio_email || email } : null, commande);
+          corps.parametres ? { adresse: corps.acheteur?.nolio_email || email, dejaDansLEquipe } : null, commande);
         if (parti) await service.from('plans').update({ bienvenue_envoyee_le: new Date().toISOString() }).eq('id', plan.id);
       } catch (e) {
         console.error(`E-mail de bienvenue de l'achat ${sessionId} :`, e);
@@ -229,8 +232,10 @@ export async function renvoyerLesConfirmations(): Promise<{ plan: string; quoi: 
       const email = u?.user?.email;
       if (!email) continue;
       const jourAchat = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date(achat.paye_le));
+      const dejaDansLEquipe = p.parametres
+        ? Boolean(await planActifDansLEquipe(String(p.compte_id), String(p.id)).catch(() => null)) : false;
       const parti = await envoyerBienvenue(email, p.donnees as Plan, `${site.url}/app`, null,
-        p.parametres ? { adresse: String(p.nolio_email || email) } : null,
+        p.parametres ? { adresse: String(p.nolio_email || email), dejaDansLEquipe } : null,
         { montantCentimes: achat.montant_centimes, payeLe: achat.paye_le, dureeMois: Number((p.intake as Record<string, unknown> | null)?.duree_mois) || null },
         jourAchat);
       if (!parti) continue;

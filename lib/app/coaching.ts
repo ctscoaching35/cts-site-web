@@ -263,6 +263,9 @@ export async function seancesDuMoteur(plan: Plan, planId: string, semaine: Semai
       // Sa place et les qualités de son bloc : la description du bandeau (décision coach du 21/10/2026).
       semaine: { type: semaine.type, bloc: semaine.bloc, lundi: semaine.lundi, rang_bloc: rang || 1,
         rang_charge: rangCharge || null, numero: semaine.numero, ...(premierBloc ? { premier_bloc: true } : {}),
+        // La reprise après la course d'un autre objectif (moteur 8.459, OM4 ; cas fictifs du 09/11/2026, décision coach
+        // du 08/11/2026, « A ») : posée par le moteur sur la semaine écrite, son bandeau parle de la course.
+        ...(semaine.reprise_apres_course === true ? { reprise_apres_course: true } : {}),
         // Un coaché : le compte à rebours de l'app dans son bandeau (décision coach du 22/10/2026).
         compte_a_rebours: coache && semaine.lundi && !plan.fond ? jMoins(semaine.lundi, plan.course.date) : null,
         total: plan.semaines.length, ...qualitesDuBloc(plan, semaine.bloc),

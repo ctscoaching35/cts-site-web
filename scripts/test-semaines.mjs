@@ -23,7 +23,7 @@ registerHooks({
     }
   },
 });
-const { detailDeLaSemaine, environ } = await import('../lib/app/tableau.ts');
+const { detailDeLaSemaine, environ, ligneTroisJours } = await import('../lib/app/tableau.ts');
 
 test('le volume d’une semaine résumée, à la demi-heure près', () => {
   assert.equal(environ(480), 'environ 8 h');
@@ -64,4 +64,23 @@ test('avant le départ : la première semaine détaillée si elle commence lundi
   assert.equal(detailDeLaSemaine('2026-12-21', '2026-12-17'), 'suivante');
   assert.equal(detailDeLaSemaine('2026-12-28', '2026-12-17'), 'resumee');
   assert.equal(detailDeLaSemaine('2026-12-21', '2026-12-03'), 'resumee');
+});
+
+// D3 (cas fictifs du 09/11/2026, décision coach du 08/11/2026, « A ») : le week-end choc de trois jours dit d'avance.
+const sl = (jour) => ({ jour, seance: 'Week-end choc', famille: 'sl' });
+test('le week-end choc de trois jours : une ligne qui dit le vendredi à poser', () => {
+  // Nadia, 100 miles : sa semaine 19, du lundi 19 avril 2027.
+  assert.equal(ligneTroisJours({ lundi: '2027-04-19', seances_cles: [sl('Vendredi'), sl('Samedi'), sl('Dimanche')] }),
+    'Ton week-end choc dure trois jours, du vendredi 23 au dimanche 25 avril : pose ta journée de vendredi.');
+  // À cheval sur deux mois ; le premier du mois.
+  assert.equal(ligneTroisJours({ lundi: '2027-04-26', seances_cles: [sl('Vendredi'), sl('Samedi'), sl('Dimanche')] }),
+    'Ton week-end choc dure trois jours, du vendredi 30 avril au dimanche 2 mai : pose ta journée de vendredi.');
+  assert.equal(ligneTroisJours({ lundi: '2027-09-27', seances_cles: [sl('Vendredi'), sl('Samedi'), sl('Dimanche')] }),
+    'Ton week-end choc dure trois jours, du vendredi 1er au dimanche 3 octobre : pose ta journée de vendredi.');
+});
+
+test('le week-end choc de deux jours, une semaine ordinaire : pas de ligne', () => {
+  assert.equal(ligneTroisJours({ lundi: '2027-04-19', seances_cles: [sl('Samedi'), sl('Dimanche')] }), null);
+  assert.equal(ligneTroisJours({ lundi: '2027-04-19', seances_cles: [sl('Dimanche'), { jour: 'Mardi', seance: 'Seuil 2', famille: 'qualite' }] }), null);
+  assert.equal(ligneTroisJours({ lundi: '2027-04-19', seances_cles: [] }), null);
 });

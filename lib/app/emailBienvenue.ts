@@ -15,7 +15,7 @@ import { site } from '@/lib/content';
 import { FORMULAIRE_RETRACTATION, vendeur, VERSION_CGV } from '@/lib/vendeur';
 import { cgvEnHtml, cgvEnTexte } from '@/lib/cgv';
 import { chargeEnClair, confirmationDemandee, invitationAVenir, type Charge } from './invitation';
-import type { Plan } from './plan';
+import { joursEntre, type Plan } from './plan';
 
 // L'adresse d'envoi : une adresse du domaine cts-coaching.com, authentifié dans Brevo (CTS_EMAIL_EXPEDITEUR dans
 // Vercel ; supabase/README.md), sinon celle des essais, non authentifiée.
@@ -38,6 +38,12 @@ const echapper = (texte: string) =>
 const enLettres = (iso: string) => new Intl.DateTimeFormat('fr-FR', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' })
   .format(new Date(`${iso}T12:00:00Z`));
 const lendemain = (iso: string) => new Date(Date.parse(`${iso}T12:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+// « 7 décembre », « 1er mars » : le jour et le mois, sans le jour de la semaine.
+const jourEtMois = (iso: string) => new Intl.DateTimeFormat('fr-FR', { timeZone: 'UTC', day: 'numeric', month: 'long' })
+  .format(new Date(`${iso}T12:00:00Z`)).replace(/^1 /, '1er ');
+// UN DÉBUT LOINTAIN (D6, cas fictifs du 09/11/2026, décision coach du 08/11/2026, « A ») : plus de deux semaines entre
+// l'achat et le début de la préparation.
+export const JOURS_DEBUT_LOINTAIN = 14;
 const euros = (centimes: number) => (centimes / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' }).replace(/\u202f|\u00a0/g, ' ');
 const dateParis = (horodatage: string) => new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', day: 'numeric', month: 'long', year: 'numeric' })
   .format(new Date(horodatage)).replace(/^1 /, '1er ');
@@ -66,6 +72,8 @@ export function lignesDeCommande(plan: Plan, commande: Commande, premiereSeance:
 }
 
 // nolio : l'adresse où part l'invitation Nolio, pour un plan écrit semaine par semaine ; null pour un plan d'avant.
+// dejaDansLEquipe : l'acheteur est déjà dans l'équipe Nolio par un plan précédent, encore actif (lib/app/ecriture.ts,
+// planActifDansLEquipe) ; inviterAcheteur ne l'invite pas de nouveau, l'e-mail ne lui annonce pas d'invitation (D4).
 // aujourdhui : le jour de l'achat (Paris). commande (J1) : sa commande, en tête ; le formulaire de rétractation, en bas.
 // L'e-mail juste (V3, audit de l'app plan du 03/11/2026) : « Bonjour » au prénom, une seule fois « Ta préparation », et
 // la date de sa première séance (le lendemain de l'achat, C9, ou le premier lundi d'une préparation qui commence plus
@@ -74,7 +82,7 @@ export function lignesDeCommande(plan: Plan, commande: Commande, premiereSeance:
 // fait plus de 3 semaines avant elle : ce jour-là, l'app lui demande si sa charge a changé. « Déplace-la d'abord dans ton
 // calendrier Nolio » (même décision : Nolio ne relie une activité à sa séance que le même jour). Une course reportée : il
 // répond à cet e-mail (PL6).
-export function contenuBienvenue(plan: Plan, lienApp: string, nolio: { adresse: string } | null = null,
+export function contenuBienvenue(plan: Plan, lienApp: string, nolio: { adresse: string; dejaDansLEquipe?: boolean } | null = null,
   aujourdhui = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date()), commande: Commande | null = null) {
   const nom = plan.athlete.nom.trim();
   const prenom = nom.split(/\s+/)[0] ?? '';
@@ -83,17 +91,28 @@ export function contenuBienvenue(plan: Plan, lienApp: string, nolio: { adresse: 
   const premiereSeance = debutPlan > lendemain(aujourdhui) ? debutPlan : lendemain(aujourdhui);
   const inviteLe = nolio ? invitationAVenir(debutPlan, aujourdhui) : null;
   const confirmer = Boolean(nolio && confirmationDemandee(debutPlan, aujourdhui));
+  // D6 (cas fictifs du 09/11/2026, décision coach du 08/11/2026, « A » ; texte validé le même jour) : un début à plus de
+  // deux semaines de l'achat, quoi faire d'ici là ; la date est le jour où l'app lui demande si sa charge a changé, celui
+  // de son invitation (lib/app/invitation.ts, confirmationDemandee, jourDInvitation). Seulement quand l'app le demande
+  // (un début à plus de 28 jours) : de 15 à 28 jours, rien ne le lui demande, et la phrase ne s'écrit pas.
+  const dIciLa = nolio && confirmer && inviteLe && joursEntre(aujourdhui, debutPlan) > JOURS_DEBUT_LOINTAIN
+    ? ` D’ici là, continue ce que tu cours en ce moment : ton app te demandera le ${jourEtMois(inviteLe)} si ça a changé.` : '';
   const connexion = 'Sur un autre appareil, l’app te demande l’adresse e-mail qui reçoit ce message, puis t’y ' +
     'envoie un code à 6 chiffres pour te connecter.';
   const paragraphes = [
-    `Tout est prêt pour ${course.nom}, le ${course.date_lettres}. ${sansBalises(plan.couverture.debut)}`,
+    `Tout est prêt pour ${course.nom}, le ${course.date_lettres}. ${sansBalises(plan.couverture.debut)}${dIciLa}`,
     ...(nolio ? [
       'Tes séances vivent dans Nolio, l’application d’entraînement que nous utilisons avec tous nos athlètes. ' +
-        // Les deux réponses de Nolio à l'invitation (décision coach du 20/10/2026) : un compte existant l'accepte, une
-        // adresse inconnue reçoit un compte créé, déjà dans l'équipe.
-        `Nolio t’écrira ${inviteLe ? `le ${enLettres(inviteLe)}, une semaine avant ta première semaine, ` : ''}à ${nolio.adresse} (pense à regarder dans tes indésirables) : si tu as déjà un compte Nolio, une ` +
-        'invitation à rejoindre l’équipe CTS, à accepter ; sinon, les identifiants du compte qu’il vient de te créer, déjà ' +
-        'dans l’équipe. Ta première semaine s’installe dans ton calendrier Nolio la veille de son début.' +
+        (nolio.dejaDansLEquipe
+          // D4 (cas fictifs du 09/11/2026, décision coach du 08/11/2026, « A » ; texte validé le même jour) : déjà dans
+          // l'équipe par un plan précédent, il ne reçoit pas d'invitation.
+          ? 'Tes séances arrivent dans ton calendrier Nolio, comme pour ta préparation précédente ; ta première semaine s’y '
+            + 'installe la veille de son début.'
+          // Les deux réponses de Nolio à l'invitation (décision coach du 20/10/2026) : un compte existant l'accepte, une
+          // adresse inconnue reçoit un compte créé, déjà dans l'équipe.
+          : `Nolio t’écrira ${inviteLe ? `le ${enLettres(inviteLe)}, une semaine avant ta première semaine, ` : ''}à ${nolio.adresse} (pense à regarder dans tes indésirables) : si tu as déjà un compte Nolio, une `
+            + 'invitation à rejoindre l’équipe CTS, à accepter ; sinon, les identifiants du compte qu’il vient de te créer, déjà '
+            + 'dans l’équipe. Ta première semaine s’installe dans ton calendrier Nolio la veille de son début.') +
         (confirmer ? ' Le jour de ton invitation, ton app CTS te demandera aussi si ce que tu cours a changé depuis ton achat ' +
           '(ton volume par semaine, ta plus longue sortie) : ta première semaine s’écrira sur ta réponse.' : '') +
         ' Chaque samedi, Nolio te pose quelques questions sur ta semaine à venir, et la semaine suivante s’écrit le dimanche ' +
@@ -168,7 +187,7 @@ export async function envoyerBienvenue(
   plan: Plan,
   lienApp: string,
   pdf: { nom: string; contenu: ArrayBuffer } | null,
-  nolio: { adresse: string } | null = null,
+  nolio: { adresse: string; dejaDansLEquipe?: boolean } | null = null,
   commande: Commande | null = null,
   aujourdhui?: string,
 ): Promise<boolean> {
