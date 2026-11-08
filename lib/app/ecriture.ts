@@ -110,6 +110,47 @@ export type Realise = {
   rpe_complet?: boolean;
 };
 
+// LA REVUE DU DIMANCHE, GARDÉE AU PASSAGE (l'espace par athlète, Q4 « A », décision coach du 08/11/2026) : ce que l'aperçu
+// du dimanche montre et que la semaine écrite ne garde pas, pour « Sa semaine qui arrive » le dimanche soir — le
+// « pourquoi » du moteur, et ce qu'il a lu (sa réponse du samedi, la semaine écoulée telle qu'il l'a jugée, ses séances de
+// qualité des 4 dernières semaines). Jamais le détail des séances lues dans Nolio (les retours entiers) : seulement ce que
+// l'aperçu affiche. Colonne semaines_ecrites.revue (supabase/migrations/20261108000000_revue_du_dimanche.sql) ; elle
+// s'efface avec l'accord de lecture. premiere : la première semaine d'une saison de fond, lue avec son questionnaire seul ;
+// sansRetours : rien de lu (une première semaine).
+export type Revue = {
+  quoi: string; pourquoi: Pourquoi | null; realise: Realise | null;
+  lu: { questionnaire?: Questionnaire; questionnaire_du?: string; lues?: SeanceLue[]; premiere?: boolean; sansRetours?: boolean };
+};
+export function revueDe(sortie: Pick<SortieMoteur, 'pourquoi' | 'realise'>, retours: Retours | null, quoi: string, premiere = false): Revue {
+  return {
+    quoi, pourquoi: sortie.pourquoi ?? null, realise: sortie.realise ?? null,
+    lu: retours === null ? { sansRetours: true } : {
+      ...(retours.questionnaire ? { questionnaire: retours.questionnaire } : {}),
+      ...(retours.questionnaire_du ? { questionnaire_du: retours.questionnaire_du } : {}),
+      ...(retours.lues ? { lues: retours.lues } : {}),
+      ...(premiere ? { premiere: true } : {}),
+    },
+  };
+}
+// Gardée à part, après l'écriture : une erreur ici (la migration pas encore passée, la base qui ne répond pas) n'empêche
+// jamais une semaine de partir, et ne fait rien échouer.
+async function garderLaRevue(planId: string, numero: string, revue: Revue | ((avant: Revue | null) => Revue | null)): Promise<void> {
+  try {
+    const service = clientService();
+    let valeur = typeof revue === 'function' ? null : revue;
+    if (typeof revue === 'function') {
+      const { data, error } = await service.from('semaines_ecrites').select('revue').eq('plan_id', planId).eq('numero', numero).maybeSingle();
+      if (error) return;
+      valeur = revue((data?.revue ?? null) as Revue | null);
+      if (!valeur) return;
+    }
+    const { error } = await service.from('semaines_ecrites').update({ revue: valeur }).eq('plan_id', planId).eq('numero', numero);
+    if (error) console.error(`Revue de ${planId} ${numero} non gardée :`, error.message);
+  } catch (e) {
+    console.error(`Revue de ${planId} ${numero} non gardée :`, e instanceof Error ? e.message : e);
+  }
+}
+
 // Les clés de nolio_envois qui ne sont pas des semaines : la trame (bandeaux et fiches de tout le plan), les
 // questionnaires du dimanche, la note de bilan d'une semaine (« S9:bilan ») et la note d'un ajustement en cours de
 // semaine (« S9-jeudi:fatigue »).
@@ -402,7 +443,9 @@ export async function rattraperLaSemaine(planId: string, { depuis }: { depuis?: 
     // La première semaine d'une saison de fond, avec son questionnaire seul, comme le dimanche.
     const premiere = Boolean((o.parametres as { fond?: unknown }).fond) && !o.envois.some((e) => /^S\d+$/.test(e.semaine));
     const retours = premiere ? await retoursDeLaPremiere(o, aujourdhui) : await lireRetours(o, ajouterJours(lundi, -35), aujourdhui);
-    await ecrireEtEnvoyer(o, s.numero, retours, { depuis: depuis && depuis > aujourdhui ? depuis : aujourdhui });
+    const sortie = await ecrireEtEnvoyer(o, s.numero, retours, { depuis: depuis && depuis > aujourdhui ? depuis : aujourdhui });
+    // Q4 (08/11/2026) : son pourquoi et ce qu'il a lu, gardés à part (jamais une raison d'échec).
+    await garderLaRevue(planId, s.numero, revueDe(sortie, retours, 'Semaine', premiere));
   } catch (e) {
     const { data: ligne } = await service.from('nolio_envois').select('seances').eq('plan_id', planId).eq('semaine', s.numero).maybeSingle();
     if (!((ligne?.seances as unknown[] | undefined) ?? []).length) await service.from('nolio_envois').delete().eq('plan_id', planId).eq('semaine', s.numero);
@@ -1333,6 +1376,9 @@ export async function passageDuDimanche(budgetMs = 240_000): Promise<Compte[]> {
         : await ecrireEtEnvoyer(o, numero, retours, { reprise: premiereDuFond && await saisonApresUneCourse(o, lundi) });
       // EC3 : les corrections de cette semaine, envoyées, se comptent (« Chiffres »).
       if (s && CORRECTIONS_ACTIVES) await marquerAppliquees(planId, lundi, sortie.journal ?? []).catch(() => null);
+      // Q4 (08/11/2026) : son pourquoi et ce qu'il a lu, gardés à part pour la revue du dimanche soir (jamais une raison
+      // d'échec : la semaine est déjà partie).
+      await garderLaRevue(planId, numero, revueDe(sortie, retours, recuperation ? 'Semaine de récupération' : 'Semaine', premiereDuFond));
       comptes.push({ plan: planId, quoi: `${numero} écrite${recuperation ? ' (récupération)' : ''}${reservation === 'orpheline' ? ', reprise d’une écriture coupée' : ''}`,
         coache: o.coache, journal: sortie.journal });
     } catch (e) {
@@ -1357,6 +1403,8 @@ export async function passageDuDimanche(budgetMs = 240_000): Promise<Compte[]> {
 // suite (la continuité entre deux objectifs, décisions coach du 08/11/2026) : l'objectif couru, sa récupération finie,
 // l'objectif qui part en suite (son lien sur l'aperçu), null sans objectif suivant ; absente sinon.
 // premiere : la première semaine d'une saison de fond, lue avec son questionnaire seul (retoursDeLaPremiere).
+// Ce que l'aperçu montre en plus de la semaine (son pourquoi, ce qu'il a lu) se garde au passage (revueDe, Q4 du
+// 08/11/2026) : la page de l'athlète le montre le dimanche soir ; les deux changent ensemble.
 export type Apercu = { lundi: string; numero: string | null; quoi: string; sortie?: SortieMoteur; retours?: Retours | null;
   suite?: Continuite['suivant']; premiere?: boolean };
 export async function apercuDuDimanche(planId: string): Promise<Apercu> {
@@ -1538,7 +1586,9 @@ export async function annulerAjustements(planId: string, numero: string): Promis
     throw new Error('Seule la dernière semaine écrite s’annule : annuler une semaine plus ancienne ferait reculer sa préparation.');
   }
   o.etat = (ecrite.etat_avant ?? null) as Etat | null;
-  await ecrireEtEnvoyer(o, numero, null, { sansAjustement: true });
+  const sortie = await ecrireEtEnvoyer(o, numero, null, { sansAjustement: true });
+  // Q4 (08/11/2026) : le pourquoi de la semaine réécrite ; ce qu'il avait lu reste.
+  await garderLaRevue(planId, numero, (avant) => (avant ? { ...avant, pourquoi: sortie.pourquoi ?? null } : null));
 }
 
 // T5 : l'acheteur retire son accord de lecture (dans son Compte). La lecture de son RPE, de son ressenti et de son
@@ -1551,6 +1601,8 @@ export async function retirerAccordLecture(planId: string): Promise<void> {
   const service = clientService();
   await service.from('plans').update({ accord_lecture_le: null }).eq('id', planId);
   await service.from('semaines_ecrites').update({ realise: null }).eq('plan_id', planId);
+  // Ce que la revue du dimanche avait gardé de ce qu'il a lu (Q4, 08/11/2026) ; sans la migration, rien à effacer.
+  await service.from('semaines_ecrites').update({ revue: null }).eq('plan_id', planId);
   await service.from('tests_lus').delete().eq('plan_id', planId);
   // Ses badges partent avec l'accord (BG1 à BG3, décisions coach du 20/10/2026).
   if (o.nolioAthlete) await service.from('badges').delete().eq('nolio_athlete_id', o.nolioAthlete);

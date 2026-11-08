@@ -36,6 +36,8 @@ export async function retirerAccord(usr: string): Promise<void> {
     : { data: [] };
   if (objectifs?.length) {
     await clientService().from('semaines_ecrites').update({ realise: null }).in('plan_id', objectifs.map((o) => o.plan_id));
+    // Ce que la revue du dimanche avait gardé de ce qu'il a lu (Q4, 08/11/2026) ; sans la migration, rien à effacer.
+    await clientService().from('semaines_ecrites').update({ revue: null }).in('plan_id', objectifs.map((o) => o.plan_id));
   }
   // Et les résumés des semaines que le moteur n'a pas écrites (décision coach du 20/10/2026).
   if (fiches?.length) await clientService().from('semaines_athlete').delete().in('athlete_id', fiches.map((f) => f.id));

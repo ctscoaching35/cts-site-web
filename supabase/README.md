@@ -226,3 +226,11 @@ restée ouverte sur un téléphone ne se reconnecte jamais. Sans la fonction, ri
 Les compteurs du tunnel de vente comptent aussi les refus avant paiement, par type
 (`supabase/migrations/20261031000000_mesures_portes.sql`) : SQL Editor, coller le fichier, Run. Une ligne par porte et
 par semaine dans « Chiffres » (onglet Plans). Sans la migration, les portes ne se comptent pas ; rien d'autre ne change.
+
+## 22. La revue du dimanche
+
+Une colonne de plus, `semaines_ecrites.revue` (`supabase/migrations/20261108000000_revue_du_dimanche.sql`) : SQL Editor,
+coller le fichier, Run. Le passage du dimanche (et « Réessayer ») y garde le « pourquoi » du moteur et ce qu'il a lu
+(sa réponse du samedi, sa semaine écoulée, ses séances de qualité des 4 dernières semaines), pour « Sa semaine qui
+arrive » sur la page de chaque athlète, le dimanche soir. Sans la migration, les semaines partent comme avant ; la page
+dit que la revue n'est pas gardée.
