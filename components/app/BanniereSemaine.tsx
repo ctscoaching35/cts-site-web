@@ -8,11 +8,16 @@ import { typeCoteCoach } from '@/lib/app/nomsSeances';
 // l'objectif d'un coaché, dont la semaine se dit en J- et non « semaine 8 sur 16 » (décision coach du 19/10/2026).
 // vers : le nom de la course du J-, quand ce n'est pas l'objectif de la semaine (une saison de fond, qui n'a pas de course,
 // compte vers le prochain objectif : retour coach du 01/11/2026).
-export default function BanniereSemaine({ semaine, course, vers }: { semaine: Semaine; course?: string; vers?: string }) {
+// volume, seances : ceux de la semaine telle qu'elle est dans Nolio (décision 11 du coach du 09/11/2026, « Sa semaine qui
+// arrive »), à la place de ceux que le moteur a écrits.
+export default function BanniereSemaine({ semaine, course, vers, volume, seances: seancesNolio }: {
+  semaine: Semaine; course?: string; vers?: string; volume?: string; seances?: string;
+}) {
   // « semaine 15 / 24 » et « 5 séances », tels que le moteur les écrit : l'app ne fait que les ranger.
   const rang = /(\d+)\s*\/\s*(\d+)/.exec(semaine.progression);
   const [n, total] = rang ? [Number(rang[1]), Number(rang[2])] : [0, 0];
-  const seances = /^(\d+)\s+(.+)$/.exec(semaine.seances);
+  const texteSeances = seancesNolio ?? semaine.seances;
+  const seances = /^(\d+)\s+(.+)$/.exec(texteSeances);
   return (
     <div className="bg-white shadow-sm border-l-4 px-4 py-3" style={{ borderLeftColor: BANNIERE[semaine.type] ?? '#2F2D4E' }}>
       <div className="text-[0.7rem] font-semibold tracking-cts uppercase text-indigo/55">
@@ -27,11 +32,11 @@ export default function BanniereSemaine({ semaine, course, vers }: { semaine: Se
       </div>
       <div className="flex gap-6 mt-2">
         <div>
-          <div className="text-2xl font-extrabold text-indigo leading-tight">{semaine.volume}</div>
+          <div className="text-2xl font-extrabold text-indigo leading-tight">{volume ?? semaine.volume}</div>
           <div className="text-xs text-indigo/55">de volume</div>
         </div>
         <div>
-          <div className="text-2xl font-extrabold text-indigo leading-tight">{seances ? seances[1] : semaine.seances}</div>
+          <div className="text-2xl font-extrabold text-indigo leading-tight">{seances ? seances[1] : texteSeances}</div>
           {seances && <div className="text-xs text-indigo/55">{seances[2]}</div>}
         </div>
       </div>

@@ -59,6 +59,52 @@ const ACHETEURS = [
 ];
 const SANS_FICHE = { id: 'usr_demoromane', name: 'Romane Leroy' };
 
+// TES RETOUCHES DANS NOLIO (les écrans de la doctrine, décision 11 du coach du 09/11/2026) : le lundi 16 à midi, le coach
+// fictif retouche dans Nolio la semaine que le moteur a écrite dimanche pour Léa (fictive) : sa séance de club à la place
+// de l'EF de jeudi, un renfo ajouté mercredi, l'EF de samedi retirée, la sortie longue raccourcie de 2h30 à 2h15, les
+// cibles de la VO2max changées, et les navettes passées de vendredi à samedi (un simple changement de jour). Une séance
+// changée garde son identifiant et prend une révision nouvelle, comme dans Nolio ; « Sa semaine qui arrive » les marque.
+type Retouches = { des: string; retirees: string[]; changees: Record<string, Ligne>; ajoutees: Ligne[] };
+const RETOUCHES_NOLIO: Record<string, Retouches> = {
+  'demo-lea': {
+    des: '2026-11-16T11:00:00Z',
+    retirees: ['ptrn_demoleaS9jeudi', 'ptrn_demoleaS9samedi'],
+    changees: {
+      ptrn_demoleaS9mardi: { revision: 'r2' },
+      ptrn_demoleaS9vendredi: { date_start: '2026-11-21', revision: 'r2' },
+      ptrn_demoleaS9dimanche: { duration: { value: 8100 }, revision: 'r2' },
+    },
+    ajoutees: [
+      { id: 'ptrn_democoachlea1', name: 'Renfo gainage', date_start: '2026-11-18', rpe: null, sport: 'spt_demorenfo', duration: { value: 1500 }, revision: 'r1' },
+      { id: 'ptrn_democoachlea2', name: 'Séance piste club', date_start: '2026-11-19', rpe: null, sport: 'spt_kNYHjuEzDJRiYCX', duration: { value: 4500 }, revision: 'r1' },
+    ],
+  },
+};
+// Ses séances prévues dans Nolio à cet instant : celles du moteur, avec tes retouches une fois faites.
+function prevuesDe(a: Pick<Athlete, 'id'>, instant: number): Ligne[] {
+  const prevues = donnees().nolio[a.id].prevues;
+  const r = RETOUCHES_NOLIO[a.id];
+  if (!r || Date.parse(r.des) > instant) return prevues;
+  return [...prevues.filter((p) => !r.retirees.includes(String(p.id))).map((p) => ({ ...p, ...(r.changees[String(p.id)] ?? {}) })),
+    ...r.ajoutees.map((p) => ({ ...p, _des: r.des }))];
+}
+
+// LES SEPT RÉPONSES DE « POURQUOI CETTE SEMAINE » (doctrine de la semaine, décision 11 du coach du 09/11/2026) : en
+// attendant le moteur 8.461, qui les écrira, celles de la semaine de Léa écrite le dimanche 15, à la main et fictives, au
+// contrat prévu ({ n, libelle, texte, manque }).
+const SEPT_REPONSES: Record<string, { n: number; libelle: string; texte: string; manque?: string }[]> = {
+  'demo-plan-lea:S9': [
+    { n: 1, libelle: 'Qui', texte: 'confirmé, trail en très pentu, 7 jours par semaine, vitesse critique, FC au seuil 1 et FC au seuil 2 connues.' },
+    { n: 2, libelle: 'Objectif', texte: 'OCC : 56 km et 3467 m de D+ le 06/03.' },
+    { n: 3, libelle: 'Où il en est', texte: 'bloc développement, semaine 1 sur 4, charge ; le bloc travaille la VO2max ; J-110.' },
+    { n: 4, libelle: 'Prévu', texte: '7 séances, 5h34, « Seuil 2 court · 15 min — 5 × 3 min », sortie longue 1h45.' },
+    { n: 5, libelle: 'Couru', texte: '7 séances sur 7, 5h34, plus longue sortie 1h45.' },
+    { n: 6, libelle: 'Séances clés', texte: 'Seuil 2 : « Seuil 2 court · 15 min — 5 × 3 min » fait au bon effort (RPE 7 pour 7 prévu) ; sortie longue de 1h45 bien passée (RPE 3 pour 3) ; fatigue : aucun signal, Hooper 11.',
+      manque: 'le RPE de son EF de jeudi ; elle compte au RPE prévu.' },
+    { n: 7, libelle: 'Donc', texte: 'VO2max : la marche suivante, « VO2 long · 15 min — 2 × 4′, 4 × 1′, 6 × 30″ · vallonné » ; mécanique : la marche suivante, « Myocrossmax » ; sortie longue 2h30, un pas vers la sortie longue visée par le bloc ; volume 7h33, au plus +30 % de sa dernière semaine de charge.' },
+  ],
+};
+
 export function comptes(): Record<string, string> {
   return Object.fromEntries(donnees().athletes.filter((a) => a.app)
     .map((a) => [compteDe(a) as string, `${prenom(a.nom)}.${prenom(a.nom.split(' ').slice(1).join(' '))}@demonstration.test`]));
@@ -149,7 +195,7 @@ function signauxDuSoir(maintenant: number): Ligne[] {
   const entre = (de: string, a: string) => (l: Ligne) => String(l.date_start).slice(0, 10) >= de && String(l.date_start).slice(0, 10) <= a;
   return d.athletes.filter((a) => !a.sans_accord && !a.pas_demarre).map((a) => {
     const n = d.nolio[a.id];
-    const prevues = n.prevues.filter(vu).filter(entre(ajouterJours(debut, -7), jour)).map(sansInterne) as Prevue[];
+    const prevues = prevuesDe(a, soir).filter(vu).filter(entre(ajouterJours(debut, -7), jour)).map(sansInterne) as Prevue[];
     const reelles = n.reelles.filter(vu).map(sansInterne);
     const suivi = signaux(prevues, reelles.filter(entre(debut, jour)) as Realisee[],
       n.hooper.filter(vu).filter(entre(ajouterJours(debut, -(7 * s.hooper_semaines + 3)), jour)).map(sansInterne) as ValeurHooper[], s, jour);
@@ -237,8 +283,10 @@ function revueDe(l: Ligne): Revue | null {
   });
   const avant = d.semaines_ecrites.find((x) => x.plan_id === planId && Number(String(x.numero).slice(1)) === Number(String(l.numero).slice(1)) - 1);
   const sortie = apercu?.sortie as { pourquoi?: Revue['pourquoi'] } | undefined;
+  const sept = SEPT_REPONSES[`${planId}:${l.numero}`];
+  const pourquoi = sortie?.pourquoi ? { ...sortie.pourquoi, ...(sept ? { sept_questions: sept } : {}) } as Revue['pourquoi'] : null;
   return {
-    quoi: 'Semaine', pourquoi: sortie?.pourquoi ?? null, realise: (avant?.realise ?? null) as Revue['realise'],
+    quoi: 'Semaine', pourquoi, realise: (avant?.realise ?? null) as Revue['realise'],
     lu: { questionnaire: { jours: (c.jours_disponibles ?? []) as string[], jour_sl: c.jour_sl ? String(c.jour_sl) : null, nb_seances: Number(c.freq_hebdo) || null },
       questionnaire_du: ajouterJours(lundi, -2), lues },
   };
@@ -307,13 +355,13 @@ export function nolio(_methode: string, chemin: string): { statut: number; corps
   if (base === 'me/athletes/') return liste(equipe());
   if (base === 'metrics/items/') return liste([{ id: 'mtr_demohooper', key: 'INDICEHOOPER', name: 'Indice Hooper' }]);
   if (base === 'metrics/values/') return servi(a ? d.nolio[a.id].hooper : []);
-  if (base === 'planned/trainings/') return servi(a ? d.nolio[a.id].prevues.map((p) => ({ ...p, revision: 'r1' })) : []);
+  if (base === 'planned/trainings/') return servi(a ? prevuesDe(a, maintenant).map((p) => ({ revision: 'r1', ...p })) : []);
   if (base === 'real/trainings/') return servi(a ? d.nolio[a.id].reelles : []);
   if (base === 'real/quiz_results/') return servi(a ? questionnaires(a) : []);
   if (base === 'planned/competitions/') return servi(a ? competitions(a) : []);
   const seance = /^planned\/trainings\/([^/]+)\/$/.exec(base);
   if (seance) {
-    const p = a ? d.nolio[a.id].prevues.find((x) => x.id === seance[1]) : undefined;
+    const p = a ? prevuesDe(a, maintenant).filter(vu).find((x) => x.id === seance[1]) : undefined;
     return p ? { statut: 200, corps: { ...sansInterne(p), workout: [] } } : { statut: 404, corps: { error: { code: 'not_found' } } };
   }
   const course = /^planned\/competitions\/([^/]+)\/$/.exec(base);

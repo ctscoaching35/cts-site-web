@@ -110,13 +110,13 @@ export async function notesDeLaSemaine(ctx: Contexte): Promise<{ numero: string;
   return ligne && notes.length ? { numero: ligne.numero, notes } : null;
 }
 
-// La semaine ajustée (Q7) : ?semaine=fatigue ou manquee, le journal que le moteur a gardé avec elle (R3, R8) ;
-// ?semaine=retouchee, pour un coaché, la semaine que son coach a retouchée dans Nolio.
-export async function ajustementDeDemonstration(ctx: Contexte, numero: string): Promise<'moteur' | 'coach' | null> {
-  if (!ctx.demo) return null;
-  if (ctx.demo.semaine === 'retouchee') return ctx.coache ? 'coach' : null;
+// La semaine ajustée (Q7) : ?semaine=fatigue ou manquee, le journal que le moteur a gardé avec elle (R3, R8).
+// ?semaine=retouchee (la semaine que son coach a retouchée dans Nolio) n'a plus rien à dire (décision 11 du coach du
+// 09/11/2026) : l'app montre la semaine telle qu'elle est dans Nolio, sans marque.
+export async function ajustementDeDemonstration(ctx: Contexte, numero: string): Promise<'moteur' | null> {
+  if (!ctx.demo || ctx.demo.semaine === 'retouchee') return null;
   const m = await semaineMontree(ctx, numero);
-  return m ? ajustementDuJournal(m.journal, ctx.coache) : null;
+  return m ? ajustementDuJournal(m.journal) : null;
 }
 
 // Le tableau de bord : la trame et les fiches du moteur, l'état Nolio et l'accord choisis, la course de préparation ;
@@ -148,7 +148,7 @@ export async function tableauDeDemonstration(ctx: Contexte): Promise<DonneesTabl
 const enSeancesNolio = (s: Semaine): SeanceNolio[] => s.jours
   .filter((j) => j.famille !== 'repos' && j.famille !== 'course' && j.seance && minutesDe(j.duree ?? '') > 0)
   .map((j) => ({ id: `demo-${j.id}`, date: j.date_iso ?? '', nom: j.seance, minutes: minutesDe(j.duree ?? ''),
-    couleur: j.couleur ?? FAMILLES[j.famille as keyof typeof FAMILLES]?.filet ?? null }));
+    couleur: j.couleur ?? FAMILLES[j.famille as keyof typeof FAMILLES]?.filet ?? null, course: true }));
 // Retouchée par le coach dans Nolio : sa première séance de qualité remplacée par un footing souple de 45 min, sa sortie
 // longue raccourcie de 20 min (le bandeau le dit).
 export const RETOUCHE = 'Le coach a remplacé dans Nolio la première séance de qualité par un footing souple de 45 min et raccourci la sortie longue de 20 min ; l’app montre la semaine telle qu’elle est dans Nolio.';
@@ -162,7 +162,7 @@ function retouchee(seances: SeanceNolio[], s: Semaine): SeanceNolio[] {
 const semaineDuCoach = (lundi: string): SeanceNolio[] => ([
   [1, 'Footing et 6 lignes droites', 50, '#B9C7C3'], [3, 'Côtes 8 × 1 min', 60, '#2F2D4E'],
   [5, 'Footing souple', 40, '#B9C7C3'], [6, 'Sortie longue nature', 105, '#0C6E5F'],
-] as const).map(([j, nom, minutes, couleur]) => ({ id: `demo-coach-${j}`, date: ajouterJours(lundi, j), nom, minutes, couleur }));
+] as const).map(([j, nom, minutes, couleur]) => ({ id: `demo-coach-${j}`, date: ajouterJours(lundi, j), nom, minutes, couleur, course: true }));
 
 // « Ta semaine » lue dans Nolio, dans l'ordre de lib/app/tableauDuPlan.ts (lireSemaineNolio) : pas encore partie, sans
 // accord, Nolio muet, puis lue (telle que le moteur l'a écrite, retouchée par le coach, vide).
@@ -170,7 +170,7 @@ const semaineDuCoach = (lundi: string): SeanceNolio[] => ([
 // suit la course (C32, audits du 05/11/2026 : « Ta semaine » reste affichée pendant la récupération).
 const semaineDeRecuperation = (lundi: string): SeanceNolio[] => ([
   [1, 'EF plate', 30], [3, 'EF plate', 40], [5, 'EF vallonnée', 45],
-] as const).map(([j, nom, minutes]) => ({ id: `demo-recup-${j}`, date: ajouterJours(lundi, j), nom, minutes, couleur: FAMILLES.ef.filet }));
+] as const).map(([j, nom, minutes]) => ({ id: `demo-recup-${j}`, date: ajouterJours(lundi, j), nom, minutes, couleur: FAMILLES.ef.filet, course: true }));
 
 export async function lectureDeDemonstration(ctx: Contexte, lundi: string, numero?: string): Promise<LectureNolio> {
   const demo = ctx.demo;
@@ -259,9 +259,10 @@ export async function etatsDuBandeau(): Promise<GroupeDuBandeau[]> {
       t('Rien de prévu dans Nolio cette semaine', '/app', { ...n, semaine: 'vide' }),
       t('Nolio ne répond pas', '/app', { ...n, semaine: 'muet' }),
       t('Semaine pas encore partie dans Nolio', '/app', { ...n, semaine: 'pas_partie' }),
-      // Q7 (05/11/2026 au soir) : « Semaine ajustée », d'après la semaine passée (le moteur) ou par le coach (un coaché).
-      t('Semaine ajustée : fatigue (« Semaine ajustée »)', '/app', { ...n, semaine: 'fatigue' }),
-      t('Semaine ajustée : séance manquée', '/app', { ...n, semaine: 'manquee' }),
+      // Q7 (05/11/2026 au soir) : la semaine écrite d'après la semaine passée (le moteur) ; plus d'étiquette « Semaine
+      // ajustée » (décision 11 du coach du 09/11/2026).
+      t('Semaine écrite d’après la fatigue', '/app', { ...n, semaine: 'fatigue' }),
+      t('Semaine écrite après une séance manquée', '/app', { ...n, semaine: 'manquee' }),
       // Q14 : la ligne de la semaine d'un test ; sans accord, « Entrer mon résultat » (un acheteur).
       t('Semaine de test (première semaine, sans repère)', '/app', { ...c, jour: mardi(L4, L4.semaines.test?.numero) ?? ajouterJours(debut, 1), semaine: 'test' }),
       ...(coache ? [] : [t('Semaine de test, sans accord (« Entrer mon résultat »)', '/app', { jour: mardi(L4, L4.semaines.test?.numero) ?? ajouterJours(debut, 1), semaine: 'test', accord: '0' })]),

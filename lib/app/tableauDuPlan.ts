@@ -6,11 +6,11 @@
 import { destinataire } from './coaching';
 import type { Contexte } from './contexte';
 import { objectifAffiche, trameDuPlan, type LigneTrame, type Realise } from './ecriture';
-import { listeNolio } from './nolio';
+import { listeNolio, SPORTS_COURSE } from './nolio';
 import { semainesDeLaFiche } from './semainesNolio';
 import { ajouterJours, type CleTest, type Semaine } from './plan';
 import { clientService } from './supabase';
-import { ajustementDuJournal, detailDeLaSemaine, minutesDe, trameDesDonnees, type Ajustement, type CourseDuGraphique, type Fiche } from './tableau';
+import { ajustementDuJournal, detailDeLaSemaine, minutesDe, trameDesDonnees, volumeDeNolio, type Ajustement, type CourseDuGraphique, type Fiche } from './tableau';
 import { ajustementDeDemonstration, lectureDeDemonstration, semaineDeDemonstration, tableauDeDemonstration } from './demonstration';
 
 // Où en est l'athlète dans Nolio (P1 à P4) ; « coache » : un objectif de son coach ; null : un plan d'avant le
@@ -134,7 +134,8 @@ export async function semaineEcrite(ctx: Contexte, numero: string): Promise<Sema
 // avec l'accord de lecture (la politique de confidentialité) et une fois l'objectif parti dans Nolio. null sinon, ou si
 // Nolio ne répond pas : la carte montre la semaine écrite par le moteur. numero : une semaine de la préparation, lue
 // dans Nolio une fois qu'elle y est partie (décision coach du 20/10/2026 : avant, la carte montre celle du moteur).
-export type SeanceNolio = { id: string; date: string; nom: string; minutes: number | null; couleur: string | null };
+// course : une séance de course, de trail ou de tapis (le volume de « Ta préparation » ne compte qu'elles, comme le moteur).
+export type SeanceNolio = { id: string; date: string; nom: string; minutes: number | null; couleur: string | null; course: boolean };
 // La raison d'une semaine non lue (B-AT-1 et B-AT-2, audit du 03/11/2026 ; AT1, décision coach du 04/11/2026) : la
 // carte « Ta semaine » ne confond plus « pas encore partie », « sans accord » et « Nolio muet ».
 export type RaisonNolio = 'lue' | 'sans_accord' | 'pas_partie' | 'muet' | 'sans_nolio' | 'demo';
@@ -159,14 +160,15 @@ export async function lireSemaineNolio(ctx: Contexte, lundi: string, numero?: st
   if (numero && !o.envois.some((e) => e.semaine === numero)) return { seances: null, raison: 'pas_partie' };
   try {
     const d = await destinataire(o.nolioAthlete);
-    type Prevue = { id: string; name?: string; date_start: string; duration?: { value?: number } | null; color?: string | null };
+    type Prevue = { id: string; name?: string; date_start: string; duration?: { value?: number } | null; color?: string | null; sport?: string | null };
     const prevues = await listeNolio<Prevue>(
       `planned/trainings/?date_from=${lundi}&date_to=${ajouterJours(lundi, 6)}${d.moi ? '' : `&athlete=${d.usr}`}`);
     return {
       raison: 'lue',
       seances: prevues
         .map((p) => ({ id: p.id, date: p.date_start.slice(0, 10), nom: p.name ?? 'Séance',
-          minutes: p.duration?.value ? Math.round(p.duration.value / 60) : null, couleur: p.color ?? null }))
+          minutes: p.duration?.value ? Math.round(p.duration.value / 60) : null, couleur: p.color ?? null,
+          course: SPORTS_COURSE.includes(String(p.sport)) }))
         .sort((a, b) => a.date.localeCompare(b.date)),
     };
   } catch {
@@ -192,10 +194,12 @@ export async function testVcNonRepropose(ctx: Contexte): Promise<boolean> {
 // fois écrite le dimanche soir, telle qu'elle est dans Nolio, sinon null : prévue, la trame. Un acheteur sans accord : sa
 // semaine suivante n'est « sans accord » qu'une fois partie dans Nolio (lireSemaineNolio) ; un coaché sans accord, elle
 // reste prévue.
+// LE VOLUME DE LA SEMAINE, CELUI DE NOLIO (décision 11 du coach du 09/11/2026) : volume_min, une fois la semaine lue dans
+// Nolio (ses séances de course, retouches du coach comprises) ; absent, le volume de la trame.
 export type SeanceDetaillee = { cle: string; date: string | null; jour: string; nom: string; minutes: number | null };
-export type SemaineDetaillee = { seances: SeanceDetaillee[] } | 'dans_nolio' | null;
+export type SemaineDetaillee = { seances: SeanceDetaillee[]; volume_min?: number } | 'dans_nolio' | null;
 const deNolio = (seances: SeanceNolio[]): SemaineDetaillee =>
-  ({ seances: seances.map((x) => ({ cle: x.id, date: x.date, jour: '', nom: x.nom, minutes: x.minutes })) });
+  ({ seances: seances.map((x) => ({ cle: x.id, date: x.date, jour: '', nom: x.nom, minutes: x.minutes })), volume_min: volumeDeNolio(seances) });
 export async function semainesDetaillees(ctx: Contexte, trame: LigneTrame[], jour: string): Promise<{ encours: SemaineDetaillee; suivante: SemaineDetaillee }> {
   const ligne = (d: 'encours' | 'suivante') => trame.find((l) => l.lundi && detailDeLaSemaine(l.lundi, jour) === d) ?? null;
   const [enCours, suivante] = [ligne('encours'), ligne('suivante')];
@@ -230,9 +234,9 @@ export async function fichesDePreparation(planId: string): Promise<Set<string>> 
 }
 
 // LA SEMAINE AJUSTÉE (Q7, décision coach du 05/11/2026 au soir, « A ») : la semaine en cours que le passage du dimanche a
-// écrite d'après la semaine passée (« moteur » : les règles du journal gardé avec elle, semaines_ecrites.journal), ou,
-// pour un coaché, que son coach a retouchée (« coach » : une correction de l'aperçu du dimanche appliquée, journal COACH,
-// ou des séances changées dans Nolio, comptées chaque nuit dans la table retouches). null sinon : la semaine de la trame.
+// écrite d'après la semaine passée (« moteur » : les règles du journal gardé avec elle, semaines_ecrites.journal). null
+// sinon : la semaine de la trame. Les retouches du coach dans Nolio ne s'y disent plus (décision 11 du coach du
+// 09/11/2026 : aucune marque dans l'app de l'athlète, sa semaine telle qu'elle est dans Nolio).
 // Les règles qui changent la semaine d'après la semaine passée : moins de 60 % faits (R1), une séance clé trop dure ou
 // écourtée (R2), la fatigue (R3), un arrêt (R4), un week-end choc réduit (R5), une séance clé manquée ou retirée (R8),
 // la semaine allégée par le coach (CH), une course dans la récupération (C5), une course qui tient lieu de week-end choc
@@ -241,17 +245,8 @@ export async function ajustementDeLaSemaine(ctx: Contexte, numero: string): Prom
   if (ctx.sansObjectif || ctx.aLaMain) return null;
   if (ctx.demonstration) return ajustementDeDemonstration(ctx, numero);
   try {
-    const service = clientService();
-    const [{ data: ecrite }, retouches] = await Promise.all([
-      service.from('semaines_ecrites').select('journal').eq('plan_id', ctx.cle).eq('numero', numero).maybeSingle(),
-      // La table retouches manque tant que sa migration n'est pas passée : rien de retouché.
-      ctx.coache ? service.from('retouches').select('familles, ajoutees').eq('plan_id', ctx.cle).eq('semaine', numero).maybeSingle()
-        : Promise.resolve({ data: null }),
-    ]);
-    const r = retouches.data as { familles?: Record<string, { modifiees?: number; supprimees?: number }> | null; ajoutees?: number } | null;
-    const retouchee = Boolean(r && (Number(r.ajoutees ?? 0) > 0
-      || Object.values(r.familles ?? {}).some((f) => Number(f?.modifiees ?? 0) > 0 || Number(f?.supprimees ?? 0) > 0)));
-    return ajustementDuJournal(ecrite?.journal, ctx.coache, retouchee);
+    const { data: ecrite } = await clientService().from('semaines_ecrites').select('journal').eq('plan_id', ctx.cle).eq('numero', numero).maybeSingle();
+    return ajustementDuJournal(ecrite?.journal);
   } catch {
     return null;
   }

@@ -23,7 +23,6 @@ import { coursesDansNolio, pasEncoreIci } from '@/lib/app/coursesNolio';
 import { espaceDuCoach } from '@/lib/app/mesAthletes';
 import { decimale, suiteDe, virgule, type Point } from '@/lib/app/espaceParAthlete';
 import { semainesQuiArrivent, lundiMontre } from '@/lib/app/semaineQuiArrive';
-import { PAS_UN_AJUSTEMENT } from '@/lib/app/ecriture';
 import { athletesNolio, ErreurNolio, exigerCoach, nolioConfigure, type AthleteNolio } from '@/lib/app/nolio';
 import { ajouterJours, dateAbregee, dateLongue, jMoins, type Zones } from '@/lib/app/plan';
 import { allureDepuisVitesse } from '@/lib/app/allureCoach';
@@ -191,15 +190,16 @@ export default async function PageAthlete({ params, searchParams }: {
   // SA REVUE DU DIMANCHE (Q3 « A ») : ses cinq questions, calculées sans rien saisir ; un ✓, ou un ! qui renvoie à la
   // section.
   const fenetre = lundiMontre(jour) !== null;
-  const ajustee = semaines.some((x) => x.etat === 'ecrite' && !x.ligne.sans_ajustement
-    && (x.ligne.journal ?? []).some((e) => !PAS_UN_AJUSTEMENT.has(String(e.regle ?? ''))));
+  // « partie, retouchée par toi » (décision 11 du coach du 09/11/2026) : la semaine lue dans Nolio, une retouche marquée
+  // (BROUILLON) ; plus de « partie, ajustée » (« Ce que le moteur change » n'est plus sur sa page).
+  const retouchee = semaines.some((x) => x.etat === 'ecrite' && x.nolio !== null && 'comparee' in x.nolio && x.nolio.comparee.retouchee);
   const enRoute = semaines.length > 0;
   const partie = semaines.length > 0 && semaines.every((x) => x.etat === 'ecrite' || (x.etat === 'pas_partie' && x.laissee));
   const messages = points.filter((p) => p.genre === 'commentaire' || p.genre === 'mot').length;
   const profilRempli = ['niveau', 'terrain', 'jour_sl', 'freq_hebdo', 'jours_disponibles'].every((k) => profil[k] !== undefined && String(profil[k]).length > 0);
   const revue: { ok: boolean; texte: string; ancre: string }[] = [
     { ok: !fenetre || !enRoute || partie, ancre: '#semaine-qui-arrive', texte: `Sa semaine qui arrive : ${aLaMain ? 'à la main' : !enRoute ? 'rien à écrire'
-      : !fenetre ? 's’écrit dimanche soir' : partie ? `partie${ajustee ? ', ajustée' : ''}` : 'pas partie'}` },
+      : !fenetre ? 's’écrit dimanche soir' : partie ? `partie${retouchee ? ', retouchée par toi' : ''}` : 'pas partie'}` },
     { ok: profilRempli, ancre: '#son-profil', texte: `Son profil : ${profilRempli ? 'complet' : 'à remplir'}` },
     { ok: messages === 0, ancre: '#a-faire', texte: `Ses messages : ${messages === 0 ? 'rien à lire' : `${messages} à lire`}` },
     { ok: !s || (!s.sansRpe && (s.tenue === null || s.tenue >= 80)), ancre: '#sa-semaine-passee',
