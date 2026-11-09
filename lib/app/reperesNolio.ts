@@ -9,7 +9,7 @@
  * métriques sont celles du catalogue de Nolio (lues le 24/10/2026 sur le compte du coach : `is_nolio`, la même pour tous).
  * Côté serveur seulement.
  *
- * La FC au seuil 1 aussi (moteur 8.462, décision 10 du coach du 09/11/2026 : « on ne prescrit pas avec une valeur qu'on n'a
+ * La FC au seuil 1 aussi (moteur 8.460, décision 10 du coach du 09/11/2026 : « on ne prescrit pas avec une valeur qu'on n'a
  * pas dans Nolio » ; la métrique que le coach a créée le 26/10/2026) ; une valeur égale à celle de l'app ne change ni sa
  * source ni sa date : la règle, reperesLus.ts.
  */

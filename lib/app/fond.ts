@@ -63,7 +63,7 @@ function couvert(plans: PlanFiche[], lundi: string): boolean {
   return false;
 }
 
-// La dernière préparation courue avant ce lundi : son pic de volume (moteur 8.464, décision 7 a du coach du 09/11/2026 :
+// La dernière préparation courue avant ce lundi : son pic de volume (moteur 8.460, décision 7 a du coach du 09/11/2026 :
 // plus de plafond à 80 % de ses semaines de charge de développement ; le volume de la saison suit la règle générale,
 // « borné de loin par le pic de sa dernière préparation ») et sa plus longue sortie (le dernier recours de la sortie
 // longue visée, 60 %, quand ni son niveau habituel ni sa déclaration ne la donnent).
@@ -102,7 +102,7 @@ async function creerSaison(fiche: Record<string, unknown>, plans: PlanFiche[], l
   const champsBase = ((base?.champs ?? {}) as Record<string, unknown>);
   const usr = (fiche.nolio_athlete_id as string | null) ?? null;
   const charge = await chargeDepuisNolio(String(fiche.coach_id), usr).catch(() => null);
-  // LA SAISON DÉMARRE SUR SON NIVEAU HABITUEL (moteur 8.464, étape D3 ; décision 8 du coach du 09/11/2026, N9 du banc
+  // LA SAISON DÉMARRE SUR SON NIVEAU HABITUEL (moteur 8.460, étape D3 ; décision 8 du coach du 09/11/2026, N9 du banc
   // d'essai) : son volume et sa sortie longue habituels, lus sur les mêmes semaines (ses semaines normales des 13
   // dernières, lib/app/charge.ts, niveauHabituel), plus le volume de ses 4 dernières semaines (affûtage, course,
   // récupération) et sa plus longue sortie sur 8 (sa préparation) : le moteur refusait une sortie plus longue que le
@@ -192,7 +192,7 @@ export async function saisonsDuJour(budgetMs = 90_000): Promise<Compte[]> {
   return comptes;
 }
 
-// UN REFUS N'EST PLUS JAMAIS TU (moteur 8.464, étape D3 ; décision 8 du coach du 09/11/2026 : « un refus n'est plus jamais
+// UN REFUS N'EST PLUS JAMAIS TU (moteur 8.460, étape D3 ; décision 8 du coach du 09/11/2026 : « un refus n'est plus jamais
 // tu », il apparaît dans « Urgent ») : la saison que le passage du soir n'a pas pu créer, son lundi et ce que le moteur a
 // répondu, gardés sur sa fiche (`saison_refusee`, migration du 09/11/2026) jusqu'à ce qu'une saison ou une préparation
 // couvre son lundi ; « Urgent » le montre (lib/app/espaceCoach.ts, genre « saison »). Avant, le refus ne laissait qu'une

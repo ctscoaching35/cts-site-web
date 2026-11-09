@@ -43,7 +43,7 @@ export type FicheAthlete = {
   // auto : le moteur écrit ses semaines chaque dimanche ; main : le coach les écrit dans Nolio (décision coach du
   // 20/10/2026, « tableau de bord complet ») ; auto avant la migration du 20/10/2026.
   programmation: 'auto' | 'main';
-  // La saison de fond que le passage du soir n'a pas pu créer (moteur 8.464, décision 8 du coach du 09/11/2026 : « un
+  // La saison de fond que le passage du soir n'a pas pu créer (moteur 8.460, décision 8 du coach du 09/11/2026 : « un
   // refus n'est plus jamais tu ») : son lundi et ce que le moteur a répondu ; null sinon, ou avant la migration du
   // 09/11/2026.
   saison_refusee?: { le: string; lundi: string; motif: string } | null;

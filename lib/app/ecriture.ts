@@ -102,7 +102,7 @@ type SortieMoteur = {
   // D7 (moteur 8.451, audits du 05/11/2026) : la semaine que le contrôle du moteur refusait, écrite par un repli (1 : la
   // même, sortie longue plafonnée ; 2 : celle du plan de l'achat, plafonnée ; 3 : celle du plan de l'achat) ; null sinon.
   repli?: { niveau: number; effet?: string; refus?: string } | null;
-  // Moteur 8.461 (la doctrine de la semaine) : le niveau habituel, et ce que « la semaine suivante » a décidé élément par
+  // Moteur 8.460 (la doctrine de la semaine) : le niveau habituel, et ce que « la semaine suivante » a décidé élément par
   // élément (les sept réponses, elles, sont dans `semaine.pourquoi`).
   niveau_habituel?: NiveauHabituel | null;
   semaine_suivante?: Record<string, unknown> | null;
@@ -111,7 +111,7 @@ export type Pourquoi = {
   profil: string[]; ou: string; semaine_passee: string | null; regles: Record<string, unknown>[];
   seances: { jour: string; seance: string | null; pourquoi: string }[]; placement: string;
 };
-// Le niveau habituel (moteur 8.461, décisions 8 et 11 du coach du 09/11/2026 : « Ses repères », côté coach seulement) :
+// Le niveau habituel (moteur 8.460, décisions 8 et 11 du coach du 09/11/2026 : « Ses repères », côté coach seulement) :
 // sa semaine typique et chaque semaine lue, retenue ou écartée avec sa raison. Rien ne l'affiche encore.
 export type NiveauHabituel = {
   volume_min: number; sl_min: number | null; semaines: number; source: 'nolio' | 'declare';
@@ -520,10 +520,10 @@ function avecLeProfil(o: Objectif): Record<string, unknown> {
   const profil = vc && o.dPrime ? (coefficientRiegel(vc, o.dPrime) < 0.9 ? 'rapide' : 'endurant') : null;
   if ((o.parametres.profil_coureur ?? null) === profil) return o.parametres;
   const { profil_coureur: ancien, ...reste } = o.parametres;
-  // EN SAISON DE FOND, LE TROISIÈME BLOC SUIT LE NOUVEAU PROFIL (moteur 8.464, étape D3 ; décision 7 c du coach du
+  // EN SAISON DE FOND, LE TROISIÈME BLOC SUIT LE NOUVEAU PROFIL (moteur 8.460, étape D3 ; décision 7 c du coach du
   // 09/11/2026 : « test refait à la fin du premier bloc, les blocs suivants s'adaptent au nouveau profil ») : le profil du
   // début de la saison reste dans `fond.profil_depart` (posé au premier changement), qui garde les deux premiers blocs ;
-  // celui d'aujourd'hui décide du troisième. Avant 8.464, le profil ne changeait pas en cours de saison.
+  // celui d'aujourd'hui décide du troisième. Avant 8.460, le profil ne changeait pas en cours de saison.
   const fond = (o.parametres as { fond?: Record<string, unknown> }).fond;
   const fondSuivi = fond ? { fond: 'profil_depart' in fond ? fond : { ...fond, profil_depart: ancien ?? null } } : {};
   return profil ? { ...reste, ...fondSuivi, profil_coureur: profil } : { ...reste, ...fondSuivi };
@@ -1052,7 +1052,7 @@ async function deciderLeDepart(o: Objectif, premiere: Semaine, jonction: { apres
   const fondationsSautees = Boolean(lu?.lu && premiere.bloc === 'Bloc fondations' && (lu.seancesDures ?? 0) >= SEANCES_DURES_MIN);
   const allegeeEnCharge = Boolean(!rythme && lu?.lu && premiere.type === 'Assimilation' && lu.derniereAllegee);
   const declaree = lireTemps(String(champs.sortie_longue_actuelle ?? ''));
-  // LA SORTIE LONGUE DE RÉFÉRENCE EST SA SORTIE LONGUE HABITUELLE (moteur 8.464, étape D3 ; décision 8 du coach du
+  // LA SORTIE LONGUE DE RÉFÉRENCE EST SA SORTIE LONGUE HABITUELLE (moteur 8.460, étape D3 ; décision 8 du coach du
   // 09/11/2026 : son niveau habituel, ses semaines normales des 3 derniers mois, lues dans Nolio) : plus la plus longue
   // sortie des 8 dernières semaines, qu'une seule sortie longue isolée relevait. Juste après une course, la jonction garde
   // sa règle (75 % de la plus longue d'avant l'affûtage, décision 6 du 07/11/2026). Sans assez de semaines normales lues,
@@ -2028,7 +2028,7 @@ export async function zonesDeLaFicheVersNolio(athleteId: string): Promise<string
 // LE RATTRAPAGE DES ZONES (décision coach du 25/10/2026, l'écriture ouverte à tous) : une nuit, les zones de chaque
 // coaché qui a déjà des repères (sa vitesse critique, ou ses deux seuils de FC) partent dans son Nolio, comme quand le
 // coach enregistre ses repères : d'après son objectif écrit le plus récent, sinon sa fiche. Ensuite, à chaque valeur.
-// Toute fiche qui a une valeur (moteur 8.462, décision 10 du coach du 09/11/2026, reperesLus.ts) : avant, une FC au seuil 1
+// Toute fiche qui a une valeur (moteur 8.460, décision 10 du coach du 09/11/2026, reperesLus.ts) : avant, une FC au seuil 1
 // seule n'arrivait jamais dans les métriques Nolio, et le moteur la visait quand même.
 export async function rattraperLesZones(budgetMs = 150_000): Promise<Compte[]> {
   const debut = Date.now();

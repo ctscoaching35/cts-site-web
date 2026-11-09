@@ -53,7 +53,7 @@ export function reponsesDuSamedi(q: Questionnaire | undefined, du?: string, anci
 
 // Une ligne du journal du moteur, en clair pour le coach. seances : les noms des séances de la semaine ; la mémoire d'une
 // qualité absente de la semaine n'est pas dite (retour coach du 01/11/2026 : « plus de seuil 2 au final ? »). L'allure de
-// course est sa propre famille depuis le moteur 8.463 (N10, doctrine D2 : la route lit la dernière séance d'allure faite) :
+// course est sa propre famille depuis le moteur 8.460 (N10, doctrine D2 : la route lit la dernière séance d'allure faite) :
 // la même règle, ses séances s'appellent « Allure 10 km », « Allure semi », « Allure marathon ».
 const QUALITES_NOMMEES = new Set(['seuil1', 'tempo', 'seuil2', 'vo2max', 'allure']);
 // « S5-mer » -> « mercredi » : le jour d'une séance par son identifiant de plan.

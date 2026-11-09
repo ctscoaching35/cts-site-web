@@ -88,7 +88,7 @@ export function historiqueDejaRecu(etat: Record<string, unknown> | null | undefi
   return (etat as { niveau_habituel?: { historique?: unknown } | null } | null | undefined)?.niveau_habituel?.historique === true;
 }
 
-// SA SEMAINE TYPIQUE, LUE AU SITE (moteur 8.464, étape D3 de la doctrine ; décision 8 du coach du 09/11/2026 : « la saison
+// SA SEMAINE TYPIQUE, LUE AU SITE (moteur 8.460, étape D3 de la doctrine ; décision 8 du coach du 09/11/2026 : « la saison
 // de fond démarre sur son niveau habituel », volume et sortie longue des mêmes semaines) : la règle du moteur
 // (cts_bilan.niveau_habituel), sur ses semaines lues dans Nolio (historiqueParSemaine) — la médiane du volume et celle de
 // la plus longue sortie de ses semaines d'entraînement normales, sans la semaine d'une course, celle qui la suit (sa

@@ -1,4 +1,4 @@
--- CTS — la saison de fond refusée, gardée sur la fiche (moteur 8.464, étape D3 de la doctrine de la semaine ; décision 8
+-- CTS — la saison de fond refusée, gardée sur la fiche (moteur 8.460, étape D3 de la doctrine de la semaine ; décision 8
 -- du coach du 09/11/2026 : « un refus n'est plus jamais tu », il apparaît dans « Urgent »).
 --
 -- saison_refusee : la saison que le passage du soir n'a pas pu créer pour un coaché en programmation automatique —

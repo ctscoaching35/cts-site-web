@@ -2,7 +2,7 @@
  * Les repères de l'athlète entre l'app et Nolio, la règle seule (sans réseau ni base) : ce que reperesNolio.ts reprend de
  * Nolio chaque nuit, et quelles fiches le rattrapage de nuit écrit dans Nolio (ecriture.ts, rattraperLesZones).
  *
- * DÉCISION 10 DU COACH (09/11/2026, CTS_DOCTRINE_SEMAINE.md dans le dépôt du moteur ; moteur 8.462) : « on ne prescrit pas
+ * DÉCISION 10 DU COACH (09/11/2026, CTS_DOCTRINE_SEMAINE.md dans le dépôt du moteur ; moteur 8.460) : « on ne prescrit pas
  * avec une valeur qu'on n'a pas dans Nolio ». Le moteur vise les valeurs que le site lui envoie (`profil`, celles de la
  * fiche ou de « Tes zones ») ; elles doivent être celles de Nolio. Deux écarts fermés ici :
  * - la FC au seuil 1 que le coach écrit dans Nolio n'était pas reprise (la VC et la FC au seuil 2 l'étaient) : l'app
