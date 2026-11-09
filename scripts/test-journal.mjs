@@ -72,3 +72,14 @@ test('R2 : le nom de la séance, pas « S13-mardi »', () => {
 test('une pyramide à la moyenne ronde se lit encore comme des blocs égaux', () => {
   assert.equal(dose({ minutes: 15, reps: 5, bloc_min: 3 }), '5 × 3 min');
 });
+
+// La prudence (moteur 8.460, décision coach du 09/11/2026) : une famille qui refait sa marche (R1, R2, R8) ne monte pas sur
+// la séance lue ; les autres familles, comme avant.
+test('C1 et la prudence : la marche refaite, la séance lue ne la fait pas monter', () => {
+  const lignes = enClair({ regle: 'C1', effet: 'marche reprise de la dernière séance faite', prudence: ['seuil1'],
+    doses: { seuil1: { date: '2026-10-15', minutes: 30, reps: 3, bloc_min: 10, monte: true },
+      seuil2: { date: '2026-10-13', minutes: 20, reps: 4, bloc_min: 5, monte: true } } });
+  assert.equal(lignes.length, 2);
+  assert.match(lignes[0], /^Seuil 1 : sa marche se refait cette semaine ; la séance du .* \(3 × 10 min\) ne la fait pas monter\.$/);
+  assert.match(lignes[1], /^Seuil 2 : la marche part de la séance du .* la suivante monte d’une marche\.$/);
+});
