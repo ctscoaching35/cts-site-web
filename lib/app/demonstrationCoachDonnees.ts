@@ -89,9 +89,10 @@ function prevuesDe(a: Pick<Athlete, 'id'>, instant: number): Ligne[] {
     ...r.ajoutees.map((p) => ({ ...p, _des: r.des }))];
 }
 
-// LES SEPT RÉPONSES DE « POURQUOI CETTE SEMAINE » (doctrine de la semaine, décision 11 du coach du 09/11/2026) : en
-// attendant le moteur 8.461, qui les écrira, celles de la semaine de Léa écrite le dimanche 15, à la main et fictives, au
-// contrat prévu ({ n, libelle, texte, manque }).
+// LES SEPT RÉPONSES DE « POURQUOI CETTE SEMAINE » (doctrine de la semaine, décision 11 du coach du 09/11/2026) : la
+// démonstration a été écrite par un moteur d'avant 8.460 ; celles de la semaine de Léa écrite le dimanche 15, à la main et
+// fictives, rangées comme le moteur 8.460 les écrit, dans la semaine écrite (`semaine.pourquoi`, { n, libelle, texte,
+// manque }).
 const SEPT_REPONSES: Record<string, { n: number; libelle: string; texte: string; manque?: string }[]> = {
   'demo-plan-lea:S9': [
     { n: 1, libelle: 'Qui', texte: 'confirmé, trail en très pentu, 7 jours par semaine, vitesse critique, FC au seuil 1 et FC au seuil 2 connues.' },
@@ -153,10 +154,14 @@ export function tables(): Record<string, Ligne[]> {
       achat_id: a.id, donnees: { athlete: { nom: a.nom } }, parametres: null, intake: { duree_mois: String(a.mois) }, cree_le: a.paye,
     })),
   ];
-  const ecrites = d.semaines_ecrites.filter(vu).map((l) => ({
-    ...l, realise: l._realise_des && Date.parse(String(l._realise_des)) > maintenant ? null : l.realise,
-    revue: revueDe(l),
-  }));
+  const ecrites = d.semaines_ecrites.filter(vu).map((l) => {
+    const sept = SEPT_REPONSES[`${l.plan_id}:${l.numero}`];
+    return {
+      ...l, realise: l._realise_des && Date.parse(String(l._realise_des)) > maintenant ? null : l.realise,
+      ...(sept && l.donnees ? { donnees: { ...(l.donnees as Record<string, unknown>), pourquoi: sept } } : {}),
+      revue: revueDe(l),
+    };
+  });
   const t: Record<string, Ligne[]> = {
     comptes: [{ id: COACH, nom: 'Coach Démonstration' }],
     athletes_coaches: fiches,
@@ -283,8 +288,7 @@ function revueDe(l: Ligne): Revue | null {
   });
   const avant = d.semaines_ecrites.find((x) => x.plan_id === planId && Number(String(x.numero).slice(1)) === Number(String(l.numero).slice(1)) - 1);
   const sortie = apercu?.sortie as { pourquoi?: Revue['pourquoi'] } | undefined;
-  const sept = SEPT_REPONSES[`${planId}:${l.numero}`];
-  const pourquoi = sortie?.pourquoi ? { ...sortie.pourquoi, ...(sept ? { sept_questions: sept } : {}) } as Revue['pourquoi'] : null;
+  const pourquoi = sortie?.pourquoi ?? null;
   return {
     quoi: 'Semaine', pourquoi, realise: (avant?.realise ?? null) as Revue['realise'],
     lu: { questionnaire: { jours: (c.jours_disponibles ?? []) as string[], jour_sl: c.jour_sl ? String(c.jour_sl) : null, nb_seances: Number(c.freq_hebdo) || null },

@@ -20,7 +20,7 @@ import { enHeures } from '@/lib/app/tableau';
 // du coach du 09/11/2026) : la semaine à gauche, TELLE QU'ELLE EST DANS NOLIO une fois partie, chaque retouche marquée
 // pour le coach, avec ce que le moteur avait écrit ; « Pourquoi cette semaine » en sept réponses à droite (empilé sur
 // téléphone), à la place de « Ce que le moteur change » et d'« Annuler les ajustements » (retirés) ; la note « Ta semaine »
-// et « Ce qu'il a lu » repliées dessous, l'aperçu complet en lien. Sans les sept réponses (un moteur d'avant 8.461),
+// et « Ce qu'il a lu » repliées dessous, l'aperçu complet en lien. Sans les sept réponses (un moteur d'avant 8.460),
 // « Pourquoi cette semaine » reste replié dessous, comme avant. course : la date de sa course ; vers, le prochain objectif
 // d'une saison de fond (son J-).
 // TOUS LES TEXTES NOUVEAUX DE LA DÉCISION 11 SONT EN BROUILLON (à valider par le coach) : les marques, leurs sous-lignes,
@@ -228,8 +228,9 @@ export default function SemainesQuiArrivent({ semaines, prevision, vers, aLaMain
           const r = l.revue ?? null;
           const lue = s.nolio && 'comparee' in s.nolio ? s.nolio : null;
           const retouchee = Boolean(lue?.comparee.retouchee);
-          // Les sept réponses : celles que la semaine écrite porte (moteur 8.461), sinon le pourquoi d'avant, replié.
-          const reponses = septReponses(r?.pourquoi, (l.donnees as Semaine & { pourquoi?: unknown }).pourquoi);
+          // Les sept réponses : celles que la semaine écrite porte (`semaine.pourquoi`, moteur 8.460), sinon le pourquoi
+          // d'avant, replié.
+          const reponses = septReponses((l.donnees as Semaine).pourquoi);
           return (
             <section key={s.planId} className="space-y-3">
               <Carte className="!p-5 space-y-4">
@@ -278,7 +279,7 @@ export default function SemainesQuiArrivent({ semaines, prevision, vers, aLaMain
         }
         const a = s.apercu;
         const sortie = a?.sortie;
-        const reponses = sortie ? septReponses(sortie.pourquoi, (sortie.semaine as Semaine & { pourquoi?: unknown }).pourquoi) : null;
+        const reponses = sortie ? septReponses((sortie.semaine as Semaine).pourquoi) : null;
         return (
           <section key={s.planId} className="space-y-3">
             <Carte className="!p-5 space-y-3">

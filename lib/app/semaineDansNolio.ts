@@ -12,7 +12,7 @@
  * - un simple changement de jour : « déplacée au jeudi », sans auteur (il peut venir de l'athlète).
  * Nolio dit qu'une séance a changé, pas qui l'a changée : « par toi » d'après la question 3 de la maquette (« A »).
  * Le volume et le nombre de séances : ses séances de course, trail et tapis, comme ceux que le moteur écrit.
- * Et « Pourquoi cette semaine » en sept réponses, quand la semaine écrite les porte (moteur 8.461). Fonctions pures.
+ * Et « Pourquoi cette semaine » en sept réponses, quand la semaine écrite les porte (moteur 8.460). Fonctions pures.
  */
 import type { SeanceEnvoyee } from './coaching';
 import { ajouterJours, type Jour, type Semaine } from './plan';
@@ -241,25 +241,19 @@ export function comparerLaSemaine({ semaine, envoyees, nolio, posees = new Set()
 // « Donc »), sa ligne, et ce qui a manqué pour y répondre.
 export type Reponse = { n: number; libelle: string; texte: string; manque: string[] };
 
-// Les sept réponses, d'où qu'elles viennent : le contrat prévu pour le moteur 8.461 (une liste de sept entrées
-// { n, libelle, texte, manque? }, sous la clé « pourquoi ») ou ce que la branche doctrine-d1 du moteur rend aujourd'hui
-// (pourquoi.sept_questions : [{ question, reponse }]). null sans elles : « Pourquoi cette semaine » reste celui d'avant.
-export function septReponses(...sources: unknown[]): Reponse[] | null {
-  for (const source of sources) {
-    const o = source as { sept_questions?: unknown } | null | undefined;
-    const liste = Array.isArray(source) ? source : o && typeof o === 'object' && Array.isArray(o.sept_questions) ? o.sept_questions : null;
-    if (!liste) continue;
-    const reponses = liste.flatMap((x, i): Reponse[] => {
-      const e = (x ?? {}) as Record<string, unknown>;
-      const libelle = typeof e.libelle === 'string' ? e.libelle : typeof e.question === 'string' ? e.question : '';
-      const texte = typeof e.texte === 'string' ? e.texte : typeof e.reponse === 'string' ? e.reponse : '';
-      if (!libelle.trim() || !texte.trim()) return [];
-      const m = e.manque;
-      const manque = (Array.isArray(m) ? m : typeof m === 'string' ? [m] : []).filter((t): t is string => typeof t === 'string' && t.trim() !== '')
-        .map((t) => (/^manque\b/i.test(t.trim()) ? t.trim() : `Manque : ${t.trim()}`));
-      return [{ n: typeof e.n === 'number' ? e.n : i + 1, libelle: libelle.trim(), texte: texte.trim(), manque }];
-    });
-    if (reponses.length) return reponses.sort((a, b) => a.n - b.n);
-  }
-  return null;
+// Les sept réponses de la semaine écrite par le moteur 8.460 (`semaine.pourquoi`, CONTRAT_API_CTS.md : une liste de sept
+// entrées { n, libelle, texte, manque? }, `manque` une phrase). null sans elles (une semaine écrite par un moteur d'avant,
+// ou sans rien de lu) : « Pourquoi cette semaine » reste celui d'avant.
+export function septReponses(source: unknown): Reponse[] | null {
+  if (!Array.isArray(source)) return null;
+  const reponses = source.flatMap((x, i): Reponse[] => {
+    const e = (x ?? {}) as Record<string, unknown>;
+    const libelle = typeof e.libelle === 'string' ? e.libelle.trim() : '';
+    const texte = typeof e.texte === 'string' ? e.texte.trim() : '';
+    if (!libelle || !texte) return [];
+    const m = typeof e.manque === 'string' ? e.manque.trim() : '';
+    const manque = m ? [/^manque\b/i.test(m) ? m : `Manque : ${m}`] : [];
+    return [{ n: typeof e.n === 'number' ? e.n : i + 1, libelle, texte, manque }];
+  });
+  return reponses.length ? reponses.sort((a, b) => a.n - b.n) : null;
 }
