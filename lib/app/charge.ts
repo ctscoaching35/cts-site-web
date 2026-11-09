@@ -1,7 +1,8 @@
 /**
  * La charge du moment d'un coaché, lue dans ses séances Nolio (QD4, décision coach du 19/10/2026 ; lib/app/coaching.ts,
  * chargeDepuisNolio) : les calculs, sans appel à Nolio ni à la base, pour qu'ils s'éprouvent seuls
- * (scripts/test-charge.mjs).
+ * (scripts/test-charge.mjs) ; et l'historique des 13 semaines d'avant, pour le niveau habituel du moteur (décision 8 du
+ * coach du 09/11/2026 ; scripts/test-historique.mjs).
  */
 import { ajouterJours } from './plan';
 
@@ -49,4 +50,40 @@ export function plusLonguesParSemaine<T extends { date: string; min: number }>(d
   return [0, 1, 2, 3].map((i) => Math.round(Math.max(0, ...seances
     .filter((r) => !jours.has(r.date) && r.date >= ajouterJours(debut, 7 * i) && r.date < ajouterJours(debut, 7 * (i + 1)))
     .map((r) => r.min))));
+}
+
+// LE NIVEAU HABITUEL, LU DANS NOLIO (décision 8 du coach du 09/11/2026, doctrine de la semaine : « le niveau habituel se
+// lit dans Nolio sur ses semaines d'entraînement normales des 3 derniers mois ; sans historique, sa déclaration ») : les
+// `n` semaines complètes, du lundi au dimanche, qui commencent au lundi `debut`, la plus ancienne d'abord, en minutes
+// entières ; 0 pour une semaine vide. Le volume de course et la plus longue sortie se lisent sans les jours de course,
+// comme la charge (décision coach du 23/10/2026) ; une semaine qui contient un jour de course le dit (`course`), avec la
+// plus longue activité de ce jour (`course_min`, la course elle-même). Toutes les semaines partent telles quelles : c'est
+// le moteur qui écarte lui-même les semaines allégées, de course et de récupération pour en tirer sa semaine typique (le
+// volume, la sortie longue).
+export const SEMAINES_HISTORIQUE = 13;
+export type HistoriqueSemaine = { lundi: string; volume_min: number; sl_min: number; course: boolean; course_min: number };
+export function historiqueParSemaine(debut: string, seances: { date: string; min: number }[], competitions: string[],
+  n = SEMAINES_HISTORIQUE): HistoriqueSemaine[] {
+  const jours = new Set(competitions);
+  return Array.from({ length: n }, (_, i) => {
+    const lundi = ajouterJours(debut, 7 * i);
+    const suivant = ajouterJours(debut, 7 * (i + 1));
+    const semaine = seances.filter((r) => r.date >= lundi && r.date < suivant);
+    const entrainement = semaine.filter((r) => !jours.has(r.date)).map((r) => r.min);
+    const courses = semaine.filter((r) => jours.has(r.date)).map((r) => r.min);
+    return {
+      lundi,
+      volume_min: Math.round(entrainement.reduce((a, b) => a + b, 0)),
+      sl_min: Math.round(Math.max(0, ...entrainement)),
+      course: competitions.some((d) => d >= lundi && d < suivant),
+      course_min: Math.round(Math.max(0, ...courses)),
+    };
+  });
+}
+
+// L'historique ne part qu'une fois (décision 8 du coach du 09/11/2026) : le moteur pose `niveau_habituel.historique` dans
+// son état la première fois qu'il le reçoit, puis tient lui-même le niveau habituel à jour de semaine en semaine. Avant
+// cette marque, il part, même pour un objectif déjà en cours ; un état sans elle (ou pas d'état) : pas encore reçu.
+export function historiqueDejaRecu(etat: Record<string, unknown> | null | undefined): boolean {
+  return (etat as { niveau_habituel?: { historique?: unknown } | null } | null | undefined)?.niveau_habituel?.historique === true;
 }
