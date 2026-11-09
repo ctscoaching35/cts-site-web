@@ -39,7 +39,7 @@ import { CONTINUITE_ACTIVE, lireLesRetouches, seancesLues, type SeanceLue } from
 import { relierAuxPrevues } from './relier';
 import { derniereCourse, JOURS_DERNIERE_COURSE, rienDeLu } from './derniereCourse';
 import { semaineAReprendre, sortieApresArret } from './reprises';
-import { plusLonguesParSemaine } from './charge';
+import { historiqueDejaRecu, historiqueParSemaine, plusLonguesParSemaine, SEMAINES_HISTORIQUE, type HistoriqueSemaine } from './charge';
 import { correctionsAEnvoyer, CORRECTIONS_ACTIVES, marquerAppliquees } from './corrections';
 import { derniereActivite, garderLesSignaux } from './signauxGardes';
 import { demonstrationCoachOuverte, moteurDemonstration } from './demonstrationCoach';
@@ -552,7 +552,16 @@ async function plusLonguesAvant(o: Objectif, lundi: string | null | undefined): 
   const debutSaison = (o.parametres as { fond?: { debut?: string } }).fond?.debut;
   if (!debutSaison || !lundi || !o.nolioAthlete || joursEntre(String(debutSaison).slice(0, 10), lundi) >= 28) return null;
   const debut = ajouterJours(lundi, -28);
-  const veille = ajouterJours(lundi, -1);
+  const { seances, competitions } = await courueDansNolio(o, debut, ajouterJours(lundi, -1));
+  return plusLonguesParSemaine(debut, seances, competitions);
+}
+
+// Ce qu'il a couru dans Nolio du `debut` au `veille` compris (plusLonguesAvant, historiqueNolio) : ses activités de
+// course, de trail et de tapis, la durée seulement (sans l'accord de lecture, comme lireRetours), une vitesse impossible
+// écartée (sansVitesseImpossible) ; et ses jours de course (planned/competitions), que chacun met à part.
+async function courueDansNolio(o: Objectif, debut: string, veille: string): Promise<{
+  seances: { date: string; min: number }[]; competitions: string[];
+}> {
   const qui = await requeteAthlete(o);
   const competitions = (await listeNolio<{ id: string; date_start: string }>(
     `planned/competitions/?date_from=${debut}&date_to=${veille}&fields=id,date_start${qui}`)).map((c) => c.date_start.slice(0, 10));
@@ -562,7 +571,24 @@ async function plusLonguesAvant(o: Objectif, lundi: string | null | undefined): 
     .map(sansVitesseImpossible);
   const seances = reels.filter((r) => SPORTS_COURSE.includes(String(r.sport)) && r.duration?.value)
     .map((r) => ({ date: r.date_start.slice(0, 10), min: (r.duration as { value: number }).value / 60 }));
-  return plusLonguesParSemaine(debut, seances, competitions);
+  return { seances, competitions };
+}
+
+// LE NIVEAU HABITUEL (décision 8 du coach du 09/11/2026, doctrine de la semaine : « le niveau habituel se lit dans Nolio
+// sur ses semaines d'entraînement normales des 3 derniers mois ; sans historique, sa déclaration ») : les 13 semaines
+// complètes d'avant celle qui s'écrit (du lundi 91 jours avant à la veille), la plus ancienne d'abord, lues dans Nolio
+// comme plusLonguesAvant (courueDansNolio) : le volume de course et la plus longue sortie de chaque semaine, sans les
+// jours de course, et la course à part (lib/app/charge.ts, historiqueParSemaine). Pour les semaines d'avant le moteur (le
+// départ d'un objectif, le début d'une saison de fond) : le moteur en tire sa semaine typique en écartant lui-même les
+// semaines allégées, de course et de récupération, puis la tient à jour de son état. Une seule fois : le moteur pose sa
+// marque dans son état quand il le reçoit (niveau_habituel.historique, historiqueDejaRecu) ; avant elle, il part une
+// fois, même pour un objectif déjà en cours. null ensuite, sans athlète Nolio ni lundi, ou si Nolio ne répond pas (le
+// moteur garde alors sa déclaration, et l'historique repart la semaine d'après, la marque n'étant pas posée).
+async function historiqueNolio(o: Objectif, lundi: string | null | undefined): Promise<HistoriqueSemaine[] | null> {
+  if (!o.nolioAthlete || !lundi || historiqueDejaRecu(o.etat)) return null;
+  const debut = ajouterJours(lundi, -7 * SEMAINES_HISTORIQUE);
+  const { seances, competitions } = await courueDansNolio(o, debut, ajouterJours(lundi, -1));
+  return historiqueParSemaine(debut, seances, competitions);
 }
 
 // La semaine écrite par le moteur, rien d'envoyé ni de gardé.
@@ -582,6 +608,8 @@ async function semaineDuMoteur(o: Objectif, numero: string, retours: Retours | n
     valeurs: valeursConnues(o, lundi, faits), reprise: Boolean(options.reprise),
     charges_avant: await chargesAvant(o.planId, lundi).catch(() => null),
     sl_avant: await plusLonguesAvant(o, lundi).catch(() => null),
+    // Le niveau habituel (décision 8 du coach du 09/11/2026) : les 13 semaines d'avant, une fois.
+    historique: await historiqueNolio(o, lundi).catch(() => null),
   });
 }
 
