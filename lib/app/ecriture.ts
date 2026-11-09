@@ -105,6 +105,9 @@ type SortieMoteur = {
 export type Pourquoi = {
   profil: string[]; ou: string; semaine_passee: string | null; regles: Record<string, unknown>[];
   seances: { jour: string; seance: string | null; pourquoi: string }[]; placement: string;
+  // La semaine en sept questions (doctrine de la semaine du 09/11/2026) : chaque question du dimanche et la réponse du
+  // moteur pour cette semaine, quand il la rend. Rien ne l'affiche encore : ses écrans sont à valider avec le coach.
+  sept_questions?: { question: string; reponse: string }[];
 };
 export type Realise = {
   numero: string; lundi: string; type: string | null; charge_prevue: number; charge_faite: number; charge_tenue: number; rpe_lu: boolean;
