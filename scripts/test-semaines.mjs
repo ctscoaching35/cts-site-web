@@ -94,3 +94,25 @@ test('les noms des semaines côté coach : « Semaine allégée », « Semaine d
   assert.equal(typeCoteCoach('Charge'), 'Charge');
   assert.equal(typeCoteCoach('Affûtage actif'), 'Affûtage actif');
 });
+
+// Décision 11 du coach du 09/11/2026 : dans « Ta préparation », le volume d'une semaine lue dans Nolio est celui de Nolio,
+// ses séances de course seulement (le renfo n'y compte pas, comme dans le volume que le moteur écrit) ; et l'app ne dit
+// plus rien des retouches du coach (plus de « coach » dans la semaine ajustée).
+test('le volume d’une semaine lue dans Nolio : ses séances de course, sans le renfo', async () => {
+  const { volumeDeNolio } = await import('../lib/app/tableau.ts');
+  // La semaine de la maquette : Seuil 2 1h10, renfo 25 min (ajouté par le coach), séance piste 1h15, sortie longue 1h45.
+  assert.equal(volumeDeNolio([
+    { minutes: 70, course: true }, { minutes: 25, course: false }, { minutes: 75, course: true }, { minutes: 105, course: true },
+  ]), 250); // 4h10
+  // Une séance sans durée ne compte pas ; une séance d'avant le champ « course » compte.
+  assert.equal(volumeDeNolio([{ minutes: null, course: true }, { minutes: 40 }]), 40);
+  assert.equal(volumeDeNolio([]), 0);
+});
+
+test('la semaine ajustée : le moteur seul, plus jamais le coach', async () => {
+  const { ajustementDuJournal } = await import('../lib/app/tableau.ts');
+  assert.equal(ajustementDuJournal([{ regle: 'R3' }]), 'moteur');
+  assert.equal(ajustementDuJournal([{ regle: 'COACH', applique: true }]), null);
+  assert.equal(ajustementDuJournal([{ regle: 'C1' }, { regle: 'TN' }]), null);
+  assert.equal(ajustementDuJournal(null), null);
+});
