@@ -36,7 +36,7 @@ function categorie(e: EtatAthlete, jour: string): Exclude<Filtre, 'tous'> {
 }
 
 // « Tes athlètes » (l'accueil, maquette du 08/11/2026) : les filtres (un lien chacun, ?filtre=), puis une ligne par
-// athlète, dans l'ordre « ceux qui t'attendent d'abord » (Q2) ; toute la ligne ouvre sa page. passee : le lundi de la
+// athlète, dans l'ordre de Nolio, alphabétique du prénom (09/11/2026) ; toute la ligne ouvre sa page. passee : le lundi de la
 // semaine des chiffres (VueCoach.semainePassee).
 export default function TableauAthletes({ lignes: toutes, jour, passee, filtre, base = '/app/coach' }: {
   lignes: EtatAthlete[]; jour: string; passee: string; filtre: Filtre; base?: string;
