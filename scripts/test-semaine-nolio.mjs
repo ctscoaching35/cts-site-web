@@ -229,25 +229,28 @@ test('la famille d’un nom et le jour d’une date', () => {
   assert.equal(jourDe('2026-11-22'), 'dimanche');
 });
 
-test('les sept réponses : le contrat du moteur 8.461, ou pourquoi.sept_questions de doctrine-d1 ; sinon rien', () => {
+test('les sept réponses : semaine.pourquoi du moteur 8.460 ({ n, libelle, texte, manque? }) ; sinon rien', () => {
   const contrat = [
+    { n: 7, libelle: 'Donc', texte: 'Seuil 2 à la marche suivante.' },
     { n: 1, libelle: 'Qui', texte: 'intermédiaire, trail en vallonné, 4 jours par semaine.' },
     { n: 6, libelle: 'Séances clés', texte: 'Seuil 2 fait au bon effort.', manque: 'son Hooper de dimanche, pas de réponse ; sa fatigue n’est lue que sur ses RPE.' },
-    { n: 7, libelle: 'Donc', texte: 'Seuil 2 à la marche suivante.' },
+    { n: 4, libelle: 'Prévu', texte: 'x.', manque: 'Manque : sa réponse du samedi.' },
   ];
+  // Dans l'ordre de leur rang ; « Manque : » devant ce qui manque, jamais doublé.
   assert.deepEqual(septReponses(contrat).map((r) => [r.n, r.libelle, r.manque]), [
     [1, 'Qui', []],
+    [4, 'Prévu', ['Manque : sa réponse du samedi.']],
     [6, 'Séances clés', ['Manque : son Hooper de dimanche, pas de réponse ; sa fatigue n’est lue que sur ses RPE.']],
     [7, 'Donc', []],
   ]);
-  // La forme de la branche doctrine-d1 du moteur, rangée dans le pourquoi d'avant ; « Manque : » pas doublé.
-  const d1 = { profil: [], ou: '', seances: [], placement: '', sept_questions: [
-    { question: 'Qui', reponse: 'confirmé.' }, { question: 'Objectif', reponse: 'OCC.' }, { libelle: 'Prévu', texte: 'x.', manque: ['Manque : sa réponse du samedi.'] },
-  ] };
-  assert.deepEqual(septReponses(null, d1).map((r) => [r.n, r.libelle, r.texte, r.manque]),
-    [[1, 'Qui', 'confirmé.', []], [2, 'Objectif', 'OCC.', []], [3, 'Prévu', 'x.', ['Manque : sa réponse du samedi.']]]);
-  // Le pourquoi d'avant, sans les sept réponses : rien (« Pourquoi cette semaine » reste replié dessous).
+  // Le pourquoi d'avant (cts_pourquoi), sans les sept réponses : rien (« Pourquoi cette semaine » reste replié dessous).
   assert.equal(septReponses({ profil: ['Niveau : confirmé.'], ou: '', seances: [], placement: '' }), null);
-  assert.equal(septReponses(null, undefined, []), null);
+  // L'ancienne forme provisoire (pourquoi.sept_questions, { question, reponse }) n'est plus lue : aucun moteur en ligne ne
+  // l'a écrite.
+  assert.equal(septReponses({ profil: [], sept_questions: [{ question: 'Qui', reponse: 'confirmé.' }] }), null);
+  assert.equal(septReponses([{ question: 'Qui', reponse: 'confirmé.' }]), null);
+  assert.equal(septReponses(null), null);
+  assert.equal(septReponses(undefined), null);
+  assert.equal(septReponses([]), null);
   assert.equal(septReponses([{ libelle: '', texte: 'x' }]), null);
 });
