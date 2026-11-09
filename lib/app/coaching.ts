@@ -43,6 +43,10 @@ export type FicheAthlete = {
   // auto : le moteur écrit ses semaines chaque dimanche ; main : le coach les écrit dans Nolio (décision coach du
   // 20/10/2026, « tableau de bord complet ») ; auto avant la migration du 20/10/2026.
   programmation: 'auto' | 'main';
+  // La saison de fond que le passage du soir n'a pas pu créer (moteur 8.464, décision 8 du coach du 09/11/2026 : « un
+  // refus n'est plus jamais tu ») : son lundi et ce que le moteur a répondu ; null sinon, ou avant la migration du
+  // 09/11/2026.
+  saison_refusee?: { le: string; lundi: string; motif: string } | null;
 };
 // Une séance envoyée : son jour du plan, son identifiant Nolio (« ptrn_… » ; un nombre pour un envoi de la v1,
 // converti à la visite suivante), sa révision à l'envoi (V4 : une révision changée, le coach l'a retouchée), et
@@ -80,6 +84,7 @@ export async function athletesCoaches(coachId: string): Promise<FicheAthlete[]> 
     reperes_sources: (a.reperes_sources ?? {}) as FicheAthlete['reperes_sources'],
     programmation: a.programmation === 'main' ? 'main' : 'auto',
     mode: a.mode === 'plan' ? 'plan' : 'coaching', mode_le: a.mode_le ?? null,
+    saison_refusee: (a.saison_refusee ?? null) as FicheAthlete['saison_refusee'],
     objectifs: ((lignes ?? []) as LigneCoaching[]).filter((l) => l.athlete_id === a.id).map(objectif)
       .sort((x, y) => x.course_date.localeCompare(y.course_date)),
   }));

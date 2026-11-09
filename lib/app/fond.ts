@@ -10,8 +10,10 @@
 import type { Plan } from './plan';
 import { ajouterJours, joursEntre } from './plan';
 import { lireTemps } from '@/lib/plan';
+import { niveauHabituel } from './charge';
 import { chargeDepuisNolio } from './coaching';
-import { debutApres, moteur, type Compte, type LigneTrame, type Trame } from './ecriture';
+import { debutApres, moteur, semainesDansNolio, type Compte, type LigneTrame, type Trame } from './ecriture';
+import { dureeTexte } from './jonction';
 import { profilDeLaFiche } from './profilEntrainement';
 import { clientService } from './supabase';
 import { coefficientRiegel } from './zones';
@@ -61,16 +63,18 @@ function couvert(plans: PlanFiche[], lundi: string): boolean {
   return false;
 }
 
-// La dernière préparation courue avant ce lundi : ses semaines de charge de développement (le volume de référence) et
-// sa plus longue sortie (décision 6).
-async function references(prep: PlanFiche | undefined): Promise<{ sl_reference_h: number | null; volume_reference_h: number | null }> {
-  if (!prep?.parametres) return { sl_reference_h: null, volume_reference_h: null };
+// La dernière préparation courue avant ce lundi : son pic de volume (moteur 8.464, décision 7 a du coach du 09/11/2026 :
+// plus de plafond à 80 % de ses semaines de charge de développement ; le volume de la saison suit la règle générale,
+// « borné de loin par le pic de sa dernière préparation ») et sa plus longue sortie (le dernier recours de la sortie
+// longue visée, 60 %, quand ni son niveau habituel ni sa déclaration ne la donnent).
+async function references(prep: PlanFiche | undefined): Promise<{ sl_reference_h: number | null; volume_pic_h: number | null }> {
+  if (!prep?.parametres) return { sl_reference_h: null, volume_pic_h: null };
   const trame = prep.trame ?? await moteur<Trame>('/v1/trame', { parametres: prep.parametres }).catch(() => null);
   const lignes = (trame?.semaines ?? []) as LigneTrame[];
-  const dev = lignes.filter((l) => l.bloc === 'Bloc développement' && l.type === 'Charge' && l.volume_h > 0);
+  const pic = Math.max(0, ...lignes.map((l) => l.volume_h ?? 0));
   const sl = Math.max(0, ...lignes.map((l) => l.sl_min ?? 0));
   return {
-    volume_reference_h: dev.length ? Math.round((dev.reduce((t, l) => t + l.volume_h, 0) / dev.length) * 100) / 100 : null,
+    volume_pic_h: pic ? Math.round(pic * 100) / 100 : null,
     sl_reference_h: sl ? Math.round((sl / 60) * 100) / 100 : null,
   };
 }
@@ -96,12 +100,21 @@ async function creerSaison(fiche: Record<string, unknown>, plans: PlanFiche[], l
   // profil de coureur, et le moteur prend la course type de son niveau.
   const profil = await profilDeLaFiche(String(fiche.id));
   const champsBase = ((base?.champs ?? {}) as Record<string, unknown>);
-  const charge = await chargeDepuisNolio(String(fiche.coach_id), (fiche.nolio_athlete_id as string | null) ?? null).catch(() => null);
+  const usr = (fiche.nolio_athlete_id as string | null) ?? null;
+  const charge = await chargeDepuisNolio(String(fiche.coach_id), usr).catch(() => null);
+  // LA SAISON DÉMARRE SUR SON NIVEAU HABITUEL (moteur 8.464, étape D3 ; décision 8 du coach du 09/11/2026, N9 du banc
+  // d'essai) : son volume et sa sortie longue habituels, lus sur les mêmes semaines (ses semaines normales des 13
+  // dernières, lib/app/charge.ts, niveauHabituel), plus le volume de ses 4 dernières semaines (affûtage, course,
+  // récupération) et sa plus longue sortie sur 8 (sa préparation) : le moteur refusait une sortie plus longue que le
+  // volume (« Ta plus longue sortie récente dépasse ton volume hebdomadaire total ») et la saison ne se créait pas. Sans
+  // assez de semaines normales lues, ses réponses de l'objectif ou de son profil restent ; la coupure lue dans Nolio aussi.
+  const habituel = usr ? niveauHabituel(await semainesDansNolio(usr, lundi).catch(() => [])) : null;
   const champs: Record<string, unknown> = {
     coupure: 'non', blessure: 'non', ...champsBase,
     ...Object.fromEntries(['niveau', 'terrain', 'jours_disponibles', 'jour_sl', 'freq_hebdo']
       .filter((k) => (profil as Record<string, unknown>)[k] !== undefined).map((k) => [k, (profil as Record<string, unknown>)[k]])),
-    ...(charge?.champs ?? {}),
+    ...(charge?.champs?.coupure ? { coupure: charge.champs.coupure } : {}),
+    ...(habituel ? { volume_hebdo_actuel: dureeTexte(habituel.volume_min), sortie_longue_actuelle: dureeTexte(habituel.sl_min) } : {}),
   };
   const niveau = String(champs.niveau ?? 'intermediaire');
   const vc = fiche.vc_ms as number | null;
@@ -158,7 +171,10 @@ export async function saisonsDuJour(budgetMs = 90_000): Promise<Compte[]> {
   const comptes: Compte[] = [];
   for (const f of fiches) {
     const siens = ((plans ?? []) as PlanFiche[]).filter((p) => (liens ?? []).some((l) => l.plan_id === p.id && l.athlete_id === f.id));
-    if (couvert(siens, lundi)) continue;
+    if (couvert(siens, lundi)) {
+      if (f.saison_refusee) await noterLeRefus(String(f.id), null);
+      continue;
+    }
     if (Date.now() - debut > budgetMs) {
       comptes.push({ plan: '', quoi: 'saison de fond remise au soir suivant', coache: true });
       continue;
@@ -166,11 +182,30 @@ export async function saisonsDuJour(budgetMs = 90_000): Promise<Compte[]> {
     try {
       const planId = await creerSaison(f, siens, lundi);
       comptes.push({ plan: planId, quoi: `saison de fond du ${lundi} créée`, coache: true });
+      if (f.saison_refusee) await noterLeRefus(String(f.id), null);
     } catch (e) {
-      comptes.push({ plan: '', quoi: 'saison de fond non créée', erreur: e instanceof Error ? e.message : String(e), coache: true });
+      const motif = e instanceof Error ? e.message : String(e);
+      comptes.push({ plan: '', quoi: 'saison de fond non créée', erreur: motif, coache: true });
+      await noterLeRefus(String(f.id), { le: aujourdhuiParis(), lundi, motif: motifLisible(motif) });
     }
   }
   return comptes;
+}
+
+// UN REFUS N'EST PLUS JAMAIS TU (moteur 8.464, étape D3 ; décision 8 du coach du 09/11/2026 : « un refus n'est plus jamais
+// tu », il apparaît dans « Urgent ») : la saison que le passage du soir n'a pas pu créer, son lundi et ce que le moteur a
+// répondu, gardés sur sa fiche (`saison_refusee`, migration du 09/11/2026) jusqu'à ce qu'une saison ou une préparation
+// couvre son lundi ; « Urgent » le montre (lib/app/espaceCoach.ts, genre « saison »). Avant, le refus ne laissait qu'une
+// ligne au journal du soir. Sans la migration, rien ne casse : le refus reste au journal.
+type SaisonRefusee = { le: string; lundi: string; motif: string };
+async function noterLeRefus(athleteId: string, refus: SaisonRefusee | null) {
+  const { error } = await clientService().from('athletes_coaches').update({ saison_refusee: refus }).eq('id', athleteId);
+  if (error) console.error('Saison refusée :', error.message);
+}
+
+// Le message du moteur sans son code (« Moteur /v1/trame : 400 — … ») : ce que le coach lit dans « Urgent ».
+function motifLisible(message: string): string {
+  return message.replace(/^Moteur [^:]*:\s*\d{3}\s*[—–-]?\s*/, '').trim().slice(0, 240) || 'le moteur ne répond pas';
 }
 
 // Les semaines des saisons de fond du coaché avant ce lundi, telles que leurs plans les prévoient (lundi, type) : la
