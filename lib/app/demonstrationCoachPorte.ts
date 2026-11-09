@@ -21,6 +21,8 @@ export const MOMENTS: [string, string][] = [
   ['2026-11-15T10:00', 'Dimanche 15, avant le passage'],
   ['2026-11-15T20:30', 'Dimanche 15, après le passage'],
   ['2026-11-16T09:00', 'Lundi 16, ce qui est parti'],
+  // Les écrans de la doctrine (décision 11 du coach du 09/11/2026) : la semaine de Léa retouchée par toi dans Nolio à midi.
+  ['2026-11-16T21:00', 'Lundi 16, 21 h, après tes retouches dans Nolio'],
 ];
 const FORME_JOUR = /^(\d{4}-\d{2}-\d{2})(?:T(\d{2}):(\d{2}))?$/;
 export const jourValide = (v: string | null | undefined) => Boolean(v && FORME_JOUR.test(v));
