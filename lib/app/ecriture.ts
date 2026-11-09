@@ -31,6 +31,7 @@ import type { Fiche } from './tableau';
 import { fcSeuil2DuTest, lireParole, vcDuTest, type Flux, type Tour } from './tests';
 import { allure, coefficientRiegel, kmh, PROFIL_VIDE } from './zones';
 import { reperesDeBase } from './reperes';
+import { aDesReperes } from './reperesLus';
 import { ecrireZonesNolio } from './zonesNolio';
 import { allureViseeKmh, ecrireAllureVisee } from './metriquesNolio';
 import { chargeChangee, chargeDe, jourAlerteNolio, jourDInvitation, JOURS_RELANCE_INVITATION } from './invitation';
@@ -2008,12 +2009,14 @@ export async function zonesDeLaFicheVersNolio(athleteId: string): Promise<string
 // LE RATTRAPAGE DES ZONES (décision coach du 25/10/2026, l'écriture ouverte à tous) : une nuit, les zones de chaque
 // coaché qui a déjà des repères (sa vitesse critique, ou ses deux seuils de FC) partent dans son Nolio, comme quand le
 // coach enregistre ses repères : d'après son objectif écrit le plus récent, sinon sa fiche. Ensuite, à chaque valeur.
+// Toute fiche qui a une valeur (moteur 8.462, décision 10 du coach du 09/11/2026, reperesLus.ts) : avant, une FC au seuil 1
+// seule n'arrivait jamais dans les métriques Nolio, et le moteur la visait quand même.
 export async function rattraperLesZones(budgetMs = 150_000): Promise<Compte[]> {
   const debut = Date.now();
   const { data: fiches } = await clientService().from('athletes_coaches').select('id, coach_id, mode, nolio_athlete_id, vc_ms, fc_seuil1, fc_seuil2')
     .not('nolio_athlete_id', 'is', null);
   const comptes: Compte[] = [];
-  for (const f of (fiches ?? []).filter((x) => x.mode !== 'plan' && (x.vc_ms || (x.fc_seuil1 && x.fc_seuil2)))) {
+  for (const f of (fiches ?? []).filter((x) => x.mode !== 'plan' && aDesReperes(x))) {
     if (Date.now() - debut > budgetMs) {
       comptes.push({ plan: '', quoi: 'zones remises' });
       continue;
