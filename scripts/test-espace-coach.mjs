@@ -44,15 +44,9 @@ const MAQUETTE = [
   { id: 'nicolas', nom: 'Nicolas Faure', couleur: 'vert', points: [point('arrive', 'course_nolio')], moteur: false },
 ].map((a) => ({ ...a, groupe: groupeDe(a.couleur, a.points, a.moteur) }));
 
-test('Q2 : rouge, orange, ce qui bloque, la santé, ce qui arrive, puis ceux qui n’ont rien ; par nom dans chaque groupe', () => {
+test('l’ordre de Nolio : alphabétique du prénom, quelle que soit la couleur (09/11/2026)', () => {
   assert.deepEqual(ordonner(MAQUETTE).map((a) => a.id),
-    ['julien', 'ines', 'thomas', 'antoine', 'camille', 'manon', 'hugo', 'nicolas', 'lea', 'sarah']);
-});
-
-test('Q2 : une semaine pas partie (vert, rien à lire) ne se retrouve pas en bas', () => {
-  const ordre = ordonner(MAQUETTE).map((a) => a.id);
-  assert.ok(ordre.indexOf('camille') < ordre.indexOf('hugo'));
-  assert.ok(ordre.indexOf('camille') < ordre.indexOf('lea'));
+    ['antoine', 'camille', 'hugo', 'ines', 'julien', 'lea', 'manon', 'nicolas', 'sarah', 'thomas']);
 });
 
 test('ce que le moteur a réglé seul se range entre la santé et ce qui arrive', () => {
@@ -68,9 +62,9 @@ test('ce que le moteur a réglé seul se range entre la santé et ce qui arrive'
 
 test('Athlète suivant : son rang, celui d’avant et celui d’après, dans l’ordre de la liste', () => {
   const ordre = ordonner(MAQUETTE);
-  assert.deepEqual(suiteDe(ordre, 'ines'), { rang: 2, total: 10, precedent: { id: 'julien', nom: 'Julien Fabre' }, suivant: { id: 'thomas', nom: 'Thomas Petit' } });
-  assert.deepEqual(suiteDe(ordre, 'julien'), { rang: 1, total: 10, precedent: null, suivant: { id: 'ines', nom: 'Inès Moreau' } });
-  assert.deepEqual(suiteDe(ordre, 'sarah'), { rang: 10, total: 10, precedent: { id: 'lea', nom: 'Léa Martin' }, suivant: null });
+  assert.deepEqual(suiteDe(ordre, 'ines'), { rang: 4, total: 10, precedent: { id: 'hugo', nom: 'Hugo Bernard' }, suivant: { id: 'julien', nom: 'Julien Fabre' } });
+  assert.deepEqual(suiteDe(ordre, 'antoine'), { rang: 1, total: 10, precedent: null, suivant: { id: 'camille', nom: 'Camille Roux' } });
+  assert.deepEqual(suiteDe(ordre, 'thomas'), { rang: 10, total: 10, precedent: { id: 'sarah', nom: 'Sarah Lambert' }, suivant: null });
   assert.equal(suiteDe(ordre, 'inconnu'), null);
 });
 
@@ -127,7 +121,7 @@ test('Q8 : « Urgent », quatre groupes, une ligne par point, jamais « À venir
 
   const groupes = urgentDe(ordonner(MAQUETTE));
   assert.deepEqual(groupes.map((g) => [g.titre, g.lignes.map((l) => l.athleteId)]), [
-    ['A besoin de toi', ['ines', 'thomas', 'thomas', 'hugo']],
+    ['A besoin de toi', ['hugo', 'ines', 'thomas', 'thomas']], // dans un groupe, l'ordre de Nolio (prénom), 09/11/2026
     ['Ne court plus', ['julien']],
     ['Semaine pas partie', ['camille']],
     ['Objectif bloqué', ['antoine', 'manon', 'manon']],

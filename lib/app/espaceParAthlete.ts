@@ -3,7 +3,7 @@
  * questions, `reports/Espace coach par athlète — questions de la maquette 08-11.md` dans le dépôt du moteur) : le calcul
  * seul, sans lecture, pour se tester sur des données fabriquées (scripts/test-espace-coach.mjs).
  * - Q1 : la couleur de « Dimanche » toute la semaine, et sa raison courte (« Orange · plus dur que prévu ») ;
- * - Q2 : l'ordre de « Mes athlètes », « ceux qui t'attendent d'abord », qui est aussi celui d'« Athlète suivant » ;
+ * - Q2 : l'ordre de « Mes athlètes », celui de Nolio (alphabétique du prénom, 09/11/2026), qui est aussi celui d'« Athlète suivant » ;
  * - Q6 et Q7 : « Ce qui l'attend », tous ses points en étiquettes, ce que le moteur a réglé seul compris, « À venir » en gris ;
  * - Q8 : « Urgent », une ligne par point, en quatre groupes ; « À venir » n'y va jamais.
  * La lecture est dans lib/app/mesAthletes.ts.
@@ -60,9 +60,12 @@ export function groupeDe(couleur: Couleur, points: Pick<Point, 'niveau'>[], mote
   return 6;
 }
 
-// Par groupe, puis par nom dans chaque groupe (Q2, « A »).
+// L'ordre de Nolio (demande du coach du 09/11/2026, qui remplace Q2 « A » du 08/11) : par ordre alphabétique du prénom,
+// comme sa liste d'athlètes dans Nolio, pour s'y retrouver d'un outil à l'autre ; « Athlète suivant » suit le même ordre.
+// Ceux qui l'attendent restent repérés par leur pastille et rassemblés dans « Urgent » ; le groupe (groupeDe) sert encore
+// à leurs étiquettes, plus à l'ordre.
 export function ordonner<T extends { nom: string; groupe: number }>(lignes: T[]): T[] {
-  return [...lignes].sort((x, y) => x.groupe - y.groupe || x.nom.localeCompare(y.nom, 'fr'));
+  return [...lignes].sort((x, y) => x.nom.localeCompare(y.nom, 'fr', { sensitivity: 'base' }));
 }
 
 export type Suite = { rang: number; total: number; precedent: { id: string; nom: string } | null; suivant: { id: string; nom: string } | null };
