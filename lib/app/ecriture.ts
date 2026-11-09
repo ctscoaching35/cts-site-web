@@ -101,13 +101,20 @@ type SortieMoteur = {
   // D7 (moteur 8.451, audits du 05/11/2026) : la semaine que le contrôle du moteur refusait, écrite par un repli (1 : la
   // même, sortie longue plafonnée ; 2 : celle du plan de l'achat, plafonnée ; 3 : celle du plan de l'achat) ; null sinon.
   repli?: { niveau: number; effet?: string; refus?: string } | null;
+  // Moteur 8.461 (la doctrine de la semaine) : le niveau habituel, et ce que « la semaine suivante » a décidé élément par
+  // élément (les sept réponses, elles, sont dans `semaine.pourquoi`).
+  niveau_habituel?: NiveauHabituel | null;
+  semaine_suivante?: Record<string, unknown> | null;
 };
 export type Pourquoi = {
   profil: string[]; ou: string; semaine_passee: string | null; regles: Record<string, unknown>[];
   seances: { jour: string; seance: string | null; pourquoi: string }[]; placement: string;
-  // La semaine en sept questions (doctrine de la semaine du 09/11/2026) : chaque question du dimanche et la réponse du
-  // moteur pour cette semaine, quand il la rend. Rien ne l'affiche encore : ses écrans sont à valider avec le coach.
-  sept_questions?: { question: string; reponse: string }[];
+};
+// Le niveau habituel (moteur 8.461, décisions 8 et 11 du coach du 09/11/2026 : « Ses repères », côté coach seulement) :
+// sa semaine typique et chaque semaine lue, retenue ou écartée avec sa raison. Rien ne l'affiche encore.
+export type NiveauHabituel = {
+  volume_min: number; sl_min: number | null; semaines: number; source: 'nolio' | 'declare';
+  detail?: { lundi: string; volume_min: number; sl_min: number; retenue: boolean; raison?: string; source?: string }[];
 };
 export type Realise = {
   numero: string; lundi: string; type: string | null; charge_prevue: number; charge_faite: number; charge_tenue: number; rpe_lu: boolean;
