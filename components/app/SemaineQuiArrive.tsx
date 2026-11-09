@@ -62,21 +62,23 @@ function JoursEcrits({ semaine }: { semaine: Semaine }) {
 function LigneDeNolio({ l }: { l: LigneNolio }) {
   return (
     <span className="block">
-      {l.barree ? (
-        <s className="font-medium text-indigo/45 decoration-[1.5px]">{l.nom}</s>
-      ) : (
-        <span className="font-semibold text-indigo">
-          {l.nom}
-          {(l.minutes || l.rpe !== null) && (
-            <span className="font-normal text-indigo/55">{l.minutes ? ` · ${enHeures(l.minutes)}` : ''}{l.rpe !== null ? ` · RPE ${l.rpe}` : ''}</span>
-          )}
-        </span>
-      )}
-      {l.marques.map((m) => (
-        <span key={`${m.quoi}-${m.texte}`}>
-          <span className={clsx('ml-1.5 inline-block align-[1px]', pastille, m.quoi === 'retiree' || m.quoi === 'deplacee' ? SANS_AUTEUR : PAR_TOI)}>{m.texte}</span>
-          {m.avant && <span className="block mt-0.5 text-xs text-[#5E5C78]">{m.avant}</span>}
-        </span>
+      <span className="flex flex-wrap items-baseline gap-x-1.5 gap-y-1">
+        {l.barree ? (
+          <s className="font-medium text-indigo/45 decoration-[1.5px]">{l.nom}</s>
+        ) : (
+          <span className="font-semibold text-indigo">
+            {l.nom}
+            {(l.minutes || l.rpe !== null) && (
+              <span className="font-normal text-indigo/55">{l.minutes ? ` · ${enHeures(l.minutes)}` : ''}{l.rpe !== null ? ` · RPE ${l.rpe}` : ''}</span>
+            )}
+          </span>
+        )}
+        {l.marques.map((m) => (
+          <span key={`${m.quoi}-${m.texte}`} className={clsx(pastille, m.quoi === 'retiree' || m.quoi === 'deplacee' ? SANS_AUTEUR : PAR_TOI)}>{m.texte}</span>
+        ))}
+      </span>
+      {l.marques.filter((m) => m.avant).map((m) => (
+        <span key={`${m.quoi}-avant`} className="block mt-0.5 text-xs text-[#5E5C78]">{m.avant}</span>
       ))}
     </span>
   );
@@ -185,7 +187,7 @@ function NoteDeLaSemaine({ titre, textes }: { titre: string; textes: string[] })
     <details className="group bg-white rounded-2xl border border-indigo/[0.08] p-5">
       <summary className="cursor-pointer list-none min-h-8 flex items-center justify-between gap-3">
         <Surtitre as="div">{titre}</Surtitre>
-        <span className="text-xs text-[#5E5C78]">Ouvrir <span aria-hidden className="inline-block group-open:rotate-90">›</span></span>
+        <span className="text-xs text-[#5E5C78] whitespace-nowrap">Ouvrir <span aria-hidden className="inline-block group-open:rotate-90">›</span></span>
       </summary>
       <p className="mt-3 text-sm leading-relaxed text-[#3B3957] whitespace-pre-line">{textes.join(' ')}</p>
     </details>

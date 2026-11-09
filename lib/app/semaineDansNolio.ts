@@ -224,7 +224,8 @@ export function comparerLaSemaine({ semaine, envoyees, nolio, posees = new Set()
 
   const comptees = lignes.filter((l) => !l.barree && !l.ecrite && l.course && dansLaSemaine(l.date));
   const seances = comptees.length;
-  const suffixe = /\+\s*la course/.test(semaine.seances ?? '') ? ' + la course' : '';
+  // « 6 séances + la course », que le moteur écrit avec des espaces insécables.
+  const suffixe = /\+\s*la\s+course/.test(semaine.seances ?? '') ? ' +\u00a0la\u00a0course' : '';
   return {
     lignes,
     volume_min: comptees.reduce((t, l) => t + (l.minutes ?? 0), 0),
