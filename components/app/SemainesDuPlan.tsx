@@ -20,7 +20,8 @@ import { Carte, Surtitre } from './Ui';
 //   Nolio et rangées chaque dimanche) ; sans rien de lu, son type seul ;
 // - la semaine en cours, telle qu'elle est dans Nolio (lib/app/tableauDuPlan.ts, semainesDetaillees : la lecture de
 //   « Ta semaine » de l'accueil) ; la suivante aussi une fois écrite le dimanche soir, sinon prévue (la trame : ses
-//   séances clés et son week-end choc), avec sa mention ;
+//   séances clés et son week-end choc), avec sa mention ; lue dans Nolio, son volume est celui de Nolio, sans marque
+//   des retouches du coach (décision 11 du coach du 09/11/2026) ;
 // - au-delà, son type et son volume à la demi-heure près, sans séances ni détail ;
 // - « week-end choc » sur les semaines à venir qui en ont un ; une phrase sous la liste.
 // depuis : un coaché qui a rejoint la préparation en route, son lundi d'arrivée, comme ses blocs.
@@ -100,9 +101,12 @@ export default function SemainesDuPlan({ trame, jour, course, realises = [], enc
     const r = detail === 'faite' ? faites.get(l.lundi) ?? null : null;
     const deCourse = contientLaCourse(l.lundi, course);
     const lue = detail === 'encours' ? encours : detail === 'suivante' ? suivante : null;
-    // Le volume : fait, pour une semaine faite ; à la demi-heure près, au-delà de la semaine suivante.
+    // Le volume : fait, pour une semaine faite ; celui de Nolio, pour la semaine en cours et la suivante lues dans Nolio
+    // (décision 11 du coach du 09/11/2026 ; rien, si rien n'y est prévu) ; à la demi-heure près, au-delà de la suivante.
+    const dansNolio = lue && typeof lue === 'object' && typeof lue.volume_min === 'number' ? lue.volume_min : null;
     const volume = detail === 'faite' ? (r ? enHeures(r.duree_faite_min) : null)
-      : detail === 'resumee' ? environ(Math.round(l.volume_h * 60)) : enHeures(Math.round(l.volume_h * 60));
+      : detail === 'resumee' ? environ(Math.round(l.volume_h * 60))
+      : dansNolio !== null ? (dansNolio > 0 ? enHeures(dansNolio) : null) : enHeures(Math.round(l.volume_h * 60));
     const corps = detail === 'faite' ? (r ? faite(r) : null)
       : detail === 'resumee' ? null
       : (

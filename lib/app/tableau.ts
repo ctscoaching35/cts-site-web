@@ -265,10 +265,16 @@ export function blocsDuPlan(trame: LigneTrame[], plan: Plan, aujourdhui: string,
 }
 
 // La semaine ajustée (Q7) : les règles du journal qui la disent ajustée (lib/app/tableauDuPlan.ts, ajustementDeLaSemaine).
+// Plus de « coach » (décision 11 du coach du 09/11/2026) : l'app de l'athlète ne marque plus les retouches de son coach,
+// elle montre la semaine telle qu'elle est dans Nolio.
 export const REGLES_AJUSTEMENT = new Set(['R1', 'R2', 'R3', 'R4', 'R5', 'R8', 'CH', 'C5', 'O3', 'OM4']);
-export type Ajustement = 'moteur' | 'coach' | null;
-export function ajustementDuJournal(journal: unknown, coache: boolean, retouchee = false): Ajustement {
-  const lignes = (Array.isArray(journal) ? journal : []) as { regle?: unknown; applique?: unknown }[];
-  if (coache && (retouchee || lignes.some((l) => l?.regle === 'COACH' && l.applique !== false))) return 'coach';
+export type Ajustement = 'moteur' | null;
+export function ajustementDuJournal(journal: unknown): Ajustement {
+  const lignes = (Array.isArray(journal) ? journal : []) as { regle?: unknown }[];
   return lignes.some((l) => REGLES_AJUSTEMENT.has(String(l?.regle ?? ''))) ? 'moteur' : null;
 }
+
+// Le volume d'une semaine lue dans Nolio (décision 11 du coach du 09/11/2026, « Ta préparation ») : ses séances de course,
+// trail et tapis, comme le volume que le moteur écrit (le renfo et les autres sports n'y comptent pas).
+export const volumeDeNolio = (seances: { minutes: number | null; course?: boolean }[]) =>
+  seances.reduce((t, x) => t + (x.course === false ? 0 : x.minutes ?? 0), 0);

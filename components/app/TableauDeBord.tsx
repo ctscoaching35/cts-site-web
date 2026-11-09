@@ -359,14 +359,17 @@ export type TestDeLaSemaine = { titre: string; comment: string; saisie: string |
 // du plan seule, sans rien de Nolio (ni ses séances, ni « elles arrivent », ni le questionnaire du samedi, ni le lien).
 // jour (C15) : aujourd'hui, mis en avant, les jours passés grisés. course (C13) : la date de la course, pour « Semaine de
 // course ». ajustee (Q7, décision coach du 05/11/2026 au soir, « A ») : la semaine écrite d'après la semaine passée
-// (« moteur »), ou retouchée par le coach d'un coaché (« coach »). test (Q14) : le test que la préparation écrit cette semaine.
+// (« moteur »). test (Q14) : le test que la préparation écrit cette semaine.
+// AUCUNE MARQUE (décision 11 du coach du 09/11/2026, doctrine de la semaine) : il voit sa semaine telle qu'elle est dans
+// Nolio, c'est tout ; une séance retirée n'y est plus, une séance déplacée est à son nouveau jour (la lecture de Nolio,
+// triée par date). « Ajustée par ton coach. » et l'étiquette « Semaine ajustée » sont retirées.
 export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null, arrivee = null, depuis = null,
   raison = null, coache = false, lundi = null, hooper = false, horsNolio = false, jour = null, course = null, ajustee = null,
   test = null, accord = null }: {
   semaine: Semaine | null; ligne: LigneTrame | null; questionnaire: boolean; nolio?: SeanceNolio[] | null;
   arrivee?: keyof typeof ARRIVEE | null; depuis?: string | null; raison?: RaisonNolio | null;
   coache?: boolean; lundi?: string | null; hooper?: boolean; horsNolio?: boolean; jour?: string | null; course?: string | null;
-  ajustee?: 'moteur' | 'coach' | null; test?: TestDeLaSemaine | null; accord?: string | null;
+  ajustee?: 'moteur' | null; test?: TestDeLaSemaine | null; accord?: string | null;
 }) {
   const muet = !nolio && raison === 'muet';
   const sansAccord = !nolio && raison === 'sans_accord';
@@ -381,9 +384,8 @@ export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null, arri
   if (!nolio && !jours.length && !ligne && !raison) return null;
   const lundiDeLaSemaine = ligne?.lundi || semaine?.lundi || lundi;
   const etiquette = contientLaCourse(lundiDeLaSemaine, course) ? { texte: 'Semaine de course', couleur: '#0C6E5F' }
-    : ajustee ? { texte: 'Semaine ajustée', couleur: '#8A5E10' }
-      : ligne ? { texte: typeEnClair(ligne.type, Boolean(semaine?.reprise_apres_course && semaine.numero === ligne.numero)),
-        couleur: BANNIERE[ligne.type] ?? '#4F6F69' } : null;
+    : ligne ? { texte: typeEnClair(ligne.type, Boolean(semaine?.reprise_apres_course && semaine.numero === ligne.numero)),
+      couleur: BANNIERE[ligne.type] ?? '#4F6F69' } : null;
   // Une ligne de la semaine : le jour (aujourd'hui en avant, les jours passés grisés, C15), la couleur de la séance, son
   // nom et, dans sa colonne, sa durée totale (C16 : le nom garde le temps de travail de Nolio, « Seuil 2 court · 18 min —
   // 9 × 2 min », la colonne dit la séance entière, « 51 min »).
@@ -426,11 +428,11 @@ export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null, arri
         <Surtitre>Ta semaine</Surtitre>
         {etiquette && <span className="text-xs font-semibold" style={{ color: etiquette.couleur }}>{etiquette.texte}</span>}
       </div>
-      {/* Q7 : Validé par le coach le 05/11/2026 (1A). Le pourquoi reste dans Nolio (Q18). */}
-      {ajustee && (
+      {/* Q7 : Validé par le coach le 05/11/2026 (1A). Le pourquoi reste dans Nolio (Q18). La décision 11 du 09/11/2026 ne
+          retire que « Ajustée par ton coach. » et l'étiquette : cette phrase-ci reste, à trancher avec le coach. */}
+      {ajustee === 'moteur' && (
         <p className="pb-1.5 text-[0.8125rem] text-[#4A4866] leading-relaxed">
-          {ajustee === 'coach' ? 'Ajustée par ton coach.'
-            : 'Ajustée d’après ta semaine passée : le pourquoi est dans la note de ta semaine, dans Nolio.'}
+          Ajustée d’après ta semaine passée : le pourquoi est dans la note de ta semaine, dans Nolio.
         </p>
       )}
       {/* Q14 : la semaine d'un test a sa ligne. Validé par le coach le 05/11/2026 (1A). */}
