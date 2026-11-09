@@ -109,7 +109,11 @@ export function enClair(e: Entree, seances?: string[], realise?: Pick<Realise, '
       if (e.doses && typeof e.doses === 'object') {
         return Object.entries(e.doses as Record<string, Dose>)
           .filter(([f]) => !seances || !QUALITES_NOMMEES.has(f) || seances.some((n) => n.startsWith(FAMILLE[f as FamilleLue] ?? f)))
-          .map(([f, d]) => `${FAMILLE[f as FamilleLue] ?? f} : la marche part de la séance du ${d.date ? jourMois(d.date) : '?'} (${dose(d)}) ; ${d.monte ? 'la suivante monte d’une marche' : 'la suivante la refait (RPE au-dessus du prévu)'}.`);
+          // La prudence (moteur 8.460, décision coach du 09/11/2026) : la famille refait sa marche cette semaine (R1, R2,
+          // R8), la séance lue ne la fait pas monter. BROUILLON (CTS_TEXTES_A_VALIDER.md, section S).
+          .map(([f, d]) => (Array.isArray(e.prudence) && (e.prudence as string[]).includes(f)
+            ? `${FAMILLE[f as FamilleLue] ?? f} : sa marche se refait cette semaine ; la séance du ${d.date ? jourMois(d.date) : '?'} (${dose(d)}) ne la fait pas monter.`
+            : `${FAMILLE[f as FamilleLue] ?? f} : la marche part de la séance du ${d.date ? jourMois(d.date) : '?'} (${dose(d)}) ; ${d.monte ? 'la suivante monte d’une marche' : 'la suivante la refait (RPE au-dessus du prévu)'}.`));
       }
       return [`Sortie longue : la tienne (${e.duree_coach_min} min${e.faite ? ', courue' : ', pas courue'}) fixe la suivante, ${e.plafond_min} min au plus (le plafond de sécurité, +10 %).`];
     // Les autres règles (OM4, S4, TN, R5, R7, CH, O3…) : l'effet écrit par le moteur, en phrase ; jamais le code de la
