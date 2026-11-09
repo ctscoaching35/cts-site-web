@@ -301,6 +301,14 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
       aRegarder.push({ niveau: 'bloque', genre: 'profil', cle: `profil:${a.id}`, athlete: a.nom, action: 'Son profil ›',
         href: `/app/coach/athlete/${a.id}#son-profil`, texte: 'profil de coureur à remplir : sa saison de fond ne peut pas partir sans lui.' });
     }
+    // SA SAISON DE FOND REFUSÉE PAR LE MOTEUR (moteur 8.464, décision 8 du coach du 09/11/2026 : « un refus n'est plus
+    // jamais tu ») : gardée sur sa fiche par le passage du soir (lib/app/fond.ts), effacée dès que son lundi est couvert.
+    if (a.saison_refusee && a.programmation !== 'main') {
+      const r = a.saison_refusee;
+      aRegarder.push({ niveau: 'bloque', genre: 'saison', cle: `saison:${a.id}:${r.lundi}`, athlete: a.nom, action: 'Son profil ›',
+        href: `/app/coach/athlete/${a.id}#son-profil`, detail: r.motif,
+        texte: `sa saison de fond du ${jourMois(r.lundi)} n’a pas pu être créée : ${r.motif}` });
+    }
     // La semaine en cours pas partie dans Nolio (le passage du dimanche en échec, même après ses reprises). La première
     // d'une saison de fond aussi (25/10/2026 : sans semaine écrite avant, elle passait inaperçue).
     const premiereDeSaison = Boolean(infosFond && p?.demarre_le && String(p.demarre_le) <= lundi);

@@ -19,6 +19,7 @@ export const SIGNAL: Record<string, string> = {
   sensations: 'Mauvaises sensations', hooper: 'Fatigue qui monte', silence: 'Rien de remonté', chrono_route: 'Chrono à revoir',
   prerequis: 'Prérequis à voir', course_nolio: 'Course A dans Nolio', preparation: 'Course de préparation', suite: 'Rien après',
   test: 'Test à revoir', week_end_choc: 'Week-end choc à annoncer', courses_proches: 'Courses trop proches',
+  saison: 'Saison de fond refusée',
 };
 
 // Un point d'« À regarder » (espaceCoach.ts) ou un signal de santé du soir. jour et mesure : ceux d'un signal du soir
@@ -122,7 +123,7 @@ export const GROUPES_URGENT: { cle: CleUrgent; titre: string; genres: string[] }
   { cle: 'besoin', titre: 'A besoin de toi', genres: ['commentaire', 'mot', 'sensations', 'hooper', 'rpe', 'retour', 'sous_plan', 'arret'] },
   { cle: 'silence', titre: 'Ne court plus', genres: ['silence'] },
   { cle: 'semaine', titre: 'Semaine pas partie', genres: ['semaine'] },
-  { cle: 'bloque', titre: 'Objectif bloqué', genres: ['demande', 'demarrer', 'nolio', 'equipe', 'accord', 'profil'] },
+  { cle: 'bloque', titre: 'Objectif bloqué', genres: ['demande', 'demarrer', 'nolio', 'equipe', 'accord', 'profil', 'saison'] },
 ];
 
 // Le groupe d'un point dans « Urgent » ; null pour ce qui arrive (Q7). Un genre nouveau suit son niveau : ce qui bloque

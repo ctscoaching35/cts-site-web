@@ -87,3 +87,32 @@ export function historiqueParSemaine(debut: string, seances: { date: string; min
 export function historiqueDejaRecu(etat: Record<string, unknown> | null | undefined): boolean {
   return (etat as { niveau_habituel?: { historique?: unknown } | null } | null | undefined)?.niveau_habituel?.historique === true;
 }
+
+// SA SEMAINE TYPIQUE, LUE AU SITE (moteur 8.464, étape D3 de la doctrine ; décision 8 du coach du 09/11/2026 : « la saison
+// de fond démarre sur son niveau habituel », volume et sortie longue des mêmes semaines) : la règle du moteur
+// (cts_bilan.niveau_habituel), sur ses semaines lues dans Nolio (historiqueParSemaine) — la médiane du volume et celle de
+// la plus longue sortie de ses semaines d'entraînement normales, sans la semaine d'une course, celle qui la suit (sa
+// récupération), une semaine vide, ni une semaine sous 75 % de la médiane des autres ; au moins 3 semaines normales, sinon
+// null (sa déclaration tient lieu de lui). Avant, la saison partait du volume de ses 4 dernières semaines (affûtage,
+// course, récupération) et de sa plus longue sortie sur 8 (sa préparation) : le moteur refusait une sortie plus longue
+// que le volume, la saison ne se créait pas (N9 du banc d'essai).
+export const NIVEAU_LEGERE_SOUS = 0.75;
+export const NIVEAU_SEMAINES_MIN = 3;
+const mediane = (v: number[]) => {
+  const t = [...v].sort((a, b) => a - b);
+  const m = Math.floor(t.length / 2);
+  return t.length % 2 ? t[m] : (t[m - 1] + t[m]) / 2;
+};
+export function niveauHabituel(semaines: HistoriqueSemaine[]): { volume_min: number; sl_min: number; semaines: number } | null {
+  const apresCourse = new Set(semaines.filter((w) => w.course).map((w) => ajouterJours(w.lundi, 7)));
+  const candidates = semaines.filter((w) => !w.course && !apresCourse.has(w.lundi) && w.volume_min > 0);
+  if (!candidates.length) return null;
+  const m = mediane(candidates.map((w) => w.volume_min));
+  const normales = candidates.filter((w) => w.volume_min >= NIVEAU_LEGERE_SOUS * m);
+  if (normales.length < NIVEAU_SEMAINES_MIN) return null;
+  return {
+    volume_min: Math.round(mediane(normales.map((w) => w.volume_min))),
+    sl_min: Math.round(mediane(normales.map((w) => w.sl_min))),
+    semaines: normales.length,
+  };
+}

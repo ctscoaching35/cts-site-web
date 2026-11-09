@@ -25,7 +25,7 @@ registerHooks({
     }
   },
 });
-const { historiqueDejaRecu, historiqueParSemaine, SEMAINES_HISTORIQUE } = await import('../lib/app/charge.ts');
+const { historiqueDejaRecu, historiqueParSemaine, niveauHabituel, SEMAINES_HISTORIQUE } = await import('../lib/app/charge.ts');
 const { ajouterJours } = await import('../lib/app/plan.ts');
 
 // La semaine qui s'écrit commence le lundi 16/11/2026 : l'historique va du lundi 17/08 (91 jours avant) au dimanche 15/11.
@@ -109,4 +109,31 @@ test('déjà reçu : seulement quand le moteur a posé sa marque dans son état'
   assert.equal(historiqueDejaRecu({ niveau_habituel: { historique: 'oui' } }), false, 'seulement true');
   assert.equal(historiqueDejaRecu({ niveau_habituel: { historique: true } }), true);
   assert.equal(historiqueDejaRecu({ niveau_habituel: { historique: true, volume_min: 240, sl_min: 100 } }), true);
+});
+
+// ─── Le niveau habituel, lu au site pour la saison de fond (moteur 8.464, D3 ; décision 8 du coach du 09/11/2026) ───
+const semaine = (i, volume_min, sl_min, course = false, course_min = 0) =>
+  ({ lundi: ajouterJours(DEBUT, 7 * i), volume_min, sl_min, course, course_min });
+
+test('le niveau habituel : la médiane de ses semaines normales, ni la course, ni sa récupération, ni une semaine allégée', () => {
+  // Le cas du self-test du moteur (cts_bilan) : 3 semaines à 300, une allégée à 200, 3 à 310, la course, sa récupération,
+  // 4 semaines à 305.
+  const lues = [...[0, 1, 2].map((i) => semaine(i, 300, 100)), semaine(3, 200, 70), ...[4, 5, 6].map((i) => semaine(i, 310, 105)),
+    semaine(7, 120, 60, true, 300), semaine(8, 150, 60), ...[9, 10, 11, 12].map((i) => semaine(i, 305, 110))];
+  assert.deepEqual(niveauHabituel(lues), { volume_min: 305, sl_min: 105, semaines: 10 });
+});
+
+test('après une préparation : son volume et sa sortie longue des mêmes semaines (N9), jamais sa course', () => {
+  // 8 semaines de préparation (6 h 30, sorties de 2 h 45), l'affûtage, la course de 5 h 30, 2 semaines de récupération.
+  const lues = [...[0, 1, 2, 3, 4, 5, 6, 7].map((i) => semaine(i, 390, 165)), semaine(8, 270, 120), semaine(9, 190, 80),
+    semaine(10, 60, 30, true, 330), semaine(11, 105, 45), semaine(12, 165, 75)];
+  const n = niveauHabituel(lues);
+  assert.deepEqual(n, { volume_min: 390, sl_min: 165, semaines: 8 });
+  assert.ok(n.sl_min <= n.volume_min, 'jamais une sortie longue au-dessus du volume');
+});
+
+test('pas assez de semaines normales : null (sa déclaration tient lieu de lui)', () => {
+  assert.equal(niveauHabituel([]), null);
+  assert.equal(niveauHabituel([semaine(0, 300, 100), semaine(1, 310, 110), semaine(2, 0, 0)]), null);
+  assert.equal(niveauHabituel([semaine(0, 300, 100), semaine(1, 300, 100), semaine(2, 300, 100, true, 200)]), null);
 });

@@ -40,7 +40,7 @@ import { CONTINUITE_ACTIVE, lireLesRetouches, seancesLues, type SeanceLue } from
 import { relierAuxPrevues } from './relier';
 import { derniereCourse, JOURS_DERNIERE_COURSE, rienDeLu } from './derniereCourse';
 import { semaineAReprendre, sortieApresArret } from './reprises';
-import { historiqueDejaRecu, historiqueParSemaine, plusLonguesParSemaine, SEMAINES_HISTORIQUE, type HistoriqueSemaine } from './charge';
+import { historiqueDejaRecu, historiqueParSemaine, niveauHabituel, plusLonguesParSemaine, SEMAINES_HISTORIQUE, type HistoriqueSemaine } from './charge';
 import { correctionsAEnvoyer, CORRECTIONS_ACTIVES, marquerAppliquees } from './corrections';
 import { derniereActivite, garderLesSignaux } from './signauxGardes';
 import { demonstrationCoachOuverte, moteurDemonstration } from './demonstrationCoach';
@@ -281,7 +281,7 @@ export async function trameDuPlan(planId: string): Promise<Trame | null> {
 
 // ─── Lire Nolio (avec l'accord de l'athlète pour son RPE, son ressenti et son Hooper ; T5) ─────────────
 
-const requeteAthlete = async (o: Objectif) => {
+const requeteAthlete = async (o: Pick<Objectif, 'nolioAthlete'>) => {
   const d = await destinataire(o.nolioAthlete);
   return d.moi ? '' : `&athlete=${d.usr}`;
 };
@@ -516,13 +516,17 @@ async function garderNote(o: Objectif, cle: string, dateIso: string, titre: stri
 // plan, que le moteur lit pour son développement ; sans test, aucun. Remis à jour à chaque semaine écrite.
 // Les paramètres avec le profil du jour, sans rien écrire (l'aperçu du dimanche les prend tels quels).
 function avecLeProfil(o: Objectif): Record<string, unknown> {
-  // En fond, le profil se lit au début de la saison (lib/app/fond.ts) : l'ordre de ses blocs en dépend.
-  if ((o.parametres as { fond?: unknown }).fond) return o.parametres;
   const vc = (o.profil as { vc_ms?: number }).vc_ms;
   const profil = vc && o.dPrime ? (coefficientRiegel(vc, o.dPrime) < 0.9 ? 'rapide' : 'endurant') : null;
   if ((o.parametres.profil_coureur ?? null) === profil) return o.parametres;
-  const { profil_coureur: _ancien, ...reste } = o.parametres;
-  return profil ? { ...reste, profil_coureur: profil } : reste;
+  const { profil_coureur: ancien, ...reste } = o.parametres;
+  // EN SAISON DE FOND, LE TROISIÈME BLOC SUIT LE NOUVEAU PROFIL (moteur 8.464, étape D3 ; décision 7 c du coach du
+  // 09/11/2026 : « test refait à la fin du premier bloc, les blocs suivants s'adaptent au nouveau profil ») : le profil du
+  // début de la saison reste dans `fond.profil_depart` (posé au premier changement), qui garde les deux premiers blocs ;
+  // celui d'aujourd'hui décide du troisième. Avant 8.464, le profil ne changeait pas en cours de saison.
+  const fond = (o.parametres as { fond?: Record<string, unknown> }).fond;
+  const fondSuivi = fond ? { fond: 'profil_depart' in fond ? fond : { ...fond, profil_depart: ancien ?? null } } : {};
+  return profil ? { ...reste, ...fondSuivi, profil_coureur: profil } : { ...reste, ...fondSuivi };
 }
 
 async function suivreLeProfil(o: Objectif) {
@@ -570,7 +574,7 @@ async function plusLonguesAvant(o: Objectif, lundi: string | null | undefined): 
 // Ce qu'il a couru dans Nolio du `debut` au `veille` compris (plusLonguesAvant, historiqueNolio) : ses activités de
 // course, de trail et de tapis, la durée seulement (sans l'accord de lecture, comme lireRetours), une vitesse impossible
 // écartée (sansVitesseImpossible) ; et ses jours de course (planned/competitions), que chacun met à part.
-async function courueDansNolio(o: Objectif, debut: string, veille: string): Promise<{
+async function courueDansNolio(o: Pick<Objectif, 'nolioAthlete'>, debut: string, veille: string): Promise<{
   seances: { date: string; min: number }[]; competitions: string[];
 }> {
   const qui = await requeteAthlete(o);
@@ -597,8 +601,15 @@ async function courueDansNolio(o: Objectif, debut: string, veille: string): Prom
 // moteur garde alors sa déclaration, et l'historique repart la semaine d'après, la marque n'étant pas posée).
 async function historiqueNolio(o: Objectif, lundi: string | null | undefined): Promise<HistoriqueSemaine[] | null> {
   if (!o.nolioAthlete || !lundi || historiqueDejaRecu(o.etat)) return null;
+  return semainesDansNolio(o.nolioAthlete, lundi);
+}
+
+// Ses 13 semaines complètes d'avant `lundi`, lues dans Nolio (historiqueNolio, sans la marque de l'état) : pour le
+// niveau habituel d'où part une saison de fond (lib/app/fond.ts, creerSaison ; décision 8 du coach du 09/11/2026) et la
+// sortie longue de référence d'un départ (deciderLeDepart).
+export async function semainesDansNolio(nolioAthlete: string, lundi: string): Promise<HistoriqueSemaine[]> {
   const debut = ajouterJours(lundi, -7 * SEMAINES_HISTORIQUE);
-  const { seances, competitions } = await courueDansNolio(o, debut, ajouterJours(lundi, -1));
+  const { seances, competitions } = await courueDansNolio({ nolioAthlete }, debut, ajouterJours(lundi, -1));
   return historiqueParSemaine(debut, seances, competitions);
 }
 
@@ -1041,9 +1052,17 @@ async function deciderLeDepart(o: Objectif, premiere: Semaine, jonction: { apres
   const fondationsSautees = Boolean(lu?.lu && premiere.bloc === 'Bloc fondations' && (lu.seancesDures ?? 0) >= SEANCES_DURES_MIN);
   const allegeeEnCharge = Boolean(!rythme && lu?.lu && premiere.type === 'Assimilation' && lu.derniereAllegee);
   const declaree = lireTemps(String(champs.sortie_longue_actuelle ?? ''));
-  const longueMin = lu?.longueMin ? (apresCourse ? slApresCourse(lu.longueMin) : lu.longueMin) : 0;
-  const slRelevee = Boolean(longueMin && lu?.champs.sortie_longue_actuelle && (!declaree || longueMin / 60 > declaree + 1e-9));
-  const releveeA = slRelevee ? (apresCourse ? dureeTexte(longueMin) : String(lu?.champs.sortie_longue_actuelle)) : null;
+  // LA SORTIE LONGUE DE RÉFÉRENCE EST SA SORTIE LONGUE HABITUELLE (moteur 8.464, étape D3 ; décision 8 du coach du
+  // 09/11/2026 : son niveau habituel, ses semaines normales des 3 derniers mois, lues dans Nolio) : plus la plus longue
+  // sortie des 8 dernières semaines, qu'une seule sortie longue isolée relevait. Juste après une course, la jonction garde
+  // sa règle (75 % de la plus longue d'avant l'affûtage, décision 6 du 07/11/2026). Sans assez de semaines normales lues,
+  // rien n'est relevé (sa déclaration reste).
+  const habituel = !apresCourse && o.nolioAthlete && premiere.lundi
+    ? niveauHabituel(await semainesDansNolio(o.nolioAthlete, premiere.lundi).catch(() => [])) : null;
+  const longueMin = apresCourse ? (lu?.longueMin ? slApresCourse(lu.longueMin) : 0) : (habituel?.sl_min ?? 0);
+  const slRelevee = Boolean(longueMin && (apresCourse ? lu?.champs.sortie_longue_actuelle : true)
+    && (!declaree || longueMin / 60 > declaree + 1e-9));
+  const releveeA = slRelevee ? dureeTexte(longueMin) : null;
   if (releveeA) champs.sortie_longue_actuelle = releveeA;
   // Sa sortie longue de départ à 75 % (décision 6) : relevée ici, ou posée par le recalage sur l'objectif précédent.
   const slApres = apresCourse ? (releveeA ?? jonction.slRecalee ?? null) : null;
