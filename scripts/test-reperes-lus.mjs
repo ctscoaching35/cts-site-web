@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Les repères entre l'app et Nolio, sans réseau ni base (lib/app/reperesLus.ts ; décision 10 du coach du 09/11/2026,
- * moteur 8.462 : « on ne prescrit pas avec une valeur qu'on n'a pas dans Nolio ») : la FC au seuil 1 reprise de Nolio
+ * moteur 8.460 : « on ne prescrit pas avec une valeur qu'on n'a pas dans Nolio ») : la FC au seuil 1 reprise de Nolio
  * comme la VC et la FC au seuil 2 ; une valeur égale ne change ni la source ni la date ; le rattrapage de nuit pour toute
  * fiche qui a une valeur.
  *

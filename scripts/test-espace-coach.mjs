@@ -111,7 +111,7 @@ test('Q8 : « Urgent », quatre groupes, une ligne par point, jamais « À venir
   assert.equal(groupeUrgent(point('sante', 'arret')), 'besoin');
   assert.equal(groupeUrgent(point('sante', 'silence')), 'silence');
   assert.equal(groupeUrgent(point('bloque', 'semaine')), 'semaine');
-  // « saison » (8.464, décision 8 du 09/11/2026) : la saison de fond refusée par le moteur, jamais tue.
+  // « saison » (8.460, décision 8 du 09/11/2026) : la saison de fond refusée par le moteur, jamais tue.
   for (const g of ['demande', 'demarrer', 'nolio', 'equipe', 'accord', 'profil', 'saison']) assert.equal(groupeUrgent(point('bloque', g)), 'bloque');
   assert.equal(etiquettes([point('bloque', 'saison', { texte: 'sa saison de fond du 16/11 n’a pas pu être créée : …' })], null)[0].texte,
     'Saison de fond refusée');

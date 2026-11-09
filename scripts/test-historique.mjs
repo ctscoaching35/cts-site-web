@@ -111,7 +111,7 @@ test('déjà reçu : seulement quand le moteur a posé sa marque dans son état'
   assert.equal(historiqueDejaRecu({ niveau_habituel: { historique: true, volume_min: 240, sl_min: 100 } }), true);
 });
 
-// ─── Le niveau habituel, lu au site pour la saison de fond (moteur 8.464, D3 ; décision 8 du coach du 09/11/2026) ───
+// ─── Le niveau habituel, lu au site pour la saison de fond (moteur 8.460, D3 ; décision 8 du coach du 09/11/2026) ───
 const semaine = (i, volume_min, sl_min, course = false, course_min = 0) =>
   ({ lundi: ajouterJours(DEBUT, 7 * i), volume_min, sl_min, course, course_min });
 

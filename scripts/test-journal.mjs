@@ -84,7 +84,7 @@ test('C1 et la prudence : la marche refaite, la séance lue ne la fait pas monte
   assert.match(lignes[1], /^Seuil 2 : la marche part de la séance du .* la suivante monte d’une marche\.$/);
 });
 
-// L'allure de course, sa propre famille (moteur 8.463, N10, doctrine D2) : sa dose lue se dit quand la semaine a une séance
+// L'allure de course, sa propre famille (moteur 8.460, N10, doctrine D2) : sa dose lue se dit quand la semaine a une séance
 // d'allure, pas sinon (la règle des autres qualités, retour coach du 01/11/2026).
 test('C1 et l’allure : sa dose se dit seulement avec une séance d’allure dans la semaine', () => {
   const entree = { regle: 'C1', effet: 'marche reprise de la dernière séance faite',
