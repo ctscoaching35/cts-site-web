@@ -205,7 +205,8 @@ test('une séance de course posée le jour d’une EF et d’un renfo retirés r
 });
 
 test('la semaine de la course : « + la course », le jour de course tel que le moteur l’a écrit', () => {
-  const semaine = { ...SEMAINE, seances: '3 séances + la course',
+  // Le moteur l'écrit avec des espaces insécables (« 3 séances +\u00a0la\u00a0course »).
+  const semaine = { ...SEMAINE, seances: '3 séances +\u00a0la\u00a0course',
     jours: SEMAINE.jours.map((j) => (j.id === 'S7-samedi' ? { ...j, seance: 'Compétition — GRF18', duree: '1h40', rpe: 'Course', famille: 'course' } : j)) };
   const c = comparerLaSemaine({ semaine, envoyees: ENVOI.filter((s) => s.jour_id !== 'S7-samedi'), sports: SPORTS,
     nolio: TELLE_QUELLE.filter((x) => x.id !== 'p-samedi') });
@@ -213,7 +214,7 @@ test('la semaine de la course : « + la course », le jour de course tel que le 
   assert.equal(course.nom, 'Compétition — GRF18');
   assert.equal(course.ecrite, true);
   assert.deepEqual(course.marques, []);
-  assert.equal(c.seances_texte, '3 séances + la course');
+  assert.equal(c.seances_texte, '3 séances +\u00a0la\u00a0course');
   assert.equal(c.volume_min, 215);
 });
 
