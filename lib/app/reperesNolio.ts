@@ -8,16 +8,16 @@
  * l'app sans date (d'avant le 19/10/2026) reste. Les zones de l'app suivent, elles se calculent depuis sa fiche. Les
  * métriques sont celles du catalogue de Nolio (lues le 24/10/2026 sur le compte du coach : `is_nolio`, la même pour tous).
  * Côté serveur seulement.
+ *
+ * La FC au seuil 1 aussi (moteur 8.462, décision 10 du coach du 09/11/2026 : « on ne prescrit pas avec une valeur qu'on n'a
+ * pas dans Nolio » ; la métrique que le coach a créée le 26/10/2026) ; une valeur égale à celle de l'app ne change ni sa
+ * source ni sa date : la règle, reperesLus.ts.
  */
 import { destinataire } from './coaching';
 import { appelNolio } from './nolio';
 import { ajouterJours } from './plan';
+import { METRIQUES_LUES as METRIQUES, reprendreDeNolio } from './reperesLus';
 import { clientService } from './supabase';
-
-const METRIQUES = [
-  { cle: 'vc_ms', item: 'mti_AUit0R4USmTdyFZ', valeur: (s: number) => (s >= 120 && s <= 600 ? Math.round((1000 / s) * 1000) / 1000 : null) },
-  { cle: 'fc_seuil2', item: 'mti_zBpan6mEubaMh4i', valeur: (b: number) => (b >= 100 && b <= 230 ? Math.round(b) : null) },
-] as const;
 
 export type CompteReperes = { athlete: string; quoi: string; erreur?: string };
 
@@ -37,19 +37,18 @@ export async function reperesDeNolio(budgetMs = 60_000): Promise<CompteReperes[]
       const d = await destinataire(usr);
       const qui = d.moi ? '' : `&athlete=${d.usr}`;
       const sources = { ...((f.reperes_sources ?? {}) as Record<string, { le?: string; source?: string }>) };
-      const maj: Record<string, number> = {};
+      const maj: Record<string, number | null> = {};
       for (const m of METRIQUES) {
         const r = await appelNolio('GET', `metrics/values/?item=${m.item}&limit=1${qui}`);
         if (r.statut !== 200) throw new Error(`Nolio ${r.statut} sur ${m.cle}`);
         const v = ((r.corps?.data ?? []) as { date_start?: string; value?: number | null; restriction?: unknown }[])[0];
         const le = String(v?.date_start ?? '').slice(0, 10);
         const valeur = v && v.value !== null && v.value !== undefined && !v.restriction ? m.valeur(Number(v.value)) : null;
-        if (valeur === null || !le) continue;
-        const avant = sources[m.cle]?.le;
-        const dejaLa = f[m.cle] !== null && f[m.cle] !== undefined;
-        if (dejaLa && (le < limite || !avant || avant >= le)) continue;
+        if (valeur === null || !reprendreDeNolio(m, f[m.cle], sources[m.cle]?.le, valeur, le, limite)) continue;
         maj[m.cle] = valeur;
         sources[m.cle] = { le, source: 'nolio' };
+        // Une FC au seuil 1 venue de Nolio n'a pas l'allure de son palier : celle de l'ancien test ne la recoupe plus.
+        if (m.cle === 'fc_seuil1') maj.v_seuil1_ms = null;
       }
       if (!Object.keys(maj).length) continue;
       const { error } = await service.from('athletes_coaches').update({ ...maj, reperes_sources: sources }).eq('id', f.id);
