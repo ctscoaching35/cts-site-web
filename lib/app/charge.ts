@@ -38,3 +38,15 @@ export function semainesDeCharge<T extends { date: string; min: number }>(debut:
     .filter((r) => r.date >= ajouterJours(debut, 7 * i) && r.date < ajouterJours(debut, 7 * (i + 1))).reduce((a, r) => a + r.min, 0));
   return { recentes, parSemaine };
 }
+
+// LA PLUS LONGUE SORTIE DE CHAQUE SEMAINE (moteur 8.460, décision « B » du coach du 08/11/2026 au soir : la sortie longue
+// d'une saison de fond part de la plus longue sortie courue des 4 dernières semaines, saison commencée ou non) : les
+// 4 semaines qui commencent au lundi `debut`, la plus ancienne d'abord, en minutes entières ; 0 pour une semaine sans
+// course ; les jours de course n'y comptent jamais, comme dans la charge (décision coach du 23/10/2026).
+export function plusLonguesParSemaine<T extends { date: string; min: number }>(debut: string, seances: T[],
+  competitions: string[]): number[] {
+  const jours = new Set(competitions);
+  return [0, 1, 2, 3].map((i) => Math.round(Math.max(0, ...seances
+    .filter((r) => !jours.has(r.date) && r.date >= ajouterJours(debut, 7 * i) && r.date < ajouterJours(debut, 7 * (i + 1)))
+    .map((r) => r.min))));
+}
