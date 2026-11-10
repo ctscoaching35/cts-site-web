@@ -23,7 +23,7 @@ import { joursRecuperation, lireTemps } from '@/lib/plan';
 import { ajouterJours, dateLongue, joursEntre, moment, type CleTest } from '@/lib/app/plan';
 import { fichesDeLaSemaine, jaugeDuPlan, momentDe } from '@/lib/app/tableau';
 import {
-  ajustementDeLaSemaine, donneesTableau, lireSemaineNolio, semaineEcrite, testDeLaSemaine, testVcNonRepropose,
+  donneesTableau, lireSemaineNolio, semaineEcrite, testDeLaSemaine, testVcNonRepropose,
 } from '@/lib/app/tableauDuPlan';
 
 // L'accueil de l'athlète (CTS_NOLIO_CADRAGE.md dans le dépôt du moteur, T1, AP1, AP2 ; maquette validée par le coach le
@@ -127,8 +127,8 @@ export default async function AccueilAthlete({ ctx, demarrage, montre = false, d
   const arrivee = nolio || raison || lecture?.raison === 'demo' || !ligne ? null : !ctx.coache && d.nolio !== 'actif' ? 'invitation' as const : 'bientot' as const;
   const jauge = jaugeDuPlan(d.trame, d.realises, jour);
   const fiches = fichesDeLaSemaine(d.fiches, jour);
-  // Q7 : la semaine ajustée ; Q14 : le test que la préparation écrit cette semaine.
-  const ajustee = ligne ? await ajustementDeLaSemaine(ctx, ligne.numero) : null;
+  // Q14 : le test que la préparation écrit cette semaine. (Q7, la semaine ajustée, n'est plus lue : décision 20 du coach
+  // du 10/11/2026, l'app ne dit plus « Ajustée d'après ta semaine passée… ».)
   const cleTest = ligne && !ctx.aLaMain && plan.zones ? testDeLaSemaine(semaine) : null;
   const test: TestDeLaSemaine | null = cleTest ? {
     titre: TITRE_DU_TEST[cleTest],
@@ -247,7 +247,7 @@ export default async function AccueilAthlete({ ctx, demarrage, montre = false, d
         ) : (
           <CetteSemaine semaine={semaine} ligne={ligne} questionnaire={d.ecrit && restants > 7} nolio={nolio}
             arrivee={arrivee} depuis={arrivee ? jour : null} raison={raison} coache={Boolean(ctx.coache)}
-            lundi={ligne?.lundi ?? lundiCourant} hooper={d.accord} jour={jour} course={plan.course.date} ajustee={ajustee} test={test}
+            lundi={ligne?.lundi ?? lundiCourant} hooper={d.accord} jour={jour} course={plan.course.date} test={test}
             accord={accord} />
         ))}
         {etape !== 'apres' && ctx.aLaMain && (
