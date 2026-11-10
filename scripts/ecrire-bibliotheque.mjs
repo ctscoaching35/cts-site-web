@@ -9,7 +9,10 @@
  *
  *   ./.venv/bin/python3 -c "import json, cts_bibliotheque as b; print(json.dumps(b.catalogue()))" > catalogue.json
  *   node scripts/ecrire-bibliotheque.mjs catalogue.json [--ecrire] [--mettre-a-jour] [--filtre=texte] [--ordre]
- *     [--dossier=texte] [--verifier]
+ *     [--dossier=texte] [--verifier] [--env=dossier]
+ *
+ * Depuis le 10/11/2026 (moteur 8.461, la barre en séances clés en main) : des dossiers à plat (« seances » sans
+ * « sous »), le renfo et ses exercices (remplacés par leur identifiant Nolio), --env pour lire la clé ailleurs.
  *
  * Sans --ecrire, rien ne part : il dit ce qu'il ferait. Relancé, il retrouve ce qui existe déjà (un dossier par son nom
  * et son parent, une séance du moteur par son nom dans son dossier) et le met à jour au lieu de le doubler. Lit la clé
@@ -18,7 +21,9 @@
 import nextEnv from '@next/env';
 import { readFileSync } from 'node:fs';
 
-nextEnv.loadEnvConfig(process.cwd());
+// --env=<dossier> : le dossier dont .env.local donne la clé (par défaut, celui d'où le script est lancé) ; la clé n'est
+// jamais affichée.
+nextEnv.loadEnvConfig(process.argv.find((a) => a.startsWith('--env='))?.slice('--env='.length) ?? process.cwd());
 const ecrire = process.argv.includes('--ecrire');
 // Les séances déjà écrites ne sont réécrites qu'avec --mettre-a-jour : chaque appel compte dans le quota de
 // l'application Nolio, partagé avec le site (un passage les réécrivait toutes, 270 appels, et Nolio a freiné).
@@ -33,6 +38,11 @@ const filtres = filtre ? filtre.split('|') : null;
 // par des virgules) sont relus ou rangés ; les autres, que le coach a pu ranger à la main, ne bougent pas.
 const dossiersVises = process.argv.find((a) => a.startsWith('--dossier='))?.slice('--dossier='.length).split(',') ?? null;
 const chemin = process.argv.slice(2).find((a) => !a.startsWith('--'));
+// LES DOSSIERS À PLAT (la barre en séances clés en main, décision 12 du coach du 09/11/2026, « tout A ») : un dossier du
+// catalogue porte ses séances directement (« seances »), sans sous-dossier ; il se lit comme un seul sous-dossier sans
+// nom, le dossier lui-même.
+const sousDe = (d) => d.sous ?? [{ nom: null, seances: d.seances ?? [] }];
+const lieu = (d, s) => (s.nom ? `${d.nom} › ${s.nom}` : d.nom);
 if (!chemin) throw new Error('Le catalogue (JSON de cts_bibliotheque.catalogue) manque.');
 const catalogue = JSON.parse(readFileSync(chemin, 'utf8'));
 // La clé du site n'a pas le droit d'écrire la bibliothèque (library:write) : une seconde clé, réservée à ce script,
@@ -89,13 +99,13 @@ if (process.argv.includes('--ordre')) {
   for (const d of catalogue.dossiers) {
     if (dossiersVises && !dossiersVises.some((t) => d.nom.includes(t))) continue;
     const racine = dossiers.find((x) => x.name === d.nom && !idDe(x.parent));
-    for (const s of d.sous) {
-      const sous = racine && dossiers.find((x) => x.name === s.nom && idDe(x.parent) === racine.id);
-      if (!sous) { aRanger.push(`ABSENT : ${d.nom} › ${s.nom}`); continue; }
+    for (const s of sousDe(d)) {
+      const sous = s.nom === null ? racine : racine && dossiers.find((x) => x.name === s.nom && idDe(x.parent) === racine.id);
+      if (!sous) { aRanger.push(`ABSENT : ${lieu(d, s)}`); continue; }
       const { lu, voulu } = await ordreDe(s, sous);
-      if (lu.some((x) => typeof x.order !== 'number')) aRanger.push(`sans champ order : ${d.nom} › ${s.nom}`);
+      if (lu.some((x) => typeof x.order !== 'number')) aRanger.push(`sans champ order : ${lieu(d, s)}`);
       if (voulu.every((x, i) => x.id === lu[i].id)) { dansLOrdre += 1; continue; }
-      aRanger.push(`${ecrire ? 'rangé' : 'à ranger'} : ${d.nom} › ${s.nom} (${voulu.length})`);
+      aRanger.push(`${ecrire ? 'rangé' : 'à ranger'} : ${lieu(d, s)} (${voulu.length})`);
       if (ecrire) await nolio('POST', `library/categories/${sous.id}/frames/order/`, { ids: voulu.map((x) => x.id) });
     }
   }
@@ -120,11 +130,11 @@ if (process.argv.includes('--verifier')) {
   const ecarts = [];
   for (const d of catalogue.dossiers) {
     const racine = dossiers.find((x) => x.name === d.nom && !idDe(x.parent));
-    for (const s of d.sous) {
-      const sous = racine && dossiers.find((x) => x.name === s.nom && idDe(x.parent) === racine.id);
+    for (const s of sousDe(d)) {
+      const sous = s.nom === null ? racine : racine && dossiers.find((x) => x.name === s.nom && idDe(x.parent) === racine.id);
       for (const x of s.seances) {
         const y = sous && seances.find((z) => z.name === x.name && idDe(z.category) === sous.id);
-        if (!y) { ecarts.push(`ABSENTE : ${d.nom} › ${s.nom} › ${x.name}`); continue; }
+        if (!y) { ecarts.push(`ABSENTE : ${lieu(d, s)} › ${x.name}`); continue; }
         const lu = await nolio('GET', `library/training_frames/${y.id}/`);
         const attendu = plat(x.workout);
         const recu = plat(lu.workout);
@@ -133,7 +143,7 @@ if (process.argv.includes('--verifier')) {
         if (desc !== texte(x.description)) pb.push(`description : « ${desc.slice(0, 120)} »`);
         if (attendu.length !== recu.length) pb.push(`${recu.length} étapes au lieu de ${attendu.length}`);
         attendu.forEach((a, i) => { if (recu[i] !== undefined && recu[i] !== a) pb.push(`étape ${i + 1} : attendu « ${a} », lu « ${recu[i]} »`); });
-        if (pb.length) ecarts.push(`${d.nom} › ${s.nom} › ${x.name}\n    ${pb.slice(0, 4).join('\n    ')}`);
+        if (pb.length) ecarts.push(`${lieu(d, s)} › ${x.name}\n    ${pb.slice(0, 4).join('\n    ')}`);
         else justes += 1;
       }
     }
@@ -191,25 +201,50 @@ for (const r of catalogue.renommees ?? []) {
   if (deplacee) crees.add(id);
 }
 
+// LE RENFO DANS LA BARRE (8.461) : ses exercices, nommés par le moteur (« exercice_nom »), remplacés par leur identifiant
+// Nolio comme à l'envoi d'une semaine (lib/app/coaching.ts, monterRenfo) : la bibliothèque du coach d'abord (ses vidéos),
+// sinon le catalogue de Nolio ; un exercice absent part en étape décrite, sans vidéo (dit dans le journal).
+let exercicesNolio = null;
+const manquants = new Set();
+async function monterRenfo(workout) {
+  if (!JSON.stringify(workout).includes('"exercice_nom"')) return workout;
+  exercicesNolio ??= await tous('library/exercises/');
+  const idEx = (nom) => (exercicesNolio.find((e) => e.name === nom && e.scope === 'perso') ?? exercicesNolio.find((e) => e.name === nom))?.id;
+  const monter = (n) => {
+    if (n.kind === 'superset') return { ...n, exercises: n.exercises.map(monter) };
+    if (n.kind !== 'exercise') return n;
+    const { exercice_nom: nom, ...reste } = n;
+    const id = idEx(nom);
+    if (id) return { ...reste, exercise: id };
+    manquants.add(nom);
+    const duree = n.sets.reduce((t, x) => t + (x.duration?.value ?? (x.reps ?? 0) * 4) + x.rest.value, 0);
+    const dose = `${n.sets.length} × ${n.sets[0]?.reps ?? `${n.sets[0]?.duration?.value}″`}`;
+    return { kind: 'step', intensity: 'work', duration: { value: duree, unit: 's' }, targets: [{ type: 'no_target' }],
+      comment: [`${nom} : ${dose}`, n.comment].filter(Boolean).join(', ') };
+  };
+  return workout.map(monter);
+}
+
 // Les dossiers et les séances du moteur.
 for (const d of catalogue.dossiers) {
   const racine = await dossier(d.nom);
-  for (const s of d.sous) {
-    const id = await dossier(s.nom, racine);
+  for (const s of sousDe(d)) {
+    const id = s.nom === null ? racine : await dossier(s.nom, racine);
     for (const x of s.seances) {
       const deja = seances.find((y) => y.name === x.name && idDe(y.category) === id);
       if (deja) {
         if (!mettreAJour || (filtres && !filtres.some((f) => x.name.includes(f)))) continue;
-        journal.push(`mise à jour : ${d.nom} › ${s.nom} › ${x.name}`);
+        journal.push(`mise à jour : ${lieu(d, s)} › ${x.name}`);
         // Nolio refuse une description en texte brut sur une séance qui en a déjà une (« plain text would erase its
         // formatting ») : la mise à jour l'envoie en HTML, un paragraphe.
         const { description, ...reste } = x;
         const html = `<p>${description.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`;
-        if (ecrire) await nolio('PATCH', `library/training_frames/${deja.id}/`, { ...reste, description_html: html });
+        if (ecrire) await nolio('PATCH', `library/training_frames/${deja.id}/`, { ...reste, workout: await monterRenfo(reste.workout), description_html: html });
       } else {
-        journal.push(`créée : ${d.nom} › ${s.nom} › ${x.name}`);
+        journal.push(`créée : ${lieu(d, s)} › ${x.name}`);
         crees.add(id);
-        if (ecrire) seances.push(await nolio('POST', 'library/training_frames/', { ...x, category: id }));
+        const workout = await monterRenfo(x.workout);
+        if (ecrire) seances.push(await nolio('POST', 'library/training_frames/', { ...x, workout, category: id }));
       }
     }
   }
@@ -303,8 +338,8 @@ if (catalogue.archiver_le_reste) {
   const aLeurPlace = new Set();
   for (const d of catalogue.dossiers) {
     const racine = dossiers.find((x) => x.name === d.nom && !idDe(x.parent));
-    for (const s of d.sous) {
-      const sous = racine && dossiers.find((x) => x.name === s.nom && idDe(x.parent) === racine.id);
+    for (const s of sousDe(d)) {
+      const sous = s.nom === null ? racine : racine && dossiers.find((x) => x.name === s.nom && idDe(x.parent) === racine.id);
       if (sous) for (const x of s.seances) aLeurPlace.add(`${sous.id}|${x.name}`);
     }
   }
@@ -345,15 +380,16 @@ for (const d of dossiers) {
 // L'ordre de chaque sous-dossier où une séance a été créée ou réécrite (ordreDe).
 for (const d of catalogue.dossiers) {
   const racine = dossiers.find((x) => x.name === d.nom && !idDe(x.parent));
-  for (const s of d.sous) {
-    const sous = racine && dossiers.find((x) => x.name === s.nom && idDe(x.parent) === racine.id);
+  for (const s of sousDe(d)) {
+    const sous = s.nom === null ? racine : racine && dossiers.find((x) => x.name === s.nom && idDe(x.parent) === racine.id);
     if (!sous || !ecrire || (!(mettreAJour && !filtre) && !crees.has(sous.id))) continue;
     const { voulu: ordre } = await ordreDe(s, sous);
     await nolio('POST', `library/categories/${sous.id}/frames/order/`, { ids: ordre.map((x) => x.id) });
-    journal.push(`ordre : ${d.nom} › ${s.nom} (${ordre.length})`);
+    journal.push(`ordre : ${lieu(d, s)} (${ordre.length})`);
   }
 }
 
+if (manquants.size) journal.push(`exercices du renfo absents des bibliothèques Nolio (étape décrite, sans vidéo) : ${[...manquants].join(', ')}`);
 console.log(journal.join('\n'));
 console.log(`\n${journal.length} opérations${ecrire ? ' faites' : ' prévues (rien n’est parti : --ecrire pour les faire)'}.`);
 
