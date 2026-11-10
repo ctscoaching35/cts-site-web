@@ -4,8 +4,9 @@
  *
  *   Régénérer : node scripts/familles-barre.mjs   (après chaque changement de noms dans la barre)
  *
- * 363 séances de qualité et 27 de mécanique dans la barre, plus les noms d'avant les renommages, des
- * anciennes barres et ceux que le moteur écrit pour sa mécanique ;
+ * 440 séances de la barre en séances clés en main, lues par leur code (lib/app/codeSeance.ts) ; ici, les noms des
+ * barres d'avant (857 noms de qualité et 49 de mécanique, archives comprises), de leurs renommages, et
+ * ceux que le moteur écrit pour sa mécanique ;
  * 0 nom(s) écarté(s) parce qu'ils désignaient deux familles.
  */
 import type { FamilleLue } from './classement';

@@ -9,6 +9,7 @@
  * (lib/app/continuite.ts lit Nolio).
  */
 import { FAMILLES_DE_LA_BARRE } from './barreFamilles';
+import { lireCode, TRANCHENT_HORS_QUALITE } from './codeSeance';
 import { autreEcriture } from './nomsSeances';
 
 export type CibleNolio = {
@@ -159,9 +160,19 @@ export const nomNormal = (nom: string) => nom.normalize('NFC').replace(/\s+/g, '
 export function classerSeanceNommee(nom: string | null | undefined, workout: NoeudNolio[] | null | undefined, profil: ProfilLu,
   rpePrevu?: number | null, dureeMin?: number | null): Classement | null {
   const c = classerSeance(workout, profil, rpePrevu, dureeMin);
+  // LE CODE EN TÊTE DU NOM (décision 12-5 du coach, 09/11/2026 ; lib/app/codeSeance.ts) : une séance de la barre en
+  // séances clés en main, ou écrite par le moteur 8.461, a sa famille par son code, même si le coach a changé son chiffre
+  // (« S2c 6×3′/1′ R ») ; sa structure donne la dose. Une sortie longue, un week-end choc, un test, un renfo ou un sport
+  // croisé ne sont jamais une qualité, quels que soient leurs blocs ; une EF, une récupération, une activation se lisent
+  // par leur contenu. Sans code : les noms de l'ancienne barre (lib/app/barreFamilles.ts), puis le contenu.
+  const lu = nom ? lireCode(nom) : null;
+  if (lu && TRANCHENT_HORS_QUALITE.includes(lu.famille)) return null;
+  // Une EF à fin courte (sprints ou descentes en côte, lignes droites), une récupération, une activation : une EF, même
+  // quand ses montées et ses descentes se liraient mécanique ; seul un vrai bloc de qualité (le coach l'a changée) compte.
+  if (lu && !lu.lue) return c && ['seuil1', 'tempo', 'seuil2', 'vo2max', 'allure'].includes(c.famille) ? c : null;
   // Q2 (05/11/2026 au soir) : un nom de la barre sous l'ancienne ou la nouvelle écriture du week-end choc
   // (lib/app/nomsSeances.ts), quelle que soit celle que lib/app/barreFamilles.ts a gardée.
-  const famille = nom ? FAMILLES_DE_LA_BARRE[nomNormal(nom)] ?? FAMILLES_DE_LA_BARRE[nomNormal(autreEcriture(nomNormal(nom)))] : undefined;
+  const famille = lu?.lue ?? (nom ? FAMILLES_DE_LA_BARRE[nomNormal(nom)] ?? FAMILLES_DE_LA_BARRE[nomNormal(autreEcriture(nomNormal(nom)))] : undefined);
   if (!famille) return c;
   const { minutes, reps } = parFamille(workout ?? [], profil, famille !== 'mecanique');
   const travail = QUALITES.reduce((t, f) => t + (minutes.get(f) ?? 0), 0);

@@ -12,7 +12,8 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 
 const moteur = process.env.CTS_MOTEUR ?? join(homedir(), 'Site CTS');
-const brut = execFileSync(join(moteur, '.venv/bin/python3'),
+// CTS_PYTHON : un autre python (un worktree du moteur n'a pas son .venv).
+const brut = execFileSync(process.env.CTS_PYTHON ?? join(moteur, '.venv/bin/python3'),
   ['-c', 'import json, cts_bibliotheque as b; print(json.dumps({"catalogue": b.catalogue(), "mecanique": sorted(b.noms_mecanique_du_moteur())}))'],
   { cwd: moteur, maxBuffer: 256 * 1024 * 1024 });
 const { catalogue, mecanique } = JSON.parse(String(brut));
@@ -36,7 +37,12 @@ const poser = (nom, famille) => {
 };
 let actuelles = 0;
 let mecaniques = 0;
+// LA BARRE EN SÉANCES CLÉS EN MAIN (moteur 8.461) : ses dossiers à plat portent des codes (« S2c 5×3′/1′ R »), que le
+// site lit par leur grammaire (lib/app/codeSeance.ts), pas par cette liste ; la liste garde les noms de la barre d'avant
+// (« anciennes_du_moteur », sous ses dossiers d'avant) et de ses renommages (« renommees_d_avant »).
+let codes = 0;
 for (const d of catalogue.dossiers) {
+  if (!d.sous) { codes += (d.seances ?? []).length; continue; }
   for (const s of d.sous ?? [{ seances: d.seances ?? [] }]) {
     for (const x of s.seances ?? []) {
       if (familleDu(d.nom) === 'mecanique') mecaniques += 1;
@@ -45,8 +51,13 @@ for (const d of catalogue.dossiers) {
     }
   }
 }
-for (const r of catalogue.renommees ?? []) poser(r.nom_avant, familleDu(r.dossier));
-for (const a of catalogue.anciennes_du_moteur ?? []) poser(a.nom, familleDu(a.dossier));
+for (const r of [...(catalogue.renommees ?? []), ...(catalogue.renommees_d_avant ?? [])]) poser(r.nom_avant, familleDu(r.dossier));
+for (const a of catalogue.anciennes_du_moteur ?? []) {
+  // La barre d'avant (archives du 02/11/2026) : ses séances de qualité et de mécanique, comptées.
+  if (codes && a.sous && familleDu(a.dossier) === 'mecanique') mecaniques += 1;
+  else if (codes && a.sous && familleDu(a.dossier)) actuelles += 1;
+  poser(a.nom, familleDu(a.dossier));
+}
 // Les noms que le moteur écrit pour sa mécanique (« Navettes descentes actives », « Myocrossmax »…), sans la durée de
 // la barre (cts_bibliotheque.noms_mecanique_du_moteur).
 for (const nom of mecanique ?? []) poser(nom, 'mecanique');
@@ -60,8 +71,9 @@ writeFileSync(new URL('../lib/app/barreFamilles.ts', import.meta.url), `/**
  *
  *   Régénérer : node scripts/familles-barre.mjs   (après chaque changement de noms dans la barre)
  *
- * ${actuelles} séances de qualité et ${mecaniques} de mécanique dans la barre, plus les noms d'avant les renommages, des
- * anciennes barres et ceux que le moteur écrit pour sa mécanique ;
+ * ${codes} séances de la barre en séances clés en main, lues par leur code (lib/app/codeSeance.ts) ; ici, les noms des
+ * barres d'avant (${actuelles} noms de qualité et ${mecaniques} de mécanique, archives comprises), de leurs renommages, et
+ * ceux que le moteur écrit pour sa mécanique ;
  * ${doubles.size} nom(s) écarté(s) parce qu'ils désignaient deux familles.
  */
 import type { FamilleLue } from './classement';
@@ -70,4 +82,4 @@ export const FAMILLES_DE_LA_BARRE: Record<string, FamilleLue> = {
 ${lignes.join('\n')}
 };
 `);
-console.log(`${familles.size} noms (${actuelles} séances de qualité et ${mecaniques} de mécanique dans la barre), ${doubles.size} écarté(s).`);
+console.log(`${codes} codes lus par la grammaire ; ${familles.size} noms (${actuelles} de qualité et ${mecaniques} de mécanique des barres d'avant), ${doubles.size} écarté(s).`);
