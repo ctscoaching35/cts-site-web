@@ -174,6 +174,29 @@ export function classerSeanceNommee(nom: string | null | undefined, workout: Noe
   // (lib/app/nomsSeances.ts), quelle que soit celle que lib/app/barreFamilles.ts a gardée.
   const famille = lu?.lue ?? (nom ? FAMILLES_DE_LA_BARRE[nomNormal(nom)] ?? FAMILLES_DE_LA_BARRE[nomNormal(autreEcriture(nomNormal(nom)))] : undefined);
   if (!famille) return c;
+  // La dose d'une séance codée (hors mécanique) : ses efforts, chaque étape de travail ou de montée à RPE 4 et plus ou à
+  // la cible d'une qualité (cts_barre.travail_min, la même lecture que le moteur). Les cibles de la barre clés en main
+  // visent la zone 2 au Seuil 1 (« Z2 FC » et RPE 4 ou 5) : lues étape par étape, elles se liraient EF.
+  if (lu?.lue && famille !== 'mecanique') {
+    let minutes = 0;
+    let reps = 0;
+    const parcourir = (noeuds: NoeudNolio[], fois: number) => {
+      for (const n of noeuds) {
+        if (n.kind === 'repeat') { parcourir(n.steps ?? [], fois * (n.times ?? 1)); continue; }
+        if (n.intensity !== 'work' && n.intensity !== 'ramp_up') continue;
+        const r = (n.targets ?? []).find((t) => t.type === 'rpe' && typeof t.rpe === 'number')?.rpe;
+        const f = familleDuPas(n, profil);
+        if (!((typeof r === 'number' && r >= 4) || (f && QUALITES.includes(f.famille) && f.famille !== 'mecanique'))) continue;
+        minutes += fois * minutesDuPas(n, f?.vitesse, profil);
+        reps += fois;
+      }
+    };
+    parcourir(workout ?? [], 1);
+    if (minutes > 0) {
+      const m = arrondi(minutes);
+      return { famille, minutes: m, reps: reps || 1, bloc_min: arrondi(m / (reps || 1)) };
+    }
+  }
   const { minutes, reps } = parFamille(workout ?? [], profil, famille !== 'mecanique');
   const travail = QUALITES.reduce((t, f) => t + (minutes.get(f) ?? 0), 0);
   if (travail > 0) {
