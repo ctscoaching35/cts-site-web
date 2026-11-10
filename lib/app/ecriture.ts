@@ -79,6 +79,10 @@ export type Retours = {
   // La dernière course lue dans Nolio (course, trail, tapis ; moteur 8.460, lib/app/derniereCourse.ts) : l'arrêt (R4) se
   // lit même quand elle précède le plan ou sort de la fenêtre lue ; absente sans aucune course lue.
   derniere_course?: string;
+  // LA DOSE VIENT DE L'ATHLÈTE (décision du coach du 10/11/2026, au soir ; moteur 8.461) : à la première semaine d'un départ,
+  // les lundis des semaines creuses d'un objectif d'avant (son affûtage, sa course, sa récupération), qui ne comptent pas
+  // dans la fenêtre d'une séance récente.
+  creux?: string[];
 };
 // « Nolio fait foi » (décisions coach du 20/10/2026) : la semaine telle qu'elle est dans Nolio, que le moteur juge
 // (cts_ajustements.semaine_reelle) : chaque séance qu'il a écrite et qui y est encore, avec sa durée et son RPE (une
@@ -437,14 +441,74 @@ async function lireLeQuestionnaire(o: Objectif, au: string, qui?: string): Promi
 // lue dans Nolio (90 jours) ; le moteur la garde dans son état, sans rien changer à cette première semaine, et dit
 // l'arrêt au premier dimanche si l'athlète ne court plus. Une lecture qui échoue n'empêche rien (la date manque, comme
 // avant) ; sans réponse ni course lue : rien, comme avant.
+// D1 (accord du coach du 10/11/2026, au soir ; la règle « la dose vient de l'athlète », moteur 8.461) : la première semaine
+// lit aussi ses séances d'avant le plan — ses séances de qualité faites des 12 dernières semaines, lues dans Nolio et
+// classées comme les dimanches suivants (seancesLues : la fenêtre d'une séance récente va jusqu'à 8 semaines chez le
+// confirmé, sans les semaines creuses), derrière le même interrupteur ; et les semaines creuses d'un objectif d'avant. Une
+// lecture qui échoue n'empêche rien (la semaine part du bas de l'échelle du bloc).
 async function retoursDeLaPremiere(o: Objectif, au: string): Promise<Retours | null> {
   const reponse = await lireLeQuestionnaire(o, au);
   const derniere = await derniereCourseLue(o, au).catch((e) => {
     console.error(`Dernière course de ${o.planId} :`, e instanceof Error ? e.message : e);
     return null;
   });
-  if (!reponse.questionnaire && !derniere) return null;
-  return { seances: [], hooper: [], ...reponse, ...(derniere ? { derniere_course: derniere } : {}) };
+  const lues = await luesDuDepart(o, au).catch((e) => {
+    console.error(`Séances lues au départ de ${o.planId} :`, e instanceof Error ? e.message : e);
+    return undefined;
+  });
+  const creux = await semainesCreusesAvant(o, au).catch((e) => {
+    console.error(`Semaines creuses avant ${o.planId} :`, e instanceof Error ? e.message : e);
+    return [] as string[];
+  });
+  if (!reponse.questionnaire && !derniere && !lues?.length && !creux.length) return null;
+  return { seances: [], hooper: [], ...reponse, ...(derniere ? { derniere_course: derniere } : {}),
+    ...(lues?.length ? { lues } : {}), ...(creux.length ? { creux } : {}) };
+}
+
+export const SEMAINES_LUES_DEPART = 12;
+async function luesDuDepart(o: Objectif, au: string): Promise<SeanceLue[] | undefined> {
+  const d = CONTINUITE_ACTIVE ? await destinataire(o.nolioAthlete).catch(() => null) : null;
+  if (!d) return undefined;
+  const qui = await requeteAthlete(o);
+  const du = ajouterJours(au, -7 * SEMAINES_LUES_DEPART + 1);
+  type Prevue = { id: string; name?: string | null; date_start: string; sport?: string | null; duration?: { value?: number } | null;
+    rpe?: number | null; revision?: string | null };
+  // Les mêmes champs que lireRetours (relierAuxPrevues, sansVitesseImpossible).
+  type Reel = { id: string; name?: string | null; date_start: string; sport?: string | null; duration?: { value: number } | null;
+    planned?: string | null; elevation_gain?: { value: number } | null; distance?: { value?: number; unit?: string } | number | null;
+    debrief?: { rpe?: number | null; feeling?: number | null } | null };
+  const planifiees = await listeNolio<Prevue>(`planned/trainings/?date_from=${ajouterJours(du, -7)}&date_to=${ajouterJours(au, 7)}${qui}&with_revision=true`);
+  const jours = new Set([o.plan.course.date, ...((o.parametres.courses_secondaires ?? []) as Course[]).map((c) => c.date)]);
+  const reels = relierAuxPrevues((await listeNolio<Reel>(
+    `real/trainings/?date_from=${du}&date_to=${au}&fields=id,name,date_start,sport,duration,distance,elevation_gain,planned${o.accordLecture ? ',debrief' : ''}${qui}`))
+    .map(sansVitesseImpossible), planifiees, SPORTS_COURSE, jours);
+  // Ses séances déjà envoyées par le moteur, intactes (un départ réessayé) : les siennes, sa progression continue.
+  const revisions = new Map(o.envois.flatMap((e) => e.seances as SeanceEnvoyee[]).filter((x) => x.nolio_id)
+    .map((x) => [String(x.nolio_id), x.revision ?? null]));
+  const intactes = new Set(planifiees.filter((p) => revisions.has(p.id)
+    && (!revisions.get(p.id) || !p.revision || revisions.get(p.id) === p.revision)).map((p) => p.id));
+  return seancesLues({ planifiees, reelles: reels, moteur: intactes, profil: o.profil as ProfilLu,
+    accordLecture: o.accordLecture, athlete: d.moi ? '' : d.usr, au, semaines: SEMAINES_LUES_DEPART });
+}
+
+// Les semaines creuses d'un objectif d'avant dont la course tombe dans les 12 semaines lues : celles que son plan type en
+// affûtage (« Affûtage actif », « Décharge ») ou en récupération, et de la semaine de sa course jusqu'au départ (sa course,
+// sa récupération).
+const TYPES_CREUX = ['Affûtage actif', 'Décharge', 'Récupération'];
+async function semainesCreusesAvant(o: Objectif, au: string): Promise<string[]> {
+  const debut = ajouterJours(au, -7 * SEMAINES_LUES_DEPART + 1);
+  const precedents = (await autresObjectifs(o)).filter((q) => !q.fond && q.demarre && q.course_date
+    && q.course_date >= debut && q.course_date <= au);
+  if (!precedents.length) return [];
+  const { data } = await clientService().from('plans').select('id, semaines:donnees->semaines').in('id', precedents.map((q) => q.id));
+  const creux = new Set<string>();
+  for (const p of data ?? []) {
+    for (const s of ((p as { semaines?: unknown }).semaines ?? []) as { lundi?: string | null; type?: string | null }[]) {
+      if (s.lundi && s.lundi >= lundiDe(debut) && s.lundi <= au && TYPES_CREUX.includes(String(s.type))) creux.add(s.lundi);
+    }
+  }
+  for (const q of precedents) for (let l = lundiDe(q.course_date); l <= au; l = ajouterJours(l, 7)) creux.add(l);
+  return [...creux].sort();
 }
 
 

@@ -73,9 +73,10 @@ export async function lireLesRetouches(args: { planifiees: Prevue[]; envoyees: S
 // planifiees, reelles : ce que lireRetours a déjà lu ; moteur : les identifiants Nolio des séances qu'il a envoyées,
 // intactes ; athlete : le paramètre d'athlète des requêtes (vide pour le coach lui-même) ; au : la veille du lundi écrit ;
 // corps : les séances déjà lues (lireLesRetouches), pas relues.
+// semaines : la fenêtre lue (4 le dimanche ; 12 à la première semaine d'un départ, D1 du 10/11/2026).
 export async function seancesLues(args: { planifiees: Prevue[]; reelles: Reelle[]; moteur: Set<string>; profil: ProfilLu;
-  accordLecture: boolean; athlete: string; au: string; corps?: Map<string, CorpsLu> }): Promise<SeanceLue[]> {
-  const du = ajouterJours(args.au, -7 * SEMAINES_LUES + 1);
+  accordLecture: boolean; athlete: string; au: string; corps?: Map<string, CorpsLu>; semaines?: number }): Promise<SeanceLue[]> {
+  const du = ajouterJours(args.au, -7 * (args.semaines ?? SEMAINES_LUES) + 1);
   const faites = new Map(args.reelles.filter((r) => r.planned).map((r) => [String(r.planned), r]));
   const candidates = args.planifiees.filter((p) => SPORTS_COURSE.includes(String(p.sport)) && faites.has(p.id)
     && p.date_start.slice(0, 10) >= du && p.date_start.slice(0, 10) <= args.au && (p.rpe == null || p.rpe >= 5));

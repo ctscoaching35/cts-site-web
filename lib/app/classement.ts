@@ -127,18 +127,16 @@ function parFamille(workout: NoeudNolio[], profil: ProfilLu, travailSeul = false
 const arrondi = (x: number) => Math.round(x * 10) / 10;
 
 // La famille d'une séance et sa dose : la qualité où elle passe le plus de temps, ses minutes, ses répétitions et la
-// durée moyenne de ses blocs ; null pour une séance d'endurance (ou sans structure lisible). rpePrevu : le RPE de la
-// séance, quand ses étapes n'en disent rien.
-export function classerSeance(workout: NoeudNolio[] | null | undefined, profil: ProfilLu, rpePrevu?: number | null,
-  dureeMin?: number | null): Classement | null {
+// durée moyenne de ses blocs ; null pour une séance d'endurance (ou sans structure lisible, D2 du 10/11/2026). Le RPE prévu
+// et la durée ne classent plus une séance sans étapes ; gardés dans la signature pour ses appelants.
+export function classerSeance(workout: NoeudNolio[] | null | undefined, profil: ProfilLu, _rpePrevu?: number | null,
+  _dureeMin?: number | null): Classement | null {
   const { minutes, reps } = parFamille(workout ?? [], profil);
   const qualites = QUALITES.filter((f) => (minutes.get(f) ?? 0) > 0);
   if (!qualites.length) {
-    // Sans structure lisible : le RPE de la séance, sur sa durée moins l'échauffement et le retour.
-    if (!(workout ?? []).length && typeof rpePrevu === 'number' && rpePrevu >= 5 && dureeMin && dureeMin > 30) {
-      const m = Math.round(dureeMin - 25);
-      return { famille: parRpe(rpePrevu), minutes: m, reps: 1, bloc_min: m };
-    }
+    // D2 (accord du coach du 10/11/2026, au soir) : une séance sans étapes (une note seule, « Séance piste club », RPE 8,
+    // 1 h 15) compte comme faite pour le volume (son activité), mais ne fixe aucune marche d'échelle : hors des qualités,
+    // comme une EF. Avant, son RPE sur sa durée moins 25 min : 50 min de VO2max, une échelle faussée.
     return null;
   }
   const famille = qualites.reduce((a, b) => ((minutes.get(b) ?? 0) > (minutes.get(a) ?? 0) ? b : a));

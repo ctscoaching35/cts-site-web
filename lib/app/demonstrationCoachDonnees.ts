@@ -281,7 +281,13 @@ function revueDe(l: Ligne): Revue | null {
   const lues: SeanceLue[] = n.prevues.filter((p) => String(p.date_start) >= du && String(p.date_start) <= au && faites.has(String(p.id))
     && (p.rpe == null || Number(p.rpe) >= 5)).flatMap((p) => {
     const duree = Math.round(Number((p.duration as { value?: number } | null)?.value ?? 0) / 60);
-    const k = classerSeanceNommee(String(p.name ?? ''), [], { vc_ms: vc, fc_seuil1: fc1, fc_seuil2: fc2 }, (p.rpe as number | null) ?? null, duree);
+    // Les séances de la démonstration n'ont pas d'étapes (celles du moteur en ont dans Nolio) : sans elles, une séance ne se
+    // classe plus (D2, 10/11/2026) ; la démonstration garde leur lecture par le RPE prévu, sur la durée moins 25 min.
+    const r_ = (p.rpe as number | null) ?? null;
+    const k = classerSeanceNommee(String(p.name ?? ''), [], { vc_ms: vc, fc_seuil1: fc1, fc_seuil2: fc2 }, r_, duree)
+      ?? (typeof r_ === 'number' && r_ >= 5 && duree > 30
+        ? { famille: (r_ === 5 ? 'seuil1' : r_ === 6 ? 'tempo' : r_ === 7 ? 'seuil2' : r_ <= 9 ? 'vo2max' : 'sprint') as SeanceLue['famille'],
+          minutes: duree - 25, reps: 1, bloc_min: duree - 25 } : null);
     const r = faites.get(String(p.id)) as { debrief?: { rpe?: number | null } } | undefined;
     return k ? [{ date: String(p.date_start).slice(0, 10), famille: k.famille, minutes: k.minutes, reps: k.reps, bloc_min: k.bloc_min,
       rpe_prevu: (p.rpe as number | null) ?? null, rpe: a.sans_accord ? null : r?.debrief?.rpe ?? null, moteur: true }] : [];
