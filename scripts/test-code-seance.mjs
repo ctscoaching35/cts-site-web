@@ -117,6 +117,18 @@ test('une EF à fin courte reste une EF ; les noms de l’ancienne barre gardent
   assert.equal(classerSeanceNommee('Navettes continues', [pas('work', 30, [rpe(3)])], PROFIL), null);
 });
 
+// D2 (accord du coach du 10/11/2026, au soir) : une séance sans étapes (une note seule) compte comme faite pour le volume,
+// mais ne fixe aucune marche d'échelle ; le même nom avec ses étapes se lit par elles.
+test('une séance sans étapes ne se classe pas (D2)', async () => {
+  const { classerSeance } = await import('../lib/app/classement.ts');
+  assert.equal(classerSeanceNommee('Séance piste club', [], PROFIL, 8, 75), null);
+  assert.equal(classerSeance([], PROFIL, 8, 75), null);
+  assert.equal(classerSeanceNommee('VO2c 10×1′/1′ · VO2max court', [], PROFIL, 8, 50), null);
+  const piste = [echauf, rep(5, [pas('work', 3, [rpe(8)]), pas('rest', 2, [rpe(2)])]), retour];
+  assert.equal(classerSeanceNommee('Séance piste club', piste, PROFIL, 8, 75)?.famille, 'vo2max');
+  assert.equal(classerSeanceNommee('Séance piste club', piste, PROFIL, 8, 75)?.minutes, 15);
+});
+
 test('les lecteurs de noms et l’app : les mots pour l’athlète, la famille, la tête d’une phrase', async () => {
   const { nomPourLAthlete } = await import('../lib/app/nomsSeances.ts');
   const { familleDuNom } = await import('../lib/app/semaineDansNolio.ts');
