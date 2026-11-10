@@ -23,12 +23,12 @@ const FAMILLES: Record<string, [FamilleCode | null, string]> = {
   A10: ['allure', 'Allure 10 km'], AS: ['allure', 'Allure semi'], AM: ['allure', 'Allure marathon'],
   SL: [null, 'Sortie longue'], WEC: [null, 'Week-end choc'], NAV: ['mecanique', 'Navettes'],
   MYO: ['mecanique', 'Myocrossmax'], TAPIS: ['mecanique', 'Montée sur tapis'], RF: [null, 'Renfo'], TEST: [null, 'Test'],
-  CT: [null, 'Course test'], 'VÉLO': [null, 'EF à vélo'], LIBRE: [null, 'Sortie libre'],
+  CT: ['vo2max', 'Course test'], 'VÉLO': [null, 'EF à vélo'], LIBRE: [null, 'Sortie libre'],
 };
 const TERRAINS = ['R', 'V', 'C', 'C+'];
 // Les codes qui tranchent contre le contenu : une sortie longue avec des blocs reste une sortie longue, un week-end choc un
 // week-end choc, un test un test — jamais une séance de qualité de la semaine (la maquette du 09/11).
-export const TRANCHENT_HORS_QUALITE = ['SL', 'WEC', 'TEST', 'CT', 'RF', 'VÉLO', 'LIBRE'];
+export const TRANCHENT_HORS_QUALITE = ['SL', 'WEC', 'TEST', 'RF', 'VÉLO', 'LIBRE'];
 const SEP = ' · ';
 const MOT_DE_CODE = /^(?:[\d(].*|R|V|C|C\+|UD|UO|LD|SC|DE|DA|EC|RC|D\+\d*|S1|S2|T|AM|AS|J\d|\+|%|prog|cible|test|vite|lent|mix|veille|marche|chaise|squats|fentes|parole|VC|EF|force|puissance|spé|montée|descente|\(freiner\)|\(pousser\)|A|B|pyr)$/u;
 
