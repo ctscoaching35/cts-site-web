@@ -19,6 +19,12 @@ const nomDeZone = (nom: string) => {
   return /^endurance fondamentale$/i.test(n) ? 'Endurance fondamentale (EF)' : n;
 };
 
+// LA LIGNE DU SEUIL 2 (décision 19 du coach du 10/11/2026 ; texte validé le 10/11/2026) : le Seuil 2 court se court au RPE,
+// sa FC n'ayant pas le temps de monter ; le tableau promettait une FC à toutes ses fractions.
+export const NOTE_SEUIL2 = 'En relief, ta FC guide les blocs longs, de 6 à 15 min. Sur les fractions courtes, elle n’a pas '
+  + 'le temps de monter : cours-les au ressenti, RPE 7.';
+export const estSeuil2 = (nom: string) => /seuil 2/i.test(nom);
+
 // zones : celles du plan (Plan.zones) ; lignes : ses zones et leur RPE (Plan.mode_emploi.effort.zones, sans l'en-tête).
 export function TableauZones({ zones, lignes, profil, titre, saisie = null }: {
   zones: Pick<Zones, 'tableau' | 'recoupement'>; lignes: string[][]; profil: Profil; titre: string; saisie?: string | null;
@@ -51,6 +57,10 @@ export function TableauZones({ zones, lignes, profil, titre, saisie = null }: {
               </span>
               {!aucunRepere && <span className={fc ? '' : 'text-[#5E5C78]'}>{fc ?? 'RPE seul'}</span>}
               {!aucunRepere && <span className={al ? '' : 'text-[#5E5C78]'}>{al?.replace('Plus lent que ', '> ').replace('/km', '') ?? 'RPE seul'}</span>}
+              {/* La ligne du Seuil 2 (décision 19 du coach du 10/11/2026) : Validé par le coach le 10/11/2026. */}
+              {!aucunRepere && estSeuil2(nom) && (
+                <span className="col-span-full pb-2 text-[0.72rem] text-[#5E5C78] leading-relaxed">{NOTE_SEUIL2}</span>
+              )}
             </li>
           );
         })}
