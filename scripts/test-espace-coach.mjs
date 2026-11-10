@@ -151,3 +151,31 @@ test('la moyenne du Hooper à la française', () => {
   assert.equal(virgule('indice 14 pour 9.5 en moyenne sur 3 semaines'), 'indice 14 pour 9,5 en moyenne sur 3 semaines');
   assert.equal(virgule('S13-mardi'), 'S13-mardi');
 });
+
+test('13-6 : une séance du week-end pas remontée, « Urgent » le mardi matin (décision du coach du 10/11/2026)', async () => {
+  const { seancesPasRemontees, texteRemontee, groupeUrgent: groupe } = await import('../lib/app/espaceParAthlete.ts');
+  const { signaux, DETAIL_SORTIE_LONGUE } = await import('../lib/app/signauxSuivi.ts');
+  // Le week-end du 14-15/11/2026 : la séance du samedi faite, la sortie longue du dimanche pas remontée.
+  const prevues = [
+    { id: 'p1', name: 'S2c 5×3′/1′ R · Seuil 2 court, route', date_start: '2026-11-14', rpe: 7 },
+    { id: 'p2', name: 'SL 2h · Sortie longue', date_start: '2026-11-15', rpe: 4 },
+  ];
+  const realisees = [{ id: 'r1', name: 'Course', date_start: '2026-11-14', planned: 'p1' }];
+  const seuils = { jours: 7, rpe_au_dessus: 2, sensations_max: 2, hooper_semaines: 3, hooper_ecart: 3 };
+  const lus = signaux(prevues, realisees, [], seuils, '2026-11-16').signaux;
+  assert.deepEqual(lus.filter((s) => s.genre === 'manquee').map((s) => [s.jour, s.detail]), [['2026-11-15', DETAIL_SORTIE_LONGUE]]);
+  // Le lundi : rien encore (le coach est prévenu le mardi matin).
+  assert.deepEqual(seancesPasRemontees(lus, '2026-11-16'), []);
+  // Le mardi, et jusqu'au dimanche : la sortie longue du dimanche d'avant.
+  assert.deepEqual(seancesPasRemontees(lus, '2026-11-17'), [{ jour: '2026-11-15', sortieLongue: true }]);
+  assert.deepEqual(seancesPasRemontees(lus, '2026-11-22'), [{ jour: '2026-11-15', sortieLongue: true }]);
+  // La semaine d'après, plus rien (le dimanche l'a lue comme un écart).
+  assert.deepEqual(seancesPasRemontees(lus, '2026-11-24'), []);
+  // Une séance du samedi, pas une sortie longue ; une séance du mercredi : pas du week-end.
+  assert.deepEqual(seancesPasRemontees([{ genre: 'manquee', jour: '2026-11-14', detail: 'aucune séance réalisée rattachée' },
+    { genre: 'manquee', jour: '2026-11-11', detail: 'aucune séance réalisée rattachée' }], '2026-11-17'),
+  [{ jour: '2026-11-14', sortieLongue: false }]);
+  assert.equal(texteRemontee(true, 'dimanche'), 'Sa sortie longue de dimanche n’est pas remontée : à vérifier');
+  assert.equal(texteRemontee(false, 'samedi'), 'Sa séance de samedi n’est pas remontée : à vérifier');
+  assert.equal(groupe({ niveau: 'sante', genre: 'remontee' }), 'besoin');
+});
