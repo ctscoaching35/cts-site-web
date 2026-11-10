@@ -116,3 +116,25 @@ test('une EF à fin courte reste une EF ; les noms de l’ancienne barre gardent
   assert.equal(classerSeanceNommee('Tempo · 30 min — 3 × 10 min · vallonné', s2, PROFIL)?.famille, 'tempo');
   assert.equal(classerSeanceNommee('Navettes continues', [pas('work', 30, [rpe(3)])], PROFIL), null);
 });
+
+test('les lecteurs de noms et l’app : les mots pour l’athlète, la famille, la tête d’une phrase', async () => {
+  const { nomPourLAthlete } = await import('../lib/app/nomsSeances.ts');
+  const { familleDuNom } = await import('../lib/app/semaineDansNolio.ts');
+  const { enClair, nomsDesSeances } = await import('../lib/app/journalEnClair.ts');
+  assert.equal(nomPourLAthlete('WEC J1 · Week-end choc, jour 1 sur 2'), 'Week-end choc, jour 1 sur 2');
+  assert.equal(nomPourLAthlete('Back-to-back — Jour 1/2 (sortie longue) · 2h30'), 'Week-end choc — jour 1/2 (sortie longue) · 2h30');
+  for (const [nom, f] of [['S2c 5×3′/1′ R · Seuil 2 court, route', 'seuil2'], ['SL R · Sortie longue, route', 'sl'],
+    ['WEC J2 · Week-end choc, jour 2 sur 2', 'sl'], ['EF V · Endurance, vallonné', 'ef'], ['NAV 30′ · Navettes continues', 'mecanique'],
+    ['RF spé montée 2/3 · Renfo, spé montée', 'renfo'], ['Seuil 2 court route · 15 min — 5 × 3 min', 'seuil2']]) {
+    assert.equal(familleDuNom(nom), f, nom);
+  }
+  // R2 : les mots de la séance, pas son code.
+  const nomDe = nomsDesSeances([{ jours: [{ id: 'S13-mardi', seance: 'S1 6×5′ C · Seuil 1, en côte' }] }]);
+  assert.deepEqual(enClair({ regle: 'R2', seance: 'S13-mardi', trop_dur: true, ecourtee: false }, undefined, null, nomDe),
+    ['Séance Seuil 1, en côte de mardi plus dure que prévu : sa marche est refaite, sous une autre forme.']);
+  // C1 : la famille d'une séance codée de la semaine, et la VO2max sous son nom d'avant (« VO2 long … »).
+  const c1 = (f) => ({ regle: 'C1', effet: 'marche', doses: { [f]: { date: '2026-12-01', minutes: 15, reps: 5, bloc_min: 3, monte: true } } });
+  assert.equal(enClair(c1('seuil2'), ['S2c 5×3′/1′ R · Seuil 2 court, route']).length, 1);
+  assert.equal(enClair(c1('vo2max'), ['VO2 long · 15 min — 5 × 3′']).length, 1);
+  assert.equal(enClair(c1('vo2max'), ['S2c 5×3′/1′ R · Seuil 2 court, route']).length, 0);
+});
