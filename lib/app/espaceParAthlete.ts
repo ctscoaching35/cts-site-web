@@ -19,8 +19,38 @@ export const SIGNAL: Record<string, string> = {
   sensations: 'Mauvaises sensations', hooper: 'Fatigue qui monte', silence: 'Rien de remonté', chrono_route: 'Chrono à revoir',
   prerequis: 'Prérequis à voir', course_nolio: 'Course A dans Nolio', preparation: 'Course de préparation', suite: 'Rien après',
   test: 'Test à revoir', week_end_choc: 'Week-end choc à annoncer', courses_proches: 'Courses trop proches',
-  saison: 'Saison de fond refusée',
+  saison: 'Saison de fond refusée', remontee: 'Pas remontée',
 };
+
+// ─── Une séance du week-end pas remontée (décision 13-6 du coach du 10/11/2026) ────────────────────────────────────
+
+// Le dimanche, le moteur compte comme faite une séance du week-end pas encore remontée ; pour un coaché, « Urgent » prévient
+// le coach à partir du mardi matin si elle n'est toujours pas dans Nolio, il ajuste lui-même (si elle n'a pas été courue,
+// le dimanche suivant la lit comme un écart, feu orange). signaux : ceux gardés du soir (« manquee », une séance prévue
+// passée sans réalisé rattaché ; son détail dit une sortie longue) ; jour : aujourd'hui. Rend ses séances du samedi et du
+// dimanche d'avant, du mardi au dimanche ; rien le lundi.
+export function seancesPasRemontees(signaux: { genre: string; jour: string; detail?: string }[], jour: string):
+  { jour: string; sortieLongue: boolean }[] {
+  const midi = (iso: string) => new Date(`${iso.slice(0, 10)}T12:00:00Z`);
+  const decaler = (iso: string, n: number) => {
+    const d = midi(iso);
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0, 10);
+  };
+  const rang = (midi(jour).getUTCDay() + 6) % 7;
+  if (rang < 1) return [];
+  const lundi = decaler(jour, -rang);
+  const samedi = decaler(lundi, -2);
+  const dimanche = decaler(lundi, -1);
+  return signaux.filter((s) => s.genre === 'manquee' && s.jour.slice(0, 10) >= samedi && s.jour.slice(0, 10) <= dimanche)
+    .map((s) => ({ jour: s.jour.slice(0, 10), sortieLongue: /^sortie longue/.test(s.detail ?? '') }));
+}
+
+// Sa ligne (BROUILLON, CTS_TEXTES_A_VALIDER.md, section Z) : « Sa sortie longue de dimanche n'est pas remontée : à
+// vérifier » ; une autre séance, « Sa séance de samedi … ».
+export function texteRemontee(sortieLongue: boolean, jourDeLaSemaine: string): string {
+  return `${sortieLongue ? 'Sa sortie longue' : 'Sa séance'} de ${jourDeLaSemaine} n’est pas remontée : à vérifier`;
+}
 
 // Un point d'« À regarder » (espaceCoach.ts) ou un signal de santé du soir. jour et mesure : ceux d'un signal du soir
 // (« mardi 10/11 », « sensations 2/5 »), pour dire deux jours en une étiquette. sous : la ligne de dessous dans « Urgent »
@@ -120,7 +150,8 @@ export function etiquettes(points: Point[], moteur: DecisionMoteur | null): Etiq
 
 export type CleUrgent = 'besoin' | 'silence' | 'semaine' | 'bloque';
 export const GROUPES_URGENT: { cle: CleUrgent; titre: string; genres: string[] }[] = [
-  { cle: 'besoin', titre: 'A besoin de toi', genres: ['commentaire', 'mot', 'sensations', 'hooper', 'rpe', 'retour', 'sous_plan', 'arret'] },
+  { cle: 'besoin', titre: 'A besoin de toi', genres: ['commentaire', 'mot', 'sensations', 'hooper', 'rpe', 'retour', 'sous_plan', 'arret',
+    'remontee'] },
   { cle: 'silence', titre: 'Ne court plus', genres: ['silence'] },
   { cle: 'semaine', titre: 'Semaine pas partie', genres: ['semaine'] },
   { cle: 'bloque', titre: 'Objectif bloqué', genres: ['demande', 'demarrer', 'nolio', 'equipe', 'accord', 'profil', 'saison'] },

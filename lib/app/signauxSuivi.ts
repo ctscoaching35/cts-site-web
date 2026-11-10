@@ -12,6 +12,8 @@ export type Seuils = { jours: number; rpe_au_dessus: number; rpe_au_dessus_sl?: 
 // le 05/11/2026 au soir « Week-end choc — jour 1/2 (sortie longue) », Q2 : les deux noms, lib/app/nomsSeances.ts) : son RPE
 // se juge à prévu + 3 (décision coach du 21/10/2026, comme la règle R2 du moteur).
 const SORTIE_LONGUE = new RegExp(`^SL\\b|${MOTIF_WEEK_END_CHOC.source}|sortie longue`, 'i');
+// Le détail d'une sortie longue prévue sans réalisé rattaché (gardé avec le signal, signauxGardes).
+export const DETAIL_SORTIE_LONGUE = 'sortie longue, aucune séance réalisée rattachée';
 // Le renfo, souvent fait sans le lecteur de Nolio (décision coach du 22/10/2026 : « pas forcément besoin de me dire
 // manqué ») : jamais « séance manquée », hors du compte des séances faites. « Renforcement musculaire » dans Nolio, le
 // sport des séances du moteur (cts_renfo.SPORT_RENFO) comme de celles du coach.
@@ -43,9 +45,12 @@ export function signaux(prevues: Prevue[], realisees: Realisee[], hooper: Valeur
   const rattachees = new Set(realisees.map((r) => r.planned).filter(Boolean));
   const prevueDe = new Map(prevues.map((p) => [p.id, p]));
   const liste: Signal[] = [];
+  // Une sortie longue se dit (« sortie longue ») : « Urgent » prévient le coach le mardi quand celle du dimanche n'est
+  // toujours pas remontée (décision 13-6 du coach du 10/11/2026 ; mesAthletes.santeDesSignaux).
   for (const p of fenetre)
     if (p.date_start < aujourdhui && !rattachees.has(p.id))
-      liste.push({ genre: 'manquee', jour: p.date_start, seance: p.name, detail: 'aucune séance réalisée rattachée' });
+      liste.push({ genre: 'manquee', jour: p.date_start, seance: p.name,
+        detail: SORTIE_LONGUE.test(p.name ?? '') ? DETAIL_SORTIE_LONGUE : 'aucune séance réalisée rattachée' });
   for (const r of realisees.filter((x) => dans(x.date_start))) {
     const d = r.debrief ?? {};
     const prevue = r.planned ? prevueDe.get(r.planned) : undefined;

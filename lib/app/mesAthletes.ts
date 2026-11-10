@@ -12,8 +12,8 @@ import { nomCourt } from './codeSeance';
 import { vueDuCoach, type LigneAthlete, type VueCoach } from './espaceCoach';
 import { ajustementsDuCoach, type Ajustement } from './ecriture';
 import {
-  athletesUrgents, bilanVisible, etiquettes, groupeDe, ordonner, raisonDuNiveau, urgentDe, virgule,
-  type DecisionMoteur, type Etiquette, type GroupeUrgent, type Point,
+  athletesUrgents, bilanVisible, etiquettes, groupeDe, ordonner, raisonDuNiveau, seancesPasRemontees, texteRemontee, urgentDe,
+  virgule, type DecisionMoteur, type Etiquette, type GroupeUrgent, type Point,
 } from './espaceParAthlete';
 import { lienNolioAthlete } from './liensNolio';
 import { ajouterJours, dateAbregee, dateLongue, jourMois, joursEntre } from './plan';
@@ -79,6 +79,15 @@ export function santeDesSignaux(nom: string, usr: string, g: SignauxGardes, jour
       sante.push({ niveau: 'sante', genre: 'hooper', cle: `hooper:${usr}:${s.jour}`, athlete: nom, action: 'Lui écrire ›', href: lienNolioAthlete(usr),
         externe: true, detail: ligneHooper(s.detail), texte: `sa fatigue monte : ${virgule(s.detail)}.` });
     }
+  }
+  // UNE SÉANCE DU WEEK-END PAS REMONTÉE (décision 13-6 du coach du 10/11/2026) : à partir du mardi matin, la séance du
+  // samedi ou la sortie longue du dimanche toujours absente de Nolio ; le coach vérifie et ajuste lui-même.
+  for (const r of seancesPasRemontees(g.signaux, jour)) {
+    const nomDuJour = new Date(`${r.jour}T12:00:00Z`).toLocaleDateString('fr-FR', { weekday: 'long', timeZone: 'UTC' });
+    const ligne = texteRemontee(r.sortieLongue, nomDuJour);
+    sante.push({ niveau: 'sante', genre: 'remontee', cle: `remontee:${usr}:${r.jour}`, athlete: nom, action: 'Voir dans Nolio ›',
+      href: lienNolioAthlete(usr), externe: true, jour: jourCourt(r.jour), detail: ligne,
+      texte: `${ligne.charAt(0).toLowerCase()}${ligne.slice(1)}.` });
   }
   // Rien de remonté depuis 5 jours (point 11) : sa montre, ou il décroche ; seulement s'il avait des séances prévues.
   const depuis = g.derniere_activite ? joursEntre(g.derniere_activite, jour) : null;
