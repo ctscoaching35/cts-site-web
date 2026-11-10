@@ -1,7 +1,7 @@
 import clsx from 'clsx';
 import type { LigneTrame, Realise } from '@/lib/app/ecriture';
 import { BANNIERE } from '@/lib/app/charte';
-import { nomAffiche } from '@/lib/app/nomsSeances';
+import { nomPourLAthlete } from '@/lib/app/nomsSeances';
 import { ajouterJours } from '@/lib/app/plan';
 import { detailDeLaSemaine, enHeures, environ, ligneTroisJours } from '@/lib/app/tableau';
 import type { SemaineDetaillee } from '@/lib/app/tableauDuPlan';
@@ -50,7 +50,7 @@ export default function SemainesDuPlan({ trame, jour, course, realises = [], enc
       <ul className="space-y-0.5">
         {s.seances.map((x) => (
           <li key={x.cle}>
-            <span className="font-semibold text-indigo">{x.date ? jourDeLaDate(x.date) : JOUR(x.jour)}</span> · {nomAffiche(x.nom)}
+            <span className="font-semibold text-indigo">{x.date ? jourDeLaDate(x.date) : JOUR(x.jour)}</span> · {nomPourLAthlete(x.nom)}
             {x.minutes ? <span className="text-[#5E5C78]"> · {enHeures(x.minutes)}</span> : null}
           </li>
         ))}
@@ -73,12 +73,12 @@ export default function SemainesDuPlan({ trame, jour, course, realises = [], enc
         {cles.length > 0 ? (
           <ul className="space-y-0.5">
             {cles.map((s, i) => (
-              <li key={`${s.jour}-${i}`}><span className="font-semibold text-indigo">{JOUR(s.jour)}</span> · {nomAffiche(s.seance)}</li>
+              <li key={`${s.jour}-${i}`}><span className="font-semibold text-indigo">{JOUR(s.jour)}</span> · {nomPourLAthlete(s.nom ?? s.seance)}</li>
             ))}
           </ul>
         ) : <p>Pas de séance clé : une semaine d’endurance.</p>}
         {!l.week_end_choc && sl.length > 0 && (
-          <p><span className="font-semibold text-indigo">{JOUR(sl[0].jour)}</span> · {nomAffiche(sl[0].seance)}</p>
+          <p><span className="font-semibold text-indigo">{JOUR(sl[0].jour)}</span> · {nomPourLAthlete(sl[0].nom ?? sl[0].seance)}</p>
         )}
         {l.sl_min ? <p className="text-xs text-[#5E5C78]">Sortie longue : {enHeures(l.sl_min)}{l.week_end_choc ? ` au plus long des ${trois ? 'trois' : 'deux'} jours` : ''}.</p> : null}
       </>

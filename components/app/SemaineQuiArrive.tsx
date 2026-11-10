@@ -49,7 +49,7 @@ function JoursEcrits({ semaine }: { semaine: Semaine }) {
         <li key={j.id} className="flex gap-3 px-1 py-2">
           <span className="w-[4.6rem] shrink-0 text-xs text-indigo/55 pt-0.5">{j.date}</span>
           <span className={j.famille === 'repos' ? 'text-indigo/40' : 'text-indigo font-semibold'}>
-            {j.seance}
+            {j.nom ?? j.seance}
             {j.famille !== 'repos' && j.duree !== '—' && <span className="font-normal text-indigo/55"> · {j.duree}{j.rpe !== '—' ? ` · RPE ${j.rpe}` : ''}</span>}
           </span>
         </li>

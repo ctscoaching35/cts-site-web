@@ -3,7 +3,7 @@ import clsx from 'clsx';
 import type { LigneTrame } from '@/lib/app/ecriture';
 import { BANNIERE, FAMILLES } from '@/lib/app/charte';
 import { lien, type Contexte } from '@/lib/app/contexte';
-import { estSemaineDeWeekEndChoc, nomAffiche, SEMAINE_DE_REPRISE } from '@/lib/app/nomsSeances';
+import { estSemaineDeWeekEndChoc, nomPourLAthlete, SEMAINE_DE_REPRISE } from '@/lib/app/nomsSeances';
 import { ajouterJours, dateLongue, slugFiche, type Jour, type Plan, type Semaine } from '@/lib/app/plan';
 import { enHeures, type Fiche, type Jauge } from '@/lib/app/tableau';
 import type { CourseSecondaire, EtatNolio, RaisonNolio, SeanceNolio } from '@/lib/app/tableauDuPlan';
@@ -418,9 +418,9 @@ export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null, arri
     </>
   );
   const ligneNolio = (x: SeanceNolio) => ligneDeSemaine({ cle: x.id, date: x.date, jourTexte: '', couleur: x.couleur ?? '#B9C7C3',
-    nom: nomAffiche(x.nom), duree: x.minutes !== null ? enHeures(x.minutes) : null });
+    nom: nomPourLAthlete(x.nom), duree: x.minutes !== null ? enHeures(x.minutes) : null });
   const ligneJour = (j: Jour) => ligneDeSemaine({ cle: j.id, date: j.date_iso, jourTexte: j.jour, couleur: couleurDuJour(j),
-    nom: nomAffiche(j.seance), duree: j.duree || null });
+    nom: nomPourLAthlete(j.nom ?? j.seance), duree: j.duree || null });
   const note = (texte: string) => <p className="mt-2.5 p-3 rounded-xl bg-sand text-xs text-[#4A4866] leading-relaxed">{texte}</p>;
   return (
     <Carte className="space-y-1">
@@ -474,7 +474,7 @@ export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null, arri
           <p className="text-sm text-indigo">{enHeures(Math.round(ligne.volume_h * 60))} de volume prévu{ligne.week_end_choc ? ' · week-end choc' : ''}</p>
           {ligne.seances_cles.length > 0 && (
             <ul className="text-sm text-indigo space-y-0.5">
-              {ligne.seances_cles.map((c) => <li key={`${c.jour}-${c.seance}`}><span className="text-[#5E5C78]">{c.jour} ·</span> {nomAffiche(c.seance)}</li>)}
+              {ligne.seances_cles.map((c) => <li key={`${c.jour}-${c.seance}`}><span className="text-[#5E5C78]">{c.jour} ·</span> {nomPourLAthlete(c.nom ?? c.seance)}</li>)}
             </ul>
           )}
         </div>

@@ -256,7 +256,7 @@ export async function moteur<T>(chemin: string, corps: unknown): Promise<T> {
 // La charge visée (Foster) : null pour une trame tirée des données d'un plan d'avant (lib/app/tableau.ts).
 export type LigneTrame = {
   numero: string; type: string; bloc: string; lundi: string; dates: string; volume_h: number; charge: number | null;
-  seances_cles: { jour: string; seance: string; famille: string }[]; week_end_choc: boolean; sl_min: number | null;
+  seances_cles: { jour: string; seance: string; nom?: string; famille: string }[]; week_end_choc: boolean; sl_min: number | null;
   passee: boolean;
   // La saison de fond (moteur 8.353) : le thème du bloc (« Vitesse », « Seuil ») et la semaine de tests.
   theme?: string; tests?: boolean;

@@ -1,3 +1,4 @@
+import { nomCourt } from '@/lib/app/codeSeance';
 import Link from 'next/link';
 import clsx from 'clsx';
 import { notFound } from 'next/navigation';
@@ -198,7 +199,7 @@ export default async function ObjectifCoache({ params, searchParams }: {
                         <p className="text-sm font-bold">S’écrit le {dateLongue(ajouterJours(prochaine.lundi, -1), true)}, vers 18 h</p>
                         <p className="mt-1 text-[0.8125rem] text-[#4A4866] leading-relaxed">
                           D’après sa semaine et son questionnaire du matin. {typeCoteCoach(prochaine.type)}
-                          {prochaine.seances_cles.length ? ` · ${prochaine.seances_cles.map((c) => c.seance.split(' — ')[0]).join(' · ')}` : ''}
+                          {prochaine.seances_cles.length ? ` · ${prochaine.seances_cles.map((c) => nomCourt(c.nom ?? c.seance)).join(' ; ')}` : ''}
                           {prochaine.sl_min ? ` · sortie longue de ${enHeures(prochaine.sl_min)} annoncée` : ''}.
                         </p>
                         <Link href={`/app/coach/plan/${id}/apercu`} className="inline-flex items-center min-h-9 mt-1 text-[0.8125rem] font-bold text-teal">
@@ -287,7 +288,7 @@ export default async function ObjectifCoache({ params, searchParams }: {
                         <li key={j.id} className="flex gap-3 px-3 py-2">
                           <span className="w-[4.6rem] shrink-0 text-xs text-indigo/55 pt-0.5">{j.date}</span>
                           <span className={j.famille === 'repos' ? 'text-indigo/40' : 'text-indigo font-semibold'}>
-                            {j.seance}
+                            {j.nom ?? j.seance}
                             {j.famille !== 'repos' && j.duree !== '—' && <span className="font-normal text-indigo/55"> · {j.duree}{j.rpe !== '—' ? ` · RPE ${j.rpe}` : ''}</span>}
                           </span>
                         </li>

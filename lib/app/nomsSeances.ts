@@ -6,6 +6,7 @@
  * longue, trouver une séance dans la barre latérale, le type d'une semaine) reconnaît les DEUX noms, et l'app des
  * athlètes n'affiche plus que le nouveau (nomAffiche). Fonctions pures.
  */
+import { motsDuNom } from './codeSeance';
 
 // Les tournures de l'ancien nom, de la plus précise à la plus générale, et leur équivalent nouveau.
 const VERS_LE_NOUVEAU: [RegExp, string][] = [
@@ -26,6 +27,10 @@ const remplacer = (nom: string, regles: [RegExp, string][]) => regles.reduce((n,
 
 // Le nom d'une séance tel que l'app le montre : l'ancien « back-to-back » devient « week-end choc ».
 export const nomAffiche = (nom: string) => remplacer(nom, VERS_LE_NOUVEAU);
+
+// Le nom d'une séance dans l'app de l'athlète (moteur 8.461, décision 12-4 du coach) : les mots après le code (« Seuil 2
+// court, route » de « S2c 5×3′/1′ R · Seuil 2 court, route ») ; un nom sans code, comme nomAffiche.
+export const nomPourLAthlete = (nom: string) => motsDuNom(nomAffiche(nom));
 
 // L'autre écriture d'un même nom (l'ancienne pour un nom nouveau, la nouvelle pour un ancien) ; le nom lui-même s'il n'a
 // pas d'autre écriture.

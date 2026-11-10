@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import EnTeteSimple from '@/components/app/EnTeteSimple';
 import { BOUTON, Carte, LIEN, TITRE } from '@/components/app/Ui';
-import { nomAffiche } from '@/lib/app/nomsSeances';
+import { nomPourLAthlete } from '@/lib/app/nomsSeances';
 import type { Plan, Semaine } from '@/lib/app/plan';
 import { clientService } from '@/lib/app/supabase';
 import { garderSeanceOrigine } from '@/lib/app/ecriture';
@@ -78,7 +78,7 @@ export default async function Garder({ searchParams }: { searchParams: Recherche
             <>
               {/* C45 : la séance nommée. Validé par le coach le 05/11/2026 (1A). */}
               <p className="text-sm text-[#4A4866] leading-relaxed">
-                {nom ? <>Ta séance de {jour}, <strong className="text-indigo">{nomAffiche(nom)}</strong>, a été allégée</> : `Ta séance de ${jour} a été allégée`} en
+                {nom ? <>Ta séance de {jour}, <strong className="text-indigo">{nomPourLAthlete(nom)}</strong>, a été allégée</> : `Ta séance de ${jour} a été allégée`} en
                 endurance fondamentale à cause de signaux de fatigue. Si tu te sens bien, tu peux la remettre telle qu’elle
                 était prévue.
               </p>

@@ -90,6 +90,9 @@ export type Jour = {
   date: string;
   date_iso: string | null;
   seance: string;
+  // Le nom du calendrier (moteur 8.461) : le code de sa séance de la barre, puis les mots (« S2c 5×3′/1′ R · Seuil 2
+  // court, route ») ; absent d'un plan écrit avant.
+  nom?: string;
   terrain: string;
   duree: string;
   rpe: string;

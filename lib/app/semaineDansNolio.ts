@@ -14,6 +14,7 @@
  * Le volume et le nombre de séances : ses séances de course, trail et tapis, comme ceux que le moteur écrit.
  * Et « Pourquoi cette semaine » en sept réponses, quand la semaine écrite les porte (moteur 8.460). Fonctions pures.
  */
+import { lireCode } from './codeSeance';
 import type { SeanceEnvoyee } from './coaching';
 import { ajouterJours, type Jour, type Semaine } from './plan';
 import { FAMILLES_DE_LA_BARRE } from './barreFamilles';
@@ -58,6 +59,12 @@ const FAMILLE_DU_NOM: [RegExp, string][] = [
 export function familleDuNom(nom: string | null | undefined): string | null {
   const n = String(nom ?? '').normalize('NFC').replace(/\s+/g, ' ').trim();
   if (!n) return null;
+  // Le code en tête du nom (moteur 8.461, lib/app/codeSeance.ts) : sa famille.
+  const lu = lireCode(n);
+  if (lu) {
+    return lu.lue ?? ({ SL: 'sl', WEC: 'sl', EF: 'ef', REC: 'ef', ACT: 'ef', RF: 'renfo', VÉLO: 'ef', LIBRE: 'ef' } as Record<string, string>)[lu.famille]
+      ?? null;
+  }
   const barre = FAMILLES_DE_LA_BARRE[n];
   if (barre) return barre;
   return FAMILLE_DU_NOM.find(([motif]) => motif.test(n))?.[1] ?? null;
@@ -82,8 +89,13 @@ type Ecrite = { cle: string; nolio: string; date: string; nom: string; minutes: 
   revision: string | null; contenu: string | null; ordre: number };
 const enLigne = (e: Pick<Ecrite, 'nom' | 'minutes' | 'rpe'>) =>
   [e.nom, e.minutes ? enHeures(e.minutes) : null, e.rpe !== null ? `RPE ${e.rpe}` : null].filter(Boolean).join(' · ');
-// La structure d'un nom, « 5 × 3 min » de « VO2max · 15 min — 5 × 3 min » ; le nom entier sans elle.
-const structure = (nom: string) => (nom.includes(' — ') ? nom.slice(nom.indexOf(' — ') + 3).trim() : nom);
+// La structure d'un nom, « 5 × 3 min » de « VO2max · 15 min — 5 × 3 min », « 5×3′/1′ » de « S2c 5×3′/1′ R · Seuil 2
+// court, route » (le code, moteur 8.461) ; le nom entier sans elle.
+const structure = (nom: string) => {
+  const lu = lireCode(nom);
+  if (lu) return lu.structure || lu.code;
+  return nom.includes(' — ') ? nom.slice(nom.indexOf(' — ') + 3).trim() : nom;
+};
 
 const marque = (quoi: Retouche, avant: string | null = null, jour?: string): Marque => ({
   quoi, avant,

@@ -1,5 +1,6 @@
 // Le journal du moteur en clair pour le coach (les règles du dimanche, cts_ajustements), et les doses lues : partagés par
 // l'aperçu du dimanche et le rapport du dimanche.
+import { lireCode, nomCourt } from './codeSeance';
 import { CORRECTIONS, type Correction } from './correctionsTextes';
 import type { FamilleLue } from './classement';
 import type { Questionnaire, Realise } from './ecriture';
@@ -79,7 +80,8 @@ export function enClair(e: Entree, seances?: string[], realise?: Pick<Realise, '
     // 08/11/2026) : « Séance Seuil 1 côte 5-15 % de mardi » ; sans son nom, « Séance de mardi ». Une séance allégée en cours
     // de semaine (A8) n'a pas tenu sa marche non plus.
     case 'R2': {
-      const nom = nomDe?.(String(e.seance ?? ''))?.split(' — ')[0].split(' · ')[0].trim();
+      // Un nom codé (moteur 8.461) : ses mots ; un nom d'avant, sa tête (lib/app/codeSeance.ts, nomCourt).
+      const nom = nomCourt(nomDe?.(String(e.seance ?? '')) ?? '');
       const quoi = [e.trop_dur && 'plus dure que prévu', e.ecourtee && 'écourtée'].filter(Boolean).join(' et ') || (e.allegee ? 'allégée' : '');
       return [`Séance ${nom ? `${nom} ` : ''}de ${jourDeLaSeance(e.seance)}${quoi ? ` ${quoi}` : ''} : sa marche est refaite, sous une autre forme.`];
     }
@@ -110,7 +112,10 @@ export function enClair(e: Entree, seances?: string[], realise?: Pick<Realise, '
     case 'C1':
       if (e.doses && typeof e.doses === 'object') {
         return Object.entries(e.doses as Record<string, Dose>)
-          .filter(([f]) => !seances || !QUALITES_NOMMEES.has(f) || seances.some((n) => n.startsWith(FAMILLE[f as FamilleLue] ?? f)))
+          // La famille d'une séance de la semaine : son code (moteur 8.461), ou la tête de son nom d'avant (« VO2 long … »
+          // pour la VO2max, qui ne commence jamais par « VO2max »).
+          .filter(([f]) => !seances || !QUALITES_NOMMEES.has(f) || seances.some((n) => lireCode(n)?.lue === f
+            || n.startsWith(FAMILLE[f as FamilleLue] ?? f) || (f === 'vo2max' && /^VO2 /.test(n))))
           // La prudence (moteur 8.460, décision coach du 09/11/2026) : la famille refait sa marche cette semaine (R1, R2,
           // R8), la séance lue ne la fait pas monter. BROUILLON (CTS_TEXTES_A_VALIDER.md, section S).
           .map(([f, d]) => (Array.isArray(e.prudence) && (e.prudence as string[]).includes(f)

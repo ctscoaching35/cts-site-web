@@ -8,6 +8,7 @@
  * Les pages « Cette semaine » et « Dimanche » y sont fondues. Le calcul (l'ordre, les étiquettes, « Urgent ») est dans
  * espaceParAthlete.ts. Côté serveur seulement.
  */
+import { nomCourt } from './codeSeance';
 import { vueDuCoach, type LigneAthlete, type VueCoach } from './espaceCoach';
 import { ajustementsDuCoach, type Ajustement } from './ecriture';
 import {
@@ -108,7 +109,7 @@ function decisionDuMoteur(l: LigneMoteur): DecisionMoteur {
   const allegees = l.ajustements.flatMap((x) => x.allegees);
   const fatigue = l.raisons.includes('fatigue') || allegees.length > 0;
   const detail = allegees.length
-    ? allegees.map((j) => `${j.jour} : séance ${j.nom.split(' — ')[0].split(' · ')[0]} allégée en EF`).join(' · ')
+    ? allegees.map((j) => `${j.jour} : séance ${nomCourt(j.nom)} allégée en EF`).join(' · ')
     : l.raisons.map((r) => (r === 'fatigue' ? 'semaine allégée' : r)).join(', ');
   return { texte: fatigue ? 'Fatigue franche' : 'Semaine ajustée', ...(detail ? { detail: ligne(detail) } : {}) };
 }
