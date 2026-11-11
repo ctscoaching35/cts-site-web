@@ -149,6 +149,9 @@ export type Semaine = {
   // La semaine écrite de reprise après la course d'un autre objectif (moteur 8.459, OM4) : son bandeau Nolio parle de la
   // course (lib/app/coaching.ts, seancesDuMoteur, la rend au moteur).
   reprise_apres_course?: boolean;
+  // La semaine de reprise après un arrêt de 8 jours et plus (moteur 8.462, C2 de la revue des plans du 12/11/2026) : sans
+  // intensité, son bandeau Nolio s'appelle « Semaine de reprise » et parle de l'arrêt.
+  reprise_arret?: boolean;
   // « Pourquoi cette semaine » (moteur 8.460, la doctrine de la semaine en sept questions ; décision 11 du coach du
   // 09/11/2026 : côté coach seulement) : sept réponses dans l'ordre, chacune une phrase, et la donnée qui n'a pas pu être
   // lue (CONTRAT_API_CTS.md). Absente d'une semaine que le moteur a écrite sans rien lire. Rien ne l'affiche ici.

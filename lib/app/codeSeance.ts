@@ -22,7 +22,7 @@ const FAMILLES: Record<string, [FamilleCode | null, string]> = {
   VO2c: ['vo2max', 'VO2max court'], VO2l: ['vo2max', 'VO2max long'], SPR: ['sprint', 'Sprints en côte'],
   A10: ['allure', 'Allure 10 km'], AS: ['allure', 'Allure semi'], AM: ['allure', 'Allure marathon'],
   SL: [null, 'Sortie longue'], WEC: [null, 'Week-end choc'], NAV: ['mecanique', 'Navettes'],
-  MYO: ['mecanique', 'Myocrossmax'], TAPIS: ['mecanique', 'Montée sur tapis'], RF: [null, 'Renfo'], TEST: [null, 'Test'],
+  MYO: ['mecanique', 'Côtes et renfo'], TAPIS: ['mecanique', 'Montée sur tapis'], RF: [null, 'Renfo'], TEST: [null, 'Test'],
   CT: ['vo2max', 'Course test'], 'VÉLO': [null, 'EF à vélo'], LIBRE: [null, 'Sortie libre'],
 };
 const TERRAINS = ['R', 'V', 'C', 'C+'];

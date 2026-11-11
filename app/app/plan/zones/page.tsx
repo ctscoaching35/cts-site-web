@@ -8,6 +8,7 @@ import { Carte, LIEN, TITRE } from '@/components/app/Ui';
 import { maFiche } from '@/lib/app/coaching';
 import { contexte, lien, type Recherche } from '@/lib/app/contexte';
 import { dateLongue, type CleTest } from '@/lib/app/plan';
+import { ecartObjectifVc, texteEcartObjectifVc } from '@/lib/app/objectifVc';
 import {
   allure, fcSeuil2HorsPlan, kmh, QUAND_FC_SEUIL2_HORS_PLAN, remplir, testFait, testOuvert, testsProposes, texteRecoupement,
   valeursChange, type Profil,
@@ -73,6 +74,12 @@ export default async function TesZones({ searchParams }: { searchParams: Recherc
                   Ta valeur : {fait.valeur}{fait.le ? ` · le ${dateLongue(fait.le, true)}` : ''}
                 </p>
               ) : <p className="text-sm text-[#5E5C78]">Pas encore de valeur.</p>}
+              {/* C12 (moteur 8.462, revue des plans du 12/11/2026) : sur la route, un objectif à plus de 5 % de ce que sa
+                  vitesse critique prédit, dit à l'athlète avec une cible proposée ; il garde son choix (BROUILLON). */}
+              {t.cle === 'vitesse_critique' && (() => {
+                const e = ecartObjectifVc(plan.course.format, plan.course.temps_cible, profil.vc_ms);
+                return e ? <p className="text-sm text-indigo leading-relaxed bg-sand rounded-xl p-3">{texteEcartObjectifVc(e)}</p> : null;
+              })()}
               {/* Le seuil 1 recoupé (moteur 8.320), comme le calculateur : sans l'allure du palier, une invitation ;
                   avec la vitesse critique, la situation du test et la phrase de transparence. */}
               {t.cle === 'parole' && zones.recoupement && profil.fc_seuil1 !== null && profil.v_seuil1_ms === null && profil.vc_ms === null && (

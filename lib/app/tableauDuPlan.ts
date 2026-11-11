@@ -44,7 +44,7 @@ export async function donneesTableau(ctx: Contexte): Promise<DonneesTableau> {
     // Un coaché : ses séances sont dans Nolio, son accord est celui du Suivi de son coach (T5).
     ctx.coache ? accordDuCoache(ctx.cle) : Promise.resolve(false),
     trameDuPlan(ctx.cle).catch(() => null),
-    service.from('semaines_ecrites').select('numero, realise, lundi:donnees->>lundi, reprise:donnees->>reprise_apres_course').eq('plan_id', ctx.cle),
+    service.from('semaines_ecrites').select('numero, realise, lundi:donnees->>lundi, reprise:donnees->>reprise_apres_course, arret:donnees->>reprise_arret').eq('plan_id', ctx.cle),
   ]);
   if (!p?.parametres) {
     return { trame: trameDesDonnees(ctx.plan), realises: [], fiches: [], nolio: ctx.coache ? 'coache' : null, accord: false, ecrit: false,
@@ -52,7 +52,9 @@ export async function donneesTableau(ctx: Contexte): Promise<DonneesTableau> {
   }
   const realises = (lignes ?? []).map((l) => l.realise as Realise | null).filter((r): r is Realise => Boolean(r))
     .sort((a, b) => Number(a.numero.slice(1)) - Number(b.numero.slice(1)));
-  const reprises = (lignes ?? []).filter((l) => String(l.reprise) === 'true' && l.lundi).map((l) => String(l.lundi));
+  // Et la semaine de reprise après un arrêt (moteur 8.462, C2).
+  const reprises = (lignes ?? []).filter((l) => (String(l.reprise) === 'true' || String(l.arret) === 'true') && l.lundi)
+    .map((l) => String(l.lundi));
   // E3 : une préparation arrêtée (remboursée) ; sans la migration du 05/11/2026, la lecture échoue et rien ne change.
   const arretee = !ctx.coache && p.nolio_statut === 'sorti'
     ? Boolean((await service.from('plans').select('arretee_le').eq('id', ctx.cle).maybeSingle().then((r) => r.data, () => null))?.arretee_le)

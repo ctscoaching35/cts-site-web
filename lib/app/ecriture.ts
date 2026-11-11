@@ -1977,7 +1977,10 @@ function valeursConnues(o: Objectif, lundi?: string | null, faits: Set<string> =
   const frais = (cle: string) => !loin || String(o.reperesSources?.[cle]?.le ?? '').slice(0, 10) >= ajouterJours(lundi as string, -RETEST_J);
   return { fc_seuil1: 'fc_seuil1' in o.profil && frais('fc_seuil1'), vc: 'vc_ms' in o.profil && frais('vc_ms'),
     fc_seuil2: 'fc_seuil2' in o.profil && frais('fc_seuil2'), faits_sans_valeur: [...faits].sort(),
-    lecture: o.accordLecture, coache: o.coache };
+    lecture: o.accordLecture, coache: o.coache,
+    // Sa vitesse critique elle-même (moteur 8.462, C12 de la revue des plans du 12/11/2026) : sur la route, le RPE de
+    // l'allure de course se lit à sa part de la VC.
+    ...(typeof o.profil.vc_ms === 'number' && frais('vc_ms') ? { vc_ms: o.profil.vc_ms } : {}) };
 }
 
 // Un test fait sans valeur ne revient pas avant 6 semaines (décision coach du 01/11/2026 : « l'athlète ne refait jamais
