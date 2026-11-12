@@ -4,6 +4,7 @@ import type { LigneTrame } from '@/lib/app/ecriture';
 import { BANNIERE, FAMILLES } from '@/lib/app/charte';
 import { lien, type Contexte } from '@/lib/app/contexte';
 import { estSemaineDeWeekEndChoc, nomPourLAthlete, SEMAINE_DE_REPRISE } from '@/lib/app/nomsSeances';
+import { motsDeLaSemaine } from '@/lib/app/motsDeLaSemaine';
 import { ajouterJours, dateLongue, slugFiche, type Jour, type Plan, type Semaine } from '@/lib/app/plan';
 import { enHeures, type Fiche, type Jauge } from '@/lib/app/tableau';
 import type { CourseSecondaire, EtatNolio, RaisonNolio, SeanceNolio } from '@/lib/app/tableauDuPlan';
@@ -323,19 +324,6 @@ export const typeEnClair = (type: string, reprise = false) =>
 export const contientLaCourse = (lundi: string | null | undefined, course: string | null | undefined) =>
   Boolean(lundi && course && course >= lundi && course <= ajouterJours(lundi, 6));
 
-// Q1 (décision coach du 05/11/2026 au soir, « A ») : les noms des séances restent ceux de Nolio ; sous « Ta semaine », les
-// mots qu'ils emploient, repliés, une ligne chacun. Validé par le coach le 05/11/2026 (1A ; les huit lignes).
-const LEXIQUE: [string, string][] = [
-  ['EF', 'endurance fondamentale, RPE 3 : tu tiens une conversation sans gêne.'],
-  ['SL', 'sortie longue, la plus longue de ta semaine, en endurance.'],
-  ['Seuil 1', 'RPE 5 : un effort soutenu, tu dis encore des phrases courtes.'],
-  ['Seuil 2', 'RPE 7 : un effort dur, quelques mots seulement, difficilement.'],
-  ['Myocrossmax', 'de la force en côte : des montées enchaînées avec des exercices de renforcement.'],
-  ['Navettes', 'des montées et des descentes répétées sur une même pente, pour habituer tes jambes au relief.'],
-  ['RPE', 'ton effort ressenti, de 0 à 10 : note ton souffle, pas la douleur des jambes.'],
-  ['Hooper', 'ta forme du dimanche : fatigue, sommeil, stress et courbatures. Plus il est haut, plus tu es fatigué.'],
-];
-
 const ARRIVEE = {
   invitation: 'Tes séances arrivent dans Nolio dès que tu as rejoint l’équipe CTS.',
   bientot: 'Tes séances de la semaine arrivent bientôt dans Nolio.',
@@ -410,6 +398,10 @@ export function CetteSemaine({ semaine, ligne, nolio = null, arrivee = null, dep
   const ligneJour = (j: Jour) => ligneDeSemaine({ cle: j.id, date: j.date_iso, jourTexte: j.jour, couleur: couleurDuJour(j),
     nom: nomPourLAthlete(j.nom ?? j.seance), duree: j.duree || null });
   const note = (texte: string) => <p className="mt-2.5 p-3 rounded-xl bg-sand text-xs text-[#4A4866] leading-relaxed">{texte}</p>;
+  // Les noms des séances affichées, dans le même ordre que les branches ci-dessous (sans accord de lecture : aucune).
+  const affichees = sansAccord ? [] : nolio ? nolio.map((x) => x.nom) : jours.length ? jours.map((j) => j.nom ?? j.seance)
+    : ligne ? ligne.seances_cles.map((c) => c.nom ?? c.seance) : [];
+  const lexique = motsDeLaSemaine(affichees);
   return (
     <Carte className="space-y-1">
       <div className="flex justify-between items-baseline gap-3 mb-2">
@@ -463,18 +455,22 @@ export function CetteSemaine({ semaine, ligne, nolio = null, arrivee = null, dep
         : !nolio && !jours.length && !ligne ? null
         : nolio || !arrivee ? note('Le détail de chaque séance est dans ton appli Nolio.')
         : note(ARRIVEE[arrivee])}
-      <details className="group pt-1">
-        <summary className="cursor-pointer list-none inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">
-          Les mots de ta semaine <span aria-hidden className="ml-1 inline-block transition-transform group-open:rotate-90">›</span>
-        </summary>
-        <dl className="pb-1 space-y-1.5">
-          {LEXIQUE.map(([mot, sens]) => (
-            <div key={mot} className="text-[0.8125rem] text-[#4A4866] leading-relaxed">
-              <dt className="inline font-bold text-indigo">{mot}</dt> : <dd className="inline">{sens}</dd>
-            </div>
-          ))}
-        </dl>
-      </details>
+      {/* Q1 (05/11/2026) : les noms restent ceux de Nolio ; dessous, repliés, les mots qu'ils emploient. Lot 2 (décision
+          du coach du 12/11/2026) : ceux des séances affichées seulement, lib/app/motsDeLaSemaine.ts ; aucun, pas de bloc. */}
+      {lexique.length > 0 && (
+        <details className="group pt-1">
+          <summary className="cursor-pointer list-none inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">
+            Les mots de ta semaine <span aria-hidden className="ml-1 inline-block transition-transform group-open:rotate-90">›</span>
+          </summary>
+          <dl className="pb-1 space-y-1.5">
+            {lexique.map(({ mot, sens }) => (
+              <div key={mot} className="text-[0.8125rem] text-[#4A4866] leading-relaxed">
+                <dt className="inline font-bold text-indigo">{mot}</dt> : <dd className="inline">{sens}</dd>
+              </div>
+            ))}
+          </dl>
+        </details>
+      )}
     </Carte>
   );
 }
