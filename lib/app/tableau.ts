@@ -135,6 +135,12 @@ export function texteDeLaMontee(m: Montee, route = false): string {
   return m.dansLesTemps ? `${debut}, le plan en prévoyait ${y}\u00a0% : tu es dans les temps.`
     : `${debut}, le plan en prévoyait ${y}\u00a0%. Un peu de retard : ta préparation s’adapte.`;
 }
+// La forme courte du coach, dans « Mes athlètes » (réponse du coach du 12/11/2026, « B ») : le message entier tenait 3 à 5
+// lignes par athlète.
+export function texteCourtDeLaMontee(m: Montee, route = false): string {
+  const [x, y] = [Math.round(100 * m.fait), Math.round(100 * m.prevu)];
+  return `${x}\u00a0% ${route ? 'parcourus' : 'gravis'} · ${y}\u00a0% prévus · ${m.dansLesTemps ? 'dans les temps' : 'un peu de retard'}`;
+}
 const SUITE = ', c’est l’entraînement que tu as vraiment fait depuis le début, sur tout ce que ton plan prévoit jusqu’à la course. '
   + 'Elle ne redescend jamais. Le pointillé : où ton plan te voyait aujourd’hui.';
 export const phraseDeLaMontee = (route = false) => `${route ? 'La longueur' : 'La hauteur'}${SUITE}`;
