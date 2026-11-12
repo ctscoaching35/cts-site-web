@@ -74,9 +74,9 @@ export default async function AccueilAthlete({ ctx, demarrage, montre = false, d
           </ApresTaCourse> : <CarteProchainObjectif ctx={ctx} attente={attente} />}
           {demarrage && <PourBienDemarrer acheteur={false} nolio="coache" accord={Boolean(ctx.fiche?.accord)} questionnaire={false} installer={installer} profil={profil} lienProfil={lienProfil}
             demonstration={ctx.demonstration} adapte={!ctx.aLaMain} planId="sans-objectif" />}
-          {/* B-AT-2 et §8, point 9 : la carte reste, avec sa raison ; le questionnaire du samedi, qu'il reçoit. */}
-          <CetteSemaine semaine={null} ligne={null} questionnaire nolio={lecture.seances} raison={lecture.raison} coache
-            lundi={lundiCourant} hooper={Boolean(ctx.fiche?.accord)} jour={jour} />
+          {/* B-AT-2 : la carte reste, avec sa raison (ses séances seulement, décision coach du 12/11/2026). */}
+          <CetteSemaine semaine={null} ligne={null} nolio={lecture.seances} raison={lecture.raison} coache
+            lundi={lundiCourant} jour={jour} />
           <CarteNouveauBadge badges={nouveaux} href={`${lien('/app/profil', ctx)}#badges`} />
         </main>
       </>
@@ -170,8 +170,8 @@ export default async function AccueilAthlete({ ctx, demarrage, montre = false, d
           </ApresTaCourse> : <CarteProchainObjectif ctx={ctx} attente={attente} />}
           {demarrage && <PourBienDemarrer acheteur={false} nolio="coache" accord={d.accord} questionnaire={false} installer={installer} profil={profil} lienProfil={lienProfil}
             demonstration={ctx.demonstration} adapte={!ctx.aLaMain} planId={ctx.cle} />}
-          <CetteSemaine semaine={null} ligne={null} questionnaire nolio={lectureEntreDeux.seances} raison={lectureEntreDeux.raison}
-            coache lundi={lundiCourant} hooper={d.accord} jour={jour} />
+          <CetteSemaine semaine={null} ligne={null} nolio={lectureEntreDeux.seances} raison={lectureEntreDeux.raison}
+            coache lundi={lundiCourant} jour={jour} />
           {/* Q3 : « Voir ma préparation », un seul nom (avant : « Revoir ta préparation »). */}
           <Link href={lien('/app/plan', ctx)} className="block bg-white rounded-2xl border border-indigo/[0.08] p-4 text-sm text-indigo">
             Ta dernière course : <strong>{plan.course.nom}</strong>, {dateLongue(plan.course.date, true)}
@@ -242,17 +242,17 @@ export default async function AccueilAthlete({ ctx, demarrage, montre = false, d
         {/* Un plan acheté pendant un coaching (décision coach du 05/11/2026 au soir, « 3 A ») : la semaine du plan, sans
             rien de Nolio, où ce plan ne s'écrit pas. */}
         {(etape !== 'apres' || recupAcheteur) && !ctx.aLaMain && (d.nolio === 'coaching' ? (
-          <CetteSemaine semaine={semaine} ligne={ligne} questionnaire={false} lundi={ligne?.lundi ?? lundiCourant} horsNolio jour={jour}
+          <CetteSemaine semaine={semaine} ligne={ligne} lundi={ligne?.lundi ?? lundiCourant} horsNolio jour={jour}
             course={plan.course.date} />
         ) : (
-          <CetteSemaine semaine={semaine} ligne={ligne} questionnaire={d.ecrit && restants > 7} nolio={nolio}
+          <CetteSemaine semaine={semaine} ligne={ligne} nolio={nolio}
             arrivee={arrivee} depuis={arrivee ? jour : null} raison={raison} coache={Boolean(ctx.coache)}
-            lundi={ligne?.lundi ?? lundiCourant} hooper={d.accord} jour={jour} course={plan.course.date} test={test}
+            lundi={ligne?.lundi ?? lundiCourant} jour={jour} course={plan.course.date} test={test}
             accord={accord} />
         ))}
         {etape !== 'apres' && ctx.aLaMain && (
-          <CetteSemaine semaine={null} ligne={null} questionnaire nolio={nolio} raison={lecture?.raison ?? null} coache
-            lundi={lundiCourant} hooper={d.accord} jour={jour} course={plan.course.date} />
+          <CetteSemaine semaine={null} ligne={null} nolio={nolio} raison={lecture?.raison ?? null} coache
+            lundi={lundiCourant} jour={jour} course={plan.course.date} />
         )}
         {/* Un plan acheté pendant un coaching (« coaching ») : « Pour bien démarrer » ne s'affiche pas pour lui, la carte Nolio
             le dit donc tout de suite, comme une sortie ou un arrêt (avant le 05/11/2026 au soir, son accueil restait sans

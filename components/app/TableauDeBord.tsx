@@ -354,33 +354,29 @@ export type TestDeLaSemaine = { titre: string; comment: string; saisie: string |
 // l'accord (C18 : « Donner mon accord › », accord : son adresse, pour un acheteur) ; Nolio muet, la semaine écrite et
 // « Nolio ne répond pas ».
 // lundi : le lundi de la semaine, quand il n'y a pas de semaine écrite (un coaché à la main ou sans objectif), pour
-// placer le questionnaire du samedi ; hooper : la forme du dimanche, avec l'accord de lecture (§8, point 9).
+// reconnaître la semaine de la course.
+// SES SÉANCES SEULEMENT (lot 2 de l'app, décision coach du 12/11/2026) : les lignes « Questionnaire « Ta semaine
+// prochaine » » du samedi et « Ta forme du dimanche (Hooper) » du dimanche ne sont plus dans la liste des jours ; le
+// questionnaire et le Hooper restent dans Nolio, et le Hooper dans « Données ».
 // horsNolio : un plan acheté pendant un coaching (« coaching », décision coach du 05/11/2026 au soir, « 3 A ») : la semaine
-// du plan seule, sans rien de Nolio (ni ses séances, ni « elles arrivent », ni le questionnaire du samedi, ni le lien).
+// du plan seule, sans rien de Nolio (ni ses séances, ni « elles arrivent », ni le lien).
 // jour (C15) : aujourd'hui, mis en avant, les jours passés grisés. course (C13) : la date de la course, pour « Semaine de
 // course ». test (Q14) : le test que la préparation écrit cette semaine. (ajustee, Q7, retiré le 10/11/2026 : la phrase
 // « Ajustée d'après ta semaine passée… » n'est plus montrée, décision 20 du coach.)
 // AUCUNE MARQUE (décision 11 du coach du 09/11/2026, doctrine de la semaine) : il voit sa semaine telle qu'elle est dans
 // Nolio, c'est tout ; une séance retirée n'y est plus, une séance déplacée est à son nouveau jour (la lecture de Nolio,
 // triée par date). « Ajustée par ton coach. » et l'étiquette « Semaine ajustée » sont retirées.
-export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null, arrivee = null, depuis = null,
-  raison = null, coache = false, lundi = null, hooper = false, horsNolio = false, jour = null, course = null,
+export function CetteSemaine({ semaine, ligne, nolio = null, arrivee = null, depuis = null,
+  raison = null, coache = false, lundi = null, horsNolio = false, jour = null, course = null,
   test = null, accord = null }: {
-  semaine: Semaine | null; ligne: LigneTrame | null; questionnaire: boolean; nolio?: SeanceNolio[] | null;
+  semaine: Semaine | null; ligne: LigneTrame | null; nolio?: SeanceNolio[] | null;
   arrivee?: keyof typeof ARRIVEE | null; depuis?: string | null; raison?: RaisonNolio | null;
-  coache?: boolean; lundi?: string | null; hooper?: boolean; horsNolio?: boolean; jour?: string | null; course?: string | null;
+  coache?: boolean; lundi?: string | null; horsNolio?: boolean; jour?: string | null; course?: string | null;
   test?: TestDeLaSemaine | null; accord?: string | null;
 }) {
   const muet = !nolio && raison === 'muet';
   const sansAccord = !nolio && raison === 'sans_accord';
   const jours = (semaine?.jours ?? []).filter((j) => j.famille !== 'repos' && j.seance && !(!muet && depuis && j.date_iso && j.date_iso < depuis));
-  // Le questionnaire du samedi (décision coach du 24/10/2026), à sa place parmi les séances : après celles du samedi ;
-  // sans semaine écrite, le samedi de la semaine (lundi + 5).
-  const samediEcrit = semaine?.jours.find((j) => j.jour.toLowerCase().startsWith('sam'));
-  const samedi = samediEcrit ?? (lundi ? { date_iso: ajouterJours(lundi, 5), jour: 'samedi' } : null);
-  const dimanche = samedi?.date_iso ? ajouterJours(samedi.date_iso, 1) : null;
-  const apresSamedi = (date: string | null | undefined, jourTexte: string) =>
-    samedi?.date_iso && date ? date > samedi.date_iso : jourTexte.toLowerCase().startsWith('dim');
   if (!nolio && !jours.length && !ligne && !raison) return null;
   const lundiDeLaSemaine = ligne?.lundi || semaine?.lundi || lundi;
   const etiquette = contientLaCourse(lundiDeLaSemaine, course) ? { texte: 'Semaine de course', couleur: '#0C6E5F' }
@@ -389,8 +385,8 @@ export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null, arri
   // Une ligne de la semaine : le jour (aujourd'hui en avant, les jours passés grisés, C15), la couleur de la séance, son
   // nom et, dans sa colonne, sa durée totale (C16 : le nom garde le temps de travail de Nolio, « Seuil 2 court · 18 min —
   // 9 × 2 min », la colonne dit la séance entière, « 51 min »).
-  const ligneDeSemaine = ({ cle, date, jourTexte, couleur, nom, duree, discrete = false }: {
-    cle: string; date: string | null; jourTexte: string; couleur: string; nom: string; duree?: string | null; discrete?: boolean;
+  const ligneDeSemaine = ({ cle, date, jourTexte, couleur, nom, duree }: {
+    cle: string; date: string | null; jourTexte: string; couleur: string; nom: string; duree?: string | null;
   }) => {
     const passe = Boolean(jour && date && date < jour);
     const aujourdhui = Boolean(jour && date === jour);
@@ -402,21 +398,13 @@ export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null, arri
           {aujourdhui && <span className="block text-[0.6875rem] font-bold">aujourd’hui</span>}
         </span>
         <span className={clsx('w-1.5 h-7 rounded-full', passe && 'opacity-40')} style={{ backgroundColor: couleur }} aria-hidden />
-        <span className={clsx('text-sm leading-snug', discrete || passe ? 'text-[#5E5C78] font-medium' : 'text-indigo font-semibold')}>
+        <span className={clsx('text-sm leading-snug', passe ? 'text-[#5E5C78] font-medium' : 'text-indigo font-semibold')}>
           {nom}{passe && <span className="sr-only"> (passée)</span>}
         </span>
         <span className="text-xs tabular-nums text-right whitespace-nowrap text-[#5E5C78]">{duree ?? ''}</span>
       </li>
     );
   };
-  const quiz = questionnaire && samedi && (
-    <>
-      {ligneDeSemaine({ cle: 'questionnaire', date: samedi.date_iso, jourTexte: samedi.jour, couleur: '#B7B6C8',
-        nom: 'Questionnaire « Ta semaine prochaine » à 8 h, dans Nolio', discrete: true })}
-      {hooper && dimanche && ligneDeSemaine({ cle: 'hooper', date: dimanche, jourTexte: 'dimanche', couleur: '#B7B6C8',
-        nom: 'Ta forme du dimanche (Hooper) à 8 h, dans Nolio', discrete: true })}
-    </>
-  );
   const ligneNolio = (x: SeanceNolio) => ligneDeSemaine({ cle: x.id, date: x.date, jourTexte: '', couleur: x.couleur ?? '#B9C7C3',
     nom: nomPourLAthlete(x.nom), duree: x.minutes !== null ? enHeures(x.minutes) : null });
   const ligneJour = (j: Jour) => ligneDeSemaine({ cle: j.id, date: j.date_iso, jourTexte: j.jour, couleur: couleurDuJour(j),
@@ -450,22 +438,15 @@ export function CetteSemaine({ semaine, ligne, questionnaire, nolio = null, arri
               : 'Pour les voir ici, donne ton accord de lecture.'}
           </p>
           {!coache && accord && <Link href={accord} className={LIEN}>Donner mon accord ›</Link>}
-          {quiz && <ul>{quiz}</ul>}
         </div>
       ) : nolio ? (
         <ul>
           {nolio.length === 0 && <li className="min-h-11 flex items-center text-sm text-[#5E5C78] border-b border-indigo/[0.06]">Rien de prévu dans Nolio cette semaine.</li>}
-          {nolio.filter((x) => !apresSamedi(x.date, '')).map(ligneNolio)}
-          {quiz}
-          {nolio.filter((x) => apresSamedi(x.date, '')).map(ligneNolio)}
+          {nolio.map(ligneNolio)}
         </ul>
       ) : jours.length > 0 ? (
-        <ul>
-          {jours.filter((j) => !apresSamedi(j.date_iso, j.jour)).map(ligneJour)}
-          {quiz}
-          {jours.filter((j) => apresSamedi(j.date_iso, j.jour)).map(ligneJour)}
-        </ul>
-      ) : !ligne ? (quiz ? <ul>{quiz}</ul> : null) : (
+        <ul>{jours.map(ligneJour)}</ul>
+      ) : !ligne ? null : (
         <div className="space-y-1">
           <p className="text-sm text-indigo">{enHeures(Math.round(ligne.volume_h * 60))} de volume prévu{ligne.week_end_choc ? ' · week-end choc' : ''}</p>
           {ligne.seances_cles.length > 0 && (
