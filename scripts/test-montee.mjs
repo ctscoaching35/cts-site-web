@@ -22,7 +22,7 @@ registerHooks({
     }
   },
 });
-const { blocsDuPlan, debutDeLObjectif, jaugeDuPlan, monteeDuPlan, phraseDeLaMontee, texteDeLaMontee, DANS_LES_TEMPS } = await import('../lib/app/tableau.ts');
+const { blocsDuPlan, debutDeLObjectif, jaugeDuPlan, monteeDuPlan, phraseDeLaMontee, texteCourtDeLaMontee, texteDeLaMontee, DANS_LES_TEMPS } = await import('../lib/app/tableau.ts');
 const { ajouterJours } = await import('../lib/app/plan.ts');
 
 // Huit semaines à partir du lundi 4 janvier 2027 : deux de fondations, quatre de développement (une allégée), deux
@@ -97,6 +97,10 @@ test('les messages de la montée, mot pour mot, pour l’athlète et pour son co
     `Tu as gravi 30${nb}% de ta montée, le plan en prévoyait 40${nb}%. Un peu de retard : ta préparation s’adapte.`);
   assert.equal(texteDeLaMontee({ fait: 0.49, prevu: 0.51, dansLesTemps: true, mesure: 'charge' }, true),
     `Tu as parcouru 49${nb}% de ta route, le plan en prévoyait 51${nb}% : tu es dans les temps.`);
+  assert.equal(texteCourtDeLaMontee({ fait: 0.3, prevu: 0.38, dansLesTemps: false, mesure: 'charge' }),
+    `30${nb}% gravis · 38${nb}% prévus · un peu de retard`);
+  assert.equal(texteCourtDeLaMontee({ fait: 0.49, prevu: 0.51, dansLesTemps: true, mesure: 'charge' }, true),
+    `49${nb}% parcourus · 51${nb}% prévus · dans les temps`);
   assert.ok(phraseDeLaMontee().startsWith('La hauteur, c’est l’entraînement que tu as vraiment fait depuis le début'));
   assert.ok(phraseDeLaMontee(true).startsWith('La longueur, c’est'));
   assert.ok(phraseDeLaMontee().endsWith('Elle ne redescend jamais. Le pointillé : où ton plan te voyait aujourd’hui.'));
