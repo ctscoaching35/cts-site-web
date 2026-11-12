@@ -58,6 +58,31 @@ export function lignesDuProfil(profil: ProfilEntrainement, pourCoach = false): [
   ];
 }
 
+// « TA CARTE DE COUREUR » (lot 2 de l'app, décision A du coach du 12/11/2026), en tête du Profil, la même pour un acheteur
+// et un coaché : ce qu'il a rempli, en clair — son niveau, sa semaine habituelle, son terrain, ce qui lui coûte le plus
+// (au trail) ; une réponse absente n'a pas de ligne.
+export function lignesDeLaCarte(profil: ProfilEntrainement | null | undefined): [string, string][] {
+  if (!profil) return [];
+  const jours = Array.isArray(profil.jours_disponibles) ? profil.jours_disponibles : [];
+  const n = Number(profil.freq_hebdo);
+  const semaine = n > 0 ? [`${n} séance${n > 1 ? 's' : ''}`, jours.length ? jours.map((j) => j.slice(0, 3)).join(', ') : '',
+    profil.jour_sl ? `sortie longue le ${String(profil.jour_sl)}` : ''].filter(Boolean).join(' · ') : '';
+  const terrain = textes.terrain.options.find((o) => o.valeur === profil.terrain)?.titre;
+  const lignes: [string, string | undefined][] = [
+    ['Niveau', titreNiveau(profil.niveau)],
+    ['Semaine habituelle', semaine],
+    ['Terrain', terrain && `${terrain}${profil.tapis === 'oui' ? ' · un tapis qui monte' : ''}`],
+    ['Ce qui te coûte le plus', ACCENTS.find(([cle]) => cle === profil.cout_trail)?.[1]],
+  ];
+  return lignes.filter((l): l is [string, string] => Boolean(l[1]));
+}
+
+// Ce qu'un acheteur a rempli : les réponses du questionnaire de son plan (il n'a pas de fiche), lues avec ses droits.
+export async function profilDuPlanAchete(planId: string): Promise<ProfilEntrainement> {
+  const { data } = await (await clientServeur()).from('plans').select('intake').eq('id', planId).maybeSingle();
+  return profilPourLeQuestionnaire((data?.intake ?? null) as ProfilEntrainement | null);
+}
+
 // Le profil d'un formulaire, vérifié : le profil, ou la phrase de ce qui manque. pour : « son » (le coach, qui peut
 // choisir le niveau : niveau_coach, vide pour celui des faits), « ton » (l'athlète, qui garde le choix de son coach,
 // pris dans ancien).

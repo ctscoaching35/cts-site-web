@@ -7,10 +7,11 @@ import EnTeteApp from '@/components/app/EnTeteApp';
 import { Carte, Surtitre, TITRE } from '@/components/app/Ui';
 import { contexte, lien, type Recherche } from '@/lib/app/contexte';
 import { type CleTest } from '@/lib/app/plan';
-import { allure, testsProposes } from '@/lib/app/zones';
+import { allure, profilCoureur, testsProposes } from '@/lib/app/zones';
 import { StyleCoureur, TableauZones } from '@/components/app/ZonesEtStyle';
 import { mesBadges } from '@/lib/app/badgesNolio';
-import { lignesDuProfil, monProfilDEntrainement } from '@/lib/app/profilEntrainement';
+import { lignesDeLaCarte, lignesDuProfil, monProfilDEntrainement, profilDuPlanAchete, profilPourLeQuestionnaire }
+  from '@/lib/app/profilEntrainement';
 import { profilDEntrainementDeDemonstration } from '@/lib/app/demonstration';
 import { donneesTableau } from '@/lib/app/tableauDuPlan';
 
@@ -38,6 +39,16 @@ export default async function MonProfil({ searchParams }: { searchParams: Recher
   // En démonstration, celui du plan affiché (avant : 5 séances sur un plan qui en a 7) ; ?profil=vide, pas encore rempli.
   const entrainement = !ctx.coache ? null : ctx.demonstration ? await profilDEntrainementDeDemonstration(ctx)
     : await monProfilDEntrainement().catch(() => null);
+  // Ta carte de coureur : un coaché, son profil d'entraînement ; un acheteur, les réponses du questionnaire de son plan.
+  // Ce qui se mesure ne s'y montre que s'il est déjà chargé ici : le point fort, du test de vitesse critique (le volume
+  // habituel et la plus longue sortie lus dans Nolio ne le sont pas sur cette page : pas de ligne).
+  const rempli = ctx.coache ? entrainement
+    : ctx.demonstration ? profilPourLeQuestionnaire(await profilDEntrainementDeDemonstration(ctx))
+    : ctx.cle ? await profilDuPlanAchete(ctx.cle).catch(() => null) : null;
+  const carte = lignesDeLaCarte(rempli);
+  const coureur = profilCoureur(profil);
+  const pointFort = coureur ? `${coureur.coefficient < 0.9 ? 'La vitesse' : 'L’endurance'} · ${coureur.nom.toLowerCase()}, d’après ton test`
+    : null;
   const zones = plan.zones;
   const lignes = plan.mode_emploi.effort.zones.slice(1);
   // Ses repères se saisissent dans « Tes tests » ; ceux d'un coaché vont sur sa fiche (décision coach du 20/10/2026).
@@ -52,12 +63,41 @@ export default async function MonProfil({ searchParams }: { searchParams: Recher
     <>
       <EnTeteApp ctx={ctx} />
       <main className="mx-auto max-w-2xl px-4 pt-5 pb-6 space-y-4">
-        <div>
-          <h1 className={TITRE}>Ton profil de coureur</h1>
-          <p className="mt-1.5 text-[0.8125rem] text-[#5E5C78] leading-relaxed">
-            Tes repères, tirés de tes tests. Ils règlent les cibles de tes séances{d.ecrit ? ' et tes zones dans Nolio' : ''}.
-          </p>
-        </div>
+        <h1 className={TITRE}>Ton profil de coureur</h1>
+
+        {/* Ta carte de coureur (lot 2, décision A du coach du 12/11/2026) : en tête, la même pour un acheteur et un coaché ;
+            ce qu'il a rempli (« Modifier › » ouvre le formulaire de « Ton profil d'entraînement », plus bas, qu'un coaché
+            seul a), puis ce qui se mesure, en lecture seule, s'il est déjà là : son point fort, tiré du test de vitesse
+            critique. Les cartes détaillées restent dessous. */}
+        {(carte.length > 0 || pointFort) && (
+          <Carte className="space-y-1">
+            <Surtitre>Ta carte de coureur</Surtitre>
+            {carte.length > 0 && (
+              <dl className="pt-1">
+                {carte.map(([cle, valeur]) => (
+                  <div key={cle} className="grid grid-cols-[112px_1fr] gap-x-3 py-2.5 border-b last:border-b-0 border-indigo/[0.06] text-[0.84rem] text-indigo">
+                    <dt className="font-semibold text-[#5E5C78]">{cle}</dt><dd>{valeur}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+            {entrainement && carte.length > 0 && (
+              <Link href="#profil-entrainement" className="flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">Modifier ›</Link>
+            )}
+            {pointFort && (
+              <dl className={clsx(carte.length > 0 && 'border-t border-indigo/[0.06]')}>
+                <div className="grid grid-cols-[112px_1fr] gap-x-3 py-2.5 text-[0.84rem] text-indigo">
+                  <dt className="font-semibold text-[#5E5C78]">Ton point fort</dt>
+                  <dd>{pointFort}</dd>
+                </div>
+              </dl>
+            )}
+          </Carte>
+        )}
+
+        <p className="text-[0.8125rem] text-[#5E5C78] leading-relaxed">
+          Tes repères, tirés de tes tests. Ils règlent les cibles de tes séances{d.ecrit ? ' et tes zones dans Nolio' : ''}.
+        </p>
 
         {/* C39 : les trois tuiles alignées (leur titre sur deux lignes réservées : « Vitesse critique » en prenait deux). */}
         <section className="grid grid-cols-3 gap-2" aria-label="Tes repères">
