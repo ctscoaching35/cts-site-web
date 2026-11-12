@@ -22,7 +22,7 @@ registerHooks({
     }
   },
 });
-const { rapprocherEquipe, sansEcriture, estAncien } = await import('../lib/app/anciens.ts');
+const { rapprocherEquipe, sansEcriture, estAncien, enAttenteDeProfil } = await import('../lib/app/anciens.ts');
 
 const COACH = 'coach-1';
 const AUTRE = 'coach-2';
@@ -82,4 +82,12 @@ test('l’écriture du moteur saute les anciens athlètes, comme la programmatio
   // Sans la migration, la colonne manque : personne n'est ancien.
   assert.equal(sansEcriture({ programmation: 'auto', mode: 'coaching' }), false);
   assert.equal(estAncien({}), false);
+});
+
+test('une fiche créée d’elle-même attend son profil (ni questionnaire, ni Hooper) ; sans la migration, aucune n’attend', () => {
+  assert.equal(enAttenteDeProfil({ programmation: 'main', en_attente_profil: true }), true);
+  assert.equal(enAttenteDeProfil({ programmation: 'auto', en_attente_profil: false }), false);
+  assert.equal(enAttenteDeProfil({ programmation: 'main' }), false);
+  // Programmée à la main pendant l'attente : le moteur n'écrit rien pour elle.
+  assert.equal(sansEcriture({ programmation: 'main', mode: 'coaching', en_attente_profil: true }), true);
 });
