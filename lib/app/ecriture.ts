@@ -22,7 +22,8 @@ import {
 } from './coaching';
 import { envoyerRelanceInvitation, EXPEDITEUR } from './emailBienvenue';
 import { lienFicheCourse } from './ficheCourse';
-import { glucidesDeLaStrategie } from './strategie';
+import { strategieDeLaCourse } from './strategie';
+import { parametresAvecLaStrategie, sansLaStrategie } from './strategieMoteur';
 import { dateDe } from './trameNolio';
 import { appelNolio, athletesNolio, coachs, listeNolio, moiNolio, refusNolio, sansVitesseImpossible, SPORTS_COURSE, type ReponseNolio } from './nolio';
 import { estAncien, sansEcriture } from './anciens';
@@ -682,15 +683,16 @@ export async function semainesDansNolio(nolioAthlete: string, lundi: string): Pr
 async function semaineDuMoteur(o: Objectif, numero: string, retours: Retours | null, options: {
   sansAjustement?: boolean; reprise?: boolean;
 } = {}): Promise<SortieMoteur> {
-  // Sa stratégie du jour J gardée (le calculateur de nutrition) : le ravito de ses sorties longues y arrive.
-  const glucides = await glucidesDeLaStrategie(o.planId).catch(() => null);
+  // Sa stratégie du jour J gardée (le calculateur de nutrition), lue une fois : le ravito de ses sorties longues y arrive
+  // (glucides_cible), et ses quatre repères partent avec (parametres.strategie, décision coach du 12/11/2026, « Q2 A »).
+  const strategie = await strategieDeLaCourse(o.planId).catch(() => null);
   const lundi = o.plan.semaines.find((x) => x.numero === numero)?.lundi;
   const faits = await testsFaitsSansValeur(o.planId, lundi, o.accordLecture).catch(() => new Set<string>());
   // EC3 : les corrections que le coach a choisies sur l'aperçu, derrière leur interrupteur (lib/app/corrections.ts).
   const corrections = await correctionsAEnvoyer(o.planId, lundi, Boolean(options.sansAjustement));
   return moteur<SortieMoteur>('/v1/semaine', {
     ...(corrections.length ? { corrections } : {}),
-    parametres: glucides ? { ...o.parametres, glucides_cible: glucides } : o.parametres, numero, etat: o.etat, retours,
+    parametres: parametresAvecLaStrategie(o.parametres, strategie), numero, etat: o.etat, retours,
     sans_ajustement: Boolean(options.sansAjustement),
     valeurs: valeursConnues(o, lundi, faits), reprise: Boolean(options.reprise),
     charges_avant: await chargesAvant(o.planId, lundi).catch(() => null),
@@ -734,8 +736,10 @@ async function envoyerEtRanger(o: Objectif, numero: string, sortie: SortieMoteur
 } = {}): Promise<SortieMoteur> {
   const service = clientService();
   if (sortie.parametres) {
-    await service.from('plans').update({ parametres: sortie.parametres, trame: null }).eq('id', o.planId);
-    o.parametres = sortie.parametres;
+    // Sa stratégie, renvoyée chaque semaine, ne se garde pas avec ses paramètres (rien de nouveau dans la base).
+    const parametres = sansLaStrategie(sortie.parametres);
+    await service.from('plans').update({ parametres, trame: null }).eq('id', o.planId);
+    o.parametres = parametres;
   }
   const semaine = options.depuis
     ? { ...sortie.semaine, jours: sortie.semaine.jours.filter((j) => !j.date_iso || j.date_iso >= (options.depuis as string)) }
