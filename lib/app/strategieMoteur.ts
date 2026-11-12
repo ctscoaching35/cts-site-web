@@ -73,10 +73,11 @@ export function strategiePourLeMoteur(s: Lue): StrategieMoteur | null {
 }
 
 // Les paramètres envoyés au moteur sans sa stratégie : rien d'une semaine passée ne repart, ni ne se garde dans la base
-// quand le moteur rend ses paramètres (envoyerEtRanger).
+// quand le moteur rend ses paramètres (envoyerEtRanger). Ses glucides (glucides_cible) non plus : ils ne viennent que de
+// sa stratégie, relue chaque semaine ; une stratégie retirée ou une nouvelle course ne laisse pas de cible périmée.
 export function sansLaStrategie(parametres: Record<string, unknown>): Record<string, unknown> {
-  if (!('strategie' in parametres)) return parametres;
-  const { strategie: _passee, ...reste } = parametres;
+  if (!('strategie' in parametres) && !('glucides_cible' in parametres)) return parametres;
+  const { strategie: _passee, glucides_cible: _glucides, ...reste } = parametres;
   return reste;
 }
 
