@@ -101,9 +101,10 @@ export type Verdict = { libelle: string; ton: 'bien' | 'retrait' | 'retard' };
 // 12/11/2026) : à la place du verdict des piliers, plus de couleur qui juge. fait : la charge vraiment faite depuis le
 // début (la charge tenue des semaines lues), sur toute la charge que la trame prévoit jusqu'à la course (son total, fixé
 // au départ : les creux voulus, assimilation, affûtage, reprise, y sont déjà) ; elle ne redescend jamais, et vaut 1 le
-// jour J si tout est fait. prevu : la charge que la trame prévoyait jusqu'à la semaine passée, sur le même total (le
-// pointillé « prévu aujourd'hui »). dansLesTemps : fait ≥ 90 % de prevu. mesure : la charge des semaines (celle du
-// moteur), ou, quand la trame n'en a pas (un plan d'avant, la démonstration ancienne), les minutes des deux côtés.
+// jour J si tout est fait. prevu : la charge que la trame prévoyait jusqu'à la semaine passée, sur le même total (« prévue
+// à ce jour », pour le coach seul depuis le 13/11/2026). dansLesTemps : fait ≥ 90 % de prevu (la pastille du coach).
+// mesure : la charge des semaines (celle du moteur), ou, quand la trame n'en a pas (un plan d'avant, la démonstration
+// ancienne), les minutes des deux côtés.
 // null avant deux semaines lues (C17 : la montagne garde son remplissage neutre, sans message).
 export type Montee = { fait: number; prevu: number; dansLesTemps: boolean; mesure: 'charge' | 'minutes' };
 export const DANS_LES_TEMPS = 0.9;
@@ -126,24 +127,30 @@ export function zoneHooper(valeurs: (number | null)[], rang: number): number | n
   return avant.length >= 2 ? (moyenne(avant) as number) : null;
 }
 
-// Les textes de la montée, validés par le coach le 12/11/2026 (maquette « tout A ») : X et Y en pour cent de toute la
-// montée ; dans les temps à 90 % du prévu au moins. Les mêmes pour l'athlète et pour son coach (la page de l'objectif,
-// « Mes athlètes » ; réponse du coach du 12/11/2026).
-export function texteDeLaMontee(m: Montee, route = false): string {
-  const [x, y] = [Math.round(100 * m.fait), Math.round(100 * m.prevu)];
-  const debut = route ? `Tu as parcouru ${x}\u00a0% de ta route` : `Tu as gravi ${x}\u00a0% de ta montée`;
-  return m.dansLesTemps ? `${debut}, le plan en prévoyait ${y}\u00a0% : tu es dans les temps.`
-    : `${debut}, le plan en prévoyait ${y}\u00a0%. Un peu de retard : ta préparation s’adapte.`;
+// LA MONTÉE SOBRE (décision coach du 13/11/2026, « tout A ») : l'athlète ne voit que sa part réalisée, qui ne fait que
+// monter (« 62 % de la charge de ton plan réalisée ») ; plus de « prévu aujourd'hui », de « dans les temps » ni de
+// retard. Un acheteur lit « de ton plan » ; un coaché, dont la montée part de son objectif en cours (debutDeLObjectif),
+// « de ta préparation ». Sans charge dans la trame (mesure « minutes »), le volume. L'écart au prévu reste chez le coach
+// (texteCourtDeLaMontee, ecartDeLaMontee).
+export const pourcentDeLaMontee = (m: Montee) => `${Math.round(100 * m.fait)}\u00a0%`;
+export function texteDeLaMontee(m: Montee, coache = false): string {
+  const de = coache ? 'de ta préparation' : 'de ton plan';
+  return m.mesure === 'minutes' ? `du volume ${de} réalisé` : `de la charge ${de} réalisée`;
 }
-// La forme courte du coach, dans « Mes athlètes » (réponse du coach du 12/11/2026, « B ») : le message entier tenait 3 à 5
-// lignes par athlète.
-export function texteCourtDeLaMontee(m: Montee, route = false): string {
+// Le libellé du dessin pour un lecteur d'écran : le chiffre et sa suite.
+export const libelleDeLaMontee = (m: Montee, coache = false) => `${pourcentDeLaMontee(m)} ${texteDeLaMontee(m, coache)}`;
+// « Comment c'est calculé ? », replié sous le chiffre.
+export const calculDeLaMontee = (m: Montee) => (m.mesure === 'minutes'
+  ? 'Chaque séance faite compte pour sa durée. 100\u00a0%, c’est tout le volume prévu jusqu’à ta course\u00a0: ce chiffre ne fait que monter.'
+  : 'Chaque séance faite compte selon sa durée et son intensité. 100\u00a0%, c’est toute la charge prévue jusqu’à ta course\u00a0: ce chiffre ne fait que monter.');
+// La forme courte du coach (« Mes athlètes », la page de l'objectif d'un coaché) : le réalisé et le prévu à ce jour, en
+// mots neutres (décision coach du 13/11/2026), et la pastille de l'écart (dansLesTemps : 90 % du prévu au moins).
+export function texteCourtDeLaMontee(m: Montee): string {
   const [x, y] = [Math.round(100 * m.fait), Math.round(100 * m.prevu)];
-  return `${x}\u00a0% ${route ? 'parcourus' : 'gravis'} · ${y}\u00a0% prévus · ${m.dansLesTemps ? 'dans les temps' : 'un peu de retard'}`;
+  return m.mesure === 'minutes' ? `Volume réalisé ${x}\u00a0% · prévu à ce jour ${y}\u00a0%`
+    : `Charge réalisée ${x}\u00a0% · prévue à ce jour ${y}\u00a0%`;
 }
-const SUITE = ', c’est l’entraînement que tu as vraiment fait depuis le début, sur tout ce que ton plan prévoit jusqu’à la course. '
-  + 'Elle ne redescend jamais. Le pointillé : où ton plan te voyait aujourd’hui.';
-export const phraseDeLaMontee = (route = false) => `${route ? 'La longueur' : 'La hauteur'}${SUITE}`;
+export const ecartDeLaMontee = (m: Montee) => (m.dansLesTemps ? 'conforme au plan' : 'en dessous du prévu');
 // Un objectif sur route (décision coach du 25/10/2026) : la route à la place de la montagne.
 export const estRoute = (format: string | null | undefined) => /^R(10|21|42)$/.test(String(format ?? ''));
 

@@ -7,7 +7,8 @@ import CadreCoach from '@/components/app/CadreCoach';
 import EnvoiSemaine from '@/components/app/EnvoiSemaine';
 import SuiteDeLObjectif from '@/components/app/SuiteDeLObjectif';
 import { AjouterCourse, AnnulerSemaine, DemarrerNolio, ModifierCourse, RetirerCourse } from '@/components/app/GestesEcriture';
-import { estRoute, Montagne } from '@/components/app/TableauDeBord';
+import { EcartAuPrevu } from '@/components/app/TableauAthletes';
+import { ChiffreDeLaMontee, estRoute, Montagne } from '@/components/app/TableauDeBord';
 import { Carte, CarteSombre, PastilleDate, Surtitre } from '@/components/app/Ui';
 import { garderObjectif, retirerObjectif } from '@/lib/app/actionsCoaching';
 import { objectifCoache, verifierEnvois } from '@/lib/app/coaching';
@@ -24,7 +25,7 @@ import { allureDepuisVitesse } from '@/lib/app/allureCoach';
 import { lienNolioAthlete } from '@/lib/app/liensNolio';
 import { faiteSansRpe } from '@/lib/app/resumeSemaine';
 import { clientService, espaceCoachOuvert } from '@/lib/app/supabase';
-import { debutDeLObjectif, enHeures, jaugeDuPlan, momentDe, texteDeLaMontee } from '@/lib/app/tableau';
+import { blocsDuPlan, debutDeLObjectif, enHeures, jaugeDuPlan, libelleDeLaMontee, momentDe } from '@/lib/app/tableau';
 import { fichesDePreparation, type CourseSecondaire } from '@/lib/app/tableauDuPlan';
 
 // Toujours calculée à la visite : la page lit la session du coach.
@@ -99,6 +100,9 @@ export default async function ObjectifCoache({ params, searchParams }: {
     demarre_le: (ecriture?.demarre_le ?? null) as string | null, lundis: (ecrites ?? []).map((w) => (w.lundi ? String(w.lundi) : null)),
     rejoint: o.plan.course.rejoint?.lundi ?? null });
   const jauge = trame ? jaugeDuPlan(trame.semaines, realises, jour, debutObjectif) : null;
+  // Son bloc en cours, sous le chiffre de sa montée, comme dans son app (13/11/2026).
+  const blocEnCours = trame
+    ? blocsDuPlan(trame.semaines, o.plan, jour, debutObjectif).find((b) => b.moment === 'encours')?.nom ?? null : null;
   const prochaine = trame?.semaines.find((l) => l.lundi && momentDe(l.lundi, jour) === 'avenir') ?? null;
   // Le coaching individualisé dit une semaine par son lundi, pas par son numéro (décision coach du 19/10/2026).
   const lundiDe = new Map((trame?.semaines ?? []).map((l) => [l.numero, l.lundi]));
@@ -325,10 +329,13 @@ export default async function ObjectifCoache({ params, searchParams }: {
           {jauge && (
             <CarteSombre className="space-y-2.5">
               <Surtitre ton="clair">Sa préparation</Surtitre>
-              {/* La montée et son message, comme l'athlète les voit (lot 2, réponse du coach du 12/11/2026 : plus de verdict des
-                  piliers) ; avant deux semaines lues, pas de message. */}
-              <Montagne part={jauge.montee?.fait ?? null} prevu={jauge.montee?.prevu ?? null} neutre={!jauge.montee} route={estRoute(o.plan.course.format)} />
-              {jauge.montee && <p className="text-[0.9375rem] font-bold">{texteDeLaMontee(jauge.montee, estRoute(o.plan.course.format))}</p>}
+              {/* La montée et son chiffre, comme l'athlète les voit (lot 2, réponse du coach du 12/11/2026 : plus de verdict des
+                  piliers ; version sobre du 13/11/2026), puis, pour le coach seul, l'écart au prévu ; avant deux semaines
+                  lues, ni chiffre ni écart. */}
+              <Montagne part={jauge.montee?.fait ?? null} neutre={!jauge.montee} route={estRoute(o.plan.course.format)}
+                libelle={jauge.montee ? libelleDeLaMontee(jauge.montee, true) : undefined} />
+              {jauge.montee && <ChiffreDeLaMontee montee={jauge.montee} coache bloc={blocEnCours} />}
+              {jauge.montee && <EcartAuPrevu montee={jauge.montee} sombre />}
               {jauge.piliers.length > 0 && <p className="text-[0.8rem] text-[#D6D5E6] leading-relaxed">{jauge.piliers.map((p) => p.detail).join(' · ')}</p>}
             </CarteSombre>
           )}

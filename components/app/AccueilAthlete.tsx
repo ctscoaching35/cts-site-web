@@ -21,7 +21,7 @@ import { lien, prenom, recuperationDuCoache, type Contexte } from '@/lib/app/con
 import { prixLePlusBas } from '@/lib/app/prix';
 import { joursRecuperation, lireTemps } from '@/lib/plan';
 import { ajouterJours, dateLongue, joursEntre, moment, type CleTest } from '@/lib/app/plan';
-import { fichesDeLaSemaine, jaugeDuPlan, momentDe } from '@/lib/app/tableau';
+import { blocsDuPlan, fichesDeLaSemaine, jaugeDuPlan, momentDe } from '@/lib/app/tableau';
 import {
   donneesTableau, lireSemaineNolio, semaineEcrite, testDeLaSemaine, testVcNonRepropose,
 } from '@/lib/app/tableauDuPlan';
@@ -129,6 +129,8 @@ export default async function AccueilAthlete({ ctx, demarrage, montre = false, d
   // qu'il a rejointe, sinon de toute sa trame.
   const depuis = ctx.coache ? d.debut ?? null : plan.course.rejoint?.lundi ?? null;
   const jauge = jaugeDuPlan(d.trame, d.realises, jour, depuis);
+  // Le bloc en cours, sous le chiffre de la montée (13/11/2026) : celui de « Ta préparation, bloc par bloc ».
+  const bloc = blocsDuPlan(d.trame, plan, jour, depuis).find((b) => b.moment === 'encours')?.nom ?? null;
   const fiches = fichesDeLaSemaine(d.fiches, jour);
   // Q14 : le test que la préparation écrit cette semaine. (Q7, la semaine ajustée, n'est plus lue : décision 20 du coach
   // du 10/11/2026, l'app ne dit plus « Ajustée d'après ta semaine passée… ».)
@@ -222,7 +224,7 @@ export default async function AccueilAthlete({ ctx, demarrage, montre = false, d
             // Q16 (décision coach du 05/11/2026 au soir, « A ») : programmé à la main, le bouton ouvre sa fiche de course.
             // Validé par le coach le 05/11/2026 (1A ; « Ta fiche de course »).
             bouton={ctx.aLaMain ? { texte: 'Ta fiche de course', href: fiche } : null}
-            coache={Boolean(ctx.coache)} jour={jour} debut={depuis ?? d.trame.find((l) => l.lundi)?.lundi ?? null} />
+            coache={Boolean(ctx.coache)} jour={jour} debut={depuis ?? d.trame.find((l) => l.lundi)?.lundi ?? null} bloc={bloc} />
         )}
         {/* Q12 (décision coach du 05/11/2026 au soir, « A ») : après sa course, la carte « Après ta course », la même que
             celle du coaché ; C20 : la carte « terminée dans Nolio » y trouve enfin sa place. */}

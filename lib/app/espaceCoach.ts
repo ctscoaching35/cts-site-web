@@ -28,14 +28,15 @@ import { athletesNolio, ErreurNolio, nolioConfigure, type AthleteNolio } from '.
 import { faiteSansRpe } from './resumeSemaine';
 import { apresLePassage, lundiDeLaSemainePassee, lundiQuiVient } from './semainesDuDimanche';
 import { clientService } from './supabase';
-import { debutDeLObjectif, estRoute, jaugeDuPlan, weekEndChoc, type Montee, type Verdict } from './tableau';
+import { debutDeLObjectif, jaugeDuPlan, weekEndChoc, type Montee, type Verdict } from './tableau';
 
 export type LigneAthlete = {
   id: string; nom: string; usr: string | null; nolio: boolean; accord: boolean; app: boolean;
   objectif: { plan_id: string; course_nom: string; course_date: string; demarre: boolean; prevu: string | null;
     semaine: number | null; total: number | null; verdict: Verdict | null; ecrit: boolean;
-    // La montée, et son message tel que l'athlète le lit (lot 2, réponse du coach du 12/11/2026), à la place du verdict.
-    montee: Montee | null; route: boolean;
+    // La montée (lot 2, réponse du coach du 12/11/2026), à la place du verdict : le coach en lit l'écart au prévu
+    // (13/11/2026, components/app/TableauAthletes.tsx, EcartAuPrevu).
+    montee: Montee | null;
     // reprise : sa semaine en cours, écrite, est la reprise après une course (moteur 8.459, « reprise_apres_course »).
     // Une semaine écrite au-delà de la trame (sa récupération, après la course) : celle écrite pour ce lundi.
     cours: { numero: string; type: string; bloc: string; reprise?: boolean } | null;
@@ -430,7 +431,6 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
       objectif: o ? { plan_id: o.plan_id, course_nom: o.course_nom, course_date: o.course_date, demarre, prevu: (p?.depart_prevu as string | null) ?? null,
         semaine: jauge?.semaine ?? null, total: trame?.length ?? null, verdict: jauge?.verdict ?? null, ecrit,
         montee: jauge?.montee ?? null,
-        route: estRoute(String(((p?.parametres as { champs?: { format?: unknown } } | null)?.champs?.format) ?? '')),
         cours: enCours ? { numero: enCours.numero, type: enCours.type, bloc: enCours.bloc,
           reprise: semaines.some((l) => l.numero === enCours.numero && (l.donnees as { reprise_apres_course?: unknown } | null)?.reprise_apres_course === true) } : null,
         partie: pasPartie ? false : ecriteDu(lundi) || laisseesAuCoach.has(o.plan_id) ? true : null,

@@ -6,7 +6,7 @@ import type { Etiquette } from '@/lib/app/espaceParAthlete';
 import type { Niveau as Couleur } from '@/lib/app/prevision';
 import { SEMAINE_DE_REPRISE, typeCoteCoach } from '@/lib/app/nomsSeances';
 import { ajouterJours, dateAbregee, jMoins } from '@/lib/app/plan';
-import { texteCourtDeLaMontee } from '@/lib/app/tableau';
+import { ecartDeLaMontee, texteCourtDeLaMontee, type Montee } from '@/lib/app/tableau';
 
 // Les pastilles et les étiquettes de chaque ligne (maquette validée par le coach le 24/10/2026, puis l'espace par athlète,
 // maquette validée le 08/11/2026).
@@ -14,6 +14,18 @@ export const PASTILLE = {
   ok: 'bg-[#E3EFE9] text-[#22604F]', warn: 'bg-[#F6ECD8] text-[#6E4A0C]', ko: 'bg-[#F6E1DD] text-[#8A3326]',
   neutre: 'bg-[#ECEBF2] text-[#4A4866]',
 } as const;
+// L'écart au prévu, pour le coach seul (décision coach du 13/11/2026, « tout A ») : la charge réalisée et la prévue à ce
+// jour, en mots neutres, et sa pastille, « conforme au plan » ou « en dessous du prévu ». L'athlète ne voit que sa part
+// réalisée. sombre : sous la montagne de sa page d'objectif (une carte sombre).
+export function EcartAuPrevu({ montee, sombre = false }: { montee: Montee; sombre?: boolean }) {
+  return (
+    <span className="mt-0.5 flex flex-col items-start gap-1">
+      <span className={clsx('text-[0.72rem] leading-snug tabular-nums', sombre ? 'text-[#D6D5E6]' : 'text-[#5E5C78]')}>{texteCourtDeLaMontee(montee)}</span>
+      <span className={clsx('inline-block text-[0.66rem] font-bold px-2 py-0.5 rounded-full whitespace-nowrap',
+        montee.dansLesTemps ? PASTILLE.ok : PASTILLE.warn)}>{ecartDeLaMontee(montee)}</span>
+    </span>
+  );
+}
 // Le point de couleur de « Dimanche » (Q1) : rouge, le moteur changera sa semaine ; orange, proche d'un seuil ; vert, elle
 // suit le plan ; gris, rien de lu.
 export const POINT: Record<Couleur, string> = { rouge: 'bg-[#B4513F]', orange: 'bg-[#C8952E]', vert: 'bg-[#0C6E5F]', rien: 'bg-[#A9A8BC]' };
@@ -167,9 +179,9 @@ function Ligne({ e, jour }: { e: EtatAthlete; jour: string }) {
         {o ? o.course_nom : 'Aucun objectif'}
         {o && <span className={sous}>{o.fond ? `jusqu’au ${dateCourte(o.course_date, jour)}`
           : `${dateCourte(o.course_date, jour)}${avenir ? ` · ${jMoins(jour, o.course_date)}` : ' · couru'}`}</span>}
-        {/* Sa montée, en forme courte (lot 2, réponses du coach du 12/11/2026 : le message de l'athlète, puis « B », court
-            dans le tableau), tant que sa course est à venir. */}
-        {o?.montee && avenir && !o.fond && <span className={clsx(sous, 'leading-snug')}>{texteCourtDeLaMontee(o.montee, o.route)}</span>}
+        {/* Sa montée, en forme courte (lot 2, réponse du coach du 12/11/2026, « B »), tant que sa course est à venir : le
+            réalisé, le prévu à ce jour et la pastille de l'écart (13/11/2026). */}
+        {o?.montee && avenir && !o.fond && <EcartAuPrevu montee={o.montee} />}
       </span>
       <SaSemaine e={e} jour={jour} />
       <SemainePassee a={a} />

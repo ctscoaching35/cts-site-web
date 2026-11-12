@@ -6,13 +6,15 @@ import { lien, type Contexte } from '@/lib/app/contexte';
 import { estSemaineDeWeekEndChoc, nomPourLAthlete, SEMAINE_DE_REPRISE } from '@/lib/app/nomsSeances';
 import { motsDeLaSemaine } from '@/lib/app/motsDeLaSemaine';
 import { ajouterJours, dateLongue, slugFiche, type Jour, type Plan, type Semaine } from '@/lib/app/plan';
-import { enHeures, estRoute, phraseDeLaMontee, texteDeLaMontee, type Fiche, type Jauge } from '@/lib/app/tableau';
+import { calculDeLaMontee, enHeures, estRoute, libelleDeLaMontee, pourcentDeLaMontee, texteDeLaMontee, type Fiche, type Jauge,
+  type Montee } from '@/lib/app/tableau';
 import type { CourseSecondaire, EtatNolio, RaisonNolio, SeanceNolio } from '@/lib/app/tableauDuPlan';
 import { BOUTON, Carte, CarteSombre, EcrisNous, LIEN, PastilleDate, Surtitre } from './Ui';
 
 // Les pièces de l'accueil (CTS_NOLIO_CADRAGE.md, T1, T4, AP1, AP2 ; maquettes validées par le coach le 19/10/2026) :
 // l'objectif et sa montagne, les piliers, les courses de préparation, la semaine, la fiche du moment. Jamais le mot
-// « chance » (J4) ; la montagne sans pourcentage. Les graphiques de « Mes données » sont dans components/app/Graphiques.tsx.
+// « chance » (J4) ; sous la montagne, la part réalisée (13/11/2026). Les graphiques de « Mes données » sont dans
+// components/app/Graphiques.tsx.
 // C9 (audits du 05/11/2026) : aucun lien ne mène plus au site de Nolio (il ouvrait le navigateur, pas l'appli) ; aucune
 // adresse documentée n'ouvre l'appli Nolio : l'app dit « dans ton appli Nolio », sans bouton.
 
@@ -115,26 +117,23 @@ export { estRoute };
 
 // AT3 (décision coach du 04/11/2026, « A ») : la montagne se remplit de la part de la préparation déjà faite (le sommet au
 // jour J). LA MONTÉE (lot 2 de l'app, maquette validée « tout A » par le coach le 12/11/2026 ; lib/app/tableau.ts,
-// monteeDuPlan) : part, la charge vraiment faite sur toute la charge prévue jusqu'à la course, d'une seule couleur ;
-// prevu, le pointillé blanc « prévu aujourd'hui », où le plan l'attendait. Plus de couleur du verdict.
+// monteeDuPlan) : part, la charge vraiment faite sur toute la charge prévue jusqu'à la course, d'une seule couleur. Plus
+// de couleur du verdict ; plus de pointillé « prévu aujourd'hui » (version sobre, décision coach du 13/11/2026, « tout
+// A ») : le remplissage seul, qui ne fait que monter. libelle : ce qu'en lit un lecteur d'écran (libelleDeLaMontee).
 // C17 (audits du 05/11/2026) : neutre, avant deux semaines lues, la montagne se remplit en blanc translucide (part : le
-// temps écoulé), sans dire « tout va bien » ni pointillé. Q8 (décision coach du 05/11/2026 au soir, « A ») : le dessin ne
+// temps écoulé), sans dire « tout va bien ». Q8 (décision coach du 05/11/2026 au soir, « A ») : le dessin ne
 // dépasse pas 140 px de haut, quelle que soit la largeur (avant, près de 300 px sur tablette) ; la route suit la même règle.
 const NEUTRE = 'rgba(255,255,255,0.28)';
 const DESSIN = 'block w-full h-auto max-h-[140px]';
-const PREVU = 'prévu aujourd’hui';
+const EN_ATTENTE = 'Ta préparation, qui se remplira semaine après semaine';
 const borne = (x: number | null) => (x === null ? null : Math.max(0, Math.min(1, x)));
-export function Montagne({ part, prevu = null, neutre = false, route = false }: {
-  part: number | null; prevu?: number | null; neutre?: boolean; route?: boolean;
+export function Montagne({ part, neutre = false, route = false, libelle = EN_ATTENTE }: {
+  part: number | null; neutre?: boolean; route?: boolean; libelle?: string;
 }) {
-  if (route) return <Route part={part} prevu={prevu} neutre={neutre} />;
+  if (route) return <Route part={part} neutre={neutre} libelle={libelle} />;
   const p = borne(part);
-  const q = neutre ? null : borne(prevu);
   // La montagne monte de 170 (le pied) à 26 (le sommet).
   const niveau = p === null ? null : 170 - p * 144;
-  const attendu = q === null ? null : 170 - q * 144;
-  const libelle = p === null ? 'Ta montagne de préparation, qui se remplira semaine après semaine'
-    : `Ta montagne de préparation, ${p >= 0.95 ? 'au sommet' : p >= 0.66 ? 'gravie aux deux tiers' : p >= 0.33 ? 'gravie au tiers' : 'au pied'}`;
   return (
     <svg viewBox="0 0 350 170" className={DESSIN} role="img" aria-label={libelle}>
       <defs><clipPath id="cts-montagne"><path d={SOMMET} /></clipPath></defs>
@@ -144,12 +143,6 @@ export function Montagne({ part, prevu = null, neutre = false, route = false }: 
       )}
       <path d={SOMMET} fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth={1.5} strokeLinejoin="round" />
       {neutre && niveau !== null && <line x1="0" y1={niveau} x2="350" y2={niveau} stroke="#8FD1C3" strokeWidth={1} strokeDasharray="3 4" />}
-      {attendu !== null && (
-        <>
-          <line x1="0" y1={attendu} x2="350" y2={attendu} stroke="#FFFFFF" strokeWidth={1.5} strokeDasharray="4 4" />
-          <text x="348" y={attendu < 40 ? attendu + 14 : attendu - 6} textAnchor="end" fontSize="13" fontWeight="600" fill="#FFFFFF">{PREVU}</text>
-        </>
-      )}
       <line x1="176" y1="26" x2="176" y2="6" stroke="#FFFFFF" strokeWidth={1.5} />
       <path d="M176 6 L192 11 L176 16 Z" fill="#8FD1C3" />
     </svg>
@@ -159,17 +152,13 @@ export function Montagne({ part, prevu = null, neutre = false, route = false }: 
 // Le point de l'axe de la route à une part de sa longueur (en largeur du dessin).
 const surLaRoute = (part: number) => ROUTE_AXE[Math.round(((ROUTE_X0 + part * (ROUTE_X1 - ROUTE_X0) - ROUTE_X0) / (ROUTE_X1 - ROUTE_X0)) * (ROUTE_AXE.length - 1))];
 
-function Route({ part: brute, prevu = null, neutre = false }: { part: number | null; prevu?: number | null; neutre?: boolean }) {
+function Route({ part: brute, neutre = false, libelle }: { part: number | null; neutre?: boolean; libelle: string }) {
   const part = borne(brute);
-  const q = neutre ? null : borne(prevu);
   const niveau = part === null ? null : ROUTE_X0 + part * (ROUTE_X1 - ROUTE_X0);
-  // Le repère s'arrête avant la ligne d'arrivée, pour ne pas couvrir le damier ; le trait du prévu aussi.
+  // Le repère s'arrête avant la ligne d'arrivée, pour ne pas couvrir le damier.
   const avantLArrivee = (ROUTE_X1 - DAMIER * 2 - 6 - ROUTE_X0) / (ROUTE_X1 - ROUTE_X0);
   const repere = part === null ? null : surLaRoute(Math.min(part, avantLArrivee));
-  const attendu = q === null ? null : surLaRoute(Math.min(q, avantLArrivee));
   const fin = ROUTE_AXE[ROUTE_AXE.length - 1];
-  const libelle = part === null ? 'Ta route de préparation, qui se remplira semaine après semaine'
-    : `Ta route de préparation, remplie ${part >= 0.85 ? 'presque jusqu’à l’arrivée' : part >= 0.65 ? 'aux deux tiers' : 'à moitié ou moins'}`;
   return (
     <svg viewBox="0 0 350 170" className={DESSIN} role="img" aria-label={libelle}>
       <defs>
@@ -200,20 +189,37 @@ function Route({ part: brute, prevu = null, neutre = false }: { part: number | n
       <path d={`M${fin.x + 6} ${fin.y - ROUTE_DEMI - 43} C${fin.x + 12} ${fin.y - ROUTE_DEMI - 47} ${fin.x + 19} ${fin.y - ROUTE_DEMI - 39} ${fin.x + 27} ${fin.y - ROUTE_DEMI - 43}`
         + ` L${fin.x + 27} ${fin.y - ROUTE_DEMI - 28} C${fin.x + 19} ${fin.y - ROUTE_DEMI - 24} ${fin.x + 12} ${fin.y - ROUTE_DEMI - 32} ${fin.x + 6} ${fin.y - ROUTE_DEMI - 28} Z`}
         fill="url(#cts-drapeau)" stroke="#FFFFFF" strokeWidth={0.8} strokeLinejoin="round" />
-      {/* Le prévu : un trait en pointillé blanc en travers de la route, et son libellé dessous (réponse du coach du 12/11/2026). */}
-      {attendu && (
-        <>
-          <line x1={attendu.x - attendu.nx * (ROUTE_DEMI + 3)} y1={attendu.y - attendu.ny * (ROUTE_DEMI + 3)}
-            x2={attendu.x + attendu.nx * (ROUTE_DEMI + 3)} y2={attendu.y + attendu.ny * (ROUTE_DEMI + 3)}
-            stroke="#FFFFFF" strokeWidth={2} strokeDasharray="3 3" />
-          <text x={Math.max(42, Math.min(attendu.x, 290))} y={Math.min(166, attendu.y + ROUTE_DEMI + 17)} textAnchor="middle" fontSize="13" fontWeight="600" fill="#FFFFFF">{PREVU}</text>
-        </>
-      )}
       {repere && <circle cx={repere.x} cy={repere.y} r={4.5} fill="#FFFFFF" stroke="#8FD1C3" strokeWidth={2} />}
     </svg>
   );
 }
 
+// LA MONTÉE SOBRE (décision coach du 13/11/2026, « tout A » ; maquettes « Proposition A ») : sous le dessin, le chiffre (la
+// part réalisée, qui ne fait que monter) et sa suite ; sous un trait fin, le bloc en cours s'il est connu et, à droite,
+// « Comment c'est calculé ? », replié. Ni prévu ni écart : l'athlète voit la comparaison en taux, dans « Assiduité ».
+// coache : « de ta préparation » (sa montée part de son objectif en cours), sinon « de ton plan ».
+export function ChiffreDeLaMontee({ montee, coache = false, bloc = null }: { montee: Montee; coache?: boolean; bloc?: string | null }) {
+  return (
+    <div className="space-y-2.5">
+      <p className="flex items-baseline gap-2.5">
+        <span className="shrink-0 text-[2.125rem] font-extrabold leading-none tabular-nums text-[#8FD1C3]">{pourcentDeLaMontee(montee)}</span>
+        <span className="text-[0.875rem] font-semibold leading-snug">{texteDeLaMontee(montee, coache)}</span>
+      </p>
+      {/* Le bloc et la question sur la même ligne (la même case de la grille) ; ouverte, son texte passe dessous, sur toute
+          la largeur. La place de la question est gardée à droite du bloc. */}
+      <div className="grid border-t border-white/[0.12]">
+        {bloc && <span className="col-start-1 row-start-1 self-start flex items-center min-h-11 pr-44 text-[0.78rem] text-[#D6D5E6]">{bloc}</span>}
+        <details className="col-start-1 row-start-1 pointer-events-none">
+          <summary className={'pointer-events-auto ml-auto flex w-fit items-center min-h-11 cursor-pointer list-none [&::-webkit-details-marker]:hidden '
+            + 'rounded text-[0.75rem] text-[#D6D5E6] underline underline-offset-[3px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#8FD1C3]'}>
+            Comment c’est calculé&nbsp;?
+          </summary>
+          <p className="pointer-events-auto pb-1 text-[0.75rem] leading-relaxed text-[#D6D5E6]">{calculDeLaMontee(montee)}</p>
+        </details>
+      </div>
+    </div>
+  );
+}
 
 // Un compte à rebours en « J- » jusqu'à l'objectif, sans « semaine x sur N », pour tous, plans achetés compris
 // (décisions coach du 19/10/2026 : « on part de l'objectif et on revient jusqu'au jour J »).
@@ -224,16 +230,17 @@ function Route({ part: brute, prevu = null, neutre = false }: { part: number | n
 // coache : pour un coaché, ni le début calendaire du plan ni la semaine rejointe (décision coach du 22/10/2026 : ses
 // objectifs s'enchaînent).
 // jour et debut : l'avancée dans la préparation, qui remplit la montagne avant deux semaines lues (AT3, C17) ; ensuite, la
-// montée (jauge.montee, lot 2 du 12/11/2026) : la charge vraiment faite, le pointillé du prévu, et ce qu'elles disent.
+// montée (jauge.montee, lot 2 du 12/11/2026) : la charge vraiment faite, et son chiffre (ChiffreDeLaMontee, 13/11/2026).
+// bloc : le bloc en cours (celui de « Ta préparation, bloc par bloc »), sous le chiffre ; null s'il n'est pas connu.
 // bouton (Q16, décision coach du 05/11/2026 au soir, « A ») : un coaché programmé à la main ouvre directement sa fiche de
 // course, sa préparation n'étant pas dans l'app ; jourJ : la fiche de course à « Ton jour J » (C14).
 // ajouter (décision coach du 07/11/2026) : sous le bouton, « Ajouter une course », vers l'aiguillage « Ta prochaine course »
 // (objectif majeur ou course de préparation), tant que l'objectif est à venir.
 export function CarteObjectif({ plan, restants, jauge, etape, href, surtitre = 'Ton objectif majeur', coache = false, jour = null, debut = null,
-  bouton = null, jourJ = null, ajouter = null }: {
+  bouton = null, jourJ = null, ajouter = null, bloc = null }: {
   plan: Plan; restants: number; jauge: Jauge | null; etape: 'avant' | 'pendant' | 'apres'; href: string; surtitre?: string;
   coache?: boolean; jour?: string | null; debut?: string | null; bouton?: { texte: string; href: string } | null; jourJ?: string | null;
-  ajouter?: string | null;
+  ajouter?: string | null; bloc?: string | null;
 }) {
   const depart = debut ?? plan.course.date_debut_plan;
   const total = depart ? Math.max(1, (Date.parse(`${plan.course.date}T12:00:00Z`) - Date.parse(`${depart}T12:00:00Z`)) / 86_400_000) : 0;
@@ -260,7 +267,8 @@ export function CarteObjectif({ plan, restants, jauge, etape, href, surtitre = '
           </div>
         )}
       </div>
-      {jauge && <Montagne part={montee ? montee.fait : temps} prevu={montee && etape === 'pendant' ? montee.prevu : null} neutre={!montee} route={route} />}
+      {jauge && <Montagne part={montee ? montee.fait : temps} neutre={!montee} route={route}
+        libelle={montee ? libelleDeLaMontee(montee, coache) : undefined} />}
       {cestLeJour ? (
         // C14 : Validé par le coach le 05/11/2026 (1A).
         <p className="text-base font-bold">C’est le jour J. Bonne course !</p>
@@ -268,11 +276,8 @@ export function CarteObjectif({ plan, restants, jauge, etape, href, surtitre = '
       : etape === 'avant' ? (
         <p className="text-[0.9375rem] font-bold">{coache ? 'Tes séances arrivent chaque dimanche dans Nolio.' : plan.couverture.debut}</p>
       ) : montee ? (
-        // La montée (maquette validée « tout A » par le coach le 12/11/2026) : plus de verdict ni de pastille de couleur.
-        <div className="space-y-1.5">
-          <p className="text-base font-bold leading-snug">{texteDeLaMontee(montee, route)}</p>
-          <p className="text-[0.8125rem] text-[#D6D5E6] leading-relaxed">{phraseDeLaMontee(route)}</p>
-        </div>
+        // La montée sobre (décision coach du 13/11/2026, « tout A ») : le chiffre, sans prévu ni verdict.
+        <ChiffreDeLaMontee montee={montee} coache={coache} bloc={bloc} />
       ) : (
         <p className="text-base font-bold">Ta préparation est lancée</p>
       )}
