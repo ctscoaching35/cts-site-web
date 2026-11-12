@@ -13,6 +13,9 @@
 import type { LigneTrame, Realise } from './ecriture';
 import { ajouterJours, type Plan } from './plan';
 
+const jourEnLettres = (iso: string) => new Date(`${iso}T12:00:00Z`)
+  .toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', timeZone: 'UTC' }).replace(/^1 /, '1er ');
+
 export type Fiche = { cle: string; titre: string; pourquoi: string; date: string; url: string | null };
 
 // Le statut d'une semaine par rapport à aujourd'hui.
@@ -94,8 +97,20 @@ export function trameDesDonnees(plan: Plan): LigneTrame[] {
 
 export type Pilier = { cle: 'assiduite' | 'sorties_longues' | 'cles' | 'fraicheur'; titre: string; valeur: number; detail: string };
 export type Verdict = { libelle: string; ton: 'bien' | 'retrait' | 'retard' };
-// score : la moyenne des piliers, de 0 à 1 (la montagne de l'accueil se remplit d'autant, AP2) ; null avant deux semaines.
-export type Jauge = { semaine: number | null; total: number; piliers: Pilier[]; verdict: Verdict | null; score: number | null };
+// LA MONTÉE (la montagne de l'accueil, ou la route ; lot 2 de l'app, maquette validée « tout A » par le coach le
+// 12/11/2026) : à la place du verdict des piliers, plus de couleur qui juge. fait : la charge vraiment faite depuis le
+// début (la charge tenue des semaines lues), sur toute la charge que la trame prévoit jusqu'à la course (son total, fixé
+// au départ : les creux voulus, assimilation, affûtage, reprise, y sont déjà) ; elle ne redescend jamais, et vaut 1 le
+// jour J si tout est fait. prevu : la charge que la trame prévoyait jusqu'à la semaine passée, sur le même total (le
+// pointillé « prévu aujourd'hui »). dansLesTemps : fait ≥ 90 % de prevu. mesure : la charge des semaines (celle du
+// moteur), ou, quand la trame n'en a pas (un plan d'avant, la démonstration ancienne), les minutes des deux côtés.
+// null avant deux semaines lues (C17 : la montagne garde son remplissage neutre, sans message).
+export type Montee = { fait: number; prevu: number; dansLesTemps: boolean; mesure: 'charge' | 'minutes' };
+export const DANS_LES_TEMPS = 0.9;
+// score : la moyenne des piliers, de 0 à 1 ; null avant deux semaines. Le verdict n'est plus montré à l'athlète (la
+// montée le remplace, 12/11/2026) ; l'espace coach le lit encore.
+export type Jauge = { semaine: number | null; total: number; piliers: Pilier[]; verdict: Verdict | null; score: number | null;
+  montee: Montee | null };
 
 const ECART_HOOPER = 3;
 const VERDICT_BIEN = 0.85;
@@ -111,7 +126,32 @@ export function zoneHooper(valeurs: (number | null)[], rang: number): number | n
   return avant.length >= 2 ? (moyenne(avant) as number) : null;
 }
 
-export function jaugeDuPlan(trame: LigneTrame[], realises: Realise[], aujourdhui: string): Jauge {
+// La montée depuis `depuis` : pour un coaché, le début de son objectif en cours (debutDeLObjectif) ; sinon toute la trame.
+export function monteeDuPlan(trame: LigneTrame[], realises: Realise[], aujourdhui: string, depuis: string | null = null): Montee | null {
+  const semaines = trame.filter((l) => l.lundi && (!depuis || l.lundi >= depuis));
+  const parCharge = semaines.length > 0 && semaines.every((l) => typeof l.charge === 'number' && l.charge > 0);
+  const prevue = (l: LigneTrame) => (parCharge ? l.charge as number : l.volume_h * 60);
+  const total = somme(semaines.map(prevue));
+  if (total <= 0) return null;
+  const numeros = new Set(semaines.map((l) => l.numero));
+  const lues = realises.filter((r) => numeros.has(r.numero));
+  if (lues.filter((r) => r.seances_prevues > 0).length < 2) return null;
+  const fait = Math.min(1, somme(lues.map((r) => Math.max(0, parCharge ? r.charge_tenue : r.duree_faite_min))) / total);
+  const prevu = Math.min(1, somme(semaines.filter((l) => ajouterJours(l.lundi, 6) < aujourdhui).map(prevue)) / total);
+  return { fait, prevu, dansLesTemps: fait >= DANS_LES_TEMPS * prevu, mesure: parCharge ? 'charge' : 'minutes' };
+}
+
+// Le début de l'objectif en cours d'un coaché (lot 2, 12/11/2026 ; la règle de la continuité, lib/app/ecriture.ts,
+// continuiteDe) : son départ programmé, sinon, parti, sa première semaine écrite ; à défaut, la semaine qu'il a rejointe.
+// Ni sa montée ni ses blocs ne partent d'avant (un objectif enchaîné après une course, un objectif court qui commence en
+// développement ou en spécifique, un coaché qui rejoint).
+export function debutDeLObjectif(x: { depart_prevu?: string | null; demarre_le?: string | null; lundis: (string | null | undefined)[];
+  rejoint?: string | null }): string | null {
+  const premiere = x.lundis.filter((l): l is string => Boolean(l)).sort()[0] ?? null;
+  return (x.depart_prevu ? String(x.depart_prevu).slice(0, 10) : null) ?? (x.demarre_le ? premiere : null) ?? x.rejoint ?? null;
+}
+
+export function jaugeDuPlan(trame: LigneTrame[], realises: Realise[], aujourdhui: string, depuis: string | null = null): Jauge {
   const rang = trame.findIndex((l) => l.lundi && momentDe(l.lundi, aujourdhui) === 'encours');
   const faits = realises.filter((r) => r.seances_prevues > 0);
   const piliers: Pilier[] = [];
@@ -157,7 +197,8 @@ export function jaugeDuPlan(trame: LigneTrame[], realises: Realise[], aujourdhui
   const verdict: Verdict | null = score === null ? null
     : score >= VERDICT_BIEN ? { libelle: 'Sur la bonne voie', ton: 'bien' }
       : score >= VERDICT_RETRAIT ? { libelle: 'Un peu en retrait', ton: 'retrait' } : { libelle: 'En retard sur ton plan', ton: 'retard' };
-  return { semaine: rang >= 0 ? rang + 1 : null, total: trame.length, piliers, verdict, score };
+  return { semaine: rang >= 0 ? rang + 1 : null, total: trame.length, piliers, verdict, score,
+    montee: monteeDuPlan(trame, realises, aujourdhui, depuis) };
 }
 
 // Le prochain week-end choc à venir, d'après la trame du moteur, qui marque ses semaines (week_end_choc) : le coach est
@@ -235,7 +276,9 @@ export function fichesDeLaSemaine(fiches: Fiche[], aujourdhui: string): Fiche[] 
 // sans volumes ni sorties longues, en J- jusqu'à l'objectif, pour tous) : les semaines de la trame regroupées par bloc,
 // de son premier lundi à son dernier dimanche (la veille de la course au plus tard), avec ce que le bloc développe et ce
 // qu'il entretient, lus dans le tableau du plan (« Ce que tu travailles », « En rappel »).
-export type BlocDuPlan = { nom: string; du: string; au: string; moment: 'fait' | 'encours' | 'avenir'; travail: string[]; rappel: string[] };
+// texte : la ligne de l'étape de récupération d'un objectif enchaîné (à la place de « Tu travailles »).
+export type BlocDuPlan = { nom: string; du: string; au: string; moment: 'fait' | 'encours' | 'avenir'; travail: string[]; rappel: string[];
+  texte?: string };
 
 // Ce qu'un bloc travaille et entretient, d'après la vue d'ensemble du plan (« Ce que tu travailles », « En rappel ») :
 // pour « Ta préparation, bloc par bloc » et la description du bandeau Nolio de chaque semaine (décision coach du
@@ -249,12 +292,21 @@ export function qualitesDuBloc(plan: Plan, bloc: string): { travail: string[]; r
   return { travail: qualites(cTravail), rappel: qualites(cRappel) };
 }
 
-// depuis : pour un coaché qui a rejoint la préparation en cours de route (course.rejoint), son lundi d'arrivée : les blocs
-// d'avant, qu'il n'a pas faits, ne s'affichent pas, et le bloc en cours commence à son arrivée (décision coach du
-// 20/10/2026 : « parler du bloc actuel sans parler des blocs antérieurs » ; le coaching part de l'objectif, à reculons).
-export function blocsDuPlan(trame: LigneTrame[], plan: Plan, aujourdhui: string, depuis: string | null = null): BlocDuPlan[] {
+// depuis : pour un coaché, le début de son objectif en cours (debutDeLObjectif ; lot 2, décision du coach du 12/11/2026 :
+// tous les cas de coaching, pas seulement un coaché qui rejoint) : les blocs d'avant, qu'il n'a pas faits, ne s'affichent
+// pas, et le bloc en cours commence à son début (décision coach du 20/10/2026 : « parler du bloc actuel sans parler des
+// blocs antérieurs » ; le coaching part de l'objectif, à reculons). Les plans des acheteurs : tous leurs blocs.
+// recuperation : un objectif enchaîné après une course (lib/app/jonction.ts, partApres) : sa récupération, du lendemain
+// de la course à la veille du début, en première étape.
+export function blocsDuPlan(trame: LigneTrame[], plan: Plan, aujourdhui: string, depuis: string | null = null,
+  recuperation: { date: string; jusqua: string } | null = null): BlocDuPlan[] {
   const veille = ajouterJours(plan.course.date, -1);
   const blocs: BlocDuPlan[] = [];
+  if (recuperation && recuperation.jusqua > recuperation.date) {
+    // Brouillon, à valider par le coach (lot 2, 12/11/2026).
+    blocs.push({ nom: 'Récupération de ta course', du: ajouterJours(recuperation.date, 1), au: recuperation.jusqua, moment: 'avenir',
+      travail: [], rappel: [], texte: `Après ta course du ${jourEnLettres(recuperation.date)} : du facile, pour repartir frais.` });
+  }
   for (const l of trame.filter((x) => x.lundi && (!depuis || x.lundi >= depuis))) {
     const fin = ajouterJours(l.lundi, 6) < veille ? ajouterJours(l.lundi, 6) : veille;
     const dernier = blocs[blocs.length - 1];

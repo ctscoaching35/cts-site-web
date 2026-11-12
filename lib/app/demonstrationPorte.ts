@@ -39,10 +39,12 @@ export const REFUS_DEMONSTRATION = 'Démonstration : rien ne s’enregistre, rie
 //   objectif=demande    un objectif suivant demandé, en attente du coach
 //   testvc=non_repropose  le test de vitesse critique plus proposé après deux fois sans valeur (D5, moteur 8.452) : la
 //                       carte de l'accueil d'un acheteur, tant qu'aucune vitesse critique n'est connue (sans ?vc=)
+//   enchaine=1          un coaché dont l'objectif part après la récupération d'une course précédente (fictive) : sa
+//                       montée et ses blocs partent de son début, sa récupération en première étape (lot 2, 12/11/2026)
 // Sans être gardés : demande=envoyee (« Ta demande est partie »), reinitialiser=1 (efface sur ce navigateur les deux
 // cookies que posait l'ancienne démonstration, cts_bienvenue et cts_demarrage).
 export const PARAMETRES_DEMONSTRATION = ['plan', 'jour', 'fc1', 'vc', 'fc2', 'v1', 'retours', 'coache', 'main', 'sansobjectif',
-  'nolio', 'accord', 'achat', 'confirmation', 'semaine', 'prepa', 'demarrage', 'profil', 'objectif', 'testvc'] as const;
+  'nolio', 'accord', 'achat', 'confirmation', 'semaine', 'prepa', 'demarrage', 'profil', 'objectif', 'testvc', 'enchaine'] as const;
 // Ceux que lien() (lib/app/contexte.ts) ajoute à ce qu'il tire du contexte.
 export const ETATS_DEMONSTRATION = ['nolio', 'accord', 'achat', 'confirmation', 'semaine', 'prepa', 'demarrage', 'profil', 'objectif',
-  'testvc'] as const;
+  'testvc', 'enchaine'] as const;

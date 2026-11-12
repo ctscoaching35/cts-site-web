@@ -5,13 +5,13 @@
  */
 import { destinataire } from './coaching';
 import type { Contexte } from './contexte';
-import { objectifAffiche, trameDuPlan, type LigneTrame, type Realise } from './ecriture';
+import { continuiteDe, objectifAffiche, trameDuPlan, type LigneTrame, type Realise } from './ecriture';
 import { listeNolio, SPORTS_COURSE } from './nolio';
 import { semainesDeLaFiche } from './semainesNolio';
 import { ajouterJours, type CleTest, type Semaine } from './plan';
 import { clientService } from './supabase';
-import { ajustementDuJournal, detailDeLaSemaine, minutesDe, trameDesDonnees, volumeDeNolio, type Ajustement, type CourseDuGraphique, type Fiche } from './tableau';
-import { ajustementDeDemonstration, lectureDeDemonstration, semaineDeDemonstration, tableauDeDemonstration } from './demonstration';
+import { ajustementDuJournal, debutDeLObjectif, detailDeLaSemaine, minutesDe, trameDesDonnees, volumeDeNolio, type Ajustement, type CourseDuGraphique, type Fiche } from './tableau';
+import { ajustementDeDemonstration, lectureDeDemonstration, recuperationDeDemonstration, semaineDeDemonstration, tableauDeDemonstration } from './demonstration';
 
 // Où en est l'athlète dans Nolio (P1 à P4) ; « coache » : un objectif de son coach ; null : un plan d'avant le
 // 19/10/2026, sans Nolio.
@@ -26,6 +26,9 @@ export type DonneesTableau = {
   // Les lundis des semaines écrites de reprise après une course (moteur 8.459, « reprise_apres_course » ; « Semaine de
   // reprise », décision coach du 08/11/2026).
   reprises?: string[];
+  // Un coaché : le début de son objectif en cours (lib/app/tableau.ts, debutDeLObjectif ; lot 2, 12/11/2026), d'où partent
+  // sa montée et ses blocs ; null pour un acheteur (toute sa trame).
+  debut?: string | null;
 };
 // chrono : le chrono visé (PO3), absent d'une course ajoutée avant le 19/10/2026.
 export type CourseSecondaire = { nom: string; date: string; distance_km: number; dplus_m: number; chrono?: string | null;
@@ -40,7 +43,7 @@ export async function donneesTableau(ctx: Contexte): Promise<DonneesTableau> {
   const service = clientService();
   // Les lectures de la base en parallèle (§8, point 13, audit du 03/11/2026 : l'accueil les enchaînait en série).
   const [{ data: p }, accordCoache, trame, { data: lignes }] = await Promise.all([
-    service.from('plans').select('parametres, nolio_statut, accord_lecture_le').eq('id', ctx.cle).maybeSingle(),
+    service.from('plans').select('parametres, nolio_statut, accord_lecture_le, depart_prevu, demarre_le').eq('id', ctx.cle).maybeSingle(),
     // Un coaché : ses séances sont dans Nolio, son accord est celui du Suivi de son coach (T5).
     ctx.coache ? accordDuCoache(ctx.cle) : Promise.resolve(false),
     trameDuPlan(ctx.cle).catch(() => null),
@@ -66,7 +69,20 @@ export async function donneesTableau(ctx: Contexte): Promise<DonneesTableau> {
     courses: (((p.parametres as Record<string, unknown>).courses_secondaires ?? []) as CourseSecondaire[])
       .slice().sort((a, b) => a.date.localeCompare(b.date)),
     reprises,
+    debut: ctx.coache ? debutDeLObjectif({ depart_prevu: p.depart_prevu as string | null, demarre_le: p.demarre_le as string | null,
+      lundis: (lignes ?? []).map((l) => (l.lundi ? String(l.lundi) : null)), rejoint: ctx.plan.course.rejoint?.lundi ?? null }) : null,
   };
+}
+
+// LA RÉCUPÉRATION D'AVANT L'OBJECTIF d'un coaché qui part après la récupération d'une course (lot 2, décision du coach du
+// 12/11/2026 ; lib/app/jonction.ts, partApres, que lit la continuité, lib/app/ecriture.ts, continuiteDe) : du lendemain
+// de cette course à la veille de son début, la première étape de « Ta préparation, bloc par bloc ». null sinon (un
+// acheteur, un objectif qui ne part pas après une course).
+export async function recuperationAvantLObjectif(ctx: Contexte, debut: string | null): Promise<{ date: string; jusqua: string } | null> {
+  if (!ctx.coache || !debut) return null;
+  if (ctx.demonstration) return recuperationDeDemonstration(ctx);
+  const c = await continuiteDe(ctx.cle).catch(() => null);
+  return c?.precedent && c.precedent.course_date < debut ? { date: c.precedent.course_date, jusqua: ajouterJours(debut, -1) } : null;
 }
 
 // La saison d'un coaché (décision coach du 20/10/2026, « toute sa saison ») : ses semaines faites sur TOUS ses

@@ -37,3 +37,4 @@ export const objectifsDeDemonstration = async (ctx: Contexte, courses: CourseSec
 export const profilDEntrainementDeDemonstration = async (ctx: Contexte) => (await etats()).profilDEntrainementDeDemonstration(ctx);
 export const niveauDeDemonstration = async (ctx: Contexte) => (await etats()).niveauDeDemonstration(ctx);
 export const etatsDuBandeau = async () => (await etats()).etatsDuBandeau();
+export const recuperationDeDemonstration = async (ctx: Contexte) => (await etats()).recuperationDeDemonstration(ctx);

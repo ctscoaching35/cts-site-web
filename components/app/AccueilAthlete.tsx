@@ -125,7 +125,10 @@ export default async function AccueilAthlete({ ctx, demarrage, montre = false, d
   // accord ou Nolio muet, plus de « bientôt » (AT1, B-AT-1) : la carte le dit autrement.
   const raison = lecture && (lecture.raison === 'sans_accord' || lecture.raison === 'muet') ? lecture.raison : null;
   const arrivee = nolio || raison || lecture?.raison === 'demo' || !ligne ? null : !ctx.coache && d.nolio !== 'actif' ? 'invitation' as const : 'bientot' as const;
-  const jauge = jaugeDuPlan(d.trame, d.realises, jour);
+  // La montée (lot 2, 12/11/2026) part du début de son objectif en cours pour un coaché ; pour un acheteur, de la semaine
+  // qu'il a rejointe, sinon de toute sa trame.
+  const depuis = ctx.coache ? d.debut ?? null : plan.course.rejoint?.lundi ?? null;
+  const jauge = jaugeDuPlan(d.trame, d.realises, jour, depuis);
   const fiches = fichesDeLaSemaine(d.fiches, jour);
   // Q14 : le test que la préparation écrit cette semaine. (Q7, la semaine ajustée, n'est plus lue : décision 20 du coach
   // du 10/11/2026, l'app ne dit plus « Ajustée d'après ta semaine passée… ».)
@@ -219,7 +222,7 @@ export default async function AccueilAthlete({ ctx, demarrage, montre = false, d
             // Q16 (décision coach du 05/11/2026 au soir, « A ») : programmé à la main, le bouton ouvre sa fiche de course.
             // Validé par le coach le 05/11/2026 (1A ; « Ta fiche de course »).
             bouton={ctx.aLaMain ? { texte: 'Ta fiche de course', href: fiche } : null}
-            coache={Boolean(ctx.coache)} jour={jour} debut={d.trame.find((l) => l.lundi)?.lundi ?? null} />
+            coache={Boolean(ctx.coache)} jour={jour} debut={depuis ?? d.trame.find((l) => l.lundi)?.lundi ?? null} />
         )}
         {/* Q12 (décision coach du 05/11/2026 au soir, « A ») : après sa course, la carte « Après ta course », la même que
             celle du coaché ; C20 : la carte « terminée dans Nolio » y trouve enfin sa place. */}

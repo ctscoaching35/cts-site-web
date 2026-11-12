@@ -1313,7 +1313,7 @@ async function autresObjectifs(o: Objectif): Promise<Voisin[]> {
 // autre objectif (pas une saison de fond) dont la course vient après la sienne ; reprise : son lundi de reprise. Le lundi
 // de départ d'un objectif : son départ programmé, sinon, parti sans être programmé, sa première semaine écrite.
 export type Continuite = {
-  precedent: { id: string; course_nom: string } | null; suivant: { id: string; course_nom: string; depart: string } | null;
+  precedent: { id: string; course_nom: string; course_date: string } | null; suivant: { id: string; course_nom: string; depart: string } | null;
   objectifApres: boolean; reprise: string;
 };
 export async function continuiteDe(planId: string): Promise<Continuite | null> {
@@ -1337,7 +1337,7 @@ async function continuiteDeLObjectif(o: Objectif): Promise<Continuite> {
   const precedent = partApres(moi, tous);
   const suivant = partEnSuite(moi, tous);
   return {
-    precedent: precedent ? { id: precedent.id, course_nom: precedent.course_nom } : null,
+    precedent: precedent ? { id: precedent.id, course_nom: precedent.course_nom, course_date: precedent.course_date } : null,
     suivant: suivant?.depart ? { id: suivant.id, course_nom: suivant.course_nom, depart: suivant.depart } : null,
     objectifApres: !fond && autres.some((q) => !q.fond && q.course_date > o.plan.course.date),
     reprise: debutApres({ course_date: o.plan.course.date, temps_h: o.tempsH, format: formatDe(o) }),

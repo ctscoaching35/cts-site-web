@@ -12,7 +12,7 @@ import { demandesDeLAthlete, estRetrait, ficheDuCompte } from '@/lib/app/demande
 import { clientServeur, clientService } from '@/lib/app/supabase';
 import { aujourdhuiIso, dateLongue } from '@/lib/app/plan';
 import { blocsDuPlan, jaugeDuPlan } from '@/lib/app/tableau';
-import { donneesTableau, fichesDePreparation, semainesDetaillees, type CourseSecondaire } from '@/lib/app/tableauDuPlan';
+import { donneesTableau, fichesDePreparation, recuperationAvantLObjectif, semainesDetaillees, type CourseSecondaire } from '@/lib/app/tableauDuPlan';
 import { BlocsDeLaSaison } from '@/components/app/SaisonDeFond';
 import { datesDesFiches, objectifsDeDemonstration } from '@/lib/app/demonstration';
 import SemainesDuPlan from '@/components/app/SemainesDuPlan';
@@ -69,8 +69,11 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
   // Ses semaines (décision coach du 07/11/2026) : la semaine en cours et la suivante telles qu'elles sont dans Nolio ;
   // ni à la main, ni pour une saison de fond, qui n'a pas de semaines une à une (« jamais semaine N sur M »).
   const semaines = !ctx.aLaMain && !plan.fond ? await semainesDetaillees(ctx, d.trame, jour) : null;
-  // Un coaché qui a rejoint la préparation en route : ses semaines depuis son arrivée, comme ses blocs.
-  const depuis = ctx.coache ? plan.course.rejoint?.lundi ?? null : null;
+  // Un coaché : ses blocs et ses semaines depuis le début de son objectif en cours, jamais avant (lot 2, décision du coach
+  // du 12/11/2026 : tous les cas, un objectif enchaîné, un objectif court qui commence en développement ou en spécifique,
+  // un coaché qui rejoint) ; enchaîné après une course, sa récupération en première étape. Un acheteur : tous ses blocs.
+  const depuis = ctx.coache ? d.debut ?? null : null;
+  const recuperation = !ctx.aLaMain && !plan.fond ? await recuperationAvantLObjectif(ctx, depuis) : null;
   return (
     <>
       <EnTeteApp ctx={ctx} />
@@ -124,7 +127,7 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
             Ce que chaque bloc développe, jusqu’à ton jour J.
           </p>
           <ol>
-            {blocsDuPlan(d.trame, plan, jour, depuis).map((b) => (
+            {blocsDuPlan(d.trame, plan, jour, depuis, recuperation).map((b) => (
               <li key={b.du} className={clsx('grid grid-cols-[22px_1fr] gap-x-2.5 py-3 border-t border-indigo/[0.06] first:border-t-0',
                 b.moment === 'encours' && 'bg-[#E1EFEA] -mx-2.5 px-2.5 rounded-xl border-t-0')}>
                 <span aria-hidden className={clsx('mt-0.5 w-[18px] h-[18px] rounded-full flex items-center justify-center',
@@ -144,6 +147,7 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
                     <span className="text-xs font-semibold text-[#5E5C78]">{jourEtMois(b.du)} → {jourEtMois(b.au)}</span>
                     {b.moment === 'encours' && <span className="text-[0.6875rem] font-bold text-white bg-teal-dark rounded-full px-2 py-0.5 whitespace-nowrap">tu es ici</span>}
                   </span>
+                  {b.texte && <span className="block mt-1 text-[0.78rem] text-[#4A4866] leading-snug">{b.texte}</span>}
                   {b.travail.length > 0 && (
                     <span className="block mt-1 text-[0.78rem] text-[#4A4866] leading-snug">
                       <span className="font-semibold text-indigo">Tu travailles :</span> {b.travail.map(enMotsDeCoureur).join(', ')}

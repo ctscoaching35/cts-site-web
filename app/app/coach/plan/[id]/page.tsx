@@ -24,7 +24,7 @@ import { allureDepuisVitesse } from '@/lib/app/allureCoach';
 import { lienNolioAthlete } from '@/lib/app/liensNolio';
 import { faiteSansRpe } from '@/lib/app/resumeSemaine';
 import { clientService, espaceCoachOuvert } from '@/lib/app/supabase';
-import { enHeures, jaugeDuPlan, momentDe } from '@/lib/app/tableau';
+import { debutDeLObjectif, enHeures, jaugeDuPlan, momentDe } from '@/lib/app/tableau';
 import { fichesDePreparation, type CourseSecondaire } from '@/lib/app/tableauDuPlan';
 
 // Toujours calculée à la visite : la page lit la session du coach.
@@ -94,7 +94,11 @@ export default async function ObjectifCoache({ params, searchParams }: {
     && (continuite.suivant || !continuite.objectifApres));
   const realises = (ecrites ?? []).map((w) => w.realise as Realise | null).filter((r): r is Realise => Boolean(r))
     .sort((a, b) => Number(a.numero.slice(1)) - Number(b.numero.slice(1)));
-  const jauge = trame ? jaugeDuPlan(trame.semaines, realises, jour) : null;
+  // Sa montée part du début de son objectif en cours (lot 2, 12/11/2026), comme dans son app.
+  const debutObjectif = debutDeLObjectif({ depart_prevu: (ecriture?.depart_prevu ?? null) as string | null,
+    demarre_le: (ecriture?.demarre_le ?? null) as string | null, lundis: (ecrites ?? []).map((w) => (w.lundi ? String(w.lundi) : null)),
+    rejoint: o.plan.course.rejoint?.lundi ?? null });
+  const jauge = trame ? jaugeDuPlan(trame.semaines, realises, jour, debutObjectif) : null;
   const prochaine = trame?.semaines.find((l) => l.lundi && momentDe(l.lundi, jour) === 'avenir') ?? null;
   // Le coaching individualisé dit une semaine par son lundi, pas par son numéro (décision coach du 19/10/2026).
   const lundiDe = new Map((trame?.semaines ?? []).map((l) => [l.numero, l.lundi]));
@@ -321,7 +325,8 @@ export default async function ObjectifCoache({ params, searchParams }: {
           {jauge && (
             <CarteSombre className="space-y-2.5">
               <Surtitre ton="clair">Sa préparation</Surtitre>
-              <Montagne score={jauge.score} ton={jauge.verdict?.ton ?? null} route={estRoute(o.plan.course.format)} />
+              {/* La montée, comme l'athlète la voit (lot 2, 12/11/2026) ; le verdict des piliers reste écrit ici, pour le coach. */}
+              <Montagne part={jauge.montee?.fait ?? null} prevu={jauge.montee?.prevu ?? null} neutre={!jauge.montee} route={estRoute(o.plan.course.format)} />
               <p className="text-[0.9375rem] font-bold">{jauge.verdict?.libelle ?? 'Pas encore assez de semaines faites pour un verdict'}</p>
               {jauge.piliers.length > 0 && <p className="text-[0.8rem] text-[#D6D5E6] leading-relaxed">{jauge.piliers.map((p) => p.detail).join(' · ')}</p>}
             </CarteSombre>

@@ -31,6 +31,8 @@ export type EtatDemo = {
   demarrage: boolean; profilVide: boolean; objectifDemande: boolean;
   // ?testvc=non_repropose : le test de vitesse critique plus proposé (D5, moteur 8.452 ; le journal porte la ligne TN).
   vcNonRepropose: boolean;
+  // ?enchaine=1 (un coaché) : son objectif part après la récupération d'une course précédente fictive (lot 2, 12/11/2026).
+  enchaine: boolean;
   // Le dimanche de la sortie qui débloque un badge (la semaine qui suit, « Nouveau badge »).
   badge: string | null;
   // Les paramètres d'état de l'adresse, que les liens gardent.
@@ -66,6 +68,7 @@ export async function planDemo(voulu: string): Promise<PlanDemo> {
         prepa: texte(r, 'prepa') === '1' && Boolean(e.preparation), demarrage: texte(r, 'demarrage') !== 'masque',
         profilVide: texte(r, 'profil') === 'vide', objectifDemande: texte(r, 'objectif') === 'demande',
         vcNonRepropose: texte(r, 'testvc') === 'non_repropose',
+        enchaine: coache && texte(r, 'enchaine') === '1',
         badge: ajouterJours(normal, -2), garde,
       };
     },
@@ -119,13 +122,32 @@ export async function ajustementDeDemonstration(ctx: Contexte, numero: string): 
   return m ? ajustementDuJournal(m.journal) : null;
 }
 
+// L'OBJECTIF ENCHAÎNÉ DE LA DÉMONSTRATION (?enchaine=1, un coaché ; lot 2, 12/11/2026) : il part au lundi de sa
+// quatrième semaine, après la récupération d'une course fictive courue neuf jours plus tôt (2 h : 4 jours de
+// récupération, jusqu'au lundi qui suit, lib/app/jonction.ts, debutApres). null hors de cet état.
+export type EnchaineDemo = { course: string; date: string; debut: string };
+async function enchaine(ctx: Contexte): Promise<EnchaineDemo | null> {
+  if (!ctx.demo?.enchaine || !ctx.coache) return null;
+  const e = await entree(ctx.cle);
+  const debut = e?.trame.semaines.filter((l) => l.lundi)[3]?.lundi;
+  return debut ? { course: 'Trail des Crêtes (fictif)', date: ajouterJours(debut, -9), debut } : null;
+}
+// La récupération d'avant l'objectif enchaîné, pour « Ta préparation, bloc par bloc » : du lendemain de la course à la
+// veille de son début.
+export async function recuperationDeDemonstration(ctx: Contexte): Promise<{ date: string; jusqua: string } | null> {
+  const x = await enchaine(ctx);
+  return x ? { date: x.date, jusqua: ajouterJours(x.debut, -1) } : null;
+}
+
 // Le tableau de bord : la trame et les fiches du moteur, l'état Nolio et l'accord choisis, la course de préparation ;
-// avec ?retours=exemple, des semaines écoulées simulées pour voir la jauge et les graphiques.
+// avec ?retours=exemple, des semaines écoulées simulées pour voir la jauge et les graphiques. Un objectif enchaîné : ses
+// semaines lues depuis son début seulement, qui est son début.
 export async function tableauDeDemonstration(ctx: Contexte): Promise<DonneesTableau> {
   const e = await entree(ctx.cle);
   const demo = ctx.demo;
   const trame = (demo?.prepa && e?.preparation ? e.preparation.trame : e?.trame.semaines ?? []);
-  const realises: Realise[] = !ctx.exemple ? [] : trame.filter((l) => l.lundi && ajouterJours(l.lundi, 6) < ctx.jour)
+  const suite = await enchaine(ctx);
+  const realises: Realise[] = !ctx.exemple ? [] : trame.filter((l) => l.lundi && ajouterJours(l.lundi, 6) < ctx.jour && (!suite || l.lundi >= suite.debut))
     .map((l, i) => {
       const prevues = l.seances_cles.length + 2;
       const manquee = i % 5 === 4 ? 1 : 0;
@@ -141,6 +163,7 @@ export async function tableauDeDemonstration(ctx: Contexte): Promise<DonneesTabl
   return {
     trame, realises, fiches: e?.trame.fiches ?? [], nolio: demo?.nolio ?? (ctx.coache ? 'coache' : 'actif'), accord: demo?.accord ?? true,
     ecrit: true, courses: demo?.prepa && e?.preparation ? [e.preparation.course] : [],
+    debut: ctx.coache ? suite?.debut ?? ctx.plan.course.rejoint?.lundi ?? null : null,
   };
 }
 
@@ -277,6 +300,11 @@ export async function etatsDuBandeau(): Promise<GroupeDuBandeau[]> {
       t('Jour J', '/app', { ...c, jour: course, ...ex }),
       // Q12 : la même carte « Après ta course » pour les deux versions.
       t('Récupération (« Après ta course »)', '/app', { ...c, jour: ajouterJours(course, 2), ...ex }),
+      // Lot 2 (12/11/2026) : un objectif enchaîné après une course ; sa montée et ses blocs partent de son début.
+      ...(coache ? [
+        t('Objectif enchaîné après une course (l’accueil)', '/app', { ...n, enchaine: '1' }),
+        t('Objectif enchaîné après une course (ses blocs)', '/app/plan', { ...n, enchaine: '1' }),
+      ] : []),
     ];
   };
   const L1 = plans.L1;
