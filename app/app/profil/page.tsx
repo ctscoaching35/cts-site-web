@@ -10,9 +10,9 @@ import { type CleTest } from '@/lib/app/plan';
 import { allure, profilCoureur, testsProposes } from '@/lib/app/zones';
 import { StyleCoureur, TableauZones } from '@/components/app/ZonesEtStyle';
 import { mesBadges } from '@/lib/app/badgesNolio';
-import { lignesDeLaCarte, lignesDuProfil, monProfilDEntrainement, profilDuPlanAchete, profilPourLeQuestionnaire }
-  from '@/lib/app/profilEntrainement';
-import { profilDEntrainementDeDemonstration } from '@/lib/app/demonstration';
+import { lignesDeLaCarte, lignesDuNiveau, lignesDuProfil, monProfilDEntrainement, niveauHabituelDuPlan, profilDuPlanAchete,
+  profilPourLeQuestionnaire } from '@/lib/app/profilEntrainement';
+import { niveauHabituelDeDemonstration, profilDEntrainementDeDemonstration } from '@/lib/app/demonstration';
 import { donneesTableau } from '@/lib/app/tableauDuPlan';
 
 export const metadata: Metadata = { title: 'Ton profil de coureur' };
@@ -40,15 +40,19 @@ export default async function MonProfil({ searchParams }: { searchParams: Recher
   const entrainement = !ctx.coache ? null : ctx.demonstration ? await profilDEntrainementDeDemonstration(ctx)
     : await monProfilDEntrainement().catch(() => null);
   // Ta carte de coureur : un coaché, son profil d'entraînement ; un acheteur, les réponses du questionnaire de son plan.
-  // Ce qui se mesure ne s'y montre que s'il est déjà chargé ici : le point fort, du test de vitesse critique (le volume
-  // habituel et la plus longue sortie lus dans Nolio ne le sont pas sur cette page : pas de ligne).
+  // Ce qui se mesure : son volume habituel et sa plus longue sortie récente, du niveau habituel lu dans Nolio par le moteur
+  // à la dernière semaine écrite (réponse du coach du 12/11/2026, une lecture de plus), puis son point fort, du test de
+  // vitesse critique ; une donnée absente n'a pas de ligne.
   const rempli = ctx.coache ? entrainement
     : ctx.demonstration ? profilPourLeQuestionnaire(await profilDEntrainementDeDemonstration(ctx))
     : ctx.cle ? await profilDuPlanAchete(ctx.cle).catch(() => null) : null;
   const carte = lignesDeLaCarte(rempli);
+  const mesures = [...lignesDuNiveau(ctx.demonstration ? await niveauHabituelDeDemonstration(ctx)
+    : ctx.cle ? await niveauHabituelDuPlan(ctx.cle).catch(() => null) : null)];
   const coureur = profilCoureur(profil);
   const pointFort = coureur ? `${coureur.coefficient < 0.9 ? 'La vitesse' : 'L’endurance'} · ${coureur.nom.toLowerCase()}, d’après ton test`
     : null;
+  if (pointFort) mesures.push(['Ton point fort', pointFort]);
   const zones = plan.zones;
   const lignes = plan.mode_emploi.effort.zones.slice(1);
   // Ses repères se saisissent dans « Tes tests » ; ceux d'un coaché vont sur sa fiche (décision coach du 20/10/2026).
@@ -67,9 +71,10 @@ export default async function MonProfil({ searchParams }: { searchParams: Recher
 
         {/* Ta carte de coureur (lot 2, décision A du coach du 12/11/2026) : en tête, la même pour un acheteur et un coaché ;
             ce qu'il a rempli (« Modifier › » ouvre le formulaire de « Ton profil d'entraînement », plus bas, qu'un coaché
-            seul a), puis ce qui se mesure, en lecture seule, s'il est déjà là : son point fort, tiré du test de vitesse
-            critique. Les cartes détaillées restent dessous. */}
-        {(carte.length > 0 || pointFort) && (
+            seul a), puis ce qui se mesure, en lecture seule, s'il existe : son volume habituel et sa plus longue sortie récente
+            (le niveau habituel lu dans Nolio), son point fort (le test de vitesse critique). Les cartes détaillées restent
+            dessous. */}
+        {(carte.length > 0 || mesures.length > 0) && (
           <Carte className="space-y-1">
             <Surtitre>Ta carte de coureur</Surtitre>
             {carte.length > 0 && (
@@ -84,12 +89,13 @@ export default async function MonProfil({ searchParams }: { searchParams: Recher
             {entrainement && carte.length > 0 && (
               <Link href="#profil-entrainement" className="flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">Modifier ›</Link>
             )}
-            {pointFort && (
+            {mesures.length > 0 && (
               <dl className={clsx(carte.length > 0 && 'border-t border-indigo/[0.06]')}>
-                <div className="grid grid-cols-[112px_1fr] gap-x-3 py-2.5 text-[0.84rem] text-indigo">
-                  <dt className="font-semibold text-[#5E5C78]">Ton point fort</dt>
-                  <dd>{pointFort}</dd>
-                </div>
+                {mesures.map(([cle, valeur]) => (
+                  <div key={cle} className="grid grid-cols-[112px_1fr] gap-x-3 py-2.5 border-b last:border-b-0 border-indigo/[0.06] text-[0.84rem] text-indigo">
+                    <dt className="font-semibold text-[#5E5C78]">{cle}</dt><dd>{valeur}</dd>
+                  </div>
+                ))}
               </dl>
             )}
           </Carte>

@@ -132,6 +132,12 @@ async function enchaine(ctx: Contexte): Promise<EnchaineDemo | null> {
   const debut = e?.trame.semaines.filter((l) => l.lundi)[3]?.lundi;
   return debut ? { course: 'Trail des Crêtes (fictif)', date: ajouterJours(debut, -9), debut } : null;
 }
+// Le niveau habituel lu dans Nolio, pour la carte de coureur : avec des semaines écoulées simulées (?retours=exemple), 5 h 30
+// par semaine et une sortie de 2 h 30 ; null sinon.
+export async function niveauHabituelDeDemonstration(ctx: Contexte): Promise<{ volume_min: number; sl_min: number | null } | null> {
+  return ctx.exemple && !ctx.sansObjectif ? { volume_min: 330, sl_min: 150 } : null;
+}
+
 // La récupération d'avant l'objectif enchaîné, pour « Ta préparation, bloc par bloc » : du lendemain de la course à la
 // veille de son début.
 export async function recuperationDeDemonstration(ctx: Contexte): Promise<{ date: string; jusqua: string } | null> {

@@ -6,7 +6,7 @@ import { lien, type Contexte } from '@/lib/app/contexte';
 import { estSemaineDeWeekEndChoc, nomPourLAthlete, SEMAINE_DE_REPRISE } from '@/lib/app/nomsSeances';
 import { motsDeLaSemaine } from '@/lib/app/motsDeLaSemaine';
 import { ajouterJours, dateLongue, slugFiche, type Jour, type Plan, type Semaine } from '@/lib/app/plan';
-import { enHeures, type Fiche, type Jauge, type Montee } from '@/lib/app/tableau';
+import { enHeures, estRoute, phraseDeLaMontee, texteDeLaMontee, type Fiche, type Jauge } from '@/lib/app/tableau';
 import type { CourseSecondaire, EtatNolio, RaisonNolio, SeanceNolio } from '@/lib/app/tableauDuPlan';
 import { BOUTON, Carte, CarteSombre, EcrisNous, LIEN, PastilleDate, Surtitre } from './Ui';
 
@@ -111,7 +111,7 @@ const ROUTE = `M${ROUTE_AXE.map((p) => `${(p.x - p.nx * ROUTE_DEMI).toFixed(1)} 
   .reverse().map((p) => `${(p.x + p.nx * ROUTE_DEMI).toFixed(1)} ${(p.y + p.ny * ROUTE_DEMI).toFixed(1)}`).join(' L')} Z`;
 // La ligne médiane : un tiret toutes les cinq étapes de l'axe.
 const ROUTE_TIRETS = ROUTE_AXE.slice(0, -8).filter((_, i) => i % 5 === 0).map((p, k) => ({ a: p, b: ROUTE_AXE[k * 5 + 3] }));
-export const estRoute = (format: string | null | undefined) => /^R(10|21|42)$/.test(String(format ?? ''));
+export { estRoute };
 
 // AT3 (décision coach du 04/11/2026, « A ») : la montagne se remplit de la part de la préparation déjà faite (le sommet au
 // jour J). LA MONTÉE (lot 2 de l'app, maquette validée « tout A » par le coach le 12/11/2026 ; lib/app/tableau.ts,
@@ -200,13 +200,13 @@ function Route({ part: brute, prevu = null, neutre = false }: { part: number | n
       <path d={`M${fin.x + 6} ${fin.y - ROUTE_DEMI - 43} C${fin.x + 12} ${fin.y - ROUTE_DEMI - 47} ${fin.x + 19} ${fin.y - ROUTE_DEMI - 39} ${fin.x + 27} ${fin.y - ROUTE_DEMI - 43}`
         + ` L${fin.x + 27} ${fin.y - ROUTE_DEMI - 28} C${fin.x + 19} ${fin.y - ROUTE_DEMI - 24} ${fin.x + 12} ${fin.y - ROUTE_DEMI - 32} ${fin.x + 6} ${fin.y - ROUTE_DEMI - 28} Z`}
         fill="url(#cts-drapeau)" stroke="#FFFFFF" strokeWidth={0.8} strokeLinejoin="round" />
-      {/* Le prévu : un trait en pointillé blanc en travers de la route, et son libellé au-dessus. */}
+      {/* Le prévu : un trait en pointillé blanc en travers de la route, et son libellé dessous (réponse du coach du 12/11/2026). */}
       {attendu && (
         <>
           <line x1={attendu.x - attendu.nx * (ROUTE_DEMI + 3)} y1={attendu.y - attendu.ny * (ROUTE_DEMI + 3)}
             x2={attendu.x + attendu.nx * (ROUTE_DEMI + 3)} y2={attendu.y + attendu.ny * (ROUTE_DEMI + 3)}
             stroke="#FFFFFF" strokeWidth={2} strokeDasharray="3 3" />
-          <text x={Math.max(42, Math.min(attendu.x, 290))} y={attendu.y - ROUTE_DEMI - 8} textAnchor="middle" fontSize="13" fontWeight="600" fill="#FFFFFF">{PREVU}</text>
+          <text x={Math.max(42, Math.min(attendu.x, 290))} y={Math.min(166, attendu.y + ROUTE_DEMI + 17)} textAnchor="middle" fontSize="13" fontWeight="600" fill="#FFFFFF">{PREVU}</text>
         </>
       )}
       {repere && <circle cx={repere.x} cy={repere.y} r={4.5} fill="#FFFFFF" stroke="#8FD1C3" strokeWidth={2} />}
@@ -214,19 +214,6 @@ function Route({ part: brute, prevu = null, neutre = false }: { part: number | n
   );
 }
 
-
-// Les textes de la montée, validés par le coach le 12/11/2026 (maquette « tout A ») : X et Y en pour cent de toute la
-// montée ; dans les temps à 90 % du prévu au moins (lib/app/tableau.ts, DANS_LES_TEMPS).
-export function texteDeLaMontee(m: Montee, route = false): string {
-  const [x, y] = [Math.round(100 * m.fait), Math.round(100 * m.prevu)];
-  const debut = route ? `Tu as parcouru ${x}\u00a0% de ta route` : `Tu as gravi ${x}\u00a0% de ta montée`;
-  return m.dansLesTemps ? `${debut}, le plan en prévoyait ${y}\u00a0% : tu es dans les temps.`
-    : `${debut}, le plan en prévoyait ${y}\u00a0%. Un peu de retard : ta préparation s’adapte.`;
-}
-const SUITE = ', c’est l’entraînement que tu as vraiment fait depuis le début, sur tout ce que ton plan prévoit jusqu’à la course. '
-  + 'Elle ne redescend jamais. Le pointillé : où ton plan te voyait aujourd’hui.';
-const LA_HAUTEUR = `La hauteur${SUITE}`;
-const LA_LONGUEUR = `La longueur${SUITE}`;
 
 // Un compte à rebours en « J- » jusqu'à l'objectif, sans « semaine x sur N », pour tous, plans achetés compris
 // (décisions coach du 19/10/2026 : « on part de l'objectif et on revient jusqu'au jour J »).
@@ -284,7 +271,7 @@ export function CarteObjectif({ plan, restants, jauge, etape, href, surtitre = '
         // La montée (maquette validée « tout A » par le coach le 12/11/2026) : plus de verdict ni de pastille de couleur.
         <div className="space-y-1.5">
           <p className="text-base font-bold leading-snug">{texteDeLaMontee(montee, route)}</p>
-          <p className="text-[0.8125rem] text-[#D6D5E6] leading-relaxed">{route ? LA_LONGUEUR : LA_HAUTEUR}</p>
+          <p className="text-[0.8125rem] text-[#D6D5E6] leading-relaxed">{phraseDeLaMontee(route)}</p>
         </div>
       ) : (
         <p className="text-base font-bold">Ta préparation est lancée</p>

@@ -6,7 +6,7 @@
  */
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { accordDeLAthlete, envoyerSemaine, ficheAthlete, marquerTestsLus, mettreAJourSemaine, objectifCoache } from './coaching';
+import { accordDeLAthlete, envoyerSemaine, ficheAthlete, marquerTestsLus, mettreAJourSemaine, objectifCoache, quitterLAttenteDuProfil } from './coaching';
 import { fermerEspace, ouvrirEspace } from './espaceAthlete';
 import { objectifEcrit, retirerDeNolio, zonesDeLaFicheVersNolio, zonesVersNolio } from './ecriture';
 import { athletesNolio, coachConnecte } from './nolio';
@@ -26,6 +26,9 @@ export async function changerProgrammation(athleteId: string, programmation: 'au
   if (!coach || (programmation !== 'auto' && programmation !== 'main')) return;
   const { error } = await clientService().from('athletes_coaches').update({ programmation }).eq('id', athleteId).eq('coach_id', coach.compteId);
   if (error) console.error(`Programmation de ${athleteId} :`, error.message);
+  // Son choix l'emporte sur l'attente du profil d'une fiche créée d'elle-même (lot 2, 12/11/2026) ; sans la migration, rien.
+  else await clientService().from('athletes_coaches').update({ en_attente_profil: false }).eq('id', athleteId).eq('coach_id', coach.compteId)
+    .eq('en_attente_profil', true).then(() => null, () => null);
   revalidatePath('/app', 'layout');
 }
 
@@ -253,6 +256,8 @@ export async function enregistrerProfil(athleteId: string, _e: EtatCoach, form: 
   const { error } = await clientService().from('athletes_coaches').update({ profil: lu.profil })
     .eq('id', athleteId).eq('coach_id', coach.compteId);
   if (error) return { ok: false, message: 'L’enregistrement n’a pas abouti : la migration du 19/10/2026 est-elle passée ?' };
+  // Une fiche créée d'elle-même depuis l'équipe Nolio : son profil rempli, elle quitte la programmation à la main.
+  await quitterLAttenteDuProfil(coach.compteId, athleteId);
   revalidatePath(`/app/coach/athlete/${athleteId}`);
   // Sa préparation en cours le reprend par « Modifier l'objectif » (décision coach du 23/10/2026).
   return { ok: true, message: 'C’est enregistré. Ses prochains objectifs partent de ce profil ; « Modifier » sur son objectif en cours le lui donne aussi.' };

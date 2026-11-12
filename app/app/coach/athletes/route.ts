@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { API_URL } from '@/lib/plan';
 import type { Plan } from '@/lib/app/plan';
 import { planAchete } from '@/lib/app/acheteurs';
+import { quitterLAttenteDuProfil } from '@/lib/app/coaching';
 import { reprogrammerSortie } from '@/lib/app/ecriture';
 import { coachConnecte } from '@/lib/app/nolio';
 import { clientService } from '@/lib/app/supabase';
@@ -186,5 +187,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: 'Le plan n’a pas pu être rangé. Réessaie.' }, { status: 500 });
   }
   if (demande) await service.from('objectifs_demandes').update({ statut: 'validee', plan_id: plan.id }).eq('id', demande.id);
+  // Une fiche créée d'elle-même depuis l'équipe Nolio : son premier objectif rempli, elle quitte la programmation à la main
+  // (lot 2, 12/11/2026).
+  if (athleteId) await quitterLAttenteDuProfil(coach.compteId, athleteId);
   return NextResponse.json({ page: `/app/coach/plan/${plan.id}` });
 }

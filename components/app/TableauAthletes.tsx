@@ -6,6 +6,7 @@ import type { Etiquette } from '@/lib/app/espaceParAthlete';
 import type { Niveau as Couleur } from '@/lib/app/prevision';
 import { SEMAINE_DE_REPRISE, typeCoteCoach } from '@/lib/app/nomsSeances';
 import { ajouterJours, dateAbregee, jMoins } from '@/lib/app/plan';
+import { texteDeLaMontee } from '@/lib/app/tableau';
 
 // Les pastilles et les étiquettes de chaque ligne (maquette validée par le coach le 24/10/2026, puis l'espace par athlète,
 // maquette validée le 08/11/2026).
@@ -166,6 +167,8 @@ function Ligne({ e, jour }: { e: EtatAthlete; jour: string }) {
         {o ? o.course_nom : 'Aucun objectif'}
         {o && <span className={sous}>{o.fond ? `jusqu’au ${dateCourte(o.course_date, jour)}`
           : `${dateCourte(o.course_date, jour)}${avenir ? ` · ${jMoins(jour, o.course_date)}` : ' · couru'}`}</span>}
+        {/* Sa montée, le message que l'athlète lit (lot 2, réponse du coach du 12/11/2026), tant que sa course est à venir. */}
+        {o?.montee && avenir && !o.fond && <span className={clsx(sous, 'leading-snug')}>{texteDeLaMontee(o.montee, o.route)}</span>}
       </span>
       <SaSemaine e={e} jour={jour} />
       <SemainePassee a={a} />

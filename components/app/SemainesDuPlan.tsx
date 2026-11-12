@@ -24,7 +24,9 @@ import { Carte, Surtitre } from './Ui';
 //   des retouches du coach (décision 11 du coach du 09/11/2026) ;
 // - au-delà, son type et son volume à la demi-heure près, sans séances ni détail ;
 // - « week-end choc » sur les semaines à venir qui en ont un ; une phrase sous la liste.
-// depuis : un coaché qui a rejoint la préparation en route, son lundi d'arrivée, comme ses blocs.
+// depuis : un coaché, le début de son objectif en cours, comme ses blocs (lot 2, 12/11/2026) ; ses semaines se numérotent
+// alors à partir de lui (sa première semaine, « Semaine 1 » ; réponse du coach du 12/11/2026) : dans l'affichage seulement,
+// jamais les numéros du moteur ni de Nolio (la clé de chaque ligne et tout le reste gardent le numéro du moteur).
 const JOUR = (j: string) => (j ? j[0].toUpperCase() + j.slice(1).toLowerCase() : j);
 const jourEtMois = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', timeZone: 'UTC' }).replace(/^1 /, '1er ');
 const jourDeLaDate = (iso: string) => JOUR(new Date(`${iso}T12:00:00Z`).toLocaleDateString('fr-FR', { weekday: 'long', timeZone: 'UTC' }));
@@ -38,6 +40,7 @@ export default function SemainesDuPlan({ trame, jour, course, realises = [], enc
 }) {
   const semaines = trame.filter((l) => l.lundi && (!depuis || l.lundi >= depuis));
   if (!semaines.length) return null;
+  const numeroAffiche = new Map(semaines.map((l, i) => [l.numero, depuis ? String(i + 1) : l.numero.replace('S', '')]));
   const faites = new Map(realises.map((r) => [r.lundi, r]));
   const passees = semaines.filter((l) => detailDeLaSemaine(l.lundi, jour) === 'faite');
   const suite = semaines.filter((l) => detailDeLaSemaine(l.lundi, jour) !== 'faite');
@@ -128,7 +131,7 @@ export default function SemainesDuPlan({ trame, jour, course, realises = [], enc
         )}
         <span className="min-w-0">
           <span className="block text-sm font-bold text-indigo whitespace-nowrap">
-            Semaine {l.numero.replace('S', '')}<span className="sr-only">{detail === 'faite' ? ', faite' : detail === 'encours' ? ', en cours' : ''}</span>
+            Semaine {numeroAffiche.get(l.numero)}<span className="sr-only">{detail === 'faite' ? ', faite' : detail === 'encours' ? ', en cours' : ''}</span>
           </span>
           <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className="text-xs text-[#5E5C78]">{jourEtMois(l.lundi)} – {jourEtMois(ajouterJours(l.lundi, 6))}</span>

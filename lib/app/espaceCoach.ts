@@ -20,7 +20,7 @@ import { demonstrationCoachOuverte } from './demonstrationCoach';
 import { demandesDuCoach, estRetrait, type Demande } from './demandes';
 import { coursesGardees, pasEncoreIci, type CourseNolio } from './coursesNolio';
 import { entreeDe } from './entree';
-import { cleLaissee, debutApres, plansALaMain, trameDuPlan, type Realise, type Trame } from './ecriture';
+import { cleLaissee, compteDuCoach, debutApres, plansALaMain, trameDuPlan, type Realise, type Trame } from './ecriture';
 import { lireTemps } from '@/lib/plan';
 import { ajouterJours, dateAbregee, dateLongue, jourMois, joursEntre, type Semaine } from './plan';
 import { lienNolioAthlete } from './liensNolio';
@@ -28,12 +28,14 @@ import { athletesNolio, ErreurNolio, nolioConfigure, type AthleteNolio } from '.
 import { faiteSansRpe } from './resumeSemaine';
 import { apresLePassage, lundiDeLaSemainePassee, lundiQuiVient } from './semainesDuDimanche';
 import { clientService } from './supabase';
-import { jaugeDuPlan, weekEndChoc, type Verdict } from './tableau';
+import { debutDeLObjectif, estRoute, jaugeDuPlan, weekEndChoc, type Montee, type Verdict } from './tableau';
 
 export type LigneAthlete = {
   id: string; nom: string; usr: string | null; nolio: boolean; accord: boolean; app: boolean;
   objectif: { plan_id: string; course_nom: string; course_date: string; demarre: boolean; prevu: string | null;
     semaine: number | null; total: number | null; verdict: Verdict | null; ecrit: boolean;
+    // La montée, et son message tel que l'athlète le lit (lot 2, réponse du coach du 12/11/2026), à la place du verdict.
+    montee: Montee | null; route: boolean;
     // reprise : sa semaine en cours, écrite, est la reprise après une course (moteur 8.459, « reprise_apres_course »).
     // Une semaine écrite au-delà de la trame (sa récupération, après la course) : celle écrite pour ce lundi.
     cours: { numero: string; type: string; bloc: string; reprise?: boolean } | null;
@@ -106,7 +108,9 @@ export async function equipeNolio(): Promise<{ nolio: AthleteNolio[] | null; err
 // acheteur de plan : sans leur liste, aucune fiche ne se crée), une fiche du coach dont l'athlète a quitté l'équipe passe
 // dans « Anciens athlètes », et en ressort s'il revient. equipe : celle que la page a lue (equipeNolio) ; null, Nolio muet
 // ou en erreur : rien ne change. Rend les anciens athlètes du coach après le passage. En démonstration, rien ne s'écrit.
-// Sans la migration du 12/11/2026 (ancien_le), personne ne part : les fiches se créent seulement.
+// Réponses du coach du 12/11/2026 : la création est réservée au compte du coach qui tient la clé Nolio (le premier de
+// CTS_COACHS, compteDuCoach : l'équipe Nolio est la sienne), et la fiche créée reste programmée à la main tant que son
+// profil n'est pas rempli (en_attente_profil). Sans la migration du 12/11/2026, rien ne se crée et personne ne part.
 export type AncienAthlete = { id: string; nom: string; depuis: string };
 export async function synchroniserLEquipe(coachId: string, equipe: AthleteNolio[] | null): Promise<AncienAthlete[]> {
   const service = clientService();
@@ -119,8 +123,10 @@ export async function synchroniserLEquipe(coachId: string, equipe: AthleteNolio[
   const ecrire = Boolean(equipe) && !demonstrationCoachOuverte();
   const acheteurs = ecrire ? await usrAcheteurs(coachId).catch(() => null) : null;
   const r = rapprocherEquipe({ equipe: ecrire ? equipe : null, fiches, acheteurs: acheteurs ?? new Set<string>(), coachId });
-  for (const m of acheteurs ? r.creer : []) {
-    const { error: e } = await service.from('athletes_coaches').insert({ coach_id: coachId, nom: m.name, nolio_athlete_id: m.id });
+  const creer = acheteurs && r.creer.length && coachId === await compteDuCoach() ? r.creer : [];
+  for (const m of creer) {
+    const { error: e } = await service.from('athletes_coaches')
+      .insert({ coach_id: coachId, nom: m.name, nolio_athlete_id: m.id, programmation: 'main', en_attente_profil: true });
     if (e) console.error(`Fiche de ${m.id} depuis l’équipe Nolio :`, e.message);
   }
   const maintenant = new Date().toISOString();
@@ -221,7 +227,10 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     const realises = semaines.map((l) => l.realise as Realise | null).filter((r): r is Realise => Boolean(r))
       .sort((x, y) => Number(x.numero.slice(1)) - Number(y.numero.slice(1)));
     const trame = (o && trames.get(o.plan_id)?.semaines) || null;
-    const jauge = trame ? jaugeDuPlan(trame, realises, jour) : null;
+    // Sa montée part du début de son objectif en cours, comme dans son app (lot 2, 12/11/2026).
+    const depuis = debutDeLObjectif({ depart_prevu: (p?.depart_prevu as string | null) ?? null, demarre_le: (p?.demarre_le as string | null) ?? null,
+      lundis: semaines.map((l) => (l.donnees as { lundi?: string } | null)?.lundi ?? null) });
+    const jauge = trame ? jaugeDuPlan(trame, realises, jour, depuis) : null;
     // Sa semaine en cours dans le plan ; sa semaine passée et celle d'avant : celles du plan, sinon celles résumées hors
     // moteur. Celle que le moteur a écrite a son résumé dès le passage qui la juge (rangé sous son numéro, realise.numero) ;
     // une semaine de récupération, après la course, n'est pas dans la trame : son résumé se trouve par son lundi.
@@ -420,6 +429,8 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
       app: Boolean(a.compte_id),
       objectif: o ? { plan_id: o.plan_id, course_nom: o.course_nom, course_date: o.course_date, demarre, prevu: (p?.depart_prevu as string | null) ?? null,
         semaine: jauge?.semaine ?? null, total: trame?.length ?? null, verdict: jauge?.verdict ?? null, ecrit,
+        montee: jauge?.montee ?? null,
+        route: estRoute(String(((p?.parametres as { champs?: { format?: unknown } } | null)?.champs?.format) ?? '')),
         cours: enCours ? { numero: enCours.numero, type: enCours.type, bloc: enCours.bloc,
           reprise: semaines.some((l) => l.numero === enCours.numero && (l.donnees as { reprise_apres_course?: unknown } | null)?.reprise_apres_course === true) } : null,
         partie: pasPartie ? false : ecriteDu(lundi) || laisseesAuCoach.has(o.plan_id) ? true : null,

@@ -47,6 +47,11 @@ export function rapprocherEquipe({ equipe, fiches, acheteurs, coachId }: {
   };
 }
 
+// Une fiche créée d'elle-même pour un nouveau de l'équipe (réponse du coach du 12/11/2026) : programmée à la main, ni
+// questionnaire du samedi, ni Hooper, ni saison de fond tentée, tant que le coach n'a pas rempli son profil (ou créé son
+// premier objectif) ; ensuite, le chemin habituel (lib/app/coaching.ts, quitterLAttenteDuProfil).
+export const enAttenteDeProfil = (f: { en_attente_profil?: unknown }) => f.en_attente_profil === true;
+
 // Un ancien athlète : sorti de l'équipe Nolio (la colonne de la migration du 12/11/2026 ; sans elle, personne).
 export const estAncien = (f: { ancien_le?: unknown }) => Boolean(f.ancien_le);
 

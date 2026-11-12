@@ -126,6 +126,21 @@ export function zoneHooper(valeurs: (number | null)[], rang: number): number | n
   return avant.length >= 2 ? (moyenne(avant) as number) : null;
 }
 
+// Les textes de la montée, validés par le coach le 12/11/2026 (maquette « tout A ») : X et Y en pour cent de toute la
+// montée ; dans les temps à 90 % du prévu au moins. Les mêmes pour l'athlète et pour son coach (la page de l'objectif,
+// « Mes athlètes » ; réponse du coach du 12/11/2026).
+export function texteDeLaMontee(m: Montee, route = false): string {
+  const [x, y] = [Math.round(100 * m.fait), Math.round(100 * m.prevu)];
+  const debut = route ? `Tu as parcouru ${x}\u00a0% de ta route` : `Tu as gravi ${x}\u00a0% de ta montée`;
+  return m.dansLesTemps ? `${debut}, le plan en prévoyait ${y}\u00a0% : tu es dans les temps.`
+    : `${debut}, le plan en prévoyait ${y}\u00a0%. Un peu de retard : ta préparation s’adapte.`;
+}
+const SUITE = ', c’est l’entraînement que tu as vraiment fait depuis le début, sur tout ce que ton plan prévoit jusqu’à la course. '
+  + 'Elle ne redescend jamais. Le pointillé : où ton plan te voyait aujourd’hui.';
+export const phraseDeLaMontee = (route = false) => `${route ? 'La longueur' : 'La hauteur'}${SUITE}`;
+// Un objectif sur route (décision coach du 25/10/2026) : la route à la place de la montagne.
+export const estRoute = (format: string | null | undefined) => /^R(10|21|42)$/.test(String(format ?? ''));
+
 // La montée depuis `depuis` : pour un coaché, le début de son objectif en cours (debutDeLObjectif) ; sinon toute la trame.
 export function monteeDuPlan(trame: LigneTrame[], realises: Realise[], aujourdhui: string, depuis: string | null = null): Montee | null {
   const semaines = trame.filter((l) => l.lundi && (!depuis || l.lundi >= depuis));

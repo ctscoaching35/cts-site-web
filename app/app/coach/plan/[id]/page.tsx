@@ -24,7 +24,7 @@ import { allureDepuisVitesse } from '@/lib/app/allureCoach';
 import { lienNolioAthlete } from '@/lib/app/liensNolio';
 import { faiteSansRpe } from '@/lib/app/resumeSemaine';
 import { clientService, espaceCoachOuvert } from '@/lib/app/supabase';
-import { debutDeLObjectif, enHeures, jaugeDuPlan, momentDe } from '@/lib/app/tableau';
+import { debutDeLObjectif, enHeures, jaugeDuPlan, momentDe, texteDeLaMontee } from '@/lib/app/tableau';
 import { fichesDePreparation, type CourseSecondaire } from '@/lib/app/tableauDuPlan';
 
 // Toujours calculée à la visite : la page lit la session du coach.
@@ -325,9 +325,10 @@ export default async function ObjectifCoache({ params, searchParams }: {
           {jauge && (
             <CarteSombre className="space-y-2.5">
               <Surtitre ton="clair">Sa préparation</Surtitre>
-              {/* La montée, comme l'athlète la voit (lot 2, 12/11/2026) ; le verdict des piliers reste écrit ici, pour le coach. */}
+              {/* La montée et son message, comme l'athlète les voit (lot 2, réponse du coach du 12/11/2026 : plus de verdict des
+                  piliers) ; avant deux semaines lues, pas de message. */}
               <Montagne part={jauge.montee?.fait ?? null} prevu={jauge.montee?.prevu ?? null} neutre={!jauge.montee} route={estRoute(o.plan.course.format)} />
-              <p className="text-[0.9375rem] font-bold">{jauge.verdict?.libelle ?? 'Pas encore assez de semaines faites pour un verdict'}</p>
+              {jauge.montee && <p className="text-[0.9375rem] font-bold">{texteDeLaMontee(jauge.montee, estRoute(o.plan.course.format))}</p>}
               {jauge.piliers.length > 0 && <p className="text-[0.8rem] text-[#D6D5E6] leading-relaxed">{jauge.piliers.map((p) => p.detail).join(' · ')}</p>}
             </CarteSombre>
           )}

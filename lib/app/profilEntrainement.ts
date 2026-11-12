@@ -10,6 +10,7 @@ import { niveauDesFaits, texteDesFaits } from './niveau';
 import { ACCENTS } from './accentFond';
 import { ficheDuCompte } from './demandes';
 import { clientServeur, clientService } from './supabase';
+import { enHeures } from './tableau';
 
 export type ProfilEntrainement = Record<string, string | string[]>;
 // Les réponses qui partent au questionnaire d'un objectif ; les deux faits du niveau et le choix du coach restent ici.
@@ -81,6 +82,24 @@ export function lignesDeLaCarte(profil: ProfilEntrainement | null | undefined): 
 export async function profilDuPlanAchete(planId: string): Promise<ProfilEntrainement> {
   const { data } = await (await clientServeur()).from('plans').select('intake').eq('id', planId).maybeSingle();
   return profilPourLeQuestionnaire((data?.intake ?? null) as ProfilEntrainement | null);
+}
+
+// Ce qui se mesure sur la carte (réponse du coach du 12/11/2026) : le niveau habituel que le moteur a calculé à la
+// dernière semaine écrite (son état, plans.etat_ecriture ; moteur 8.460, décision 8 du 09/11/2026), seulement s'il est lu
+// dans Nolio (pas la déclaration du questionnaire) ; son volume par semaine et sa sortie la plus longue. Une lecture de
+// plus ; null sans semaine écrite, sans niveau lu dans Nolio, ou si la base ne répond pas.
+export type NiveauLu = { volume_min: number; sl_min: number | null };
+export async function niveauHabituelDuPlan(planId: string): Promise<NiveauLu | null> {
+  const { data } = await clientService().from('plans').select('niveau:etat_ecriture->niveau_habituel').eq('id', planId).maybeSingle();
+  const n = (data?.niveau ?? null) as { volume_min?: unknown; sl_min?: unknown; source?: unknown } | null;
+  if (!n || n.source !== 'nolio' || typeof n.volume_min !== 'number' || n.volume_min <= 0) return null;
+  return { volume_min: n.volume_min, sl_min: typeof n.sl_min === 'number' && n.sl_min > 0 ? n.sl_min : null };
+}
+// Ses lignes, en clair (brouillon) ; une donnée absente n'a pas de ligne.
+export function lignesDuNiveau(n: NiveauLu | null | undefined): [string, string][] {
+  if (!n) return [];
+  return [['Volume habituel', `${enHeures(Math.round(n.volume_min))} par semaine`],
+    ...(n.sl_min ? [['Plus longue sortie récente', enHeures(Math.round(n.sl_min))] as [string, string]] : [])];
 }
 
 // Le profil d'un formulaire, vérifié : le profil, ou la phrase de ce qui manque. pour : « son » (le coach, qui peut

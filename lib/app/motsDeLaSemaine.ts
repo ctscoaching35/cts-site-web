@@ -14,7 +14,8 @@ type Cle = 'ef' | 'sl' | 'seuil1' | 'tempo' | 'seuil2' | 'vo2max' | 'allure' | '
   | 'renfo' | 'wec';
 export type MotDeLaSemaine = { mot: string; sens: string };
 
-// Dans l'ordre de la liste du coach (12/11/2026). Navettes, Myocrossmax et RPE : les définitions du 05/11/2026 (1A).
+// Dans l'ordre de la liste du coach (12/11/2026), RPE en dernier (sa réponse du 12/11). Navettes, « Côtes et renfo »
+// (l'ancien « Myocrossmax », le nom que le moteur écrit depuis le 12/11) et RPE : les définitions du 05/11/2026 (1A).
 const MOTS: [Cle, string, string][] = [
   ['ef', 'EF', 'endurance fondamentale, RPE 3 : tu tiens une conversation sans gêne.'],
   ['sl', 'SL', 'sortie longue, la plus longue de ta semaine, en endurance.'],
@@ -24,11 +25,11 @@ const MOTS: [Cle, string, string][] = [
   ['vo2max', 'VO2max', 'RPE 8-9 : très dur, un ou deux mots, sur des répétitions de quelques minutes au plus.'],
   ['allure', 'Allure de course', 'l’allure de ta course, calculée sur ton chrono visé.'],
   ['navettes', 'Navettes', 'des montées et des descentes répétées sur une même pente, pour habituer tes jambes au relief.'],
-  ['myo', 'Myocrossmax', 'de la force en côte : des montées enchaînées avec des exercices de renforcement.'],
-  ['rpe', 'RPE', 'ton effort ressenti, de 0 à 10 : note ton souffle, pas la douleur des jambes.'],
+  ['myo', 'Côtes et renfo', 'de la force en côte : des montées enchaînées avec des exercices de renforcement.'],
   ['tapis', 'Montée sur tapis', 'une montée sur tapis incliné, pour qui n’a pas de longue côte.'],
   ['renfo', 'Renfo', 'du renforcement musculaire, à faire chez toi.'],
   ['wec', 'Week-end choc', 'des sorties longues enchaînées, pour apprendre à courir fatigué.'],
+  ['rpe', 'RPE', 'ton effort ressenti, de 0 à 10 : note ton souffle, pas la douleur des jambes.'],
 ];
 
 // La famille de chaque code (lib/app/codeSeance.ts) ; les sprints, les tests, la course test et la sortie libre n'ont pas
@@ -52,7 +53,8 @@ const PAR_LES_MOTS: [RegExp, Cle][] = [
   [/\bSeuil 2\b/i, 'seuil2'],
   [/\bVO2/i, 'vo2max'],
   [/\bNavettes?\b/i, 'navettes'],
-  [/\bMyocrossmax\b/i, 'myo'],
+  // L'ancien nom « Myocrossmax » (avant le 12/11/2026), et le nouveau.
+  [/\bMyocrossmax\b|^Côtes et renfo\b/i, 'myo'],
   [/\btapis\b/i, 'tapis'],
   [/^Renfo\b/i, 'renfo'],
   [/^Week-end choc\b/i, 'wec'],

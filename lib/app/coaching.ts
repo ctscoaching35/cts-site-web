@@ -73,6 +73,15 @@ const objectif = (l: LigneCoaching): Objectif => {
   return { plan_id: l.plan_id, course_nom: p?.course_nom ?? '', course_date: p?.course_date ?? '' };
 };
 
+// Une fiche créée d'elle-même depuis l'équipe Nolio (lot 2, réponse du coach du 12/11/2026) reste programmée à la main
+// tant que son profil n'est pas rempli : son profil enregistré par le coach, ou un premier objectif créé pour elle, la
+// remet en programmation automatique, le chemin habituel. Sans la migration du 12/11/2026 (en_attente_profil), rien.
+export async function quitterLAttenteDuProfil(coachId: string, athleteId: string): Promise<void> {
+  const { error } = await clientService().from('athletes_coaches').update({ programmation: 'auto', en_attente_profil: false })
+    .eq('id', athleteId).eq('coach_id', coachId).eq('en_attente_profil', true);
+  if (error && !error.message.includes('en_attente_profil')) console.error(`Profil de ${athleteId}, fin de l’attente :`, error.message);
+}
+
 // Les athlètes du coach, chacun avec ses objectifs, du plus proche au plus lointain.
 export async function athletesCoaches(coachId: string): Promise<FicheAthlete[]> {
   const service = clientService();
