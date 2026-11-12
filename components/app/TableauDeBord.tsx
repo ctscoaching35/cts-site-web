@@ -149,15 +149,9 @@ export function Montagne({ part, neutre = false, route = false, libelle = EN_ATT
   );
 }
 
-// Le point de l'axe de la route à une part de sa longueur (en largeur du dessin).
-const surLaRoute = (part: number) => ROUTE_AXE[Math.round(((ROUTE_X0 + part * (ROUTE_X1 - ROUTE_X0) - ROUTE_X0) / (ROUTE_X1 - ROUTE_X0)) * (ROUTE_AXE.length - 1))];
-
 function Route({ part: brute, neutre = false, libelle }: { part: number | null; neutre?: boolean; libelle: string }) {
   const part = borne(brute);
   const niveau = part === null ? null : ROUTE_X0 + part * (ROUTE_X1 - ROUTE_X0);
-  // Le repère s'arrête avant la ligne d'arrivée, pour ne pas couvrir le damier.
-  const avantLArrivee = (ROUTE_X1 - DAMIER * 2 - 6 - ROUTE_X0) / (ROUTE_X1 - ROUTE_X0);
-  const repere = part === null ? null : surLaRoute(Math.min(part, avantLArrivee));
   const fin = ROUTE_AXE[ROUTE_AXE.length - 1];
   return (
     <svg viewBox="0 0 350 170" className={DESSIN} role="img" aria-label={libelle}>
@@ -189,7 +183,6 @@ function Route({ part: brute, neutre = false, libelle }: { part: number | null; 
       <path d={`M${fin.x + 6} ${fin.y - ROUTE_DEMI - 43} C${fin.x + 12} ${fin.y - ROUTE_DEMI - 47} ${fin.x + 19} ${fin.y - ROUTE_DEMI - 39} ${fin.x + 27} ${fin.y - ROUTE_DEMI - 43}`
         + ` L${fin.x + 27} ${fin.y - ROUTE_DEMI - 28} C${fin.x + 19} ${fin.y - ROUTE_DEMI - 24} ${fin.x + 12} ${fin.y - ROUTE_DEMI - 32} ${fin.x + 6} ${fin.y - ROUTE_DEMI - 28} Z`}
         fill="url(#cts-drapeau)" stroke="#FFFFFF" strokeWidth={0.8} strokeLinejoin="round" />
-      {repere && <circle cx={repere.x} cy={repere.y} r={4.5} fill="#FFFFFF" stroke="#8FD1C3" strokeWidth={2} />}
     </svg>
   );
 }
