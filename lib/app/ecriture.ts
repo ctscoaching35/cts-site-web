@@ -25,6 +25,7 @@ import { lienFicheCourse } from './ficheCourse';
 import { glucidesDeLaStrategie } from './strategie';
 import { dateDe } from './trameNolio';
 import { appelNolio, athletesNolio, coachs, listeNolio, moiNolio, refusNolio, sansVitesseImpossible, SPORTS_COURSE, type ReponseNolio } from './nolio';
+import { estAncien, sansEcriture } from './anciens';
 import { ajouterJours, joursEntre, SCHEMA_PLAN, type Plan, type Semaine } from './plan';
 import { clientService } from './supabase';
 import type { Fiche } from './tableau';
@@ -1399,12 +1400,14 @@ async function departsDuJour(budgetMs = 120_000): Promise<Compte[]> {
 // Les plans écrits semaine par semaine dont l'athlète est dans Nolio et la course à venir.
 // Les objectifs des athlètes que le coach programme à la main (décision coach du 20/10/2026, « tableau de bord
 // complet ») : le moteur n'y écrit rien, ni semaine, ni trame, ni questionnaire ; l'app reste leur tableau de bord. Et
-// ceux des athlètes passés en mode plan (décision coach du 23/10/2026) : rien ne s'y écrit non plus. Les colonnes lues
-// après coup : sans la migration, rien n'est retenu.
+// ceux des athlètes passés en mode plan (décision coach du 23/10/2026) : rien ne s'y écrit non plus. Et ceux des anciens
+// athlètes, sortis de l'équipe Nolio (lot 2 de l'app, décision A du coach du 12/11/2026 ; lib/app/anciens.ts) : ni le
+// dimanche, ni les reprises, ni les départs, ni le passage du soir. Les colonnes lues après coup : sans la migration, rien
+// n'est retenu.
 export async function plansALaMain(): Promise<Set<string>> {
   const service = clientService();
   const { data: toutes, error } = await service.from('athletes_coaches').select('*');
-  const fiches = (toutes ?? []).filter((f) => f.programmation === 'main' || f.mode === 'plan');
+  const fiches = (toutes ?? []).filter(sansEcriture);
   if (error || !fiches.length) return new Set();
   const { data } = await service.from('coaching').select('plan_id').in('athlete_id', fiches.map((f) => f.id));
   return new Set((data ?? []).map((c) => c.plan_id as string));
@@ -2099,10 +2102,12 @@ export async function zonesDeLaFicheVersNolio(athleteId: string): Promise<string
 // seule n'arrivait jamais dans les métriques Nolio, et le moteur la visait quand même.
 export async function rattraperLesZones(budgetMs = 150_000): Promise<Compte[]> {
   const debut = Date.now();
-  const { data: fiches } = await clientService().from('athletes_coaches').select('id, coach_id, mode, nolio_athlete_id, vc_ms, fc_seuil1, fc_seuil2')
+  // Toute la fiche : ancien_le, sans la migration du 12/11/2026, n'existe pas.
+  const { data: fiches } = await clientService().from('athletes_coaches').select('*')
     .not('nolio_athlete_id', 'is', null);
   const comptes: Compte[] = [];
-  for (const f of (fiches ?? []).filter((x) => x.mode !== 'plan' && aDesReperes(x))) {
+  // Pas un ancien athlète, sorti de l'équipe Nolio (lot 2, 12/11/2026).
+  for (const f of (fiches ?? []).filter((x) => x.mode !== 'plan' && !estAncien(x) && aDesReperes(x))) {
     if (Date.now() - debut > budgetMs) {
       comptes.push({ plan: '', quoi: 'zones remises' });
       continue;

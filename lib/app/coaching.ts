@@ -28,6 +28,9 @@ export type FicheAthlete = {
   objectifs: Objectif[];
   // Son compte dans l'app, quand le coach l'y a invité (T6).
   compte_id: string | null;
+  // Sorti de l'équipe Nolio, le moment où l'app coach l'a vu (« Anciens athlètes », lot 2, 12/11/2026, lib/app/anciens.ts) ;
+  // null dans l'équipe, ou sans la migration du 12/11/2026.
+  ancien_le?: string | null;
   // Sa série du dimanche dans Nolio et le dernier mot écrit à la question ouverte (dimanchesCoaches, 21/10/2026).
   questionnaires?: { mot_le?: string | null; jusqua?: string | null } | null;
   // Son profil (PO1), sa D′ (AP4), la date et la source de chaque repère : null ou vides tant que la migration du
@@ -85,6 +88,7 @@ export async function athletesCoaches(coachId: string): Promise<FicheAthlete[]> 
     programmation: a.programmation === 'main' ? 'main' : 'auto',
     mode: a.mode === 'plan' ? 'plan' : 'coaching', mode_le: a.mode_le ?? null,
     saison_refusee: (a.saison_refusee ?? null) as FicheAthlete['saison_refusee'],
+    ancien_le: a.ancien_le ?? null,
     objectifs: ((lignes ?? []) as LigneCoaching[]).filter((l) => l.athlete_id === a.id).map(objectif)
       .sort((x, y) => x.course_date.localeCompare(y.course_date)),
   }));

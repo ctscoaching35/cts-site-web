@@ -11,6 +11,7 @@
  * lecture, un mot écrit à la question ouverte se note sur sa fiche, sa date seulement : « À regarder » et l'e-mail du
  * soir le disent, le texte se lit dans Nolio. Côté serveur seulement.
  */
+import { estAncien } from './anciens';
 import { destinataire } from './coaching';
 import { QUESTIONNAIRE_SEMAINE, type Compte } from './ecriture';
 import { appelNolio, listeNolio, refusNolio } from './nolio';
@@ -110,8 +111,9 @@ export async function programmerLesDimanches(budgetMs = 120_000): Promise<Compte
   if (error || toutes?.some((f) => !('questionnaires' in f))) return [];
   const prochain = dimancheApres(aujourdhuiParis());
   const rang = (f: { questionnaires?: DimanchesCoache | null }) => (!f.questionnaires?.dimanche ? 0 : f.questionnaires.dimanche !== prochain ? 1 : 2);
-  // Un athlète en mode plan (décision coach du 23/10/2026) a le dimanche de son plan acheté.
-  const fiches = (toutes ?? []).filter((f) => f.mode !== 'plan').sort((a, b) => rang(a) - rang(b));
+  // Un athlète en mode plan (décision coach du 23/10/2026) a le dimanche de son plan acheté ; un ancien athlète, sorti de
+  // l'équipe Nolio (lot 2, 12/11/2026), plus rien.
+  const fiches = (toutes ?? []).filter((f) => f.mode !== 'plan' && !estAncien(f)).sort((a, b) => rang(a) - rang(b));
   const comptes: Compte[] = [];
   const faits = new Set<string>();
   for (const f of fiches) {

@@ -14,6 +14,9 @@
  */
 import { alerteChronoRoute, prerequisMarathon } from './route';
 import { athletesCoaches, type FicheAthlete } from './coaching';
+import { usrAcheteurs } from './acheteurs';
+import { estAncien, rapprocherEquipe, type FicheEquipe } from './anciens';
+import { demonstrationCoachOuverte } from './demonstrationCoach';
 import { demandesDuCoach, estRetrait, type Demande } from './demandes';
 import { coursesGardees, pasEncoreIci, type CourseNolio } from './coursesNolio';
 import { entreeDe } from './entree';
@@ -98,11 +101,49 @@ export async function equipeNolio(): Promise<{ nolio: AthleteNolio[] | null; err
   }
 }
 
+// L'ÉQUIPE NOLIO SYNCHRONISÉE (lot 2 de l'app, décision A du coach du 12/11/2026 ; la règle, lib/app/anciens.ts) : à
+// chaque ouverture de l'app coach, un athlète de l'équipe sans fiche reçoit la sienne (reliée, sans objectif ; jamais un
+// acheteur de plan : sans leur liste, aucune fiche ne se crée), une fiche du coach dont l'athlète a quitté l'équipe passe
+// dans « Anciens athlètes », et en ressort s'il revient. equipe : celle que la page a lue (equipeNolio) ; null, Nolio muet
+// ou en erreur : rien ne change. Rend les anciens athlètes du coach après le passage. En démonstration, rien ne s'écrit.
+// Sans la migration du 12/11/2026 (ancien_le), personne ne part : les fiches se créent seulement.
+export type AncienAthlete = { id: string; nom: string; depuis: string };
+export async function synchroniserLEquipe(coachId: string, equipe: AthleteNolio[] | null): Promise<AncienAthlete[]> {
+  const service = clientService();
+  const { data, error } = await service.from('athletes_coaches').select('*');
+  if (error) {
+    console.error('Fiches, équipe Nolio :', error.message);
+    return [];
+  }
+  const fiches = (data ?? []) as (FicheEquipe & { nom: string })[];
+  const ecrire = Boolean(equipe) && !demonstrationCoachOuverte();
+  const acheteurs = ecrire ? await usrAcheteurs(coachId).catch(() => null) : null;
+  const r = rapprocherEquipe({ equipe: ecrire ? equipe : null, fiches, acheteurs: acheteurs ?? new Set<string>(), coachId });
+  for (const m of acheteurs ? r.creer : []) {
+    const { error: e } = await service.from('athletes_coaches').insert({ coach_id: coachId, nom: m.name, nolio_athlete_id: m.id });
+    if (e) console.error(`Fiche de ${m.id} depuis l’équipe Nolio :`, e.message);
+  }
+  const maintenant = new Date().toISOString();
+  const poser = async (ids: string[], ancien: string | null): Promise<Set<string>> => {
+    if (!ids.length) return new Set();
+    const { data: faites, error: e } = await service.from('athletes_coaches').update({ ancien_le: ancien })
+      .in('id', ids).eq('coach_id', coachId).select('id');
+    if (e) console.error(`${ancien ? 'Départs' : 'Retours'} de l’équipe Nolio :`, e.message);
+    return new Set((faites ?? []).map((x) => String(x.id)));
+  };
+  const partis = await poser(r.partis, maintenant);
+  const revenus = await poser(r.revenus, null);
+  return fiches.filter((f) => f.coach_id === coachId && ((estAncien(f) && !revenus.has(f.id)) || partis.has(f.id)))
+    .map((f) => ({ id: f.id, nom: String(f.nom ?? ''), depuis: String(f.ancien_le ?? maintenant).slice(0, 10) }))
+    .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
+}
+
 // membres : les athlètes de l'équipe Nolio du coach (la page les lit déjà) ; null si Nolio n'a pas répondu.
 export async function vueDuCoach(coachId: string, membres: Set<string> | null = null): Promise<VueCoach> {
   const service = clientService();
   const jour = aujourdhui();
-  const fiches = await athletesCoaches(coachId);
+  // Sans les anciens athlètes (lot 2, 12/11/2026) : hors de la liste principale et d'« Urgent » ; leur fiche reste.
+  const fiches = (await athletesCoaches(coachId)).filter((a) => !estAncien(a));
   const demandes = await demandesDuCoach(coachId).catch(() => [] as DemandeAthlete[]);
   // Le prochain objectif de chaque athlète, sinon le dernier couru.
   const prochain = (a: FicheAthlete) => a.objectifs.find((o) => o.course_date >= jour) ?? a.objectifs[a.objectifs.length - 1] ?? null;

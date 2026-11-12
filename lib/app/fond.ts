@@ -18,6 +18,7 @@ import { profilDeLaFiche } from './profilEntrainement';
 import { clientService } from './supabase';
 import { coefficientRiegel } from './zones';
 import { ACCENTS } from './accentFond';
+import { estAncien } from './anciens';
 
 // Ce que le moteur rend d'une saison (POST /v1/trame).
 export type InfosFond = { saison: number; themes: string[]; debut: string; fin: string; tests_le: string; tests_les?: string[] };
@@ -161,7 +162,8 @@ export async function saisonsDuJour(budgetMs = 90_000): Promise<Compte[]> {
   const lundi = lundiApres(aujourdhuiParis());
   const { data: toutes, error } = await service.from('athletes_coaches').select('*').not('nolio_athlete_id', 'is', null);
   if (error) return [{ plan: '', quoi: 'saisons de fond non lues', erreur: error.message }];
-  const fiches = (toutes ?? []).filter((f) => f.mode !== 'plan' && f.programmation !== 'main');
+  // Pas un ancien athlète, sorti de l'équipe Nolio (lot 2, 12/11/2026).
+  const fiches = (toutes ?? []).filter((f) => f.mode !== 'plan' && f.programmation !== 'main' && !estAncien(f));
   if (!fiches.length) return [];
   const { data: liens } = await service.from('coaching').select('plan_id, athlete_id').in('athlete_id', fiches.map((f) => f.id));
   const ids = (liens ?? []).map((l) => l.plan_id as string);

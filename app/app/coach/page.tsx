@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import CadreCoach from '@/components/app/CadreCoach';
 import { Carte, Surtitre } from '@/components/app/Ui';
 import TableauAthletes, { filtreDe } from '@/components/app/TableauAthletes';
-import { equipeNolio } from '@/lib/app/espaceCoach';
+import { equipeNolio, synchroniserLEquipe } from '@/lib/app/espaceCoach';
 import { espaceDuCoach } from '@/lib/app/mesAthletes';
 import { texteBilan } from '@/lib/app/espaceParAthlete';
 import { creerFicheDepuisNolio } from '@/lib/app/actionsCoaching';
@@ -27,6 +27,12 @@ export default async function MesAthletes({ searchParams }: { searchParams: Prom
   const { filtre: demande } = await searchParams;
   const filtre = filtreDe(demande);
   const { nolio, erreur } = await equipeNolio();
+  // L'équipe Nolio synchronisée (lot 2, décision A du coach du 12/11/2026) : avant la liste, les fiches des nouveaux de
+  // l'équipe se créent et ceux qui l'ont quittée passent dans « Anciens athlètes » ; Nolio muet, rien ne bouge.
+  const anciens = await synchroniserLEquipe(coach.compteId, nolio).catch((e) => {
+    console.error('Équipe Nolio :', e instanceof Error ? e.message : e);
+    return [];
+  });
   // L'équipe Nolio, pour dire qui l'a quittée ; sans réponse de Nolio, personne.
   const membres = nolio ? new Set(nolio.map((x) => x.id)) : null;
   const espace = await espaceDuCoach(coach.compteId, membres);
@@ -67,6 +73,28 @@ export default async function MesAthletes({ searchParams }: { searchParams: Prom
           Les signaux de la semaine (commentaires, sensations, Hooper, rien de remonté) ne sont pas encore gardés : la migration
           du 04/11/2026 est à passer dans Supabase.
         </p>
+      )}
+
+      {/* Les anciens athlètes (lot 2, décision A du coach du 12/11/2026) : sortis de l'équipe Nolio, hors de la liste ;
+          leur fiche et leur historique restent, ils reviennent d'eux-mêmes dans la liste s'ils reviennent dans l'équipe. */}
+      {anciens.length > 0 && (
+        <Carte className="!p-5 space-y-2">
+          <Surtitre>Anciens athlètes</Surtitre>
+          <p className="text-sm text-[#4A4866]">
+            Plus dans ton équipe Nolio : le moteur n’écrit plus rien pour eux, leur historique reste. S’ils reviennent dans
+            l’équipe, ils reviennent dans ta liste.
+          </p>
+          <ul className="text-sm divide-y divide-indigo/[0.06]">
+            {anciens.map((a) => (
+              <li key={a.id}>
+                <Link href={`/app/coach/athlete/${a.id}`} className="flex items-center justify-between gap-3 min-h-11 text-indigo">
+                  <span className="font-semibold">{a.nom}</span>
+                  <span className="text-xs text-[#5E5C78]">depuis le {dateAbregee(a.depuis, false)} ›</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Carte>
       )}
 
       <Carte className="!p-5 space-y-2">

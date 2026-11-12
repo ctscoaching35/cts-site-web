@@ -3,6 +3,7 @@
  * qui vient s'écrit au passage du dimanche soir, ceux qui sont déjà partis, et ceux que le coach écrit lui-même. Une seule
  * lecture, pour que les deux écrans comptent la même chose. Tout vient de la base. Côté serveur seulement.
  */
+import { estAncien } from './anciens';
 import { athletesCoaches, type FicheAthlete, type Objectif } from './coaching';
 import { heuresDuTemps, recuperationFinie } from './jonction';
 import { ajouterJours } from './plan';
@@ -39,7 +40,8 @@ export type SemainesDuDimanche = {
 export async function semainesDuDimanche(coachId: string, jour: string): Promise<SemainesDuDimanche> {
   const service = clientService();
   const lundi = lundiQuiVient(jour);
-  const fiches = (await athletesCoaches(coachId)).filter((a) => a.nolio_athlete_id);
+  // Sans les anciens athlètes (lot 2, 12/11/2026) : rien ne s'écrit pour eux.
+  const fiches = (await athletesCoaches(coachId)).filter((a) => a.nolio_athlete_id && !estAncien(a));
   // Les objectifs encore en route, et ceux d'une course passée depuis moins de 6 semaines (sa récupération, tant qu'elle
   // n'est pas finie).
   const objectifs = fiches.flatMap((a) => a.objectifs.filter((o) => o.course_date >= ajouterJours(jour, -42)).map((o) => ({ a, o })));
