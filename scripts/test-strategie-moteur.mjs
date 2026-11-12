@@ -148,11 +148,11 @@ test('sans stratégie : les paramètres de toujours, sans glucides_cible ni stra
 
 test("une stratégie passée ne repart pas, ni ne se garde quand le moteur rend ses paramètres", () => {
   const passee = { schema: 1, glucides_cible: [60, 70], strategie: { glucides_g_h: [60, 70] } };
-  // Sans stratégie aujourd'hui : glucides_cible comme avant (rien n'y touche), la stratégie passée retirée.
-  assert.deepEqual(parametresAvecLaStrategie(passee, null), { schema: 1, glucides_cible: [60, 70] });
+  // Sans stratégie aujourd'hui : ni ses glucides ni sa stratégie d'avant ne repartent.
+  assert.deepEqual(parametresAvecLaStrategie(passee, null), { schema: 1 });
   assert.deepEqual(parametresAvecLaStrategie(passee, EXEMPLE).strategie.glucides_g_h, [45, 55]);
   assert.deepEqual(parametresAvecLaStrategie(passee, EXEMPLE).glucides_cible, [45, 55]);
-  assert.deepEqual(sansLaStrategie(passee), { schema: 1, glucides_cible: [60, 70] });
+  assert.deepEqual(sansLaStrategie(passee), { schema: 1 });
   const sans = { schema: 1 };
   assert.equal(sansLaStrategie(sans), sans);
 });
