@@ -28,7 +28,7 @@ async function enregistrer(planId: string, consentement: boolean, valeurs: Recor
   if (!plan) return { ok: false, message: 'Cette préparation n’est pas dans ton compte.' };
   const { data: existant } = await supabase.from('zones').select('plan_id').eq('plan_id', planId).maybeSingle();
   if (!existant && !consentement)
-    return { ok: false, message: 'Coche la case pour que CTS garde tes valeurs : sans ton accord, rien n’est enregistré.' };
+    return { ok: false, message: 'Coche la case pour que City to Summit garde tes valeurs : sans ton accord, rien n’est enregistré.' };
   const { error } = await clientService()
     .from('zones')
     .upsert({ plan_id: planId, compte_id: compteId, ...valeurs, maj_le: new Date().toISOString() });

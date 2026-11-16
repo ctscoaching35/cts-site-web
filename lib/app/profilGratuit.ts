@@ -136,7 +136,7 @@ export function testsSurs(brut: unknown): TestsGratuits {
 }
 
 // Les conseils de la maquette (« Profil »), sous le style de coureur. « Plutôt endurant » : les mots de la maquette ;
-// « plutôt rapide » : la même phrase, retournée (À VALIDER par le coach : la maquette ne montre que le cas endurant).
+// « plutôt rapide » : la même phrase, retournée (validée par le coach le 16/11/2026, comme tous les textes du lot A1 ; retouches à l'usage).
 export const CONSEILS_GRATUITS = {
   endurant: {
     loin: 'Plus de vitesse : des intervalles courts, des côtes courtes, des accélérations, sans lâcher ton volume d’endurance.',

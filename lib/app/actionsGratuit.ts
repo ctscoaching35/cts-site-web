@@ -98,7 +98,7 @@ export async function enregistrerProfilGratuit(entree: { saisie: unknown; consen
     const existant = await ligneDuCompte(acces.compteId);
     const avecFc = aDesFcGardees(calcul.tests);
     if (avecFc && !existant?.consentement_fc_le && !entree.consentementFc)
-      return { ok: false, message: 'Coche la case pour que CTS garde tes valeurs : sans ton accord, rien n’est enregistré.' };
+      return { ok: false, message: 'Coche la case pour que City to Summit garde tes valeurs : sans ton accord, rien n’est enregistré.' };
     await assurerCompte(acces.compteId);
     const maintenant = new Date().toISOString();
     const { error } = await (await clientServeur()).from('profils_gratuits').upsert({

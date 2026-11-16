@@ -5,8 +5,13 @@ import { Carte, Surtitre, TITRE } from '@/components/app/Ui';
 import { pageGratuite } from '@/lib/app/accesGratuit';
 import { prixDesFormules } from '@/lib/app/prix';
 import { planOuvert } from '@/lib/planAcces';
+import { gratuitOuvert } from '@/lib/app/gratuit';
 
-export const metadata: Metadata = { title: 'Aller plus loin' };
+// Le titre seulement quand l'app gratuite est ouverte pour cette visite : en mode « coupe », la page est introuvable et
+// son titre ne transparaît pas (le titre par défaut, comme toute adresse inexistante).
+export async function generateMetadata(): Promise<Metadata> {
+  return (await gratuitOuvert()) ? { title: 'Aller plus loin' } : {};
+}
 export const dynamic = 'force-dynamic';
 
 // « ALLER PLUS LOIN » (app gratuite, lot A2 ; maquette « Aller plus loin » validée par le coach le 16/11/2026, qui a demandé de
@@ -91,7 +96,7 @@ export default async function AllerPlusLoin() {
           <p className="text-[0.8125rem] leading-relaxed text-[#4A4866]">Pour un objectif qui compte, une situation particulière, ou quand tu veux un suivi humain.</p>
           <p className="text-lg font-extrabold text-indigo">89&nbsp;€ par mois.</p>
           <Link href="/app/coaching" className="inline-flex w-full items-center justify-center min-h-12 rounded-xl border border-indigo/25 bg-white text-indigo text-sm font-bold">Demander le coaching</Link>
-          <p className="text-xs leading-relaxed text-[#5E5C78]">D’abord quelques questions, puis un appel pour voir si vous pouvez travailler ensemble.</p>
+          <p className="text-xs leading-relaxed text-[#5E5C78]">D’abord quelques questions, puis un appel pour voir si on peut travailler ensemble.</p>
         </Carte>
 
         <Carte className="space-y-2">

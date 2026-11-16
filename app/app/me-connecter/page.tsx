@@ -2,8 +2,13 @@ import type { Metadata } from 'next';
 import EnTeteGratuit from '@/components/app/EnTeteGratuit';
 import FormulaireMeConnecter from '@/components/app/FormulaireMeConnecter';
 import { pageGratuite } from '@/lib/app/accesGratuit';
+import { gratuitOuvert } from '@/lib/app/gratuit';
 
-export const metadata: Metadata = { title: 'Me connecter' };
+// Le titre seulement quand l'app gratuite est ouverte pour cette visite : en mode « coupe », la page est introuvable et
+// son titre ne transparaît pas (le titre par défaut, comme toute adresse inexistante).
+export async function generateMetadata(): Promise<Metadata> {
+  return (await gratuitOuvert()) ? { title: 'Me connecter' } : {};
+}
 export const dynamic = 'force-dynamic';
 
 // « Me connecter » de l'app gratuite (maquette « Garder » du 16/11/2026) : l'e-mail, le code à 6 chiffres ; le compte se

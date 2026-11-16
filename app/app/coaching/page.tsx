@@ -6,8 +6,13 @@ import { pageGratuite } from '@/lib/app/accesGratuit';
 import { reponsesSures } from '@/lib/app/coachingRegles';
 import { estExperience } from '@/lib/app/profilGratuit';
 import { clientServeur } from '@/lib/app/supabase';
+import { gratuitOuvert } from '@/lib/app/gratuit';
 
-export const metadata: Metadata = { title: 'Demander le coaching' };
+// Le titre seulement quand l'app gratuite est ouverte pour cette visite : en mode « coupe », la page est introuvable et
+// son titre ne transparaît pas (le titre par défaut, comme toute adresse inexistante).
+export async function generateMetadata(): Promise<Metadata> {
+  return (await gratuitOuvert()) ? { title: 'Demander le coaching' } : {};
+}
 export const dynamic = 'force-dynamic';
 
 // « Demander le coaching » (app gratuite, lot A2 ; maquette du 16/11/2026, décisions du coach du même jour) : passe par un compte,

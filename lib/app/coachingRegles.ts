@@ -6,11 +6,12 @@
 import { estExperience, EXPERIENCES, type Experience } from './profilGratuit';
 
 // ─── Les textes à valider, en un bloc ─────────────────────────────────────────────────────────────────────────────────
-// BROUILLON : les questions du coach (16/11/2026), leurs intitulés et leurs choix sont à faire valider en un bloc.
+// Les questions du coach (16/11/2026), leurs intitulés et leurs choix : VALIDÉS en bloc par le coach le 16/11/2026, voix « je »
+// (les demandes ne vont qu'à Romain) ; retouches à l'usage.
 type Choix = { cle: string; titre: string };
 export const QUESTIONS_COACHING = {
   titre: 'Demander le coaching',
-  intro: 'Quelques questions pour que le coach comprenne où tu en es, puis il t’appelle pour voir si vous pouvez travailler ensemble. Aucun paiement ici. Trois minutes au plus.',
+  intro: 'Quelques questions pour que je comprenne où tu en es, puis je t’appelle pour voir si on peut travailler ensemble. Aucun paiement ici. Trois minutes au plus.',
   dejaConnu: 'Repris de ton compte : tes tests, ton expérience et tes courses sont joints à ta demande, tu ne les redonnes pas.',
   toi: { titre: 'Toi', nom: 'Prénom et nom', naissance: 'Année de naissance', ville: 'Ville' },
   vecu: {
@@ -93,14 +94,14 @@ export const QUESTIONS_COACHING = {
     telephone: 'Ton téléphone',
     moments: 'Les moments où tu peux répondre',
     momentsAide: 'Au moins un.',
-    mot: 'Un mot pour le coach',
+    mot: 'Un mot pour moi',
   },
   envoyer: 'Envoyer ma demande',
   metAJour: 'Mettre ma demande à jour',
   apres: 'C’est envoyé. Je t’appelle dans la semaine, à l’un des moments que tu as choisis.',
   apresSuite: 'En attendant, continue à courir comme d’habitude : ton profil, tes courses et la bibliothèque restent là.',
   deja: 'Ta demande est déjà envoyée. Tu peux la mettre à jour : elle remplace la précédente.',
-  ensuite: 'Un appel, pour voir si vous pouvez travailler ensemble. Aucun engagement.',
+  ensuite: 'Un appel, pour voir si on peut travailler ensemble. Aucun engagement.',
   effacement: 'Une demande sans suite est effacée au bout de 3 mois. Tu peux aussi l’effacer toi-même, à tout moment, depuis ton compte.',
   compte: {
     titre: 'Ta demande de coaching',

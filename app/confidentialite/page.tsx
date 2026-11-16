@@ -76,7 +76,7 @@ export default async function Confidentialite() {
 
       {gratuit && (
         <Section titre={no('Dans l’app gratuite : ton compte, la liste e-mail, ta demande de coaching')}>
-          {/* BROUILLON (lot A2, 16/11/2026), à valider par le coach ; la date de version change à la mise en ligne. */}
+          {/* Validé par le coach le 16/11/2026 (lot A2) ; la date de version change à l'ouverture de l'app gratuite. */}
           <Liste>
             <li>
               <strong>Ton compte gratuit.</strong> Tu le crées avec ton e-mail et un code à 6 chiffres, sans mot de passe. Il garde

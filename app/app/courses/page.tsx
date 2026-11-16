@@ -2,8 +2,13 @@ import type { Metadata } from 'next';
 import EnTeteGratuit from '@/components/app/EnTeteGratuit';
 import { Carte, TITRE } from '@/components/app/Ui';
 import { pageGratuite } from '@/lib/app/accesGratuit';
+import { gratuitOuvert } from '@/lib/app/gratuit';
 
-export const metadata: Metadata = { title: 'Courses' };
+// Le titre seulement quand l'app gratuite est ouverte pour cette visite : en mode « coupe », la page est introuvable et
+// son titre ne transparaît pas (le titre par défaut, comme toute adresse inexistante).
+export async function generateMetadata(): Promise<Metadata> {
+  return (await gratuitOuvert()) ? { title: 'Courses' } : {};
+}
 export const dynamic = 'force-dynamic';
 
 // Les courses de l'app gratuite : l'analyse d'une course (trace GPX, pentes, gestion de l'effort, nutrition) arrive au lot B.
