@@ -3,7 +3,7 @@
  * La passe du lundi, l'espace coach et le rappel du dimanche (lot 0 du 16/11/2026 ; lib/app/passeDuLundi.ts,
  * lib/app/rappelDimanche.ts, lib/app/journalEnClair.ts), sans réseau ni base : ce qui est « nouveau » depuis l'écriture, quand le
  * moteur n'est pas rappelé, la semaine telle qu'elle est dans Nolio, « demandé / écrit » en clair, les points d'« À regarder »,
- * les messages d'échec distincts par cause, et le rappel (coupé par défaut, texte provisoire, heure). Des cas fictifs.
+ * les messages d'échec distincts par cause, et le rappel (coupé par défaut, textes validés, heure). Des cas fictifs.
  *
  *   node --test scripts/test-lundi.mjs
  *
@@ -233,8 +233,8 @@ test('le rappel est coupé par défaut ; « oui » seulement l’allume', () => 
   assert.equal(rappel.rappelActif({ CTS_RAPPEL_DIMANCHE: 'true' }), false);
   assert.equal(rappel.rappelActif({ CTS_RAPPEL_DIMANCHE: ' Oui ' }), true);
 });
-test('son texte est provisoire (non validé) ; aucun texte n’invite à échanger avec le coach', () => {
-  assert.equal(rappel.TEXTE_RAPPEL_VALIDE, false);
+test('son texte est validé (16/11/2026) ; aucun texte n’invite à échanger avec le coach', () => {
+  assert.equal(rappel.TEXTE_RAPPEL_VALIDE, true);
   for (const cas of [{ sansReponse: true, nonRemontee: false }, { sansReponse: false, nonRemontee: true }, { sansReponse: true, nonRemontee: true }]) {
     const t = rappel.texteDuRappel(cas);
     assert.ok(t.length > 0);
@@ -242,8 +242,15 @@ test('son texte est provisoire (non validé) ; aucun texte n’invite à échang
   }
   assert.equal(rappel.texteDuRappel({ sansReponse: false, nonRemontee: false }), null);
   assert.match(rappel.texteDuRappel({ sansReponse: true, nonRemontee: false }), /questionnaire/);
-  assert.doesNotMatch(rappel.texteDuRappel({ sansReponse: true, nonRemontee: false }), /remonte tes séances/);
-  assert.match(rappel.texteDuRappel({ sansReponse: false, nonRemontee: true }), /remonte tes séances/);
+  assert.doesNotMatch(rappel.texteDuRappel({ sansReponse: true, nonRemontee: false }), /remonter tes séances/);
+  assert.match(rappel.texteDuRappel({ sansReponse: false, nonRemontee: true }), /fais remonter tes séances/);
+  assert.doesNotMatch(rappel.texteDuRappel({ sansReponse: false, nonRemontee: true }), /questionnaire/);
+  // les trois textes validés, mot pour mot
+  const debut = 'Petit rappel : ta semaine prochaine s’écrit ce soir. Pour qu’elle colle à ce que tu as vraiment fait, ';
+  const fin = ' Sinon, elle reste au même niveau, puis se recale dès que tout est à jour.';
+  assert.equal(rappel.texteDuRappel({ sansReponse: true, nonRemontee: true }), `${debut}réponds au questionnaire du samedi et fais remonter tes séances dans Nolio (synchronise ta montre).${fin}`);
+  assert.equal(rappel.texteDuRappel({ sansReponse: true, nonRemontee: false }), `${debut}réponds au questionnaire du samedi.${fin}`);
+  assert.equal(rappel.texteDuRappel({ sansReponse: false, nonRemontee: true }), `${debut}fais remonter tes séances dans Nolio (synchronise ta montre).${fin}`);
 });
 test('l’heure du message : 15 h, ou dans dix minutes si la tâche est lancée plus tard ; jamais après 17 h', () => {
   // Hiver (UTC+1) : 14:05 UTC = 15:05 Paris -> 15:15 ; 13:30 UTC = 14:30 Paris -> 15:00
