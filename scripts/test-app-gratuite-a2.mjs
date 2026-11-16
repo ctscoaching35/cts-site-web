@@ -559,3 +559,24 @@ test('la migration : une demande par compte, la santé jamais sans consentement,
   assert.ok(!/for (insert|update)/.test(sql), 'le compte n’écrit pas : le serveur seul');
   assert.match(sql, /statut in \('ouverte', 'acceptee', 'sans_suite'\)/);
 });
+
+// ─── Les textes validés par le coach le 16/11/2026 ────────────────────────────────────────────────────────────────────────
+// La voix « je » (les demandes ne vont qu'à Romain), « City to Summit » en toutes lettres, et en mode « coupe » aucun titre
+// d'onglet des pages cachées.
+test('les textes validés : la voix « je », City to Summit en toutes lettres', () => {
+  const regles = readFileSync(`${RACINE}lib/app/coachingRegles.ts`, 'utf8');
+  const plusLoin = readFileSync(`${RACINE}app/app/aller-plus-loin/page.tsx`, 'utf8');
+  assert.match(regles, /pour que je comprenne où tu en es, puis je t’appelle/);
+  assert.match(regles, /mot: 'Un mot pour moi'/);
+  for (const source of [regles, plusLoin]) assert.doesNotMatch(source, /vous pouvez travailler|le coach comprenne|Un mot pour le coach/);
+  for (const f of ['lib/app/actionsGratuit.ts', 'lib/app/actionsZones.ts'])
+    assert.doesNotMatch(readFileSync(`${RACINE}${f}`, 'utf8'), /pour que CTS garde/, f);
+});
+
+test('en coupe : le titre des pages cachées ne transparaît pas (generateMetadata derrière gratuitOuvert)', () => {
+  for (const page of ['app/app/courses/page.tsx', 'app/app/me-connecter/page.tsx', 'app/app/coaching/page.tsx', 'app/app/aller-plus-loin/page.tsx']) {
+    const source = readFileSync(`${RACINE}${page}`, 'utf8');
+    assert.doesNotMatch(source, /export const metadata/, page);
+    assert.match(source, /export async function generateMetadata\(\)[\s\S]*await gratuitOuvert\(\)\) \? \{ title: '[^']+' \} : \{\}/, page);
+  }
+});
