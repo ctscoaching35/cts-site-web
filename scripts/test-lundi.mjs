@@ -161,6 +161,21 @@ test('« À regarder » : un repli, une réponse illisible, un écart sans phras
   assert.deepEqual(genres({ journal: [{ regle: 'NONLU' }, { regle: 'SYNCHRO' }], revue: null }), [], 'une séance non lue n’est pas un point');
 });
 
+test('« À regarder » : l’arrêt dit au questionnaire (moteur 8.469), avec ses textes, jamais pour « non » ni sans réponse', () => {
+  const pour = (arret) => l.pointsDeLaReponse({ journal: [], revue: { lu: { questionnaire: { arret } } } });
+  assert.deepEqual(pour('quelques_jours'), [{ genre: 'arret_dit', texte: 'Arrêt dit au questionnaire : quelques jours.' }]);
+  assert.deepEqual(pour('semaine'), [{ genre: 'arret_dit', texte: 'Arrêt dit au questionnaire : toute la semaine.' }]);
+  assert.deepEqual(pour('non'), []);
+  assert.deepEqual(pour(null), []);
+  assert.deepEqual(pour(undefined), []);
+  // un autre point en même temps : l'arrêt dit s'ajoute, rien ne se remplace
+  const deux = l.pointsDeLaReponse({ journal: [{ regle: 'REPONSE' }], revue: { lu: { questionnaire: { arret: 'semaine' }, questionnaire_etat: 'partielle', reponse: { illisibles: ['nb_seances'] } } } });
+  assert.deepEqual(deux.map((x) => x.genre), ['illisible', 'arret_dit']);
+  // l'arrêt illisible se nomme dans la réponse en partie lue
+  const illisible = l.pointsDeLaReponse({ journal: [], revue: { lu: { questionnaire_etat: 'partielle', reponse: { illisibles: ['arret'] } } } });
+  assert.match(illisible[0].texte, /la question de l’arrêt est illisible/);
+});
+
 test('« Appliquer » : la note « Ta semaine » du dimanche est remplacée par le bilan du moteur', () => {
   const envois = [{ semaine: 'S14', seances: [{ nolio_id: 'a' }] }, { semaine: 'S14:bilan', seances: [{ nolio_id: 'note1' }] }, { semaine: 'S13:bilan', seances: [{ nolio_id: 'old' }] }];
   assert.equal(l.noteARemplacer(envois, 'S14', 'Ta semaine a été réécrite.'), 'note1');

@@ -86,10 +86,10 @@ test('le nombre de séances : un nombre, « 4 », « 4 séances »', () => {
 
 test('chaque question à part : des jours illisibles ne font plus perdre les deux autres', () => {
   const r = q.lireQuestionnaire(items('n’importe quoi', 6, '4 séances'));
-  assert.deepEqual(r.questionnaire, { jours: null, jour_sl: 'dimanche', nb_seances: 4 });
+  assert.deepEqual(r.questionnaire, { jours: null, jour_sl: 'dimanche', nb_seances: 4, arret: null });
   assert.deepEqual(r.illisibles, ['jours']);
   const t = q.lireQuestionnaire(items([1, 3], [6], 'x'));
-  assert.deepEqual(t.questionnaire, { jours: ['mardi', 'jeudi'], jour_sl: 'dimanche', nb_seances: null });
+  assert.deepEqual(t.questionnaire, { jours: ['mardi', 'jeudi'], jour_sl: 'dimanche', nb_seances: null, arret: null });
   assert.deepEqual(t.illisibles, ['nb_seances']);
 });
 
@@ -104,10 +104,10 @@ test('l’ancien et le nouveau texte de la question de la sortie longue se lisen
 
 test('des questions sans le texte exact : par leur place', () => {
   const sans = [{ question: 'Q1', value: [0, 2] }, { question: 'Q2', value: 6 }, { question: 'Q3', value: 3 }];
-  assert.deepEqual(q.lireQuestionnaire(sans).questionnaire, { jours: ['lundi', 'mercredi'], jour_sl: 'dimanche', nb_seances: 3 });
+  assert.deepEqual(q.lireQuestionnaire(sans).questionnaire, { jours: ['lundi', 'mercredi'], jour_sl: 'dimanche', nb_seances: 3, arret: null });
   // rangées par leur `order`
   const rangees = [{ question: 'Q3', order: 2, value: 3 }, { question: 'Q1', order: 0, value: [0] }, { question: 'Q2', order: 1, value: 4 }];
-  assert.deepEqual(q.lireQuestionnaire(rangees).questionnaire, { jours: ['lundi'], jour_sl: 'vendredi', nb_seances: 3 });
+  assert.deepEqual(q.lireQuestionnaire(rangees).questionnaire, { jours: ['lundi'], jour_sl: 'vendredi', nb_seances: 3, arret: null });
   // une place qui porte le texte d'une autre question n'est pas prise pour la sienne
   const melangees = [{ question: 'Combien de séances veux-tu faire ?', value: 5 }, { question: 'Q2', value: 6 }];
   assert.equal(q.lireQuestionnaire(melangees).questionnaire.jours, null);
@@ -125,7 +125,7 @@ test('le questionnaire est reconnu par son identifiant posé, son nom ou ses que
 test('la réponse de la semaine, lue : état « lue »', () => {
   const r = q.reponseDuSamedi([resultat('2026-11-14', items([1, 3, 6], 6, 4))], '2026-11-15');
   assert.equal(r.etat, 'lue');
-  assert.deepEqual(r.questionnaire, { jours: ['mardi', 'jeudi', 'dimanche'], jour_sl: 'dimanche', nb_seances: 4 });
+  assert.deepEqual(r.questionnaire, { jours: ['mardi', 'jeudi', 'dimanche'], jour_sl: 'dimanche', nb_seances: 4, arret: null });
   assert.equal(r.du, '2026-11-14');
 });
 
@@ -146,14 +146,14 @@ test('une réponse en partie illisible : « partielle », ses champs lus gardés
   const r = q.reponseDuSamedi([resultat('2026-11-14', items('???', 6, 4))], '2026-11-15');
   assert.equal(r.etat, 'partielle');
   assert.deepEqual(r.illisibles, ['jours']);
-  assert.deepEqual(r.questionnaire, { jours: null, jour_sl: 'dimanche', nb_seances: 4 });
+  assert.deepEqual(r.questionnaire, { jours: null, jour_sl: 'dimanche', nb_seances: 4, arret: null });
   const toute = q.reponseDuSamedi([resultat('2026-11-14', items(null, null, null))], '2026-11-15');
   assert.equal(toute.etat, 'illisible');
   assert.deepEqual(toute.illisibles, ['jours', 'jour_sl', 'nb_seances']);
   // deux champs illisibles sur trois : encore « partielle » (un champ lu suffit) ; « illisible » seulement sans aucun champ lu
   const deux = q.reponseDuSamedi([resultat('2026-11-14', items('???', null, 4))], '2026-11-15');
   assert.equal(deux.etat, 'partielle');
-  assert.deepEqual(deux.questionnaire, { jours: null, jour_sl: null, nb_seances: 4 });
+  assert.deepEqual(deux.questionnaire, { jours: null, jour_sl: null, nb_seances: 4, arret: null });
   assert.equal(q.reponseDuSamedi([resultat('2026-11-14', items([1, 3], 3, 3))], '2026-11-15').etat, 'lue');
 });
 
@@ -172,7 +172,7 @@ test('sans réponse cette semaine : la dernière, ses jours, sa sortie longue ET
   assert.equal(r.etat, 'absente');
   assert.equal(r.cause, 'ancienne');
   assert.equal(r.du, '2026-11-07');
-  assert.deepEqual(r.questionnaire, { jours: ['mardi', 'jeudi', 'samedi', 'dimanche'], jour_sl: 'dimanche', nb_seances: 4 });
+  assert.deepEqual(r.questionnaire, { jours: ['mardi', 'jeudi', 'samedi', 'dimanche'], jour_sl: 'dimanche', nb_seances: 4, arret: null });
   // plus ancienne que la déclaration de l'objectif : rien
   assert.deepEqual(q.reponseDuSamedi([avant], '2026-11-15', '2026-11-10'), { etat: 'absente' });
   // un brouillon cette semaine + une réponse d'avant : la cause dit le brouillon
@@ -204,7 +204,7 @@ test('« ses jours » sert de dernière réponse sans réponse lisible, jamais p
   const r = q.reponseDepuisSesJours(s);
   assert.equal(r.etat, 'absente');
   assert.equal(r.du, '2026-11-07');
-  assert.deepEqual(r.questionnaire, { jours: ['mardi', 'dimanche'], jour_sl: 'dimanche', nb_seances: 3 });
+  assert.deepEqual(r.questionnaire, { jours: ['mardi', 'dimanche'], jour_sl: 'dimanche', nb_seances: 3, arret: null });
   assert.equal(q.reponseDepuisSesJours(s, '2026-11-10'), null);
   assert.equal(q.reponseDepuisSesJours(null), null);
 });
@@ -213,4 +213,134 @@ test('« ses jours » en clair, pour le coach', () => {
   assert.equal(q.sesJoursEnClair({ jours: ['mardi', 'jeudi', 'samedi', 'dimanche'], jour_sl: 'dimanche', nb_seances: 4, du: '2026-11-14' }),
     'mar, jeu, sam, dim ; sortie longue dim ; 4 séances — réponse du 14/11');
   assert.equal(q.sesJoursEnClair({ jours: null, jour_sl: null, nb_seances: 1, du: '2026-11-14' }), '1 séance — réponse du 14/11');
+});
+
+// ─── L'arrêt (moteur 8.469, décision du coach du 16/11/2026) ──────────────────────────────────────────────────────
+
+const ARRET = 'Cette semaine, as-tu dû arrêter de courir ?';
+const avecArret = (jours, sl, nb, arret) => [...items(jours, sl, nb), { question: ARRET, value: arret }];
+
+test('la question d’arrêt : la quatrième du questionnaire, à choix unique, obligatoire, ses trois réponses dans l’ordre', () => {
+  const it = q.QUESTIONNAIRE_SEMAINE.items;
+  assert.equal(it.length, 4);
+  assert.equal(it[3].question, ARRET);
+  assert.equal(q.QUESTION_ARRET, ARRET);
+  assert.equal(it[3].type, 'unique_choice');
+  assert.equal(it[3].is_mandatory, true);
+  assert.deepEqual(it[3].choices.choices, ['Non', 'Oui, quelques jours', 'Oui, toute la semaine']);
+});
+
+test('l’arrêt : un rang, [rang], le rang écrit, le libellé, l’identifiant du moteur ; le reste est illisible', () => {
+  assert.equal(q.lireArret(0), 'non');
+  assert.equal(q.lireArret(1), 'quelques_jours');
+  assert.equal(q.lireArret(2), 'semaine');
+  assert.equal(q.lireArret([1]), 'quelques_jours');
+  assert.equal(q.lireArret('2'), 'semaine');
+  assert.equal(q.lireArret('Non'), 'non');
+  assert.equal(q.lireArret(' non. '), 'non');
+  assert.equal(q.lireArret('Oui, quelques jours'), 'quelques_jours');
+  assert.equal(q.lireArret('oui, quelques jours'.normalize('NFD')), 'quelques_jours');
+  assert.equal(q.lireArret('Oui, toute la semaine'), 'semaine');
+  assert.equal(q.lireArret('quelques_jours'), 'quelques_jours');
+  assert.equal(q.lireArret('semaine'), 'semaine');
+  for (const v of [3, -1, 1.5, 'oui', 'peut-être', '', null, undefined, [0, 1], [], {}, true]) assert.equal(q.lireArret(v), null, String(v));
+});
+
+test('un questionnaire qui a la question : l’arrêt est lu avec les trois autres, la réponse est « lue »', () => {
+  for (const [v, attendu] of [[0, 'non'], [1, 'quelques_jours'], ['Oui, toute la semaine', 'semaine']]) {
+    const r = q.reponseDuSamedi([resultat('2026-11-14', avecArret([1, 3], 3, 3, v))], '2026-11-15');
+    assert.equal(r.etat, 'lue');
+    assert.equal(r.questionnaire.arret, attendu);
+    assert.equal(r.illisibles, undefined);
+  }
+});
+
+test('un questionnaire posé AVANT la question : sa réponse sans arrêt reste « lue », arret à null', () => {
+  const r = q.reponseDuSamedi([resultat('2026-11-14', items([1, 3], 3, 3))], '2026-11-15');
+  assert.equal(r.etat, 'lue');
+  assert.equal(r.questionnaire.arret, null);
+  assert.equal(r.illisibles, undefined);
+  // un questionnaire de coaché d'avant : la question ouverte est la quatrième, elle n'est jamais lue comme l'arrêt
+  const ouverte = [...items([1, 3], 3, 3), { question: 'Une information à remonter à ton coach ?', value: 'non' }];
+  const c = q.reponseDuSamedi([resultat('2026-11-14', ouverte)], '2026-11-15');
+  assert.equal(c.etat, 'lue');
+  assert.equal(c.questionnaire.arret, null);
+  // même sans le texte de ses questions (par la place) : la quatrième vide ou ouverte ne rend rien illisible
+  const sansTextes = [{ question: 'Q1', value: [1] }, { question: 'Q2', value: 1 }, { question: 'Q3', value: 3 }, { question: 'Q4', value: 'Tout va bien, merci' }];
+  const p = q.reponseDuSamedi([resultat('2026-11-14', sansTextes, { quiz_planned: 'quiz_1' })], '2026-11-15', '', new Set(['quiz_1']));
+  assert.equal(p.etat, 'lue');
+  assert.equal(p.questionnaire.arret, null);
+});
+
+test('l’arrêt par sa place, sans le texte de la question, quand sa valeur se lit', () => {
+  const sans = [{ question: 'Q1', value: [1] }, { question: 'Q2', value: 1 }, { question: 'Q3', value: 3 }, { question: 'Q4', value: 1 }];
+  assert.equal(q.lireQuestionnaire(sans).questionnaire.arret, 'quelques_jours');
+  const rangees = [{ question: 'Q4', order: 3, value: 2 }, { question: 'Q1', order: 0, value: [1] }, { question: 'Q2', order: 1, value: 1 }, { question: 'Q3', order: 2, value: 3 }];
+  assert.equal(q.lireQuestionnaire(rangees).questionnaire.arret, 'semaine');
+});
+
+test('une réponse d’arrêt illisible compte comme les autres champs : « partielle » si d’autres champs sont lus', () => {
+  const r = q.reponseDuSamedi([resultat('2026-11-14', avecArret([1, 3], 3, 3, 'peut-être'))], '2026-11-15');
+  assert.equal(r.etat, 'partielle');
+  assert.deepEqual(r.illisibles, ['arret']);
+  assert.deepEqual(r.questionnaire, { jours: ['mardi', 'jeudi'], jour_sl: 'jeudi', nb_seances: 3, arret: null });
+  // tout illisible, arrêt compris : « illisible »
+  const toute = q.reponseDuSamedi([resultat('2026-11-14', avecArret(null, null, null, 'x'))], '2026-11-15');
+  assert.equal(toute.etat, 'illisible');
+  assert.deepEqual(toute.illisibles, ['jours', 'jour_sl', 'nb_seances', 'arret']);
+  // l'arrêt seul lu, les trois autres ouverts mais illisibles : « partielle »
+  const seul = q.reponseDuSamedi([resultat('2026-11-14', avecArret(null, null, null, 1))], '2026-11-15');
+  assert.equal(seul.etat, 'partielle');
+  assert.deepEqual(seul.illisibles, ['jours', 'jour_sl', 'nb_seances']);
+  assert.equal(seul.questionnaire.arret, 'quelques_jours');
+});
+
+test('une réponse qui ne porte que l’arrêt est « lue » (le contrat du moteur le dit)', () => {
+  const r = q.reponseDuSamedi([resultat('2026-11-14', [{ question: ARRET, value: 2 }])], '2026-11-15');
+  assert.equal(r.etat, 'lue');
+  assert.deepEqual(r.questionnaire, { jours: null, jour_sl: null, nb_seances: null, arret: 'semaine' });
+  assert.equal(r.illisibles, undefined);
+});
+
+test('l’arrêt n’est jamais repris d’une réponse plus ancienne, ni gardé dans « ses jours »', () => {
+  // sans réponse cette semaine : la dernière réponse (d'avant) donne ses jours, JAMAIS son arrêt
+  const avant = resultat('2026-11-07', avecArret([1, 3, 6], 6, 4, 2));
+  const r = q.reponseDuSamedi([avant], '2026-11-15');
+  assert.equal(r.etat, 'absente');
+  assert.equal(r.questionnaire.arret, null);
+  assert.deepEqual(r.questionnaire.jours, ['mardi', 'jeudi', 'dimanche']);
+  // une réponse de la semaine qui n'a pas l'arrêt (ancien questionnaire) : null, pas celui d'avant
+  const sans = q.reponseDuSamedi([avant, resultat('2026-11-14', items([0], 0, 2))], '2026-11-15');
+  assert.equal(sans.questionnaire.arret, null);
+  // « ses jours » ne porte pas l'arrêt, ni à l'écriture ni à la relecture
+  const lue = q.reponseDuSamedi([resultat('2026-11-14', avecArret([1, 3], 3, 3, 1))], '2026-11-15');
+  const s = q.sesJoursApres(null, lue);
+  assert.deepEqual(s, { jours: ['mardi', 'jeudi'], jour_sl: 'jeudi', nb_seances: 3, du: '2026-11-14' });
+  assert.equal('arret' in s, false);
+  const relue = q.reponseDepuisSesJours({ ...s, arret: 'semaine' });
+  assert.equal(relue.questionnaire.arret, null);
+  // une réponse qui ne porte que l'arrêt ne change pas « ses jours »
+  const seul = q.reponseDuSamedi([resultat('2026-11-21', [{ question: ARRET, value: 2 }])], '2026-11-22');
+  assert.deepEqual(q.sesJoursApres(s, seul), { ...s, du: '2026-11-21' });
+});
+
+test('l’arrêt part au moteur dans retours.questionnaire : le champ est toujours là (null quand illisible ou absent)', () => {
+  const lue = q.lireQuestionnaire(avecArret([1], 1, 3, 'semaine')).questionnaire;
+  assert.deepEqual(Object.keys(lue).sort(), ['arret', 'jour_sl', 'jours', 'nb_seances']);
+  assert.equal(JSON.parse(JSON.stringify(q.lireQuestionnaire(items([1], 1, 3)).questionnaire)).arret, null);
+});
+
+test('l’arrêt dit à l’accueil d’un acheteur : la semaine en cours, jusqu’à l’écriture de la suivante', () => {
+  const dit = { lu: { questionnaire: { arret: 'quelques_jours' } } };
+  const non = { lu: { questionnaire: { arret: 'non' } } };
+  assert.equal(q.arretDitDeLaRevue(dit), 'quelques_jours');
+  assert.equal(q.arretDitDeLaRevue({ lu: { questionnaire: { arret: 'semaine' } } }), 'semaine');
+  for (const rien of [non, { lu: { questionnaire: { arret: null } } }, { lu: {} }, { lu: { sansRetours: true } }, null, undefined, 'x']) assert.equal(q.arretDitDeLaRevue(rien), null);
+  assert.equal(q.arretDitALAccueil([{ numero: 'S14', revue: dit }], 'S14'), true);
+  assert.equal(q.arretDitALAccueil([{ numero: 'S13', revue: non }, { numero: 'S14', revue: dit }], 'S14'), true);
+  assert.equal(q.arretDitALAccueil([{ numero: 'S14', revue: non }], 'S14'), false);
+  assert.equal(q.arretDitALAccueil([{ numero: 'S14' }], 'S14'), false, 'sans revue gardée : rien');
+  assert.equal(q.arretDitALAccueil([{ numero: 'S13', revue: dit }], 'S14'), false, 'celui de la semaine d’avant ne compte pas');
+  assert.equal(q.arretDitALAccueil([{ numero: 'S14', revue: dit }, { numero: 'S15', revue: non }], 'S14'), false, 'la suivante est écrite : la carte part');
+  assert.equal(q.arretDitALAccueil([{ numero: 'S14', revue: dit }, { numero: 'S14:bilan' }], 'S14'), true);
 });

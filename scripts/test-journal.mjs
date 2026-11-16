@@ -121,5 +121,16 @@ test('NONLU, SYNCHRO et STANDARD ne sont pas des ajustements', async () => {
   const source = readFileSync(new URL('../lib/app/ecriture.ts', import.meta.url), 'utf8');
   const ligne = source.split('\n').find((l) => l.startsWith('export const PAS_UN_AJUSTEMENT'));
   assert.ok(ligne, 'PAS_UN_AJUSTEMENT introuvable');
-  for (const regle of ['NONLU', 'SYNCHRO', 'STANDARD', 'COACH', 'C1', 'D6', 'REPONSE', 'LUNDI']) assert.match(ligne, new RegExp(`'${regle}'`), regle);
+  for (const regle of ['NONLU', 'SYNCHRO', 'STANDARD', 'COACH', 'C1', 'D6', 'REPONSE', 'LUNDI', 'ARRET']) assert.match(ligne, new RegExp(`'${regle}'`), regle);
+});
+
+test('le journal du moteur 8.469 : l’arrêt dit au questionnaire, et R2d sans libellé', () => {
+  assert.deepEqual(enClair({ regle: 'ARRET', dit: 'quelques_jours', effet: 'il dit avoir dû s’arrêter quelques jours : ses séances sans activité reliée sont pas faites' }),
+    ['Arrêt dit au questionnaire (quelques jours) : il dit avoir dû s’arrêter quelques jours : ses séances sans activité reliée sont pas faites.']);
+  assert.deepEqual(enClair({ regle: 'ARRET', dit: 'semaine', effet: 'l’arrêt est prouvé.' }), ['Arrêt dit au questionnaire (toute la semaine) : l’arrêt est prouvé.']);
+  assert.deepEqual(enClair({ regle: 'ARRET', dit: 'semaine' }), ['Arrêt dit au questionnaire (toute la semaine).']);
+  // R2d remplace CH : son effet tel quel, en phrase
+  assert.deepEqual(enClair({ regle: 'R2d', effet: 'semaine allégée pas méritée : elle reprend la charge', vraies_charges: 2 }),
+    ['Semaine allégée pas méritée : elle reprend la charge.']);
+  assert.deepEqual(enClair({ regle: 'R2d', applique: false }), []);
 });
