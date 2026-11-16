@@ -6,6 +6,7 @@ import HorsReseau from '@/components/app/HorsReseau';
 import { demonstrationOuverte } from '@/lib/app/demonstration';
 import { supabaseConfigure } from '@/lib/app/supabase';
 import { estGratuit, lireAcces } from '@/lib/app/acces';
+import { hrefOngletCourses } from '@/lib/app/ongletCourses';
 
 // C6 (audits du 05/11/2026) : chaque écran a son titre, dans le navigateur et pour les lecteurs d'écran (« Accueil · CTS »),
 // au lieu de « CTS Coaching » partout.
@@ -29,8 +30,11 @@ const CAPTURE_INSTALLATION = "window.addEventListener('beforeinstallprompt',func
 // sur des plans d'exemple, en développement seulement — en production, /app répond alors 404.
 export default async function MiseEnPageApp({ children }: { children: React.ReactNode }) {
   if (!supabaseConfigure() && !demonstrationOuverte()) notFound();
-  // L'app gratuite (lot A1) : ses quatre onglets pour un visiteur et un compte gratuit ; en mode « coupe », rien n'est lu.
-  const gratuit = estGratuit(await lireAcces());
+  // L'app gratuite (lot A1) : ses quatre onglets pour un visiteur et un compte gratuit, cinq pour les autres ; en mode « coupe », rien n'est lu.
+  const acces = await lireAcces();
+  const gratuit = estGratuit(acces);
+  // L'onglet Courses d'un acheteur ou d'un coaché mène à sa fiche de course, ou à ses dossiers du gratuit, ou à l'accueil.
+  const coursesHref = gratuit ? null : await hrefOngletCourses(acces);
   return (
     <div className="min-h-screen bg-sand pb-24">
       {/* L'annonce d'installation de Chrome et Edge arrive tôt, parfois avant que l'app l'écoute : gardée dès le chargement,
@@ -39,7 +43,7 @@ export default async function MiseEnPageApp({ children }: { children: React.Reac
       {children}
       <HorsReseau rendu={new Date().toISOString()} />
       <Suspense>
-        <BarreOnglets gratuit={gratuit} />
+        <BarreOnglets gratuit={gratuit} coursesHref={coursesHref} />
       </Suspense>
     </div>
   );
