@@ -574,9 +574,16 @@ test('les textes validés : la voix « je », City to Summit en toutes lettres',
 });
 
 test('en coupe : le titre des pages cachées ne transparaît pas (generateMetadata derrière gratuitOuvert)', () => {
-  for (const page of ['app/app/courses/page.tsx', 'app/app/me-connecter/page.tsx', 'app/app/coaching/page.tsx', 'app/app/aller-plus-loin/page.tsx']) {
+  for (const page of ['app/app/me-connecter/page.tsx', 'app/app/coaching/page.tsx', 'app/app/aller-plus-loin/page.tsx']) {
     const source = readFileSync(`${RACINE}${page}`, 'utf8');
     assert.doesNotMatch(source, /export const metadata/, page);
     assert.match(source, /export async function generateMetadata\(\)[\s\S]*await gratuitOuvert\(\)\) \? \{ title: '[^']+' \} : \{\}/, page);
+  }
+  // Les pages des dossiers de course (lot B) passent par titreCourses (lib/app/accesCourses.ts), qui ne donne le titre que si la
+  // page est ouverte pour la visite : le test de son comportement est dans test-app-gratuite-b.mjs.
+  for (const page of ['app/app/courses/page.tsx', 'app/app/courses/nouvelle/page.tsx', 'app/app/courses/[id]/page.tsx', 'app/app/courses/[id]/nutrition/page.tsx']) {
+    const source = readFileSync(`${RACINE}${page}`, 'utf8');
+    assert.doesNotMatch(source, /export const metadata/, page);
+    assert.match(source, /export async function generateMetadata\(\)[\s\S]*return titreCourses\('[^']+'\)/, page);
   }
 });
