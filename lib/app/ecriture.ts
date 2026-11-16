@@ -3017,8 +3017,9 @@ const REGLES_EN_CLAIR: Record<string, string> = {
 // D6, la semaine qu'il a posée, lue comme une semaine écrite. Elles restent au journal de la semaine, sans allumer
 // « Semaine ajustée », ni « Le moteur s'en est chargé », ni l'e-mail de résumé. Moteur 8.468 (décision du coach du 16/11/2026,
 // « non », pour éviter le bruit) : une séance non lue (NONLU, sa marche tient) et l'arrêt non conclu (SYNCHRO) non plus ; la
-// semaine sans retour (STANDARD) reste un ajustement.
-export const PAS_UN_AJUSTEMENT = new Set(['COACH', 'C1', 'D6', 'REPONSE', 'LUNDI', 'NONLU', 'SYNCHRO']);
+// semaine sans retour (STANDARD) non plus (décision du coach du 16/11/2026, « A » : on n'adapte que sur du certain, elle suit
+// le plan prévu). Les trois restent signalées dans « À regarder ».
+export const PAS_UN_AJUSTEMENT = new Set(['COACH', 'C1', 'D6', 'REPONSE', 'LUNDI', 'NONLU', 'SYNCHRO', 'STANDARD']);
 
 // Une raison en clair : son libellé, sinon l'effet écrit par le moteur, sinon rien ; jamais le code de la règle.
 const raisonEnClair = (j: { regle?: string; effet?: unknown }) =>
