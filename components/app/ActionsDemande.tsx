@@ -27,7 +27,7 @@ export default function ActionsDemande({ demandeId, nom }: { demandeId: string; 
       <Carte className="space-y-3 border-teal/40">
         <p className="text-sm font-bold text-indigo">Accepter la demande de {nom} ?</p>
         <ul className="list-disc pl-5 space-y-1 text-[0.8125rem] text-[#4A4866] leading-relaxed">
-          <li>Une fiche de coaché est créée à ce nom ; ses FC et sa vitesse critique du profil gratuit y sont reprises seulement si son consentement FC est donné.</li>
+          <li>Une fiche de coaché est créée à ce nom, avec sa vitesse critique du profil gratuit ; ses FC n’y sont reprises que si son consentement FC est donné.</li>
           <li>Son espace s’ouvre : la personne reçoit l’e-mail d’invitation à l’app, et s’y connecte avec le même e-mail.</li>
           <li>La demande passe en « acceptée » et reste lisible sur la fiche.</li>
           <li>Rien n’est écrit dans Nolio. Tu arrives sur sa page, où « Son entrée » montre la suite (Nolio, objectif).</li>
