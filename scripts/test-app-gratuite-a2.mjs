@@ -233,6 +233,7 @@ test('accepter : la fiche (nom, FC et VC avec le consentement FC), l’espace ou
   assert.equal(fiche.nom, 'Clara Test');
   assert.equal(fiche.coach_id, 'coach-romain');
   assert.equal(fiche.fc_seuil1, 152);
+  assert.equal(fiche.v_seuil1_ms, 2.8, 'l’allure du test de la parole suit sa FC');
   assert.equal(fiche.fc_seuil2, 171);
   assert.equal(fiche.vc_ms, 4.1);
   assert.equal(fiche.d_prime_m, 160);
@@ -246,13 +247,15 @@ test('accepter : la fiche (nom, FC et VC avec le consentement FC), l’espace ou
   assert.ok(!m.appels.includes('appelNolio'), 'rien n’est écrit dans Nolio');
 });
 
-test('accepter sans le consentement FC : la fiche garde le nom, ni FC ni vitesse critique', async () => {
+test('accepter sans le consentement FC : la fiche garde le nom et la vitesse critique, aucune FC', async () => {
   const m = poser({ coach: ROMAIN_COACH, tables: { demandes_coaching: [DEMANDE()], profils_gratuits: [PROFIL({ consentement_fc_le: null })] } });
   const a = await frais('actionsDemandesCoaching');
   await assert.rejects(a.accepterDemande('d1000000-0000-4000-8000-000000000001'), Redirection);
   const [fiche] = m.base.tables.athletes_coaches;
   assert.equal(fiche.nom, 'Clara Test');
-  for (const cle of ['fc_seuil1', 'fc_seuil2', 'vc_ms', 'd_prime_m']) assert.equal(fiche[cle], undefined, cle);
+  assert.equal(fiche.vc_ms, 4.1, 'la vitesse critique n’est pas une FC : le profil gratuit la garde sans consentement');
+  assert.equal(fiche.d_prime_m, 160);
+  for (const cle of ['fc_seuil1', 'v_seuil1_ms', 'fc_seuil2']) assert.equal(fiche[cle], undefined, cle);
 });
 
 test('accepter : un autre coach (Juliette), une demande déjà traitée, un compte déjà coaché : refusé, rien n’est écrit', async () => {
