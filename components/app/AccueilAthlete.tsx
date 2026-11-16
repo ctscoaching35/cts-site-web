@@ -263,6 +263,8 @@ export default async function AccueilAthlete({ ctx, demarrage, montre = false, d
             le dit donc tout de suite, comme une sortie ou un arrêt (avant le 05/11/2026 au soir, son accueil restait sans
             elle tant que la liste n'était pas masquée). */}
         {etape !== 'apres' && (!demarrage || d.nolio === 'sorti' || d.nolio === 'coaching') && <CarteNolio etat={d.nolio} inviteLe={inviteLe} confirmer={confirmer} avantCourse={plan.course.date >= jour} />}
+        {/* Décision du coach du 16/11/2026 : la seule rigueur demandée, sur l'accueil de l'athlète (acheteur ou coaché) dont la semaine est écrite par le moteur. */}
+        {etape !== 'apres' && !ctx.aLaMain && <CarteUneSeuleChose />}
         {vcNonRepropose && <CarteTestVitesseCritique saisie={plan.zones ? `${lien('/app/plan/zones', ctx)}#vitesse_critique` : null} />}
 
         {/* Q10 (décision coach du 05/11/2026 au soir, « A ») : la carte ouvre la fiche de course à « Ton jour J » ; la page
@@ -280,6 +282,19 @@ export default async function AccueilAthlete({ ctx, demarrage, montre = false, d
         {etape !== 'apres' && <FichesDeLaSemaine fiches={fiches} ctx={ctx} />}
       </main>
     </>
+  );
+}
+
+// La seule rigueur demandée (texte validé par le coach le 16/11/2026) ; aucune invitation à échanger avec le coach.
+function CarteUneSeuleChose() {
+  return (
+    <Carte className="space-y-1">
+      <p className="text-[0.9375rem] font-bold text-indigo">Une seule chose à faire chaque semaine.</p>
+      <p className="text-[0.875rem] text-[#4A4866] leading-relaxed">
+        Le dimanche, ton appli à jour (tes séances remontées dans Nolio) et le questionnaire du samedi rempli. C’est ce qui permet
+        d’adapter ta semaine suivante. Sans ça, elle reste au même niveau, puis se recale dès que tu actualises.
+      </p>
+    </Carte>
   );
 }
 

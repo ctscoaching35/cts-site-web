@@ -1,6 +1,6 @@
 /**
  * LE RAPPEL DU DIMANCHE, la lecture et l'envoi (décision 5 du coach du 16/11/2026, lot 0 ; le calcul, l'interrupteur et le
- * texte provisoire sont dans lib/app/rappelDimanche.ts). Un message Nolio programmé (`POST planned/messages/`, droit
+ * textes validés sont dans lib/app/rappelDimanche.ts). Un message Nolio programmé (`POST planned/messages/`, droit
  * `planned:write`) pour chaque athlète dont la semaine s'écrit ce soir et qui n'a pas répondu au questionnaire du samedi, ou
  * dont une séance de la semaine n'est pas remontée. Un seul par athlète et par dimanche (sa clé « rappel:<dimanche> » dans
  * nolio_envois : une table qui existe, rien de nouveau). Coupé par défaut ; côté serveur seulement.

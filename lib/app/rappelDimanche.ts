@@ -6,25 +6,24 @@
  * hour_start, show_to_the_athlete, athletes (un athlète ; rien pour le coach lui-même). Il vise qui n'a pas répondu au
  * questionnaire du samedi, ou qui a une séance de la semaine pas remontée dans Nolio.
  *
- * COUPÉ PAR DÉFAUT : le texte n'est pas validé par le coach. Rien ne part tant que la variable d'environnement
- * CTS_RAPPEL_DIMANCHE n'est pas « oui » (Vercel, Settings > Environment Variables), et le texte ci-dessous est PROVISOIRE : à
- * faire valider (CTS_TEXTES_A_VALIDER.md) avant de l'allumer. Aucun texte n'invite un acheteur de plan à échanger avec le coach.
+ * COUPÉ PAR DÉFAUT : rien ne part tant que la variable d'environnement CTS_RAPPEL_DIMANCHE n'est pas « oui » (Vercel, Settings >
+ * Environment Variables) ; il faut d'abord vérifier le fuseau de `hour_start`. Les trois textes sont VALIDÉS par le coach (16/11/2026),
+ * mot pour mot. Aucun texte n'invite un acheteur de plan à échanger avec le coach.
  */
 
 // L'interrupteur : éteint tant que la variable n'est pas « oui ».
 export const rappelActif = (env: Record<string, string | undefined> = process.env) => env.CTS_RAPPEL_DIMANCHE?.trim().toLowerCase() === 'oui';
 
-// Le texte du rappel : PROVISOIRE, NON VALIDÉ PAR LE COACH. Une phrase par cause ; les deux se disent ensemble.
-export const TEXTE_RAPPEL_VALIDE = false;
-export const TEXTES_RAPPEL_PROVISOIRES = {
-  intro: 'Rappel : ta semaine prochaine s’écrit ce soir.',
-  questionnaire: 'Pour qu’elle suive tes jours, réponds au questionnaire « Ta semaine prochaine » dans Nolio.',
-  seances: 'Si tu as couru, remonte tes séances dans Nolio (synchronise ta montre) : elles comptent dans ta semaine.',
+// Le texte du rappel, VALIDÉ par le coach le 16/11/2026 : un texte par cas (les deux manquent, la réponse seule, les séances seules).
+export const TEXTE_RAPPEL_VALIDE = true;
+export const TEXTES_RAPPEL = {
+  les_deux: 'Petit rappel : ta semaine prochaine s’écrit ce soir. Pour qu’elle colle à ce que tu as vraiment fait, réponds au questionnaire du samedi et fais remonter tes séances dans Nolio (synchronise ta montre). Sinon, elle reste au même niveau, puis se recale dès que tout est à jour.',
+  reponse: 'Petit rappel : ta semaine prochaine s’écrit ce soir. Pour qu’elle colle à ce que tu as vraiment fait, réponds au questionnaire du samedi. Sinon, elle reste au même niveau, puis se recale dès que tout est à jour.',
+  seances: 'Petit rappel : ta semaine prochaine s’écrit ce soir. Pour qu’elle colle à ce que tu as vraiment fait, fais remonter tes séances dans Nolio (synchronise ta montre). Sinon, elle reste au même niveau, puis se recale dès que tout est à jour.',
 };
 export function texteDuRappel(cas: { sansReponse: boolean; nonRemontee: boolean }): string | null {
   if (!cas.sansReponse && !cas.nonRemontee) return null;
-  const t = TEXTES_RAPPEL_PROVISOIRES;
-  return [t.intro, cas.sansReponse ? t.questionnaire : null, cas.nonRemontee ? t.seances : null].filter(Boolean).join(' ');
+  return cas.sansReponse && cas.nonRemontee ? TEXTES_RAPPEL.les_deux : cas.sansReponse ? TEXTES_RAPPEL.reponse : TEXTES_RAPPEL.seances;
 }
 
 // L'heure du message, à Paris : 15 h, ou dans dix minutes si le passage de la tâche (Vercel la lance dans l'heure prévue) est plus
