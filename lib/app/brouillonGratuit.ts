@@ -35,3 +35,36 @@ export function effacerBrouillon() {
 }
 
 export const brouillonVide = (s: Saisie | null) => !s || JSON.stringify(s) === JSON.stringify(SAISIE_VIDE);
+
+// Le dossier de course que le visiteur a sous les yeux (lot B) : le même régime, la mémoire de l'onglet. Ce qui s'y garde :
+// ce qui est parti au moteur (jamais le fichier GPX), la réponse allégée et la stratégie de nutrition, si elle est faite.
+// Gardé dans son compte à la connexion, puis effacé ; effacé aussi à la fermeture de l'onglet.
+const CLE_DOSSIER = 'cts-gratuit-dossier';
+
+export function lireDossierBrouillon(): { entrees: unknown; reponse: unknown; strategie: unknown } | null {
+  try {
+    const brut = sessionStorage.getItem(CLE_DOSSIER);
+    const o = brut ? JSON.parse(brut) : null;
+    return o && typeof o === 'object' ? o : null;
+  } catch {
+    return null;
+  }
+}
+
+export function garderDossierBrouillon(d: { entrees: unknown; reponse: unknown; strategie: unknown }): boolean {
+  try {
+    sessionStorage.setItem(CLE_DOSSIER, JSON.stringify(d));
+    return true;
+  } catch {
+    // Sans stockage : le dossier reste à l'écran, il ne suit pas jusqu'à la connexion.
+    return false;
+  }
+}
+
+export function effacerDossierBrouillon() {
+  try {
+    sessionStorage.removeItem(CLE_DOSSIER);
+  } catch {
+    // rien à effacer
+  }
+}

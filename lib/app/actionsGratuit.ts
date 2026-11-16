@@ -10,8 +10,10 @@ import { lireAcces } from './acces';
 import { gratuitOuvert } from './gratuit';
 import { listeBranchee, retirerDeLaListe } from './listeEmail';
 import { majListeSiInscrit, synchroniserListe } from './listeGratuit';
+import { rangerDossier } from './rangerDossier';
 import { aDesFcGardees, calculer, saisieSure, sansLaFc, testsSurs, type Experience, type TestsGratuits } from './profilGratuit';
-import { clientServeur, clientService } from './supabase';
+import { assurerCompte } from './compteGratuit';
+import { clientServeur } from './supabase';
 
 export type EtatGratuit = { ok: boolean; message: string };
 
@@ -34,12 +36,6 @@ export async function demanderCodeGratuit(email: string): Promise<EtatGratuit> {
   return { ok: true, message: '' };
 }
 
-// La clé des tables du compte gratuit : sa ligne `comptes` (posée au besoin, sans toucher à un compte existant).
-async function assurerCompte(compteId: string) {
-  const { error } = await clientService().from('comptes').upsert({ id: compteId, nom: '' }, { onConflict: 'id', ignoreDuplicates: true });
-  if (error) throw new Error(`comptes : ${error.message}`);
-}
-
 type Ligne = { experience: Experience | null; tests: TestsGratuits; consentement_fc_le: string | null; liste_email_le: string | null };
 async function ligneDuCompte(compteId: string): Promise<Ligne | null> {
   const { data } = await (await clientServeur()).from('profils_gratuits').select('experience, tests, consentement_fc_le, liste_email_le')
@@ -51,7 +47,7 @@ async function ligneDuCompte(compteId: string): Promise<Ligne | null> {
 // Juste après la connexion par code : ce que le visiteur avait sous les yeux, et son accord à la liste e-mail, entrent dans
 // son compte, dans la même session. Un compte qui n'est pas gratuit (un acheteur, un coaché) ne reçoit rien : ses tests
 // vivent ailleurs. Le navigateur efface alors son brouillon.
-export async function garderApresConnexion(entree: { saisie: unknown; liste: boolean; consentementFc: boolean }):
+export async function garderApresConnexion(entree: { saisie: unknown; liste: boolean; consentementFc: boolean; dossier?: unknown }):
   Promise<EtatGratuit & { gratuit: boolean }> {
   const acces = await lireAcces();
   if (acces.cas !== 'gratuit' || !acces.compteId) return { ok: true, message: '', gratuit: false };
@@ -81,6 +77,17 @@ export async function garderApresConnexion(entree: { saisie: unknown; liste: boo
   } catch (e) {
     console.error('Garder le profil du visiteur :', e instanceof Error ? e.message : e);
     return { ok: false, message: 'Ton compte est ouvert, mais ton profil n’a pas pu être gardé. Refais ton test depuis ton profil.', gratuit: true };
+  }
+  // Son dossier de course (lot B), s'il en avait un sous les yeux : il entre dans son compte, après son profil (la liste e-mail
+  // a ainsi sa prochaine course). Un échec ne défait pas le profil : il est dit.
+  if (entree.dossier) {
+    try {
+      const r = await rangerDossier(acces.compteId, acces.email, entree.dossier);
+      if (!r.ok) return { ok: false, message: r.message, gratuit: true };
+    } catch (e) {
+      console.error('Garder le dossier du visiteur :', e instanceof Error ? e.message : e);
+      return { ok: false, message: 'Ton compte est ouvert, mais ton dossier de course n’a pas pu être gardé. Refais-le depuis tes courses.', gratuit: true };
+    }
   }
   // Pas de revalidatePath ici : l'écran « Me connecter » doit rester sur « C’est gardé » (le recharger, avec une session,
   // le renverrait à l'accueil).
