@@ -157,7 +157,7 @@ test('« À regarder » : un repli, une réponse illisible, un écart sans phras
   // Moteur 8.468 : la semaine standard (rien de lu de sa semaine passée), en premier.
   const standard = l.pointsDeLaReponse({ journal: [{ regle: 'STANDARD' }, { regle: 'REPONSE', du: '2026-11-07' }], revue: null });
   assert.deepEqual(standard.map((x) => x.genre), ['standard', 'reponse']);
-  assert.equal(standard[0].texte, 'rien n’est remonté de sa semaine (ni séance, ni réponse, ni Hooper) : semaine de maintien.');
+  assert.equal(standard[0].texte, 'rien n’est remonté de sa semaine (ni séance, ni réponse, ni Hooper) : semaine prévue.');
   assert.deepEqual(genres({ journal: [{ regle: 'NONLU' }, { regle: 'SYNCHRO' }], revue: null }), [], 'une séance non lue n’est pas un point');
 });
 

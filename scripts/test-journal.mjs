@@ -107,7 +107,7 @@ test('NONLU, STANDARD et SYNCHRO en clair', () => {
   assert.equal(enClair({ regle: 'NONLU', famille: 'sl', marche_min: 105, effet: 'sortie longue non lue : la même marche' })[0],
     'Sortie longue non lue dans Nolio : la même marche (105 min), ni hausse ni baisse.');
   assert.equal(enClair({ regle: 'STANDARD', effet: 'rien de lu de la semaine passée' })[0],
-    'Rien de lu de sa semaine passée (ni séance, ni réponse, ni Hooper) : semaine de maintien, la même marche, le volume de son niveau habituel.');
+    'Rien de lu de sa semaine passée (ni séance, ni réponse, ni Hooper) : semaine prévue, elle suit son plan.');
   const [synchro] = enClair({ regle: 'SYNCHRO', effet: 'pas d’arrêt conclu', jours: 9, depuis: '2026-11-06', part_lue: 0.4 });
   assert.equal(synchro, '9 jours sans séance lue depuis le 06/11 : pas d’arrêt conclu, ses séances ne remontent pas d’habitude (40 % de séances lues sur ses 4 dernières semaines normales).');
   assert.match(enClair({ regle: 'SYNCHRO', jours: 7, depuis: '2026-11-08' })[0], /\(moins de 75 % de séances lues/);
