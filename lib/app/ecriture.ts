@@ -3008,7 +3008,7 @@ const REGLES_EN_CLAIR: Record<string, string> = {
   OM4: 'semaine de reprise allégée', S4: 'course hors de portée après la reconstruction',
   TN: 'test de vitesse critique non reproposé', REC: 'récupération',
   // Moteur 8.468 (décisions du coach du 16/11/2026) : ce qui n'est pas lu n'est pas manqué. BROUILLONS.
-  NONLU: 'séance non lue dans Nolio, la même marche', STANDARD: 'rien de lu : semaine de maintien',
+  NONLU: 'séance non lue dans Nolio, la même marche', STANDARD: 'rien de lu : semaine prévue',
   SYNCHRO: 'pas d’arrêt conclu : ses séances ne remontent pas d’habitude',
 };
 

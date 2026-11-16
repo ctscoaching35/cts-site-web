@@ -132,7 +132,7 @@ export function enClair(e: Entree, seances?: string[], realise?: Pick<Realise, '
       const nom = nomCourt(nomDe?.(String(e.seance ?? '')) ?? '') || (FAMILLE[e.famille as FamilleLue] ?? '');
       return [`Séance ${nom ? `${nom} ` : ''}de ${jourDeLaSeance(e.seance)} non lue dans Nolio : sa marche tient, ni hausse ni baisse.`];
     }
-    case 'STANDARD': return ['Rien de lu de sa semaine passée (ni séance, ni réponse, ni Hooper) : semaine de maintien, la même marche, le volume de son niveau habituel.'];
+    case 'STANDARD': return ['Rien de lu de sa semaine passée (ni séance, ni réponse, ni Hooper) : semaine prévue, elle suit son plan.'];
     case 'SYNCHRO': {
       const depuis = typeof e.depuis === 'string' && e.depuis ? ` depuis le ${jourMois(e.depuis)}` : '';
       const part = typeof e.part_lue === 'number' ? `${Math.round(100 * e.part_lue)} %` : 'moins de 75 %';

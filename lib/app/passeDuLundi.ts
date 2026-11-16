@@ -166,7 +166,7 @@ export type PointDeLaReponse = { genre: 'standard' | 'reponse' | 'illisible' | '
 export function pointsDeLaReponse(p: { journal: { regle?: string; du?: string; source?: string }[];
   revue: { lu?: { questionnaire_etat?: string; reponse?: { illisibles?: string[] } }; demande?: Demande | null; lundi?: Pick<LundiGarde, 'etat' | 'changements'> } | null }): PointDeLaReponse[] {
   const points: PointDeLaReponse[] = [];
-  if (p.journal.some((j) => j.regle === 'STANDARD')) points.push({ genre: 'standard', texte: 'rien n’est remonté de sa semaine (ni séance, ni réponse, ni Hooper) : semaine de maintien.' });
+  if (p.journal.some((j) => j.regle === 'STANDARD')) points.push({ genre: 'standard', texte: 'rien n’est remonté de sa semaine (ni séance, ni réponse, ni Hooper) : semaine prévue.' });
   const repli = p.journal.find((j) => j.regle === 'REPONSE');
   const partielle = p.revue?.lu?.questionnaire_etat === 'partielle';
   if (partielle || p.revue?.lu?.questionnaire_etat === 'illisible') {
