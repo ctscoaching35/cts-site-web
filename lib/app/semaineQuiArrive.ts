@@ -15,6 +15,7 @@
  */
 import { destinataire, type FicheAthlete, type SeanceEnvoyee } from './coaching';
 import { apercuDuDimanche, type Apercu, type Revue } from './ecriture';
+import type { SesJours } from './questionnaireSamedi';
 import { appelNolio, listeNolio, nolioConfigure, SPORTS_COURSE } from './nolio';
 import { ajouterJours, type Semaine } from './plan';
 import { comparerLaSemaine, type PrevueNolio, type SemaineComparee } from './semaineDansNolio';
@@ -26,7 +27,8 @@ export type LigneEcrite = {
   numero: string; donnees: Semaine; journal: Record<string, unknown>[]; bilan: string | null; notes: { regle?: string; texte: string }[];
   sans_ajustement: boolean; ecrite_le: string; realise: unknown; revue?: Revue | null;
 };
-type Commun = { planId: string; course: string; fond: boolean };
+// sesJours : « ses jours », la dernière réponse lue (lot 0 du 16/11/2026 ; plans.ses_jours, null sans la migration).
+type Commun = { planId: string; course: string; fond: boolean; sesJours: SesJours | null };
 // La semaine partie, telle qu'elle est dans Nolio (décision 11 du coach du 09/11/2026) : comparee, et l'heure de la
 // lecture ; erreur : Nolio n'a pas répondu (la carte montre la semaine écrite).
 export type LectureDeLaSemaine = { comparee: SemaineComparee; lue_le: string } | { erreur: string };
@@ -73,7 +75,8 @@ export async function semainesQuiArrivent(ecrites: SemaineDuDimanche[], jour: st
   const laisseesAuCoach = new Set((laissees ?? []).map((x) => String(x.plan_id)));
   return Promise.all(ecrites.map(async ({ a, o, plan }): Promise<SemaineQuiArrive> => {
     const fond = Boolean((plan.parametres as { fond?: unknown } | null)?.fond);
-    const commun: Commun = { planId: o.plan_id, course: o.course_date, fond };
+    const { data: gardes, error: sansColonne } = await service.from('plans').select('ses_jours').eq('id', o.plan_id).maybeSingle();
+    const commun: Commun = { planId: o.plan_id, course: o.course_date, fond, sesJours: sansColonne ? null : (gardes?.ses_jours ?? null) as SesJours | null };
     const { lignes, revueGardee } = await lignesEcrites(o.plan_id);
     if (lundi) {
       const ligne = lignes.find((l) => l.donnees?.lundi === lundi);

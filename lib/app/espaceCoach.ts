@@ -20,6 +20,7 @@ import { demonstrationCoachOuverte } from './demonstrationCoach';
 import { demandesDuCoach, estRetrait, type Demande } from './demandes';
 import { coursesGardees, pasEncoreIci, type CourseNolio } from './coursesNolio';
 import { entreeDe } from './entree';
+import { pointsDeLaReponse } from './passeDuLundi';
 import { cleLaissee, compteDuCoach, debutApres, plansALaMain, trameDuPlan, type Realise, type Trame } from './ecriture';
 import { lireTemps } from '@/lib/plan';
 import { ajouterJours, dateAbregee, dateLongue, jourMois, joursEntre, type Semaine } from './plan';
@@ -160,6 +161,11 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     : { data: [] };
   const { data: lignes } = ids.length
     ? await service.from('semaines_ecrites').select('plan_id, numero, realise, journal, bilan, sans_ajustement, ecrite_le, donnees').in('plan_id', ids)
+    : { data: [] };
+  // Lot 0 du 16/11/2026 : la revue de chaque semaine écrite (sa réponse du samedi, « demandé / écrit », la passe du lundi) ; sans la
+  // colonne (la migration du 08/11/2026 pas passée), rien à signaler.
+  const { data: revues } = ids.length
+    ? await service.from('semaines_ecrites').select('plan_id, numero, revue').in('plan_id', ids).gte('ecrite_le', new Date(Date.now() - 9 * 86400_000).toISOString())
     : { data: [] };
   const { data: tests } = ids.length
     ? await service.from('tests_lus').select('plan_id, jour_id, statut, lu_le').in('plan_id', ids).neq('statut', 'lu')
@@ -359,6 +365,17 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
       aRegarder.push({ niveau: 'bloque', genre: 'saison', cle: `saison:${a.id}:${r.lundi}`, athlete: a.nom, action: 'Son profil ›',
         href: `/app/coach/athlete/${a.id}#son-profil`, detail: r.motif,
         texte: `sa saison de fond du ${jourMois(r.lundi)} n’a pas pu être créée : ${r.motif}` });
+    }
+    // LOT 0 (16/11/2026, point 5) : la dernière semaine écrite — un repli sur la dernière réponse, une réponse illisible, un écart sans
+    // phrase dans la note, une passe du lundi qui n'a pas réécrit. « À venir » (en gris) : le coach le voit sur sa page, rien d'urgent.
+    const derniere = semaines.filter((l) => String(l.ecrite_le).slice(0, 10) >= ajouterJours(jour, -8) && !l.sans_ajustement)
+      .sort((x, y) => Number(num(y.numero)) - Number(num(x.numero)))[0];
+    if (derniere && o) {
+      const revue = (revues ?? []).find((r) => r.plan_id === derniere.plan_id && r.numero === derniere.numero)?.revue as Parameters<typeof pointsDeLaReponse>[0]['revue'] | undefined;
+      for (const pt of pointsDeLaReponse({ journal: (derniere.journal ?? []) as { regle?: string; du?: string }[], revue: revue ?? null })) {
+        aRegarder.push({ niveau: 'arrive', genre: pt.genre === 'illisible' || pt.genre === 'reponse' ? 'reponse' : pt.genre, cle: `${pt.genre}:${o.plan_id}:${derniere.numero}`,
+          athlete: a.nom, action: 'Voir ›', href: hrefPlan, texte: pt.texte });
+      }
     }
     // La semaine en cours pas partie dans Nolio (le passage du dimanche en échec, même après ses reprises). La première
     // d'une saison de fond aussi (25/10/2026 : sans semaine écrite avant, elle passait inaperçue).

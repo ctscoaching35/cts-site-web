@@ -34,6 +34,14 @@
     {
       "path": "/api/semaines/resumer",
       "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/ecriture/lundi",
+      "schedule": "0 5 * * 1"
+    },
+    {
+      "path": "/api/ecriture/rappel",
+      "schedule": "0 14 * * 0"
     }
   ]
 }

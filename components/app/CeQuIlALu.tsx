@@ -27,7 +27,11 @@ export function semaineEcoulee(r: Realise): string {
 
 // sansRetours : rien de lu (« Première semaine : rien n'est lu. ») ; premiere : la première semaine d'une saison de fond,
 // son questionnaire seul ; ancienne : sa réponse du samedi date de plus de 6 jours (celle d'une semaine d'avant).
-export type Lu = { questionnaire?: Questionnaire; questionnaire_du?: string; lues?: SeanceLue[]; premiere?: boolean; sansRetours?: boolean };
+// Lot 0 du 16/11/2026 : l'état de la lecture (lue, absente, illisible, echec), sa cause et la question en cause, pour dire au coach
+// pourquoi la réponse n'a pas servi ; tardive : arrivée après l'écriture (la passe du lundi l'a relue).
+export type Lu = { questionnaire?: Questionnaire; questionnaire_du?: string; questionnaire_etat?: 'lue' | 'absente' | 'illisible' | 'echec';
+  reponse?: { cause?: 'ancienne' | 'non_envoyee'; illisibles?: string[]; erreur?: string }; tardive?: boolean;
+  lues?: SeanceLue[]; premiere?: boolean; sansRetours?: boolean };
 export default function CeQuIlALu({ lu, realise, ancienne }: { lu: Lu; realise: Realise | null; ancienne: boolean }) {
   const lues = lu.lues;
   return (
@@ -37,7 +41,8 @@ export default function CeQuIlALu({ lu, realise, ancienne }: { lu: Lu; realise: 
         <span className="text-xs text-[#5E5C78]">Ouvrir <span aria-hidden className="inline-block group-open:rotate-90">›</span></span>
       </summary>
       <div className="mt-3 space-y-2">
-        {!lu.sansRetours && <p className="text-sm text-[#3B3957]">{reponsesDuSamedi(lu.questionnaire, lu.questionnaire_du, ancienne)}</p>}
+        {!lu.sansRetours && <p className="text-sm text-[#3B3957]">{reponsesDuSamedi(lu.questionnaire, lu.questionnaire_du, ancienne,
+          { etat: lu.questionnaire_etat, ...lu.reponse, ...(lu.tardive ? { tardive: true } : {}) })}</p>}
         {realise && (
           <p className="text-sm text-[#3B3957]">
             {/* « sans RPE » dit déjà sa charge : la parenthèse reste pour une semaine sans séance faite. */}

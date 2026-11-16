@@ -5,7 +5,7 @@ import { formatRouteDe } from '@/lib/app/route';
 import { CORRECTIONS, RAISONS, type Choix } from '@/lib/app/correctionsTextes';
 import { BOUTON, BOUTON_DANGER } from './Ui';
 import {
-  ajouterCourse, ajouterTraceObjectif, annulerCorrections, annulerSemaine, arreterPreparationRemboursee, choisirCorrections, demarrerDansNolio, donnerMonAccord, modifierCourse, reessayerLaSemaine, retirerCourse, retirerMonAccord,
+  ajouterCourse, ajouterTraceObjectif, annulerCorrections, annulerSemaine, appliquerLaSemaineDuLundiGeste, arreterPreparationRemboursee, choisirCorrections, demarrerDansNolio, donnerMonAccord, modifierCourse, reessayerLaSemaine, retirerCourse, retirerMonAccord,
   type EtatGeste,
 } from '@/lib/app/actionsEcriture';
 
@@ -221,6 +221,20 @@ export function ReessayerSemaine({ planId }: { planId: string }) {
     <form action={action} className="space-y-1">
       <button type="submit" disabled={enCours} className="inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal disabled:opacity-50">
         {enCours ? 'Envoi…' : 'Réessayer ›'}
+      </button>
+      <Message etat={etat} />
+    </form>
+  );
+}
+
+// La passe du lundi n'a pas réécrit la semaine : ce qu'elle aurait écrit, à appliquer si le coach le veut (lot 0, 16/11/2026).
+export function AppliquerLaSemaineDuLundi({ planId, numero }: { planId: string; numero: string }) {
+  const [etat, action, enCours] = useActionState<EtatGeste, FormData>(appliquerLaSemaineDuLundiGeste.bind(null, planId, numero), null);
+  if (etat?.ok) return <Message etat={etat} />;
+  return (
+    <form action={action} className="space-y-1">
+      <button type="submit" disabled={enCours} className="inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal disabled:opacity-50">
+        {enCours ? 'Écriture…' : 'Appliquer ce que le moteur aurait écrit ›'}
       </button>
       <Message etat={etat} />
     </form>

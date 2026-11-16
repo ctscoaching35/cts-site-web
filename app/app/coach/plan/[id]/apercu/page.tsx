@@ -116,8 +116,8 @@ export default async function ApercuDimanche({ params }: { params: Promise<{ id:
           {sortie.pourquoi && <PourquoiSemaine pourquoi={sortie.pourquoi} />}
           {a && (
             <CeQuIlALu realise={r} ancienne={Boolean(a.retours?.questionnaire_du && a.retours.questionnaire_du < ajouterJours(aujourdhuiIso(), -6))}
-              lu={rienDeLu(a.retours) ? { sansRetours: true } : { questionnaire: a.retours?.questionnaire, questionnaire_du: a.retours?.questionnaire_du,
-                lues: a.retours?.lues, ...(a.premiere ? { premiere: true } : {}) }} />
+              lu={a.revue?.lu ?? (rienDeLu(a.retours) ? { sansRetours: true } : { questionnaire: a.retours?.questionnaire, questionnaire_du: a.retours?.questionnaire_du,
+                lues: a.retours?.lues, ...(a.premiere ? { premiere: true } : {}) })} />
           )}
         </>
       )}

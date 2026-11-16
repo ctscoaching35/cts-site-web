@@ -37,19 +37,36 @@ export function nomsDesSeances(semaines: ({ jours?: { id?: string; seance?: stri
 // Les réponses du questionnaire du samedi, en clair (décision coach du 01/11/2026) : Nolio affiche les cases du choix multiple
 // toujours vides, même cochées ; le site les lit par leur rang et les montre ici. du : le jour de la réponse ; ancienne :
 // pas de réponse cette semaine, ce sont les jours de la dernière (S11, décision coach du 05/11/2026).
-export function reponsesDuSamedi(q: Questionnaire | undefined, du?: string, ancienne = false): string {
-  if (!q) return 'Pas de réponse au questionnaire du samedi : le moteur reprend ses jours habituels.';
-  if (ancienne) {
-    const nom = (j: string) => j[0].toUpperCase() + j.slice(1);
-    return `Pas de réponse au questionnaire de cette semaine : le moteur reprend les jours de sa dernière réponse${du ? `, du ${jourMois(du)}` : ''} (${q.jours.map(nom).join(', ')}${q.jour_sl ? ` ; sortie longue le ${q.jour_sl}` : ''}), sans son nombre de séances.`;
+// LOT 0 (16/11/2026, point 1.6) : un message d'échec distinct par cause — absente, illisible (avec la question en cause), ouverte
+// mais pas envoyée, lecture de Nolio en échec, réponse d'une semaine d'avant, arrivée après l'écriture. BROUILLONS (le coach valide).
+export type DetailLecture = {
+  etat?: 'lue' | 'absente' | 'illisible' | 'echec'; cause?: 'ancienne' | 'non_envoyee'; illisibles?: string[]; erreur?: string;
+  // La passe du lundi a réécrit ou relu la semaine : la réponse est arrivée après l'écriture du dimanche.
+  tardive?: boolean;
+};
+const QUESTION_EN_CAUSE: Record<string, string> = { jours: 'la question des jours', jour_sl: 'la question du jour de sortie longue', nb_seances: 'la question du nombre de séances' };
+const nomDuJour = (j: string) => j[0].toUpperCase() + j.slice(1);
+const jours = (q: Questionnaire) => [q.jours?.length ? q.jours.map(nomDuJour).join(', ') : null, q.jour_sl ? `sortie longue le ${q.jour_sl}` : null,
+  q.nb_seances ? `${q.nb_seances} séance${q.nb_seances > 1 ? 's' : ''}` : null].filter(Boolean).join(' ; ');
+export function reponsesDuSamedi(q: Questionnaire | undefined, du?: string, ancienne = false, detail: DetailLecture = {}): string {
+  const phrases: string[] = [];
+  if (detail.etat === 'echec') phrases.push(`Lecture de Nolio en échec${detail.erreur ? ` (${detail.erreur})` : ''} : sa réponse n’a pas pu être lue.`);
+  else if (detail.etat === 'illisible') {
+    const en = (detail.illisibles ?? []).map((c) => QUESTION_EN_CAUSE[c] ?? c);
+    phrases.push(`Réponse illisible : ${en.length ? en.join(' et ') : 'une question'} (un format inattendu).`);
+  } else if (detail.cause === 'non_envoyee') phrases.push('Réponse ouverte mais pas envoyée.');
+  else if (!q || ancienne || detail.etat === 'absente') {
+    phrases.push(q ? 'Pas de réponse au questionnaire du samedi.' : 'Pas de réponse au questionnaire du samedi : le moteur reprend ses jours habituels.');
   }
-  const nom = (j: string) => j[0].toUpperCase() + j.slice(1);
-  const morceaux = [
-    q.jours.length ? q.jours.map(nom).join(', ') : 'aucun jour coché lisible',
-    q.jour_sl ? `sortie longue le ${q.jour_sl}` : null,
-    q.nb_seances ? `${q.nb_seances} séance${q.nb_seances > 1 ? 's' : ''}` : null,
-  ].filter(Boolean);
-  return `Ses réponses du samedi : ${morceaux.join(' ; ')}.`;
+  if (detail.tardive) phrases.push('Réponse arrivée après l’écriture.');
+  if (!q) return phrases.filter(Boolean).join(' ');
+  const corps = jours(q) || 'aucun jour lisible';
+  if (ancienne || detail.etat === 'absente') {
+    phrases.push(`Réponse d’une semaine d’avant : ses jours${du ? ` du ${jourMois(du)}` : ''} (${corps}).`);
+  } else {
+    phrases.push(`Ses réponses du samedi : ${corps}.`);
+  }
+  return phrases.filter(Boolean).join(' ');
 }
 
 // Une ligne du journal du moteur, en clair pour le coach. seances : les noms des séances de la semaine ; la mémoire d'une
@@ -94,6 +111,16 @@ export function enClair(e: Entree, seances?: string[], realise?: Pick<Realise, '
       : e.cause === 'remplacee' ? `Ta séance de ${jourDeLaSeance(e.seance)} remplacée par une autre famille : sa marche se refait, sous une autre forme.`
         : e.cause === 'laissee' ? `Ta semaine posée n’avait pas la séance de ${jourDeLaSeance(e.seance)} de la trame : sa marche se refait, sous une autre forme.`
           : `Ta séance de ${jourDeLaSeance(e.seance)} n’a pas été faite : elle revient sous une autre forme.`];
+    // Lot 0 du 16/11/2026 (moteur 8.466) : le repli sur la dernière réponse, et la semaine réécrite le lundi matin. BROUILLONS.
+    case 'REPONSE': {
+      const du = typeof e.du === 'string' && e.du ? ` du ${jourMois(e.du)}` : '';
+      const champs = Array.isArray(e.champs) && e.champs.length ? (e.champs as string[]).map((c) => QUESTION_EN_CAUSE[c]?.replace(/^la question (des |du )/, '') ?? c).join(', ') : '';
+      const lecture = e.etat_lecture === 'echec' ? ' (la lecture de Nolio a échoué)' : e.etat_lecture === 'illisible' ? ' (réponse illisible)' : '';
+      return [e.source === 'derniere' ? `Réponse du samedi non lue${lecture} : la semaine suit sa réponse${du || ' d’avant'}.`
+        : e.source === 'fraiche' ? `Réponse du samedi lue en partie${champs ? ` : ${champs} repris de sa réponse d’avant` : ''}${lecture}.`
+          : `Réponse du samedi non lue${lecture} : la semaine suit les jours de son profil.`];
+    }
+    case 'LUNDI': return [`Semaine réécrite le lundi matin : ${e.cause === 'reponse' ? 'sa réponse arrivée après l’écriture' : effet ?? 'ce qui est remonté depuis l’écriture a changé la semaine'}.`];
     case 'D6': return ['Ta semaine posée dans Nolio est lue comme une semaine écrite : sa plus longue sortie, son volume, ses séances clés.'];
     case 'C5': return ['Ta seconde course arrive pendant ta récupération : semaine de course, sans séance dure.'];
     // D7 (moteur 8.451, audits du 05/11/2026) : la semaine refusée par le contrôle du moteur, écrite par un repli.

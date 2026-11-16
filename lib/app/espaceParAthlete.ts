@@ -20,6 +20,8 @@ export const SIGNAL: Record<string, string> = {
   prerequis: 'Prérequis à voir', course_nolio: 'Course A dans Nolio', preparation: 'Course de préparation', suite: 'Rien après',
   test: 'Test à revoir', week_end_choc: 'Week-end choc à annoncer', courses_proches: 'Courses trop proches',
   saison: 'Saison de fond refusée', remontee: 'Pas remontée',
+  // Lot 0 du 16/11/2026 (BROUILLONS) : la réponse du samedi, un écart de la note, la passe du lundi.
+  reponse: 'Réponse du samedi à voir', ecart: 'Écart sans phrase', lundi: 'Passe du lundi à voir',
 };
 
 // ─── Une séance du week-end pas remontée (décision 13-6 du coach du 10/11/2026) ────────────────────────────────────

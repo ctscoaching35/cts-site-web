@@ -4,9 +4,11 @@ import BanniereSemaine from './BanniereSemaine';
 import CeQuIlALu from './CeQuIlALu';
 import PourquoiSemaine from './PourquoiSemaine';
 import SuiteDeLObjectif from './SuiteDeLObjectif';
-import { ReessayerSemaine } from './GestesEcriture';
+import { AppliquerLaSemaineDuLundi, ReessayerSemaine } from './GestesEcriture';
 import { Carte, Surtitre } from './Ui';
-import type { Pourquoi, Realise } from '@/lib/app/ecriture';
+import type { Pourquoi, Realise, Revue } from '@/lib/app/ecriture';
+import { demandeEnClair, ligneDe } from '@/lib/app/passeDuLundi';
+import { sesJoursEnClair, type SesJours } from '@/lib/app/questionnaireSamedi';
 import { rienDeLu } from '@/lib/app/derniereCourse';
 import type { Lu } from './CeQuIlALu';
 import { ajouterJours, type Semaine } from '@/lib/app/plan';
@@ -194,6 +196,49 @@ function NoteDeLaSemaine({ titre, textes }: { titre: string; textes: string[] })
   );
 }
 
+// « Demandé / écrit » sous « Ce qu'il a lu » (lot 0 du 16/11/2026, point 5) : ce qu'il a demandé au samedi, ce que le moteur a
+// écrit, chaque écart et la phrase de la note qui le dit ; « Ses jours », sa dernière réponse lue ; et ce que la passe du lundi a
+// décidé (semaine réécrite, ou ce qui aurait changé, avec de quoi l'appliquer). BROUILLONS : les textes, à valider par le coach.
+function DemandeEcrit({ planId, numero, revue, sesJours }: { planId: string; numero: string; revue: Revue | null; sesJours: SesJours | null }) {
+  const c = demandeEnClair(revue?.demande);
+  const lundi = revue?.lundi;
+  if (!c.demande && !c.ecrit && !sesJours && !lundi) return null;
+  return (
+    <div className="bg-white rounded-2xl border border-indigo/[0.08] p-5 space-y-2">
+      <Surtitre as="div">Demandé et écrit</Surtitre>
+      {sesJours && <p className="text-sm text-[#3B3957]">Ses jours : {sesJoursEnClair(sesJours)}</p>}
+      {c.demande && <p className="text-sm text-[#3B3957]">{c.demande}</p>}
+      {c.ecrit && <p className="text-sm text-[#3B3957]">{c.ecrit}</p>}
+      {c.ecarts.length > 0 && (
+        <ul className="text-sm text-[#3B3957] list-disc pl-5 space-y-0.5">
+          {c.ecarts.map((e) => (
+            <li key={e.texte}>{e.texte}{e.sansPhrase && <span className="text-[#8A3326] font-semibold"> (la note ne le dit pas)</span>}</li>
+          ))}
+        </ul>
+      )}
+      {lundi?.etat === 'reecrite' && (
+        <p className="text-sm text-[#3B3957] font-semibold">
+          Semaine réécrite le lundi matin{lundi.reponse_tardive ? ' : sa réponse arrivée après l’écriture' : ''}.
+        </p>
+      )}
+      {lundi?.etat === 'non_reecrite' && (
+        <div className="space-y-1.5 rounded-xl bg-[#FFF6E5] px-3 py-2.5">
+          <p className="text-sm font-semibold text-[#7A520D]">
+            La passe du lundi n’a pas réécrit la semaine{lundi.raison ? ` (${lundi.raison})` : ''}. Ce qui aurait changé :
+          </p>
+          <ul className="text-sm text-[#3B3957] list-disc pl-5 space-y-0.5">
+            {(lundi.changements ?? []).map((x, i) => <li key={`${i}-${ligneDe(x)}`}>{ligneDe(x)}</li>)}
+          </ul>
+          {(lundi.retouches ?? []).length > 0 && (
+            <p className="text-[0.8125rem] text-[#5E5C78]">Pourquoi pas : {(lundi.retouches ?? []).map(ligneDe).filter(Boolean).join(' ; ')}.</p>
+          )}
+          <AppliquerLaSemaineDuLundi planId={planId} numero={numero} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Le pourquoi d'avant (sans les sept réponses) et ce qu'il a lu, repliés.
 function Replies({ pourquoi, lu, realise, ancienne }: { pourquoi: Pourquoi | null; lu: Lu | null; realise: Realise | null; ancienne: boolean }) {
   return (
@@ -246,14 +291,21 @@ export default function SemainesQuiArrivent({ semaines, prevision, vers, aLaMain
               </Carte>
               <NoteDeLaSemaine titre="La note « Ta semaine » qu’il a lue" textes={textes} />
               {r ? (
-                <Replies pourquoi={reponses ? null : r.pourquoi ?? null} lu={r.lu ?? null} realise={r.realise ?? null}
-                  ancienne={reponseAncienne(r.lu?.questionnaire_du, l.ecrite_le)} />
+                <>
+                  <Replies pourquoi={reponses ? null : r.pourquoi ?? null} realise={r.realise ?? null}
+                    lu={r.lu ? { ...r.lu, ...(r.lundi?.reponse_tardive ? { tardive: true } : {}) } : null}
+                    ancienne={reponseAncienne(r.lu?.questionnaire_du, l.ecrite_le)} />
+                  <DemandeEcrit planId={s.planId} numero={l.numero} revue={r} sesJours={s.sesJours} />
+                </>
               ) : (
-                <p className="text-[0.8125rem] text-[#5E5C78]">
-                  {s.revueGardee
-                    ? 'Son « pourquoi » et ce qu’il a lu n’ont pas été gardés pour cette semaine : ils le sont à partir du prochain passage du dimanche.'
-                    : 'Son « pourquoi » et ce qu’il a lu ne sont pas encore gardés au passage : la migration du 08/11/2026 est à passer.'}
-                </p>
+                <>
+                  <p className="text-[0.8125rem] text-[#5E5C78]">
+                    {s.revueGardee
+                      ? 'Son « pourquoi » et ce qu’il a lu n’ont pas été gardés pour cette semaine : ils le sont à partir du prochain passage du dimanche.'
+                      : 'Son « pourquoi » et ce qu’il a lu ne sont pas encore gardés au passage : la migration du 08/11/2026 est à passer.'}
+                  </p>
+                  <DemandeEcrit planId={s.planId} numero={l.numero} revue={null} sesJours={s.sesJours} />
+                </>
               )}
               {apercuComplet}
             </section>
@@ -310,8 +362,8 @@ export default function SemainesQuiArrivent({ semaines, prevision, vers, aLaMain
                 <NoteDeLaSemaine titre="La note « Ta semaine » qu’il lira" textes={sortie.bilan ? [sortie.bilan] : sortie.notes.map((n) => n.texte)} />
                 <Replies pourquoi={reponses ? null : sortie.pourquoi ?? null} realise={sortie.realise}
                   ancienne={reponseAncienne(a.retours?.questionnaire_du, aujourdhuiIso())}
-                  lu={rienDeLu(a.retours) ? { sansRetours: true } : { questionnaire: a.retours?.questionnaire, questionnaire_du: a.retours?.questionnaire_du,
-                    lues: a.retours?.lues, ...(a.premiere ? { premiere: true } : {}) }} />
+                  lu={a.revue?.lu ?? (rienDeLu(a.retours) ? { sansRetours: true } : { questionnaire: a.retours?.questionnaire, questionnaire_du: a.retours?.questionnaire_du,
+                    lues: a.retours?.lues, ...(a.premiere ? { premiere: true } : {}) })} />
               </>
             )}
             {apercuComplet}

@@ -7,7 +7,7 @@
 import { revalidatePath } from 'next/cache';
 import { API_URL } from '@/lib/plan';
 import {
-  annulerAjustements, arreterLaPreparation, demarrerObjectif, donnerAccordLecture, fichesDesPreparations, objectifEcrit, plansALaMain, poserCourse, prevenirCoach, rattraperLaSemaine,
+  annulerAjustements, appliquerLaSemaineDuLundi, arreterLaPreparation, demarrerObjectif, donnerAccordLecture, fichesDesPreparations, objectifEcrit, plansALaMain, poserCourse, prevenirCoach, rattraperLaSemaine,
   retirerAccordLecture, retirerCourseDeNolio, type Course,
 } from './ecriture';
 import { enregistrerConfirmation } from './confirmation';
@@ -332,6 +332,23 @@ export async function reessayerLaSemaine(planId: string, _e: EtatGeste): Promise
   } catch (e) {
     console.error(`Semaine de ${planId} :`, e instanceof Error ? e.message : e);
     return { ok: false, message: e instanceof Error ? e.message : 'La semaine n’est pas partie : réessaie dans un moment.' };
+  }
+}
+
+// La passe du lundi n'a pas réécrit la semaine (le coach l'avait retouchée dans Nolio) : « Appliquer ce qu'elle aurait écrit »,
+// sur la page de l'athlète (lot 0 du 16/11/2026). Un geste du coach quand il le veut, jamais un clic de chaque semaine.
+export async function appliquerLaSemaineDuLundiGeste(planId: string, numero: string, _e: EtatGeste): Promise<EtatGeste> {
+  const { coachId } = await qui();
+  const o = await objectifEcrit(planId);
+  if (!coachId || !o || o.coachId !== coachId || !/^S\d+$/.test(numero)) return { ok: false, message: 'Réservé au coach de cet objectif.' };
+  try {
+    await appliquerLaSemaineDuLundi(planId, numero);
+    revalidatePath('/app/coach');
+    revalidatePath(`/app/coach/plan/${planId}`);
+    return { ok: true, message: `Semaine ${numero.replace('S', '')} réécrite comme la passe du lundi l’aurait écrite.` };
+  } catch (e) {
+    console.error(`Semaine du lundi de ${planId} ${numero} :`, e instanceof Error ? e.message : e);
+    return { ok: false, message: e instanceof Error ? e.message : 'La semaine n’a pas été réécrite : réessaie dans un moment.' };
   }
 }
 
