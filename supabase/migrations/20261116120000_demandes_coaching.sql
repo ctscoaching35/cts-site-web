@@ -1,5 +1,5 @@
 -- CTS — l'app gratuite, lot A2 (décisions du coach du 16/11/2026) : la DEMANDE DE COACHING d'un compte gratuit. À exécuter
--- une fois dans le projet Supabase (après celui du lot A1, 20261116100000_app_gratuite.sql) : SQL Editor, coller ce fichier,
+-- une fois dans le projet Supabase (après celui du lot A1, 20261116110000_app_gratuite.sql) : SQL Editor, coller ce fichier,
 -- Run.
 --
 -- Une demande par compte, rattachée au compte (public.comptes) et effacée avec lui. Le compte la LIT et l'EFFACE (« Effacer ma
