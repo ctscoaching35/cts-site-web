@@ -5,6 +5,7 @@ import CeQuIlALu from './CeQuIlALu';
 import PourquoiSemaine from './PourquoiSemaine';
 import SuiteDeLObjectif from './SuiteDeLObjectif';
 import { AppliquerLaSemaineDuLundi, ReessayerSemaine } from './GestesEcriture';
+import { JoursEcrits, NoteDeLaSemaine } from './SemaineEcrite';
 import { Carte, Surtitre } from './Ui';
 import type { Pourquoi, Realise, Revue } from '@/lib/app/ecriture';
 import { demandeEnClair, ligneDe } from '@/lib/app/passeDuLundi';
@@ -41,23 +42,6 @@ function etiquetteDuJour(semaine: Semaine, iso: string) {
   const d = new Date(`${iso}T12:00:00Z`);
   const j = d.toLocaleDateString('fr-FR', { weekday: 'short', timeZone: 'UTC' }).replace('.', '');
   return `${j.charAt(0).toUpperCase()}${j.slice(1)}. ${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
-}
-
-// La semaine telle que le moteur l'a écrite (l'aperçu, ou Nolio pas lu).
-function JoursEcrits({ semaine }: { semaine: Semaine }) {
-  return (
-    <ul className="divide-y divide-indigo/10 text-sm">
-      {semaine.jours.map((j) => (
-        <li key={j.id} className="flex gap-3 px-1 py-2">
-          <span className="w-[4.6rem] shrink-0 text-xs text-indigo/55 pt-0.5">{j.date}</span>
-          <span className={j.famille === 'repos' ? 'text-indigo/40' : 'text-indigo font-semibold'}>
-            {j.nom ?? j.seance}
-            {j.famille !== 'repos' && j.duree !== '—' && <span className="font-normal text-indigo/55"> · {j.duree}{j.rpe !== '—' ? ` · RPE ${j.rpe}` : ''}</span>}
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
 }
 
 // Une séance telle qu'elle est dans Nolio, ses marques et ce que le moteur avait écrit.
@@ -179,20 +163,6 @@ function LaSemaine({ semaine, course, fond, vers, lue = null, erreur = null, ecr
         </div>
       )}
     </div>
-  );
-}
-
-// La note « Ta semaine », repliée sous la carte : elle part dimanche avec la semaine et ne suit pas les retouches.
-function NoteDeLaSemaine({ titre, textes }: { titre: string; textes: string[] }) {
-  if (!textes.length) return null;
-  return (
-    <details className="group bg-white rounded-2xl border border-indigo/[0.08] p-5">
-      <summary className="cursor-pointer list-none min-h-8 flex items-center justify-between gap-3">
-        <Surtitre as="div">{titre}</Surtitre>
-        <span className="text-xs text-[#5E5C78] whitespace-nowrap">Ouvrir <span aria-hidden className="inline-block group-open:rotate-90">›</span></span>
-      </summary>
-      <p className="mt-3 text-sm leading-relaxed text-[#3B3957] whitespace-pre-line">{textes.join(' ')}</p>
-    </details>
   );
 }
 

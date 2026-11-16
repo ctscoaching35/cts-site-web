@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { compterEtape, porteDuRefus } from '@/lib/mesure';
 import clsx from 'clsx';
+import ApercuPlan from './ApercuPlan';
+import { type Apercu, type ApercuGarde, apercuGardeValide, apercuPourCeParcours, CLE_CACHE_APERCU, classerReponse, empreinteApercu, jourParis, MESSAGE_APERCU_INDISPONIBLE, PHRASE_AUTRE_JOUR, type ResultatApercu, retirerIdentite } from '@/lib/apercu';
 import { estimerChrono } from '@/lib/app/route';
 import { alerteSortieLongue, API_URL, avertissements, type Champs, champsVides, type ConfigPlan, courseTropProche, debutFormule, dureeCocheeDOffice, dureesProposees, formatDepuisDistance, MESSAGE_COURSE_TROP_PROCHE, formatOuvert, intakePourApi, noteFormat, PHRASE_TEMPS_DE_TETE, placementReference, referenceExigee, plancherSeances, reperesChrono, FORMATS_ROUTE, tempsDeTete, textes, type CourseReference } from '@/lib/plan';
 
@@ -120,7 +122,12 @@ export default function Questionnaire({
   // du 28/09/2026) : l'athlète apprenait après avoir payé qu'elle était illisible.
   const [avisTrace, setAvisTrace] = useState('');
   const traceDemandee = useRef(0);
-  const [etape, setEtape] = useState<'formulaire' | 'recap'>('formulaire');
+  const [etape, setEtape] = useState<'formulaire' | 'recap' | 'apercu'>('formulaire');
+  // L'aperçu du plan avant paiement (décision du coach du 16/11/2026) : seulement un achat. sansApercu : le moteur n'en a
+  // pas (404) ou n'en rend pas pour l'instant : le parcours reste celui d'avant, le paiement directement.
+  const [apercu, setApercu] = useState<Apercu | null>(null);
+  const [sansApercu, setSansApercu] = useState(false);
+  const [avisApercu, setAvisApercu] = useState('');
   const [confirme, setConfirme] = useState(false);
   // Le début immédiat de la préparation (décision coach du 19/10/2026 : un service qui s'exécute semaine après semaine
   // jusqu'à la course, Code de la consommation, art. L221-25) : il ne commence pendant le délai de rétractation qu'à la
@@ -371,6 +378,82 @@ export default function Questionnaire({
       .catch(() => {});
   }
 
+  const avecApercu = apercuPourCeParcours({ coach, demande, modification: Boolean(modification) }) && !sansApercu;
+
+  // L'aperçu du plan : celui gardé en session s'il porte les mêmes réponses et date du jour (heure de Paris), sinon un appel
+  // à /plan/apercu (la route serveur, qui relaie au moteur). forcer : un autre jour, on recalcule.
+  async function chercherApercu(forcer = false): Promise<ResultatApercu> {
+    const intake = retirerIdentite(avecReference(intakePourApi(c)));
+    const empreinte = empreinteApercu(intake, gpx ? { name: gpx.name, size: gpx.size, lastModified: gpx.lastModified } : null);
+    if (!forcer) {
+      try {
+        const garde = JSON.parse(sessionStorage.getItem(CLE_CACHE_APERCU) ?? 'null') as ApercuGarde | null;
+        const valide = apercuGardeValide(garde, empreinte, jourParis());
+        if (valide) return { type: 'ok', apercu: valide };
+      } catch { /* session illisible : on recalcule */ }
+    }
+    const donnees = new FormData();
+    donnees.append('intake', JSON.stringify(intake));
+    if (gpx) donnees.append('gpx', gpx);
+    try {
+      const r = await fetch('/plan/apercu', { method: 'POST', body: donnees, signal: AbortSignal.timeout(20_000) });
+      const corps = await r.json().catch(() => null);
+      const res = classerReponse(r.status, corps, MESSAGE_COURSE_TROP_PROCHE);
+      if (res.type === 'ok') {
+        try {
+          sessionStorage.setItem(CLE_CACHE_APERCU, JSON.stringify({ empreinte, calcule_le: res.apercu.calcule_le, apercu: res.apercu } satisfies ApercuGarde));
+        } catch { /* session pleine ou fermée : pas de cache */ }
+      }
+      return res;
+    } catch {
+      return { type: 'indisponible', message: MESSAGE_APERCU_INDISPONIBLE };
+    }
+  }
+
+  // Ce que le récapitulatif fait d'une réponse qui n'est pas un aperçu : 404, rien de dit ; 422, les messages de la
+  // vérification ; le reste, « pas disponible », et le paiement reste possible.
+  function sansLApercu(r: Exclude<ResultatApercu, { type: 'ok' }>) {
+    if (r.type === 'refus') {
+      setRefus(r.message);
+      return;
+    }
+    setSansApercu(true);
+    if (r.type === 'indisponible') setAvisApercu(r.message);
+  }
+
+  async function voirApercu() {
+    setEnvoi(true);
+    setRefus('');
+    setAvisApercu('');
+    const r = await chercherApercu();
+    setEnvoi(false);
+    if (r.type !== 'ok') return sansLApercu(r);
+    setApercu(r.apercu);
+    setEtape('apercu');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Le paiement depuis l'aperçu. Un autre jour que celui de l'aperçu (heure de Paris), le plan change peut-être (le lundi
+  // de départ, les blocs) : on le recalcule, on le montre, et on redemande le clic.
+  async function payerDepuisApercu() {
+    if (apercu && apercu.calcule_le !== jourParis()) {
+      setEnvoi(true);
+      setRefus('');
+      const r = await chercherApercu(true);
+      setEnvoi(false);
+      if (r.type === 'ok') {
+        setApercu(r.apercu);
+        setAvisApercu(PHRASE_AUTRE_JOUR);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+      setApercu(null);
+      setEtape('recap');
+      return sansLApercu(r);
+    }
+    return generer();
+  }
+
   async function generer(simuler = false) {
     setEnvoi(true);
     setRefus('');
@@ -428,6 +511,19 @@ export default function Questionnaire({
   const nomFormat = infoRoute ? infoRoute.nom : config.formats.find((f) => f.code === c.format)?.nom ?? '';
   const nomNiveau = textes.niveau.options.find((o) => o.valeur === c.niveau)?.titre ?? '';
   const nomTerrain = textes.terrain.options.find((o) => o.valeur === c.terrain)?.titre ?? '';
+
+  if (etape === 'apercu' && apercu) {
+    return (
+      <div className="space-y-5">
+        <ApercuPlan apercu={apercu} formule={`${nomFormat} — ${c.duree_mois} mois`} essaiSansPaiement={config.mode_paiement === 'test'}
+          envoi={envoi} avis={avisApercu} onPayer={payerDepuisApercu}
+          onRetour={() => { setAvisApercu(''); setRefus(''); setEtape('recap'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />
+        {refus && (
+          <p role="alert" className="bg-white rounded-r-xl border-l-4 border-red-400 p-4 text-[0.875rem] text-indigo leading-relaxed">{refus}</p>
+        )}
+      </div>
+    );
+  }
 
   if (etape === 'recap') {
     const lignes: [string, string][] = [
@@ -570,10 +666,12 @@ export default function Questionnaire({
             {/* A-41 (audits du 05/11/2026) : le prix final et sa mention de TVA. */}
             {!coach && <div className="mt-1 text-xs text-white/70">Prix final, TVA non applicable (art. 293 B du CGI)</div>}
           </div>
-          <button type="button" onClick={() => generer()} disabled={bloque || envoi} className={boutonCls}>
+          <button type="button" onClick={() => (avecApercu ? voirApercu() : generer())} disabled={bloque || envoi} className={boutonCls}>
             {envoi
-              ? (demande ? 'Envoi…' : coach ? 'Génération…' : 'Vérification…')
-              : demande
+              ? (demande ? 'Envoi…' : coach ? 'Génération…' : avecApercu ? 'Calcul de ton aperçu…' : 'Vérification…')
+              : avecApercu
+                ? 'Voir mon aperçu avant de payer →'
+                : demande
                 ? 'Envoyer à mon coach →'
                 : modification
                 ? 'Enregistrer les modifications →'
@@ -584,6 +682,9 @@ export default function Questionnaire({
                   : `Payer ${prix} € →`}
           </button>
         </section>
+        {avisApercu && (
+          <p role="status" className="bg-sand rounded-r-xl border-l-4 border-teal px-4 py-3 text-[0.8125rem] text-indigo leading-relaxed">{avisApercu}</p>
+        )}
         {bloque && manque.length > 0 && (
           <p className="text-[0.8125rem] text-[#4A4866] -mt-3">Pour continuer, {manque.join(', puis ')}.</p>
         )}
