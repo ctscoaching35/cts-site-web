@@ -23,7 +23,7 @@ registerHooks({
     }
   },
 });
-const { relierAuxPrevues, TOLERANCE_DUREE } = await import('../lib/app/relier.ts');
+const { relierAuxPrevues, familleDuNom, TOLERANCE_DUREE } = await import('../lib/app/relier.ts');
 
 const SPORTS = ['RUN', 'TRAIL'];
 const min = (m) => ({ value: m * 60 });
@@ -112,4 +112,43 @@ test('la deuxième règle ne relie jamais à une séance d’un jour pas encore 
   // lue jusqu'au mercredi 11 : une activité du mardi à 60 min ne prend pas la séance du vendredi
   assert.deepEqual(lien(relierAuxPrevues([reel('09', 60)], [prevue('p1', '13', 60)], SPORTS, new Set(), '2026-11-11')), [null]);
   assert.deepEqual(lien(relierAuxPrevues([reel('09', 60)], [prevue('p1', '13', 60)], SPORTS)), ['p1']);
+});
+
+test('la famille d’un nom : sans casse ni accents, prudente', () => {
+  assert.equal(familleDuNom('Sortie longue du dimanche'), 'sl');
+  assert.equal(familleDuNom('SL'), 'sl');
+  assert.equal(familleDuNom('Séance de SEUIL'), 'seuil');
+  assert.equal(familleDuNom('Tempo 20 min'), 'tempo');
+  assert.equal(familleDuNom('VO2 30/30'), 'vo2');
+  assert.equal(familleDuNom('EF tranquille'), 'ef');
+  assert.equal(familleDuNom('Endurance'), 'ef');
+  assert.equal(familleDuNom('Footing du matin'), null);
+  assert.equal(familleDuNom('Prélude'), null, 'pas de « sl » ni « ef » au milieu d’un mot');
+  assert.equal(familleDuNom(null), null);
+});
+
+test('à égalité de jour et de durée, la séance de la même famille que le nom de l’activité', () => {
+  // courue mercredi 11 (60 min) : le mardi et le jeudi sont à 1 jour, à la même durée ; sans nom, le mardi (le plus ancien)
+  const prevues = [prevue('seuil', '10', 60, 'Seuil 3 × 8 min'), prevue('sl', '12', 60, 'Sortie longue')];
+  assert.deepEqual(lien(relierAuxPrevues([reel('11', 60)], prevues, SPORTS)), ['seuil']);
+  assert.deepEqual(lien(relierAuxPrevues([reel('11', 60, { name: 'Ma sortie longue' })], prevues, SPORTS)), ['sl']);
+  assert.deepEqual(lien(relierAuxPrevues([reel('11', 60, { name: 'SL' })], prevues, SPORTS)), ['sl']);
+  assert.deepEqual(lien(relierAuxPrevues([reel('11', 60, { name: 'Seuil' })], prevues, SPORTS)), ['seuil']);
+  // un nom d'une autre famille que les deux : rien ne change
+  assert.deepEqual(lien(relierAuxPrevues([reel('11', 60, { name: 'EF' })], prevues, SPORTS)), ['seuil']);
+});
+
+test('la famille ne passe jamais avant le jour ni la durée', () => {
+  const prevues = [prevue('seuil', '11', 60, 'Seuil'), prevue('sl', '14', 60, 'Dimanche en forêt (sortie longue)')];
+  // courue le mercredi 11 : « sortie longue » dans le nom, mais le seuil est le même jour et à la même durée
+  assert.deepEqual(lien(relierAuxPrevues([reel('11', 60, { name: 'Sortie longue' })], prevues, SPORTS)), ['seuil']);
+  // à jours égaux, la durée la plus proche l'emporte sur la famille
+  const deux = [prevue('ef', '10', 62, 'EF'), prevue('vo2', '12', 70, 'VO2 max')];
+  assert.deepEqual(lien(relierAuxPrevues([reel('11', 63, { name: 'VO2' })], deux, SPORTS)), ['ef']);
+});
+
+test('la famille d’une séance prévue se lit aussi par son code', () => {
+  const prevues = [prevue('ef', '10', 60, 'EF · Footing facile'), prevue('sl', '12', 60, 'SL · Sortie en côtes')];
+  assert.deepEqual(lien(relierAuxPrevues([reel('11', 60, { name: 'endurance' })], prevues, SPORTS)), ['ef']);
+  assert.deepEqual(lien(relierAuxPrevues([reel('11', 60, { name: 'sortie longue' })], prevues, SPORTS)), ['sl']);
 });

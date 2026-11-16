@@ -149,8 +149,24 @@ test('« À regarder » : un repli, une réponse illisible, un écart sans phras
   const illisible = l.pointsDeLaReponse({ journal: [{ regle: 'REPONSE' }], revue: { lu: { questionnaire_etat: 'illisible', reponse: { illisibles: ['jours'] } } } });
   assert.deepEqual(illisible.map((x) => x.genre), ['illisible'], 'un seul point : illisible l’emporte sur le repli');
   assert.match(illisible[0].texte, /la question des jours/);
+  const partielle = l.pointsDeLaReponse({ journal: [{ regle: 'REPONSE' }], revue: { lu: { questionnaire_etat: 'partielle', reponse: { illisibles: ['jours'] } } } });
+  assert.deepEqual(partielle.map((x) => x.genre), ['illisible']);
+  assert.match(partielle[0].texte, /en partie lue \(la question des jours est illisible\)/);
   assert.deepEqual(genres({ journal: [], revue: { lundi: { etat: 'non_reecrite', changements: ['a', 'b'] } } }), ['lundi']);
   assert.deepEqual(genres({ journal: [], revue: { lundi: { etat: 'reecrite' } } }), []);
+});
+
+test('« Appliquer » : la note « Ta semaine » du dimanche est remplacée par le bilan du moteur', () => {
+  const envois = [{ semaine: 'S14', seances: [{ nolio_id: 'a' }] }, { semaine: 'S14:bilan', seances: [{ nolio_id: 'note1' }] }, { semaine: 'S13:bilan', seances: [{ nolio_id: 'old' }] }];
+  assert.equal(l.noteARemplacer(envois, 'S14', 'Ta semaine a été réécrite.'), 'note1');
+  assert.equal(l.noteARemplacer(envois, 'S13', 'Un autre bilan'), 'old');
+  // sans bilan, la note ne se touche pas
+  assert.equal(l.noteARemplacer(envois, 'S14', undefined), null);
+  assert.equal(l.noteARemplacer(envois, 'S14', null), null);
+  assert.equal(l.noteARemplacer(envois, 'S14', '  '), null);
+  // pas de note posée pour cette semaine (ou sans identifiant) : rien à remplacer
+  assert.equal(l.noteARemplacer(envois, 'S15', 'Bilan'), null);
+  assert.equal(l.noteARemplacer([{ semaine: 'S14:bilan', seances: [{ nolio_id: null }] }], 'S14', 'Bilan'), null);
 });
 
 test('un changement ou une retouche du moteur, en une ligne', () => {
@@ -172,6 +188,12 @@ test('illisible : la question en cause', () => {
     'Réponse illisible : la question des jours (un format inattendu). Ses réponses du samedi : sortie longue le jeudi ; 3 séances.');
   const t = reponsesDuSamedi(undefined, undefined, false, { etat: 'illisible', illisibles: ['jours', 'nb_seances'] });
   assert.match(t, /^Réponse illisible : la question des jours et la question du nombre de séances/);
+});
+test('partielle : « Réponse en partie lue », la question en cause, les champs lus gardés', () => {
+  assert.equal(reponsesDuSamedi({ ...lue, jours: null }, '2026-11-14', false, { etat: 'partielle', illisibles: ['jours'] }),
+    'Réponse en partie lue : la question des jours illisible (un format inattendu). Ses réponses du samedi : sortie longue le jeudi ; 3 séances.');
+  assert.match(reponsesDuSamedi({ jours: null, jour_sl: null, nb_seances: 4 }, '2026-11-14', false, { etat: 'partielle', illisibles: ['jours', 'jour_sl'] }),
+    /^Réponse en partie lue : la question des jours et la question du jour de sortie longue illisible/);
 });
 test('ouverte mais pas envoyée', () => {
   assert.match(reponsesDuSamedi(undefined, undefined, false, { etat: 'absente', cause: 'non_envoyee' }), /^Réponse ouverte mais pas envoyée\./);

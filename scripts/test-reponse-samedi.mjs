@@ -142,14 +142,19 @@ test('deux réponses la même semaine : la plus récente, par sa date et son heu
   assert.deepEqual(q.reponseDuSamedi([m2, m1], '2026-11-15').questionnaire.jours, ['mardi']);
 });
 
-test('une réponse en partie illisible : « illisible », ses champs lus gardés, la question en cause', () => {
+test('une réponse en partie illisible : « partielle », ses champs lus gardés, la question en cause', () => {
   const r = q.reponseDuSamedi([resultat('2026-11-14', items('???', 6, 4))], '2026-11-15');
-  assert.equal(r.etat, 'illisible');
+  assert.equal(r.etat, 'partielle');
   assert.deepEqual(r.illisibles, ['jours']);
   assert.deepEqual(r.questionnaire, { jours: null, jour_sl: 'dimanche', nb_seances: 4 });
   const toute = q.reponseDuSamedi([resultat('2026-11-14', items(null, null, null))], '2026-11-15');
   assert.equal(toute.etat, 'illisible');
   assert.deepEqual(toute.illisibles, ['jours', 'jour_sl', 'nb_seances']);
+  // deux champs illisibles sur trois : encore « partielle » (un champ lu suffit) ; « illisible » seulement sans aucun champ lu
+  const deux = q.reponseDuSamedi([resultat('2026-11-14', items('???', null, 4))], '2026-11-15');
+  assert.equal(deux.etat, 'partielle');
+  assert.deepEqual(deux.questionnaire, { jours: null, jour_sl: null, nb_seances: 4 });
+  assert.equal(q.reponseDuSamedi([resultat('2026-11-14', items([1, 3], 3, 3))], '2026-11-15').etat, 'lue');
 });
 
 test('aucune réponse : « absente » ; ouverte mais pas envoyée : « absente » et sa cause', () => {
@@ -189,6 +194,7 @@ test('« ses jours » : mis à jour à chaque réponse lue, un champ illisible g
   assert.equal(q.sesJoursApres(s1, repli), s1);
   const ancienne = q.reponseDuSamedi([resultat('2026-11-10', items([0], 0, 1))], '2026-11-15');
   assert.equal(q.sesJoursApres(s1, ancienne).du, '2026-11-14');
+  assert.equal(partielle.etat, 'partielle');
   assert.equal(q.sesJoursApres(null, { etat: 'absente' }), null);
   assert.equal(q.sesJoursApres(s1, { etat: 'echec' }), s1);
 });
