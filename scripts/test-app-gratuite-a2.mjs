@@ -347,8 +347,9 @@ test('l’effacement à 3 mois : une demande non acceptée de plus de 3 mois par
 test('le passage quotidien existant efface les demandes échues (sans nouveau cron)', () => {
   const route = readFileSync(`${RACINE}app/api/relance/envoyer/route.ts`, 'utf8');
   assert.match(route, /effacerLesDemandesEchues/);
+  // Aucun cron propre aux demandes : leur effacement passe par le passage quotidien existant (le lot 0 a ses deux crons).
   const crons = JSON.parse(readFileSync(`${RACINE}vercel.json`, 'utf8')).crons;
-  assert.equal(crons.length, 8, 'aucun cron ajouté');
+  assert.ok(!crons.some((c) => /demande|coaching|gratuit/i.test(c.path)), 'aucun cron ajouté pour les demandes');
 });
 
 // ─── La liste e-mail (Brevo) ─────────────────────────────────────────────────────────────────────────────────────────────
