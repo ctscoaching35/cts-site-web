@@ -2,71 +2,22 @@
  * Les retouches du coach dans Nolio (décision coach du 26/10/2026, « compter tes retouches » : la mesure du temps que
  * l'automatisation lui fait gagner, et la boussole du carnet d'améliorations du moteur, CTS_ETAT_CHANTIER.md). Chaque
  * nuit, pour la semaine en cours et la précédente de chaque objectif coaché écrit par le moteur, par famille de
- * séances : les séances envoyées, modifiées (leur révision Nolio a changé : le contenu, jamais le jour), supprimées, et
- * pour les modifiées la durée prévue et celle de Nolio (« dans quel sens », décision du même jour) ; et les séances de
+ * séances : les séances envoyées, modifiées (leur révision Nolio a changé : le contenu, jamais le jour), dont déplacées
+ * (Nolio change aussi la révision d'une séance seulement déplacée : une retouche, décision du coach du 16/11/2026),
+ * supprimées, et pour les modifiées la durée prévue et celle de Nolio (« dans quel sens », décision du même jour) ; et les séances de
  * course ajoutées dans la semaine, que l'app n'a pas posées (le moteur n'écrit pas une semaine où le coach a déjà posé
  * les siennes : ce qui s'y trouve en plus est venu après). Seuls des comptes sont gardés (table retouches), aucune
  * séance. Côté serveur seulement.
  */
 import { destinataire, type SeanceEnvoyee } from './coaching';
+import { compterLaSemaine, type DansNolio, type Familles } from './retouchesCompte';
 import type { Compte } from './ecriture';
 import { listeNolio, nolioConfigure, SPORTS_COURSE } from './nolio';
-import { ajouterJours, type Jour, type Semaine } from './plan';
+import { ajouterJours, type Semaine } from './plan';
 import { clientService } from './supabase';
-import { minutesDe } from './tableau';
 
-export const FAMILLES_RETOUCHE = ['ef', 'seuil1', 'seuil2', 'vo2max', 'allure', 'sl', 'mecanique', 'renfo'] as const;
-export type FamilleRetouche = (typeof FAMILLES_RETOUCHE)[number];
-// min_avant, min_apres : la durée prévue et celle de Nolio des séances modifiées dont la durée se lit (pas le renfo).
-export type CompteFamille = { envoyees: number; modifiees: number; supprimees: number; min_avant: number; min_apres: number };
-export type Familles = Partial<Record<FamilleRetouche, CompteFamille>>;
-
-const RENFO = ':renfo';
-
-// La famille d'une séance envoyée, d'après le jour écrit par le moteur ; null pour ce qui ne se compte pas (repos,
-// course, notes).
-export function familleRetouche(jourId: string, j: Pick<Jour, 'famille' | 'seance'> | undefined): FamilleRetouche | null {
-  if (jourId.endsWith(RENFO)) return 'renfo';
-  if (!j) return null;
-  if (j.famille === 'ef' || j.famille === 'sl' || j.famille === 'mecanique') return j.famille;
-  if (j.famille !== 'qualite') return null;
-  if (j.seance.includes('Seuil 1')) return 'seuil1';
-  if (j.seance.includes('Seuil 2')) return 'seuil2';
-  if (j.seance.startsWith('Allure')) return 'allure';
-  // VO2max, VO2max courte, côtes, course test.
-  return 'vo2max';
-}
-
-type DansNolio = { id: string; date_start: string; sport?: string | null; revision?: string | null; duration?: { value?: number } | null };
-
-// Les comptes d'une semaine envoyée, d'après ce qui est dans Nolio.
-export function compterLaSemaine(semaine: Pick<Semaine, 'jours'>, envoyees: SeanceEnvoyee[], nolio: Map<string, DansNolio>): Familles {
-  const familles: Familles = {};
-  for (const s of envoyees) {
-    if ((s.genre ?? 'seance') !== 'seance' || s.nolio_id === null || s.jour_id.startsWith('fiche:')) continue;
-    const jour = semaine.jours.find((j) => j.id === s.jour_id.replace(RENFO, ''));
-    const f = familleRetouche(s.jour_id, jour);
-    if (!f) continue;
-    const c = (familles[f] ??= { envoyees: 0, modifiees: 0, supprimees: 0, min_avant: 0, min_apres: 0 });
-    c.envoyees += 1;
-    const la = s.supprimee ? undefined : nolio.get(String(s.nolio_id));
-    if (!la) {
-      c.supprimees += 1;
-      continue;
-    }
-    // Sans révision à l'envoi (un envoi de la v1), rien à comparer.
-    if (!s.revision || !la.revision || la.revision === s.revision) continue;
-    c.modifiees += 1;
-    const avant = f === 'renfo' || !jour ? 0 : minutesDe(jour.duree);
-    const apres = Math.round((la.duration?.value ?? 0) / 60);
-    if (avant && apres) {
-      c.min_avant += avant;
-      c.min_apres += apres;
-    }
-  }
-  return familles;
-}
-
+// Le calcul pur (les familles, compterLaSemaine, la part sans retouche et la cible), à part pour se tester sans Next ni base.
+export { FAMILLES_RETOUCHE, compterLaSemaine, familleRetouche, type CompteFamille, type FamilleRetouche, type Familles } from './retouchesCompte';
 // Le lundi de la semaine en cours, à Paris.
 function lundiDuJour() {
   const jour = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
@@ -141,7 +92,7 @@ export async function compterLesRetouches(budgetMs = 240_000): Promise<Compte[]>
 }
 
 // Pour « Chiffres » : les comptes du coach depuis un lundi, sommés par semaine et par famille.
-export type RetouchesSemaine = { lundi: string; envoyees: number; modifiees: number; supprimees: number; ajoutees: number };
+export type RetouchesSemaine = { lundi: string; envoyees: number; modifiees: number; deplacees: number; supprimees: number; ajoutees: number };
 export async function retouchesDuCoach(coachId: string, depuis: string) {
   const { data, error } = await clientService().from('retouches').select('lundi, familles, ajoutees')
     .eq('coach_id', coachId).gte('lundi', depuis);

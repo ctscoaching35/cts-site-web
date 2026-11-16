@@ -6,7 +6,7 @@ import { chiffresParSemaine } from '@/lib/app/mesure';
 import { acheteursDesPlans, ventesDesPlans } from '@/lib/app/acheteurs';
 import { euros, moisDe, moisPrecedent, nomDuMois, parMois, periodeDe, total, ventesDe, type Vente } from '@/lib/app/comptabilite';
 import { coachingsParMois } from '@/lib/app/stripeLecture';
-import { chiffresDuCoaching, type ChiffresCoaching } from '@/lib/app/chiffresCoaching';
+import { CIBLE_RETOUCHEES, chiffresDuCoaching, cibleTenue, type ChiffresCoaching } from '@/lib/app/chiffresCoaching';
 import type { FamilleRetouche } from '@/lib/app/retouches';
 import { exigerCoach } from '@/lib/app/nolio';
 import { ArreterPreparation } from '@/components/app/GestesEcriture';
@@ -195,8 +195,18 @@ function SansRetouche({ c }: { c: ChiffresCoaching['sansRetouche'] }) {
           </div>
           <p className="text-sm text-[#3B3957]">
             {d.intactes} semaine{d.intactes > 1 ? 's' : ''} sur {d.semaines} envoyée{d.semaines > 1 ? 's' : ''} ces 4 dernières semaines, sans rien
-            modifié, supprimé ni ajouté dans Nolio. Elle doit monter au fil des dimanches.
+            modifié, déplacé, supprimé ni ajouté dans Nolio. Elle doit monter au fil des dimanches.
           </p>
+          {/* La cible (décision du coach du 16/11/2026) : au plus 15 % de semaines retouchées. */}
+          <p className={clsx('text-sm font-semibold', cibleTenue(d) ? 'text-teal' : 'text-[#8A3326]')}>
+            Cible : au plus {Math.round(100 * CIBLE_RETOUCHEES)} % de semaines retouchées. {cibleTenue(d)
+              ? `Tenue (${pourcent(1 - (d.part as number))} retouchées).` : `Pas encore (${pourcent(1 - (d.part as number))} retouchées).`}
+          </p>
+          {c?.enCours?.semaines ? (
+            <p className="text-sm text-[#3B3957]">
+              Semaine en cours : {c.enCours.intactes} sur {c.enCours.semaines} sans retouche pour l’instant ({pourcent(1 - (c.enCours.part as number))} retouchées).
+            </p>
+          ) : null}
           <p className="text-[0.8125rem] text-[#5E5C78]">
             Une semaine par athlète et par objectif ; les 4 semaines finies avant celle en cours, qui peut encore se retoucher.
           </p>
@@ -251,11 +261,11 @@ function Retouches({ r, enCours }: { r: ChiffresCoaching['retouches']; enCours: 
       ) : (
         <>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-sm">
+            <table className="w-full min-w-[800px] text-sm">
               <thead>
                 <tr className="text-left text-[0.6875rem] uppercase tracking-[0.08em] text-[#5E5C78]">
                   <th className="py-2.5 pr-3 font-bold">Semaine du</th><th className={th}>Semaines sans retouche</th><th className={th}>Séances envoyées</th>
-                  <th className={th}>Modifiées</th><th className={th}>Supprimées</th><th className={th}>Part retouchée</th><th className={clsx(th, 'pr-0')}>Ajoutées</th>
+                  <th className={th}>Modifiées</th><th className={th}>Dont déplacées</th><th className={th}>Supprimées</th><th className={th}>Part retouchée</th><th className={clsx(th, 'pr-0')}>Ajoutées</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-indigo/[0.06]">
@@ -263,7 +273,7 @@ function Retouches({ r, enCours }: { r: ChiffresCoaching['retouches']; enCours: 
                   <tr key={s.lundi}>
                     <td className="py-3 pr-3 font-semibold whitespace-nowrap">{date(s.lundi)}{s.lundi === enCours ? ' (en cours)' : ''}</td>
                     <td className={td}>{s.semaines ? `${s.intactes} / ${s.semaines}` : '—'}</td>
-                    <td className={td}>{s.envoyees}</td><td className={td}>{s.modifiees}</td><td className={td}>{s.supprimees}</td>
+                    <td className={td}>{s.envoyees}</td><td className={td}>{s.modifiees}</td><td className={td}>{s.deplacees}</td><td className={td}>{s.supprimees}</td>
                     <td className={clsx(td, 'font-bold')}>{part(s.modifiees + s.supprimees, s.envoyees)}</td>
                     <td className={clsx(td, 'pr-0')}>{s.ajoutees}</td>
                   </tr>
@@ -273,18 +283,18 @@ function Retouches({ r, enCours }: { r: ChiffresCoaching['retouches']; enCours: 
           </div>
           <h3 className="pt-2 text-sm font-bold">Par famille, 4 dernières semaines</h3>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[620px] text-sm">
+            <table className="w-full min-w-[700px] text-sm">
               <thead>
                 <tr className="text-left text-[0.6875rem] uppercase tracking-[0.08em] text-[#5E5C78]">
                   <th className="py-2.5 pr-3 font-bold">Famille</th><th className={th}>Envoyées</th><th className={th}>Modifiées</th>
-                  <th className={th}>Supprimées</th><th className={th}>Part retouchée</th><th className={clsx(th, 'pr-0')}>Durée des modifiées</th>
+                  <th className={th}>Dont déplacées</th><th className={th}>Supprimées</th><th className={th}>Part retouchée</th><th className={clsx(th, 'pr-0')}>Durée des modifiées</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-indigo/[0.06]">
                 {r.familles.map((f) => (
                   <tr key={f.famille}>
                     <td className="py-3 pr-3 font-semibold">{FAMILLE[f.famille]}</td>
-                    <td className={td}>{f.envoyees}</td><td className={td}>{f.modifiees}</td><td className={td}>{f.supprimees}</td>
+                    <td className={td}>{f.envoyees}</td><td className={td}>{f.modifiees}</td><td className={td}>{f.deplacees}</td><td className={td}>{f.supprimees}</td>
                     <td className={clsx(td, 'font-bold')}>{part(f.modifiees + f.supprimees, f.envoyees)}</td>
                     <td className={clsx(td, 'pr-0')}>{ecart(f.ecart)}</td>
                   </tr>
@@ -296,8 +306,9 @@ function Retouches({ r, enCours }: { r: ChiffresCoaching['retouches']; enCours: 
       )}
       <p className="text-[0.8125rem] text-[#5E5C78]">
         Comptées chaque nuit sur la semaine en cours et la précédente. Semaines sans retouche : les semaines envoyées où
-        rien n’a été modifié, supprimé ni ajouté. Modifiée : son contenu changé dans Nolio (un
-        changement de jour ne compte pas). Ajoutées : les séances de course que tu as posées dans une semaine écrite par
+        rien n’a été modifié, déplacé, supprimé ni ajouté. Modifiée : sa révision a changé dans Nolio, son contenu ou son
+        jour (Nolio change la révision d’une séance seulement déplacée). Dont déplacées : celles qui ont aussi changé de jour
+        (comptées depuis le 16/11). Ajoutées : les séances de course que tu as posées dans une semaine écrite par
         le moteur. Durée des modifiées : leur durée dans Nolio par rapport à la durée prévue (−15 % : tu les raccourcis).
       </p>
     </section>
