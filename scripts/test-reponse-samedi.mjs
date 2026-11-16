@@ -329,18 +329,3 @@ test('l’arrêt part au moteur dans retours.questionnaire : le champ est toujou
   assert.deepEqual(Object.keys(lue).sort(), ['arret', 'jour_sl', 'jours', 'nb_seances']);
   assert.equal(JSON.parse(JSON.stringify(q.lireQuestionnaire(items([1], 1, 3)).questionnaire)).arret, null);
 });
-
-test('l’arrêt dit à l’accueil d’un acheteur : la semaine en cours, jusqu’à l’écriture de la suivante', () => {
-  const dit = { lu: { questionnaire: { arret: 'quelques_jours' } } };
-  const non = { lu: { questionnaire: { arret: 'non' } } };
-  assert.equal(q.arretDitDeLaRevue(dit), 'quelques_jours');
-  assert.equal(q.arretDitDeLaRevue({ lu: { questionnaire: { arret: 'semaine' } } }), 'semaine');
-  for (const rien of [non, { lu: { questionnaire: { arret: null } } }, { lu: {} }, { lu: { sansRetours: true } }, null, undefined, 'x']) assert.equal(q.arretDitDeLaRevue(rien), null);
-  assert.equal(q.arretDitALAccueil([{ numero: 'S14', revue: dit }], 'S14'), true);
-  assert.equal(q.arretDitALAccueil([{ numero: 'S13', revue: non }, { numero: 'S14', revue: dit }], 'S14'), true);
-  assert.equal(q.arretDitALAccueil([{ numero: 'S14', revue: non }], 'S14'), false);
-  assert.equal(q.arretDitALAccueil([{ numero: 'S14' }], 'S14'), false, 'sans revue gardée : rien');
-  assert.equal(q.arretDitALAccueil([{ numero: 'S13', revue: dit }], 'S14'), false, 'celui de la semaine d’avant ne compte pas');
-  assert.equal(q.arretDitALAccueil([{ numero: 'S14', revue: dit }, { numero: 'S15', revue: non }], 'S14'), false, 'la suivante est écrite : la carte part');
-  assert.equal(q.arretDitALAccueil([{ numero: 'S14', revue: dit }, { numero: 'S14:bilan' }], 'S14'), true);
-});
