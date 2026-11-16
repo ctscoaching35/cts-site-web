@@ -23,10 +23,15 @@ export type Demande = {
 // Ce que le site avait lu à l'écriture : les identifiants des activités de la fenêtre et de la réponse du samedi.
 export type Vus = { reels: string[]; reponse: string | null };
 
-// La réponse de POST /v1/semaine/lundi.
+// La réponse de POST /v1/semaine/lundi, sous la forme fixée par le contrat du moteur 8.468 (CONTRAT_API_CTS.md, « Les décisions
+// du 16/11/2026 ») : `detail` est une phrase prête à afficher, SANS le jour (ligneDe met « jour : detail ») ; « repos » quand le
+// jour n'a pas de séance. Rien de relu ce lundi : `changements`, `retouches` et `pourquoi` vides, `resultat` null.
+export type ChangementDuLundi = { jour: string; avant: string; apres: string; detail: string };
+export type TypeDeRetouche = 'deja_faite' | 'supprimee' | 'duree' | 'contenu' | 'deplacee' | 'posee' | 'courue';
+export type RetoucheDuLundi = { jour: string; type: TypeDeRetouche; detail: string };
 export type ReponseDuLundi = {
-  reecrire: boolean; raison?: string | null; changements?: { jour?: string; detail?: string; avant?: string; apres?: string }[] | string[];
-  retouches?: unknown[] | string[]; pourquoi?: unknown; resultat?: unknown;
+  reecrire: boolean; raison?: string | null; changements?: ChangementDuLundi[]; retouches?: RetoucheDuLundi[];
+  pourquoi?: ('reponse' | 'seance')[]; resultat?: unknown;
 };
 
 // Ce que la passe a décidé, gardé avec la revue (pour le coach) : « reecrite », « non_reecrite » (ce qui aurait changé).
@@ -139,8 +144,9 @@ export function demandeEnClair(d: Demande | null | undefined): { demande: string
 // Les écarts sans phrase dans la note (« À regarder », point 5) : l'écart que la note ne dit pas.
 export const ecartsSansPhrase = (d: Demande | null | undefined) => (d?.ecarts ?? []).filter((x) => !x.note);
 
-// Un changement ou une retouche du moteur, en une ligne : le moteur peut les rendre en phrases ou en objets (jour, détail, avant,
-// après) ; on dit ce qu'on lit, jamais rien d'inventé.
+// Un changement ou une retouche du moteur, en une ligne : « mardi : EF plate (0h45) devient Seuil 2 … (0h44) ». Depuis 8.468, des
+// objets {jour, detail, …} ; une phrase seule ou des objets d'avant (avant / après, date) se lisent encore ; on dit ce qu'on lit,
+// jamais rien d'inventé.
 export function ligneDe(x: unknown): string {
   if (typeof x === 'string') return x;
   if (!x || typeof x !== 'object') return '';
@@ -153,12 +159,14 @@ export function ligneDe(x: unknown): string {
 // ─── « À regarder » (point 5) ────────────────────────────────────────────────────────────────────────────────────────────
 
 // Les points d'une semaine écrite : une semaine écrite sur un repli (journal `REPONSE`), une réponse illisible, un écart sans phrase
-// dans la note, une passe du lundi qui n'a pas réécrit (« ce qui aurait changé »). Chacun pour la semaine, un seul par genre.
-// BROUILLONS (les textes, à valider par le coach).
-export type PointDeLaReponse = { genre: 'reponse' | 'illisible' | 'ecart' | 'lundi'; texte: string };
+// dans la note, une passe du lundi qui n'a pas réécrit (« ce qui aurait changé »), une semaine standard (moteur 8.468 : rien de
+// lu de sa semaine passée, journal `STANDARD`). Chacun pour la semaine, un seul par genre. BROUILLONS (les textes, à valider par
+// le coach).
+export type PointDeLaReponse = { genre: 'standard' | 'reponse' | 'illisible' | 'ecart' | 'lundi'; texte: string };
 export function pointsDeLaReponse(p: { journal: { regle?: string; du?: string; source?: string }[];
   revue: { lu?: { questionnaire_etat?: string; reponse?: { illisibles?: string[] } }; demande?: Demande | null; lundi?: Pick<LundiGarde, 'etat' | 'changements'> } | null }): PointDeLaReponse[] {
   const points: PointDeLaReponse[] = [];
+  if (p.journal.some((j) => j.regle === 'STANDARD')) points.push({ genre: 'standard', texte: 'rien n’est remonté de sa semaine (ni séance, ni réponse, ni Hooper) : semaine de maintien.' });
   const repli = p.journal.find((j) => j.regle === 'REPONSE');
   const partielle = p.revue?.lu?.questionnaire_etat === 'partielle';
   if (partielle || p.revue?.lu?.questionnaire_etat === 'illisible') {

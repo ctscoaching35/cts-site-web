@@ -3000,13 +3000,16 @@ export async function passageQuotidienLong(budgetMs = 150_000): Promise<Compte[]
 
 const REGLES_EN_CLAIR: Record<string, string> = {
   R1: 'semaine en grande partie manquée', R2: 'séance clé trop dure ou écourtée', R3: 'fatigue', R4: 'arrêt',
-  R8: 'séance clé pas faite, refaite sous une autre forme', C5: 'semaine de course juste après la récupération, sans séance dure',
+  R8: 'séance clé retirée ou remplacée, refaite sous une autre forme', C5: 'semaine de course juste après la récupération, sans séance dure',
   COACH: 'ta correction avant l’envoi',
   R5: 'disponibilités', R7: 'séance en plus', O3: 'course secondaire', CH: 'charge reprise après une semaine légère',
   REPLI: 'semaine refusée par le contrôle du moteur, écrite par un repli',
   // Validé par le coach le 06/11/2026 (A)
   OM4: 'semaine de reprise allégée', S4: 'course hors de portée après la reconstruction',
   TN: 'test de vitesse critique non reproposé', REC: 'récupération',
+  // Moteur 8.468 (décisions du coach du 16/11/2026) : ce qui n'est pas lu n'est pas manqué. BROUILLONS.
+  NONLU: 'séance non lue dans Nolio, la même marche', STANDARD: 'rien de lu : semaine de maintien',
+  SYNCHRO: 'pas d’arrêt conclu : ses séances ne remontent pas d’habitude',
 };
 
 // Ce qui n'est pas un ajustement du moteur : les corrections du coach (EC3, « COACH »), et ce que le moteur reprend de ses

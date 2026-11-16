@@ -124,6 +124,20 @@ export function enClair(e: Entree, seances?: string[], realise?: Pick<Realise, '
           : `Réponse du samedi non lue${lecture} : la semaine suit les jours de son profil.`];
     }
     case 'LUNDI': return [`Semaine réécrite le lundi matin : ${e.cause === 'reponse' ? 'sa réponse arrivée après l’écriture' : effet ?? 'ce qui est remonté depuis l’écriture a changé la semaine'}.`];
+    // Moteur 8.468 (décisions du coach du 16/11/2026) : ce qui n'est pas lu n'est pas manqué. Une séance sans activité reliée
+    // est « non lue » : sa marche tient. La semaine standard : rien de lu de la semaine passée. SYNCHRO : sept jours sans séance
+    // lue chez qui ne synchronise pas d'habitude, aucun arrêt conclu. BROUILLONS (le coach valide).
+    case 'NONLU': {
+      if (e.famille === 'sl') return [`Sortie longue non lue dans Nolio : la même marche${typeof e.marche_min === 'number' ? ` (${Math.round(e.marche_min)} min)` : ''}, ni hausse ni baisse.`];
+      const nom = nomCourt(nomDe?.(String(e.seance ?? '')) ?? '') || (FAMILLE[e.famille as FamilleLue] ?? '');
+      return [`Séance ${nom ? `${nom} ` : ''}de ${jourDeLaSeance(e.seance)} non lue dans Nolio : sa marche tient, ni hausse ni baisse.`];
+    }
+    case 'STANDARD': return ['Rien de lu de sa semaine passée (ni séance, ni réponse, ni Hooper) : semaine de maintien, la même marche, le volume de son niveau habituel.'];
+    case 'SYNCHRO': {
+      const depuis = typeof e.depuis === 'string' && e.depuis ? ` depuis le ${jourMois(e.depuis)}` : '';
+      const part = typeof e.part_lue === 'number' ? `${Math.round(100 * e.part_lue)} %` : 'moins de 75 %';
+      return [`${typeof e.jours === 'number' ? `${e.jours} jours` : 'Sept jours'} sans séance lue${depuis} : pas d’arrêt conclu, ses séances ne remontent pas d’habitude (${part} de séances lues sur ses 4 dernières semaines normales).`];
+    }
     case 'D6': return ['Ta semaine posée dans Nolio est lue comme une semaine écrite : sa plus longue sortie, son volume, ses séances clés.'];
     case 'C5': return ['Ta seconde course arrive pendant ta récupération : semaine de course, sans séance dure.'];
     // D7 (moteur 8.451, audits du 05/11/2026) : la semaine refusée par le contrôle du moteur, écrite par un repli.
