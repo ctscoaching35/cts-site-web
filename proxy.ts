@@ -3,10 +3,12 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { COOKIE_INVITATION, invitationValide } from '@/lib/planAcces';
 import { COOKIE_JOUR, demonstrationCoachOuverte, jourValide } from '@/lib/app/demonstrationCoachPorte';
 import { COOKIE_BIENVENUE, COOKIE_DEMARRAGE, COOKIE_DEMARRAGE_ANCIEN } from '@/lib/app/bienvenue';
+import { COOKIE_ESSAI, PARAMETRE_ESSAI, essaiValide } from '@/lib/app/gratuitRegles';
 
 // Le proxy de Next 16 (l'ancien middleware), avant deux familles de pages.
 export async function proxy(request: NextRequest) {
   if (request.nextUrl.pathname.startsWith('/plan')) return invitation(request);
+  if (request.nextUrl.pathname === '/app' && request.nextUrl.searchParams.has(PARAMETRE_ESSAI)) return essai(request);
   return session(request);
 }
 
@@ -22,6 +24,22 @@ function invitation(request: NextRequest) {
     reponse.cookies.set(COOKIE_INVITATION, mot, {
       httpOnly: true, sameSite: 'lax', secure: request.nextUrl.protocol === 'https:',
       maxAge: 90 * 24 * 3600, path: '/',
+    });
+  }
+  return reponse;
+}
+
+// /app?essai=<APP_GRATUITE_SECRET> : le lien secret du mode « invitation » de l'app gratuite (lib/app/gratuitRegles.ts) pose
+// son cookie, puis renvoie sur /app sans le mot, qui ne reste pas dans la barre d'adresse. Un mauvais mot ne pose rien.
+function essai(request: NextRequest) {
+  const mot = request.nextUrl.searchParams.get(PARAMETRE_ESSAI);
+  const propre = request.nextUrl.clone();
+  propre.searchParams.delete(PARAMETRE_ESSAI);
+  const reponse = NextResponse.redirect(propre);
+  if (essaiValide(mot)) {
+    reponse.cookies.set(COOKIE_ESSAI, String(mot), {
+      httpOnly: true, sameSite: 'lax', secure: request.nextUrl.protocol === 'https:',
+      maxAge: 30 * 24 * 3600, path: '/',
     });
   }
   return reponse;

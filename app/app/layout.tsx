@@ -5,6 +5,7 @@ import BarreOnglets from '@/components/app/BarreOnglets';
 import HorsReseau from '@/components/app/HorsReseau';
 import { demonstrationOuverte } from '@/lib/app/demonstration';
 import { supabaseConfigure } from '@/lib/app/supabase';
+import { estGratuit, lireAcces } from '@/lib/app/acces';
 
 // C6 (audits du 05/11/2026) : chaque écran a son titre, dans le navigateur et pour les lecteurs d'écran (« Accueil · CTS »),
 // au lieu de « CTS Coaching » partout.
@@ -26,8 +27,10 @@ const CAPTURE_INSTALLATION = "window.addEventListener('beforeinstallprompt',func
 // L'app CTS coaching (cadrage de l'app, CTS_APP_CADRAGE.md dans le dépôt du moteur). Avec
 // Supabase configuré, l'athlète se connecte et lit son plan (étape 1b) ; sans, la démonstration
 // sur des plans d'exemple, en développement seulement — en production, /app répond alors 404.
-export default function MiseEnPageApp({ children }: { children: React.ReactNode }) {
+export default async function MiseEnPageApp({ children }: { children: React.ReactNode }) {
   if (!supabaseConfigure() && !demonstrationOuverte()) notFound();
+  // L'app gratuite (lot A1) : ses quatre onglets pour un visiteur et un compte gratuit ; en mode « coupe », rien n'est lu.
+  const gratuit = estGratuit(await lireAcces());
   return (
     <div className="min-h-screen bg-sand pb-24">
       {/* L'annonce d'installation de Chrome et Edge arrive tôt, parfois avant que l'app l'écoute : gardée dès le chargement,
@@ -36,7 +39,7 @@ export default function MiseEnPageApp({ children }: { children: React.ReactNode 
       {children}
       <HorsReseau rendu={new Date().toISOString()} />
       <Suspense>
-        <BarreOnglets />
+        <BarreOnglets gratuit={gratuit} />
       </Suspense>
     </div>
   );

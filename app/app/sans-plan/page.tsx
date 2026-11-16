@@ -5,6 +5,7 @@ import { Deconnexion } from '@/components/app/BoutonsCompte';
 import { redirect } from 'next/navigation';
 import { ficheDuCompte } from '@/lib/app/demandes';
 import { coachConnecte } from '@/lib/app/nolio';
+import { lireAcces } from '@/lib/app/acces';
 import { clientServeur, supabaseConfigure } from '@/lib/app/supabase';
 
 export const metadata: Metadata = { title: 'Sans plan' };
@@ -21,6 +22,8 @@ export default async function SansPlan() {
   const { data } = await supabase.auth.getClaims();
   if (!data?.claims?.sub) redirect('/app/connexion');
   if (await coachConnecte()) redirect('/app/coach');
+  // App gratuite ouverte pour lui : un compte sans plan a son accueil (lib/app/acces.ts) ; sinon, cette page, comme avant.
+  if ((await lireAcces()).cas === 'gratuit') redirect('/app');
   const email = String(data.claims.email ?? '');
   // Un coaché sans objectif : son tableau de bord (décision coach du 20/10/2026, « tableau de bord complet ») ; en mode
   // plan, il est ici comme un acheteur (décision coach du 23/10/2026).

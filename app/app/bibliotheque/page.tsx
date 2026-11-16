@@ -3,6 +3,8 @@ import EnTeteApp from '@/components/app/EnTeteApp';
 import { TITRE } from '@/components/app/Ui';
 import ToutesLesFiches from '@/components/app/ToutesLesFiches';
 import { lireBibliotheque } from '@/lib/app/bibliotheque';
+import EnTeteGratuit from '@/components/app/EnTeteGratuit';
+import { estGratuit, lireAcces } from '@/lib/app/acces';
 import { contexte, lien, type Recherche } from '@/lib/app/contexte';
 
 export const metadata: Metadata = { title: 'Bibliothèque' };
@@ -12,6 +14,23 @@ export const metadata: Metadata = { title: 'Bibliothèque' };
 // (décisions coach du 20/10/2026 : des doublons ; la nutrition se construit depuis Ton jour J, le profil se lit dans
 // l'onglet Profil, et les fiches les ouvrent toujours) ; la fiche du moment reste sur l'accueil.
 export default async function Bibliotheque({ searchParams }: { searchParams: Recherche }) {
+  // L'app gratuite (lot A1) : la même bibliothèque, ouverte au visiteur et au compte gratuit.
+  const acces = await lireAcces();
+  if (estGratuit(acces)) {
+    return (
+      <>
+        <EnTeteGratuit acces={acces} />
+        <main className="mx-auto max-w-2xl px-4 pt-5 pb-6 space-y-4">
+          <div>
+            <h1 className={TITRE}>Bibliothèque</h1>
+            <p className="mt-1.5 text-[0.8125rem] text-[#5E5C78] leading-relaxed">Les fiches de Juliette et Romain, kinés du sport, fondées sur la littérature.</p>
+          </div>
+          <ToutesLesFiches familles={lireBibliotheque()} suite="" />
+          <p className="text-xs text-[#5E5C78] leading-relaxed">Chaque fiche s’ouvre dans l’app. Ces repères informent, ils ne remplacent pas un avis médical personnalisé.</p>
+        </main>
+      </>
+    );
+  }
   const ctx = await contexte(searchParams, { sansObjectif: true });
   const familles = lireBibliotheque();
   const params = new URLSearchParams(lien('', ctx).split('?')[1] ?? '').toString();

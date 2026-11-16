@@ -34,10 +34,22 @@ const ONGLETS = [
   },
 ];
 
+// L'app gratuite (lot A1, maquette validée le 16/11/2026) : quatre onglets pour le visiteur et le compte gratuit ; ceux de
+// l'acheteur et du coaché ne changent pas.
+const ONGLETS_GRATUITS = [
+  ONGLETS[0]!,
+  ONGLETS[2]!,
+  {
+    chemin: '/app/courses', titre: 'Courses',
+    icone: <path d="M3 20 9 9l4 6 3-4 5 9z" {...trait} />,
+  },
+  ONGLETS[3]!,
+];
+
 // Pas d'onglets avant d'avoir un plan à lire, ni dans l'espace coach.
 const SANS_ONGLETS = ['/app/connexion', '/app/sans-plan', '/app/bienvenue'];
 
-export default function BarreOnglets() {
+export default function BarreOnglets({ gratuit = false }: { gratuit?: boolean }) {
   const chemin = usePathname();
   const params = useSearchParams();
   // Les pages vues dans l'app pendant la session : le bouton retour (Retour) revient d'où l'on vient s'il y en a une.
@@ -64,7 +76,9 @@ export default function BarreOnglets() {
   const tests = chemin.startsWith('/app/plan/zones');
   const calculateur = chemin.startsWith('/app/calculateurs');
   const depuisUneFiche = calculateur && Boolean(params.get('garder'));
+  const liste = gratuit ? ONGLETS_GRATUITS : ONGLETS;
   const actif = (c: string) =>
+    gratuit ? (c === '/app' ? chemin === '/app' : chemin.startsWith(c)) :
     c === '/app'
       ? chemin === '/app' || (chemin.startsWith('/app/plan') && !tests) || chemin.startsWith('/app/objectif') || depuisUneFiche
       : c === '/app/profil' ? chemin.startsWith(c) || tests
@@ -77,8 +91,8 @@ export default function BarreOnglets() {
       // (retour du coach du 07/10/2026).
       style={{ paddingLeft: 'max(4px, env(safe-area-inset-left))', paddingRight: 'max(4px, env(safe-area-inset-right))' }}
     >
-      <ul className="mx-auto max-w-2xl grid grid-cols-5">
-        {ONGLETS.map((o) => (
+      <ul className={clsx('mx-auto max-w-2xl grid', gratuit ? 'grid-cols-4' : 'grid-cols-5')}>
+        {liste.map((o) => (
           <li key={o.chemin}>
             <Link
               href={`${o.chemin}${suite}`}

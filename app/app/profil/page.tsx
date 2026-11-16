@@ -14,6 +14,10 @@ import { lignesDeLaCarte, lignesDuNiveau, lignesDuProfil, monProfilDEntrainement
   profilPourLeQuestionnaire } from '@/lib/app/profilEntrainement';
 import { niveauHabituelDeDemonstration, profilDEntrainementDeDemonstration } from '@/lib/app/demonstration';
 import { donneesTableau } from '@/lib/app/tableauDuPlan';
+import EnTeteGratuit from '@/components/app/EnTeteGratuit';
+import ProfilGratuit from '@/components/app/ProfilGratuit';
+import { estGratuit, lireAcces } from '@/lib/app/acces';
+import { profilDuCompteGratuit } from '@/lib/app/donneesGratuit';
 
 export const metadata: Metadata = { title: 'Ton profil de coureur' };
 
@@ -31,6 +35,20 @@ const FICHES_TESTS: [string, string, string][] = [
 ];
 
 export default async function MonProfil({ searchParams }: { searchParams: Recherche }) {
+  // L'app gratuite (lot A1) : le profil sans plan, un visiteur (sans rien enregistrer) ou un compte gratuit (qui l'enregistre).
+  const acces = await lireAcces();
+  if (estGratuit(acces)) {
+    const gardee = acces.cas === 'gratuit' && acces.compteId ? await profilDuCompteGratuit(acces.compteId) : null;
+    return (
+      <>
+        <EnTeteGratuit acces={acces} />
+        <main className="mx-auto max-w-2xl px-4 pt-5 pb-6">
+          <ProfilGratuit compte={acces.cas === 'gratuit'} gardee={gardee ? { experience: gardee.experience, tests: gardee.tests } : null}
+            consentementDonne={Boolean(gardee?.consentementFc)} ouvrirTest={(await searchParams).test === '1'} />
+        </main>
+      </>
+    );
+  }
   const ctx = await contexte(searchParams, { sansObjectif: true });
   const { plan, profil } = ctx;
   const d = await donneesTableau(ctx);

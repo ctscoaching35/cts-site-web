@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation';
 import AccueilAthlete from '@/components/app/AccueilAthlete';
 import { COOKIE_BIENVENUE, COOKIE_DEMARRAGE, COOKIE_MONTRE, demarrageMasque, montreCochee } from '@/lib/app/bienvenue';
 import type { Metadata } from 'next';
+import AccueilGratuit from '@/components/app/AccueilGratuit';
+import { estGratuit, lireAcces } from '@/lib/app/acces';
 import { contexte, lien, objectifAVenir, type Recherche } from '@/lib/app/contexte';
 
 // Le gabarit du titre (app/app/layout.tsx) ne vaut que pour les pages filles : l'accueil écrit le sien en entier.
@@ -10,6 +12,10 @@ export const metadata: Metadata = { title: { absolute: 'Accueil · CTS' } };
 
 // L'accueil de l'athlète connecté (components/app/AccueilAthlete.tsx).
 export default async function Accueil({ searchParams }: { searchParams: Recherche }) {
+  // L'app gratuite (lot A1), seulement quand l'interrupteur l'ouvre pour lui : un visiteur ou un compte sans plan. Sinon, rien
+  // ne change.
+  const acces = await lireAcces();
+  if (estGratuit(acces)) return <AccueilGratuit acces={acces} />;
   const ctx = await contexte(searchParams, { sansObjectif: true });
   // La première fois sur cet appareil : l'écran de bienvenue d'un acheteur (cadrage, 2.6), son avertissement santé lu
   // avant d'entrer ; un coaché entre directement (décision coach du 20/10/2026).

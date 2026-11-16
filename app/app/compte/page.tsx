@@ -1,11 +1,14 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import EnTeteApp from '@/components/app/EnTeteApp';
 import { Avertissement } from '@/components/app/Texte';
 import { Deconnexion, Suppression } from '@/components/app/BoutonsCompte';
 import Installation from '@/components/app/Installation';
 import { DonnerAccord, RetirerAccord } from '@/components/app/GestesEcriture';
 import { Carte, CarteSombre, Surtitre, TITRE } from '@/components/app/Ui';
+import { estGratuit, lireAcces } from '@/lib/app/acces';
+import EnTeteGratuit from '@/components/app/EnTeteGratuit';
 import { contexte, initiales, type Recherche } from '@/lib/app/contexte';
 import { ajouterJours, dateLongue } from '@/lib/app/plan';
 import { clientServeur, clientService } from '@/lib/app/supabase';
@@ -29,6 +32,25 @@ const COACHS: Record<string, string> = {
 // Nolio et ses données (l'accord de lecture, T5), l'app sur l'écran d'accueil, les documents, la déconnexion, la
 // suppression ; l'avertissement santé, pour un acheteur seulement (décision coach du 19/10/2026).
 export default async function Compte({ searchParams }: { searchParams: Recherche }) {
+  // Un compte gratuit (lot A1) : son adresse, se déconnecter, tout effacer. Un visiteur n'a pas de compte : l'accueil.
+  const acces = await lireAcces();
+  if (acces.cas === 'visiteur') redirect('/app');
+  if (acces.cas === 'gratuit') {
+    return (
+      <>
+        <EnTeteGratuit acces={acces} />
+        <main className="mx-auto max-w-2xl px-4 pt-5 pb-6 space-y-4">
+          <h1 className={TITRE}>Ton compte</h1>
+          <Carte className="space-y-1">
+            <Surtitre>Connecté avec</Surtitre>
+            <p className="text-sm font-bold text-indigo break-all">{acces.email || 'un compte sans adresse'}</p>
+          </Carte>
+          <Deconnexion />
+          <Suppression />
+        </main>
+      </>
+    );
+  }
   const ctx = await contexte(searchParams, { sansObjectif: true });
   const d = await donneesTableau(ctx);
   const supabase = ctx.demonstration ? null : await clientServeur();

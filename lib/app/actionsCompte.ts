@@ -6,6 +6,10 @@ import { redirect } from 'next/navigation';
 import { effacerCompte } from './effacement';
 import { clientServeur, clientService } from './supabase';
 import { demonstrationOuverte } from './demonstrationPorte';
+import { gratuitOuvert } from './gratuit';
+
+// Après une déconnexion : l'accueil de l'app gratuite quand elle est ouverte pour tous ; sinon la connexion, comme avant.
+const apresDepart = async () => ((await gratuitOuvert()) ? '/app' : '/app/connexion');
 
 // Seulement cet appareil, cette app (décision coach du 22/10/2026) : ses autres connexions restent ouvertes (son
 // téléphone, l'app « CTS Coach » à côté de celle de l'athlète).
@@ -13,7 +17,7 @@ import { demonstrationOuverte } from './demonstrationPorte';
 export async function seDeconnecter() {
   if (demonstrationOuverte()) redirect('/app');
   await (await clientServeur()).auth.signOut({ scope: 'local' });
-  redirect('/app/connexion');
+  redirect(await apresDepart());
 }
 
 // Le compte, ses plans et leurs PDF effacés (lib/app/effacement.ts) ; ses achats restent, sans lien au compte.
@@ -25,5 +29,5 @@ export async function supprimerCompte(formulaire: FormData) {
   if (!id) redirect('/app/connexion');
   await effacerCompte(clientService(), id);
   await supabase.auth.signOut();
-  redirect('/app/connexion');
+  redirect(await apresDepart());
 }

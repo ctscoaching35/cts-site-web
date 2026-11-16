@@ -8,6 +8,7 @@
 import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import { ficheDuCompte } from './demandes';
+import { compteGratuitPossible } from './gratuit';
 import { planDemo, type EtatDemo } from './demonstration';
 import { demonstrationOuverte } from './demonstrationPorte';
 import { planSansObjectif, reperesDeBase } from './reperes';
@@ -177,7 +178,9 @@ export async function contexte(recherche: Recherche, options: { sansObjectif?: b
 // un compte sans plan.
 async function sansObjectif(compteId: string, options: { sansObjectif?: boolean }, jour: string): Promise<Contexte> {
   const fiche = await ficheDuCompte(compteId);
-  if (!fiche) redirect('/app/sans-plan');
+  // Sans fiche non plus : un compte gratuit (app gratuite ouverte pour lui) va à son accueil gratuit, que les pages qui le
+  // servent lisent avant d'appeler contexte() ; sinon, « Sans plan », comme avant (mode « coupe » : toujours).
+  if (!fiche) redirect((await compteGratuitPossible()) ? '/app' : '/app/sans-plan');
   if (!options.sansObjectif) redirect('/app');
   const service = clientService();
   const { data: a } = await service.from('athletes_coaches').select('*').eq('id', fiche.id).maybeSingle();
