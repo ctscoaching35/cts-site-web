@@ -154,6 +154,11 @@ test('« À regarder » : un repli, une réponse illisible, un écart sans phras
   assert.match(partielle[0].texte, /en partie lue \(la question des jours est illisible\)/);
   assert.deepEqual(genres({ journal: [], revue: { lundi: { etat: 'non_reecrite', changements: ['a', 'b'] } } }), ['lundi']);
   assert.deepEqual(genres({ journal: [], revue: { lundi: { etat: 'reecrite' } } }), []);
+  // Moteur 8.468 : la semaine standard (rien de lu de sa semaine passée), en premier.
+  const standard = l.pointsDeLaReponse({ journal: [{ regle: 'STANDARD' }, { regle: 'REPONSE', du: '2026-11-07' }], revue: null });
+  assert.deepEqual(standard.map((x) => x.genre), ['standard', 'reponse']);
+  assert.equal(standard[0].texte, 'rien n’est remonté de sa semaine (ni séance, ni réponse, ni Hooper) : semaine de maintien.');
+  assert.deepEqual(genres({ journal: [{ regle: 'NONLU' }, { regle: 'SYNCHRO' }], revue: null }), [], 'une séance non lue n’est pas un point');
 });
 
 test('« Appliquer » : la note « Ta semaine » du dimanche est remplacée par le bilan du moteur', () => {
@@ -174,6 +179,13 @@ test('un changement ou une retouche du moteur, en une ligne', () => {
   assert.equal(l.ligneDe({ jour: 'mardi', detail: 'EF de 60 à 45 min' }), 'mardi : EF de 60 à 45 min');
   assert.equal(l.ligneDe({ date: '2026-11-17', avant: '60 min', apres: '45 min' }), '2026-11-17 : 60 min → 45 min');
   assert.equal(l.ligneDe(null), '');
+  // La forme fixée par le contrat 8.468 : detail sans le jour, le jour en tête.
+  assert.equal(l.ligneDe({ jour: 'mardi', avant: 'EF plate (0h45)', apres: 'Seuil 2 court vallonné · 15 min — 5 × 3 min (0h44)',
+    detail: 'EF plate (0h45) devient Seuil 2 court vallonné · 15 min — 5 × 3 min (0h44)' }),
+    'mardi : EF plate (0h45) devient Seuil 2 court vallonné · 15 min — 5 × 3 min (0h44)');
+  assert.equal(l.ligneDe({ jour: 'jeudi', type: 'deplacee', detail: 'Seuil 2 court vallonné (0h44), déplacée au jeudi 19/11' }),
+    'jeudi : Seuil 2 court vallonné (0h44), déplacée au jeudi 19/11');
+  assert.equal(l.ligneDe({ jour: 'samedi', type: 'posee', detail: 'une séance posée par le coach' }), 'samedi : une séance posée par le coach');
 });
 
 // ─── un message d'échec distinct par cause (point 1.6) ──────────────────────────────────────────────────────────────

@@ -94,3 +94,22 @@ test('C1 et l’allure : sa dose se dit seulement avec une séance d’allure da
   assert.equal(lignes.length, 1);
   assert.match(lignes[0], /^Allure : la marche part de la séance du .* \(3 × 8 min\) ; la suivante monte d’une marche\.$/);
 });
+
+// Moteur 8.468 (décisions du coach du 16/11/2026) : ce qui n'est pas lu n'est pas manqué. Une séance sans activité reliée est
+// « non lue » (NONLU) ; rien de lu de la semaine passée, une semaine standard (STANDARD) ; sept jours sans séance lue chez qui ne
+// synchronise pas d'habitude, aucun arrêt conclu (SYNCHRO). Jamais « manquée », jamais le code de la règle, jamais « il ».
+test('NONLU, STANDARD et SYNCHRO en clair', () => {
+  const noms = nomsDesSeances([{ jours: [{ id: 'S13-mercredi', seance: 'Seuil 2 court vallonné · 15 min — 5 × 3 min' }] }]);
+  const [nonLue] = enClair({ regle: 'NONLU', famille: 'seuil2', seance: 'S13-mercredi', effet: 'séance non lue : la même marche, ni hausse ni baisse' }, undefined, null, noms);
+  assert.match(nonLue, /^Séance .+ de mercredi non lue dans Nolio : sa marche tient, ni hausse ni baisse\.$/);
+  assert.doesNotMatch(nonLue, /S13-|manqu/);
+  assert.equal(enClair({ regle: 'NONLU', famille: 'mecanique', seance: 'S13-jeudi' })[0], 'Séance Mécanique de jeudi non lue dans Nolio : sa marche tient, ni hausse ni baisse.');
+  assert.equal(enClair({ regle: 'NONLU', famille: 'sl', marche_min: 105, effet: 'sortie longue non lue : la même marche' })[0],
+    'Sortie longue non lue dans Nolio : la même marche (105 min), ni hausse ni baisse.');
+  assert.equal(enClair({ regle: 'STANDARD', effet: 'rien de lu de la semaine passée' })[0],
+    'Rien de lu de sa semaine passée (ni séance, ni réponse, ni Hooper) : semaine de maintien, la même marche, le volume de son niveau habituel.');
+  const [synchro] = enClair({ regle: 'SYNCHRO', effet: 'pas d’arrêt conclu', jours: 9, depuis: '2026-11-06', part_lue: 0.4 });
+  assert.equal(synchro, '9 jours sans séance lue depuis le 06/11 : pas d’arrêt conclu, ses séances ne remontent pas d’habitude (40 % de séances lues sur ses 4 dernières semaines normales).');
+  assert.match(enClair({ regle: 'SYNCHRO', jours: 7, depuis: '2026-11-08' })[0], /\(moins de 75 % de séances lues/);
+  for (const ligne of [nonLue, synchro]) assert.doesNotMatch(ligne, /\bil\b|NONLU|SYNCHRO/);
+});
