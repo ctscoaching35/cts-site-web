@@ -113,3 +113,13 @@ test('NONLU, STANDARD et SYNCHRO en clair', () => {
   assert.match(enClair({ regle: 'SYNCHRO', jours: 7, depuis: '2026-11-08' })[0], /\(moins de 75 % de séances lues/);
   for (const ligne of [nonLue, synchro]) assert.doesNotMatch(ligne, /\bil\b|NONLU|SYNCHRO/);
 });
+
+// Décisions du coach du 16/11/2026 : NONLU, SYNCHRO (« non », pour éviter le bruit) et STANDARD (« A », on n'adapte que sur
+// du certain) n'allument ni « Semaine ajustée » ni l'e-mail de résumé. Lu dans la source : lib/app/ecriture.ts tire la base.
+test('NONLU, SYNCHRO et STANDARD ne sont pas des ajustements', async () => {
+  const { readFileSync } = await import('node:fs');
+  const source = readFileSync(new URL('../lib/app/ecriture.ts', import.meta.url), 'utf8');
+  const ligne = source.split('\n').find((l) => l.startsWith('export const PAS_UN_AJUSTEMENT'));
+  assert.ok(ligne, 'PAS_UN_AJUSTEMENT introuvable');
+  for (const regle of ['NONLU', 'SYNCHRO', 'STANDARD', 'COACH', 'C1', 'D6', 'REPONSE', 'LUNDI']) assert.match(ligne, new RegExp(`'${regle}'`), regle);
+});
