@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { demanderCodeGratuit, garderApresConnexion } from '@/lib/app/actionsGratuit';
-import { effacerBrouillon, lireBrouillon } from '@/lib/app/brouillonGratuit';
+import { effacerBrouillon, effacerDossierBrouillon, lireBrouillon, lireDossierBrouillon } from '@/lib/app/brouillonGratuit';
 import { aDesFc, calculer, type Saisie } from '@/lib/app/profilGratuit';
 import { clientNavigateur } from '@/lib/app/supabaseNavigateur';
 import { CONSENTEMENT_FC } from './ProfilGratuit';
@@ -67,8 +67,9 @@ export default function FormulaireMeConnecter({ suite = null }: { suite?: string
       return;
     }
     // Connecté : ce qu'il avait sous les yeux entre dans son compte, puis le navigateur l'oublie.
-    const r = await garderApresConnexion({ saisie: brouillon, liste, consentementFc: consentFc });
+    const r = await garderApresConnexion({ saisie: brouillon, liste, consentementFc: consentFc, dossier: lireDossierBrouillon() });
     effacerBrouillon();
+    effacerDossierBrouillon();
     setEnCours(false);
     if (!r.gratuit) {
       // Un compte qui n'est pas gratuit (un acheteur, un coaché) : son app de toujours.

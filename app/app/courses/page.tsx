@@ -1,29 +1,71 @@
 import type { Metadata } from 'next';
-import EnTeteGratuit from '@/components/app/EnTeteGratuit';
-import { Carte, TITRE } from '@/components/app/Ui';
-import { pageGratuite } from '@/lib/app/accesGratuit';
-import { gratuitOuvert } from '@/lib/app/gratuit';
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { AllerPlusLoin } from '@/components/app/AllerPlusLoin';
+import EnTeteDesCourses from '@/components/app/courses/EnTeteDesCourses';
+import { ListeVisiteur } from '@/components/app/courses/Visiteur';
+import { BOUTON, Carte, PastilleDate, TITRE } from '@/components/app/Ui';
+import { pageCourses, titreCourses } from '@/lib/app/accesCourses';
+import { dossiersDuCompte } from '@/lib/app/dossiersGratuit';
+import { CLASSE_COURTE } from '@/lib/app/carteStory';
 
-// Le titre seulement quand l'app gratuite est ouverte pour cette visite : en mode « coupe », la page est introuvable et
-// son titre ne transparaît pas (le titre par défaut, comme toute adresse inexistante).
+// Le titre seulement quand la page est ouverte pour cette visite : en mode « coupe », elle est introuvable et son titre ne
+// transparaît pas.
 export async function generateMetadata(): Promise<Metadata> {
-  return (await gratuitOuvert()) ? { title: 'Courses' } : {};
+  return titreCourses('Courses');
 }
 export const dynamic = 'force-dynamic';
 
-// Les courses de l'app gratuite : l'analyse d'une course (trace GPX, pentes, gestion de l'effort, nutrition) arrive au lot B.
-// Pour l'instant, une phrase.
+// Les courses (app gratuite, lot B) : un visiteur voit son dossier du moment (dans son onglet) ; un compte gratuit, ses dossiers
+// gardés, qu'il ajoute ; un compte de l'app payante qui en avait fait avant d'acheter les lit (et les supprime), sans en créer.
 export default async function Courses() {
-  const acces = await pageGratuite();
+  const { acces, genre } = await pageCourses();
+  if (genre === 'visiteur') {
+    return (
+      <>
+        <EnTeteDesCourses acces={acces} genre={genre} />
+        <main className="mx-auto max-w-2xl px-4 pt-5 pb-6"><ListeVisiteur /></main>
+      </>
+    );
+  }
+  const dossiers = await dossiersDuCompte(acces.compteId ?? '');
+  // Un compte de l'app payante sans dossier n'a rien à lire ici : son accueil.
+  if (genre === 'ancien' && dossiers.length === 0) redirect('/app');
   return (
     <>
-      <EnTeteGratuit acces={acces} />
+      <EnTeteDesCourses acces={acces} genre={genre} />
       <main className="mx-auto max-w-2xl px-4 pt-5 pb-6 space-y-4">
-        <h1 className={TITRE}>Courses</h1>
-        <Carte className="space-y-1.5">
-          <p className="text-sm font-bold text-indigo">L’analyse de ta course arrive bientôt.</p>
-          <p className="text-[0.8125rem] text-[#4A4866] leading-relaxed">Tu importeras ta trace GPX : profil, pentes, gestion de l’effort, nutrition, carte à partager.</p>
-        </Carte>
+        <h1 className={TITRE}>{genre === 'ancien' ? 'Tes dossiers de course' : 'Tes courses'}</h1>
+        {dossiers.length === 0 ? (
+          <Carte className="space-y-1.5">
+            <p className="text-sm font-bold text-indigo">Prépare ta course sans plan.</p>
+            <p className="text-[0.8125rem] text-[#4A4866] leading-relaxed">
+              Sa trace GPX fait tout le dossier : profil, pentes, type de course, effort du jour J, zones, nutrition, carte à partager.
+            </p>
+          </Carte>
+        ) : (
+          <Carte className="!py-1">
+            {dossiers.map((d) => (
+              <Link key={d.id} href={`/app/courses/${d.id}`} className="flex items-center gap-3 min-h-[60px] py-2 border-b last:border-b-0 border-indigo/[0.06]">
+                {d.date ? <PastilleDate iso={d.date} /> : null}
+                <span className="flex-1 min-w-0">
+                  <span className="block text-sm font-bold text-indigo truncate">{d.nom}</span>
+                  <span className="block text-xs text-[#5E5C78]">
+                    {d.distance_km != null ? `${String(d.distance_km).replace('.', ',')} km` : ''}{d.dplus_m != null ? ` · ${d.dplus_m} m D+` : ''}
+                    {d.classe ? ` · course ${CLASSE_COURTE[d.classe]}` : ''}
+                  </span>
+                </span>
+                <span aria-hidden className="text-[#5E5C78]">›</span>
+              </Link>
+            ))}
+          </Carte>
+        )}
+        {genre === 'gratuit' && (
+          <>
+            <Link href="/app/courses/nouvelle" className={`${BOUTON} w-full`}>{dossiers.length ? 'Ajouter une course' : 'Créer mon premier dossier'}</Link>
+            <AllerPlusLoin />
+          </>
+        )}
       </main>
     </>
   );
