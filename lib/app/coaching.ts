@@ -417,6 +417,16 @@ export async function creer(d: Destinataire, jourId: string, corps: Record<strin
     : { jour_id: jourId, nolio_id: id, genre, revision: empreinte(r.corps ?? corps) };
 }
 
+// Remplacer le texte d'une note déjà posée (la note « Ta semaine » réécrite par la passe du lundi) : la même note, mise à jour
+// en place (PATCH, comme dans mettreAJourSemaineCible), rien n'est supprimé. Rend l'envoi à garder, ou null si Nolio ne la
+// connaît plus (retirée par le coach : on ne la repose pas).
+export async function remplacerLaNote(d: Destinataire, jourId: string, nolioId: string, corps: Record<string, unknown>): Promise<SeanceEnvoyee | null> {
+  const r = await appelNolio('PATCH', `${CHEMINS.note}${nolioId}/${requete(d)}`, corpsPatch(corps, 'note'));
+  if (r.statut === 404) return null;
+  if (r.statut !== 200) throw new Error(refusNolio(r, `la mise à jour de la note ${String(corps.name)} du ${String(corps.date_start)}`));
+  return { jour_id: jourId, nolio_id: nolioId, genre: 'note', revision: empreinte(r.corps ?? corps) };
+}
+
 const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`;
 
 // Envoyer une semaine dans Nolio, la première fois : son bandeau (V7), ses séances, et une note « Repos » sur ses jours

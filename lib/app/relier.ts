@@ -12,6 +12,7 @@
  * au moteur, RPE 3 supposé sans RPE). Le nom de l'activité est son `name` dans Nolio (demandé dans `fields=`) ; sans nom, le
  * même jour seulement. Les jours de course n'en relient aucune. Fonction pure.
  */
+import { lireCode } from './codeSeance';
 import { nomComparable } from './nomsSeances';
 
 // duration : celle de Nolio, `{ value }` en secondes (ou un nombre de secondes).
@@ -37,6 +38,30 @@ const ecart = (a: string, b: string) => Math.round(Math.abs(Date.parse(`${a}T12:
 const normal = (nom: string | null | undefined) => nomComparable(nom);
 export const memeNom = (a: string | null | undefined, b: string | null | undefined) => normal(a) !== '' && normal(a) === normal(b);
 
+// La famille d'un nom, simple et prudente (sans casse ni accents) : « sl » (sortie longue, SL), « vo2 », « seuil », « tempo »,
+// « ef » (EF, endurance) ; null sans mot reconnu. Pour une séance prévue, son code (« S2c … », « EF … ») passe d'abord.
+const sansAccents = (nom: string) => nom.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const CODES: Record<string, string> = { seuil1: 'seuil', seuil2: 'seuil', tempo: 'tempo', vo2max: 'vo2', ef: 'ef' };
+export function familleDuNom(nom: string | null | undefined, parCode = false): string | null {
+  if (!nom) return null;
+  if (parCode) {
+    const c = lireCode(nom);
+    if (c) return c.famille === 'SL' ? 'sl' : c.lue ? CODES[c.lue] ?? null : null;
+  }
+  const n = sansAccents(nom);
+  if (/sortie longue|\bsl\b/.test(n)) return 'sl';
+  if (/\bvo2/.test(n)) return 'vo2';
+  if (/\bseuil/.test(n)) return 'seuil';
+  if (/\btempo\b/.test(n)) return 'tempo';
+  if (/\bef\b|endurance/.test(n)) return 'ef';
+  return null;
+}
+// 0 si la séance prévue est de la famille que le nom de l'activité indique, 1 sinon.
+const memeFamille = (r: { name?: string | null }) => {
+  const f = familleDuNom(r.name);
+  return (p: { name?: string | null }) => (f !== null && familleDuNom(p.name, true) === f ? 0 : 1);
+};
+
 // reels : les activités de la période ; prevues : les séances prévues (une marge autour) ; sports : ceux de la course ;
 // joursDeCourse : les jours où une activité est la course elle-même ; jusquau : le dernier jour lu (la deuxième règle ne relie
 // jamais à une séance prévue après lui : un jour pas encore couru). Rend les activités, dans leur ordre, reliées.
@@ -56,10 +81,11 @@ export function relierAuxPrevues<R extends ActiviteReelle>(reels: R[], prevues: 
     if (!reliable(r)) continue;
     const jour = jourDe(r.date_start);
     const nomme = (p: SeancePrevue) => (memeNom(r.name, p.name) ? 0 : 1);
+    const famille = memeFamille(r);
     const candidates = libres.filter((p) => lundiDe(jourDe(p.date_start)) === lundiDe(jour)
       && (ecart(jourDe(p.date_start), jour) === 0 || memeNom(r.name, p.name)))
       .sort((a, b) => nomme(a) - nomme(b) || ecart(jourDe(a.date_start), jour) - ecart(jourDe(b.date_start), jour)
-        || a.date_start.localeCompare(b.date_start));
+        || famille(a) - famille(b) || a.date_start.localeCompare(b.date_start));
     if (candidates[0]) lier(r, candidates[0]);
   }
   // 2. La séance non faite la plus proche de la semaine, en jour puis en durée, à ±25 % de sa durée.
@@ -67,11 +93,13 @@ export function relierAuxPrevues<R extends ActiviteReelle>(reels: R[], prevues: 
     if (!reliable(r) || reliees.has(r)) continue;
     const jour = jourDe(r.date_start);
     const faite = secondes(r.duration);
+    const famille = memeFamille(r);
     if (!faite) continue;
     const candidates = libres.filter((p) => lundiDe(jourDe(p.date_start)) === lundiDe(jour) && secondes(p.duration) > 0 && (!jusquau || jourDe(p.date_start) <= jusquau)
       && Math.abs(faite - secondes(p.duration)) <= TOLERANCE_DUREE * secondes(p.duration))
       .sort((a, b) => ecart(jourDe(a.date_start), jour) - ecart(jourDe(b.date_start), jour)
-        || Math.abs(faite - secondes(a.duration)) - Math.abs(faite - secondes(b.duration)) || a.date_start.localeCompare(b.date_start));
+        || Math.abs(faite - secondes(a.duration)) - Math.abs(faite - secondes(b.duration))
+        || famille(a) - famille(b) || a.date_start.localeCompare(b.date_start));
     if (candidates[0]) lier(r, candidates[0]);
   }
   return reels.map((r) => (reliees.has(r) ? { ...r, planned: reliees.get(r) } : r));

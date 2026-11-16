@@ -40,7 +40,7 @@ export function nomsDesSeances(semaines: ({ jours?: { id?: string; seance?: stri
 // LOT 0 (16/11/2026, point 1.6) : un message d'échec distinct par cause — absente, illisible (avec la question en cause), ouverte
 // mais pas envoyée, lecture de Nolio en échec, réponse d'une semaine d'avant, arrivée après l'écriture. BROUILLONS (le coach valide).
 export type DetailLecture = {
-  etat?: 'lue' | 'absente' | 'illisible' | 'echec'; cause?: 'ancienne' | 'non_envoyee'; illisibles?: string[]; erreur?: string;
+  etat?: 'lue' | 'partielle' | 'absente' | 'illisible' | 'echec'; cause?: 'ancienne' | 'non_envoyee'; illisibles?: string[]; erreur?: string;
   // La passe du lundi a réécrit ou relu la semaine : la réponse est arrivée après l'écriture du dimanche.
   tardive?: boolean;
 };
@@ -51,7 +51,10 @@ const jours = (q: Questionnaire) => [q.jours?.length ? q.jours.map(nomDuJour).jo
 export function reponsesDuSamedi(q: Questionnaire | undefined, du?: string, ancienne = false, detail: DetailLecture = {}): string {
   const phrases: string[] = [];
   if (detail.etat === 'echec') phrases.push(`Lecture de Nolio en échec${detail.erreur ? ` (${detail.erreur})` : ''} : sa réponse n’a pas pu être lue.`);
-  else if (detail.etat === 'illisible') {
+  else if (detail.etat === 'partielle') {
+    const en = (detail.illisibles ?? []).map((c) => QUESTION_EN_CAUSE[c] ?? c);
+    phrases.push(`Réponse en partie lue : ${en.length ? en.join(' et ') : 'une question'} illisible${en.length > 1 ? 's' : ''} (un format inattendu).`);
+  } else if (detail.etat === 'illisible') {
     const en = (detail.illisibles ?? []).map((c) => QUESTION_EN_CAUSE[c] ?? c);
     phrases.push(`Réponse illisible : ${en.length ? en.join(' et ') : 'une question'} (un format inattendu).`);
   } else if (detail.cause === 'non_envoyee') phrases.push('Réponse ouverte mais pas envoyée.');

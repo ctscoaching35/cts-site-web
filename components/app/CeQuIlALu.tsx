@@ -27,9 +27,9 @@ export function semaineEcoulee(r: Realise): string {
 
 // sansRetours : rien de lu (« Première semaine : rien n'est lu. ») ; premiere : la première semaine d'une saison de fond,
 // son questionnaire seul ; ancienne : sa réponse du samedi date de plus de 6 jours (celle d'une semaine d'avant).
-// Lot 0 du 16/11/2026 : l'état de la lecture (lue, absente, illisible, echec), sa cause et la question en cause, pour dire au coach
+// Lot 0 du 16/11/2026 : l'état de la lecture (lue, partielle, absente, illisible, echec), sa cause et la question en cause, pour dire au coach
 // pourquoi la réponse n'a pas servi ; tardive : arrivée après l'écriture (la passe du lundi l'a relue).
-export type Lu = { questionnaire?: Questionnaire; questionnaire_du?: string; questionnaire_etat?: 'lue' | 'absente' | 'illisible' | 'echec';
+export type Lu = { questionnaire?: Questionnaire; questionnaire_du?: string; questionnaire_etat?: 'lue' | 'partielle' | 'absente' | 'illisible' | 'echec';
   reponse?: { cause?: 'ancienne' | 'non_envoyee'; illisibles?: string[]; erreur?: string }; tardive?: boolean;
   lues?: SeanceLue[]; premiere?: boolean; sansRetours?: boolean };
 export default function CeQuIlALu({ lu, realise, ancienne }: { lu: Lu; realise: Realise | null; ancienne: boolean }) {

@@ -16,7 +16,7 @@ import { cache } from 'react';
 import { site } from '@/lib/content';
 import { API_URL, dureeConseillee, dureesPossibles, lireTemps, type Champs, type ConfigPlan } from '@/lib/plan';
 import {
-  chargeDepuisNolio, creer, destinataire, envoyerSemaineCible, ficheAthlete, garderEnvoi, mettreAJourSemaineCible, profilDe, seancesDuMoteur,
+  chargeDepuisNolio, creer, destinataire, envoyerSemaineCible, ficheAthlete, garderEnvoi, mettreAJourSemaineCible, profilDe, remplacerLaNote, seancesDuMoteur,
   volumeDuMoment,
   type Cible, type Envoi, type SeanceEnvoyee,
 } from './coaching';
@@ -40,7 +40,7 @@ import { chargeChangee, chargeDe, jourAlerteNolio, jourDInvitation, JOURS_RELANC
 import { lireConfirmation, rappelerLesConfirmations } from './confirmation';
 import { CONTINUITE_ACTIVE, lireLesRetouches, seancesLues, type SeanceLue } from './continuite';
 import { relierAuxPrevues } from './relier';
-import { peutAppelerLeMoteur, quelqueChoseDeNouveau, semaineDansNolio, signatureDesLectures, type Demande, type LundiGarde, type ReponseDuLundi, type Vus } from './passeDuLundi';
+import { noteARemplacer, peutAppelerLeMoteur, quelqueChoseDeNouveau, semaineDansNolio, signatureDesLectures, type Demande, type LundiGarde, type ReponseDuLundi, type Vus } from './passeDuLundi';
 import { derniereCourse, JOURS_DERNIERE_COURSE, rienDeLu } from './derniereCourse';
 import { semaineAReprendre, sortieApresArret } from './reprises';
 import { historiqueDejaRecu, historiqueParSemaine, niveauHabituel, plusLonguesParSemaine, SEMAINES_HISTORIQUE, type HistoriqueSemaine } from './charge';
@@ -78,8 +78,8 @@ export type Retours = {
   // S11 : le jour de la réponse au questionnaire du samedi qui sert (celle de la semaine, ou la dernière, plus ancienne) ;
   // pour « Ce qu'il a lu » du coach. Le moteur ne la lit pas.
   questionnaire_du?: string;
-  // L'état de la lecture de la réponse du samedi (moteur 8.466, lot 0 du 16/11/2026) : « lue », « absente », « illisible »,
-  // « echec » ; il choisit la phrase du repli.
+  // L'état de la lecture de la réponse du samedi (moteur 8.466, lot 0 du 16/11/2026) : « lue », « partielle », « absente »,
+  // « illisible » (aucun champ lu), « echec » ; il choisit la phrase du repli.
   questionnaire_etat?: EtatLecture;
   // La continuité (audit du 30/10/2026) : les séances faites des 4 dernières semaines, classées par leur structure.
   lues?: SeanceLue[];
@@ -456,7 +456,7 @@ async function derniereCourseLue(o: Objectif, au: string): Promise<string | null
 // S11 (décision coach du 05/11/2026, audit A-18) : sans réponse cette semaine, la semaine s'écrit sur les jours de sa
 // DERNIÈRE réponse, plus ceux de l'achat : les 8 dernières semaines sont lues en une fois (reponseDuSamedi).
 // LOT 0 (16/11/2026) : chaque question se lit à part, et l'ÉTAT de la lecture part avec elle (`questionnaire_etat` : « lue »,
-// « absente », « illisible », « echec ») ; une lecture de Nolio qui échoue n'est plus une liste vide : « echec », avec son
+// « partielle », « absente », « illisible », « echec ») ; une lecture de Nolio qui échoue n'est plus une liste vide : « echec », avec son
 // erreur pour le coach. La semaine s'écrit toujours, sur la dernière réponse que le moteur ou le site (« ses jours ») connaît.
 async function lireLeQuestionnaire(o: Objectif, au: string, qui?: string): Promise<{ champs: Pick<Retours, 'questionnaire' | 'questionnaire_du' | 'questionnaire_etat'>; lecture: ReponseLue }> {
   const declaree = String(o.parametres.declaree_le ?? '');
@@ -2023,7 +2023,8 @@ export async function passageDuLundi(budgetMs = 240_000, jour = aujourdhuiParis(
 }
 
 // Le bouton « Appliquer » de la page de l'athlète : la passe du lundi n'a pas réécrit la semaine (le coach l'avait retouchée) ;
-// il veut ce qu'elle aurait écrit. Seulement la dernière semaine écrite ; la note du dimanche reste (celle du lundi ne la remplace pas).
+// il veut ce qu'elle aurait écrit. Seulement la dernière semaine écrite ; la note « Ta semaine » du dimanche est remplacée par le
+// bilan que le moteur a réécrit (`resultat.bilan`, décision du 16/11/2026), la même note mise à jour ; sans bilan, elle reste.
 export async function appliquerLaSemaineDuLundi(planId: string, numero: string): Promise<void> {
   const o = await objectifEcrit(planId);
   if (!o?.nolioAthlete) throw new Error('Plan introuvable');
@@ -2033,7 +2034,14 @@ export async function appliquerLaSemaineDuLundi(planId: string, numero: string):
   if (numero !== await derniereSemaineEcrite(planId)) throw new Error('Seule la dernière semaine écrite s’applique.');
   const sortie = revue.lundi.resultat as SortieMoteur;
   o.etat = (data?.etat_avant ?? null) as Etat | null;
+  const noteDuDimanche = noteARemplacer(o.envois, numero, sortie.bilan);
   await envoyerEtRanger(o, numero, sortie);
+  if (noteDuDimanche && sortie.bilan && sortie.semaine.lundi) {
+    const cle = `${numero}:bilan`;
+    const nouvelle = await remplacerLaNote(await destinataire(o.nolioAthlete), cle, noteDuDimanche,
+      { name: 'Ta semaine', date_start: sortie.semaine.lundi, color: COULEUR_NOTE, description: sortie.bilan });
+    if (nouvelle) await garderEnvoi(o.coachId, o.planId, cle, [nouvelle]);
+  }
   await garderLaRevue(planId, numero, (avant) => (avant?.lundi ? { ...avant, pourquoi: sortie.pourquoi ?? avant.pourquoi, demande: sortie.demande ?? avant.demande,
     lundi: { ...avant.lundi, etat: 'reecrite', appliquee_le: new Date().toISOString(), resultat: undefined } } : avant));
 }

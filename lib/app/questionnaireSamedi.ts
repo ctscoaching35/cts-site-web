@@ -14,8 +14,9 @@
  *   puis, pour une question, par sa place. Le texte de la question du jour de sortie longue a changé (décision du coach du
  *   16/11/2026) : l'ancien et le nouveau se lisent ;
  * - DEUX RÉPONSES LA MÊME SEMAINE : la plus récente, par sa date et son heure (puis son identifiant) ;
- * - L'ÉTAT DE LA LECTURE, dit au moteur (`questionnaire_etat`) et au coach : « lue », « absente », « illisible », « echec »
- *   (la lecture de Nolio a échoué : posé par lib/app/ecriture.ts, pas ici).
+ * - L'ÉTAT DE LA LECTURE, dit au moteur (`questionnaire_etat`) et au coach : « lue », « partielle » (au moins un champ lu et
+ *   au moins un illisible : les champs lus partent, les autres à `null` ; moteur 8.468, décision du 16/11/2026), « absente »,
+ *   « illisible » (AUCUN champ lu), « echec » (la lecture de Nolio a échoué : posé par lib/app/ecriture.ts, pas ici).
  */
 import { ajouterJours } from './plan';
 
@@ -25,7 +26,7 @@ const LIBELLES = JOURS.map((j) => j[0].toUpperCase() + j.slice(1));
 // Un jour de la réponse est `null` quand il ne se lit pas (voir l'en-tête).
 export type Questionnaire = { jours: string[] | null; jour_sl: string | null; nb_seances: number | null };
 export type Champ = 'jours' | 'jour_sl' | 'nb_seances';
-export type EtatLecture = 'lue' | 'absente' | 'illisible' | 'echec';
+export type EtatLecture = 'lue' | 'partielle' | 'absente' | 'illisible' | 'echec';
 
 export const QUESTION_JOURS = 'Quels jours peux-tu courir la semaine prochaine ?';
 // Texte validé par le coach le 16/11/2026 (le moteur ajoute toujours aux jours un jour de sortie longue non coché, et le dit ;
@@ -175,7 +176,8 @@ export function reponseDuSamedi(resultats: ResultatNolio[], au: string, declaree
   const semaine = envoyees.find((r) => r.date_start.slice(0, 10) >= debut);
   if (semaine) {
     const { questionnaire, illisibles } = lireQuestionnaire(semaine.items ?? []);
-    return { etat: illisibles.length ? 'illisible' : 'lue', questionnaire, du: semaine.date_start.slice(0, 10), id: semaine.id,
+    const etat: EtatLecture = !illisibles.length ? 'lue' : illisibles.length === CHAMPS.length ? 'illisible' : 'partielle';
+    return { etat, questionnaire, du: semaine.date_start.slice(0, 10), id: semaine.id,
       ...(illisibles.length ? { illisibles } : {}) };
   }
   const nonEnvoyee = reconnus.some((r) => r.is_confirmed === false && r.date_start.slice(0, 10) >= debut);
@@ -196,7 +198,7 @@ export function reponseDuSamedi(resultats: ResultatNolio[], au: string, declaree
 export type SesJours = { jours: string[] | null; jour_sl: string | null; nb_seances: number | null; du: string };
 export function sesJoursApres(avant: SesJours | null | undefined, lecture: Pick<ReponseLue, 'etat' | 'questionnaire' | 'du' | 'cause'>): SesJours | null {
   // Seulement la réponse de la semaine, lue en tout ou en partie : jamais un repli sur une réponse plus ancienne.
-  if (!lecture.questionnaire || !lecture.du || lecture.cause === 'ancienne' || (lecture.etat !== 'lue' && lecture.etat !== 'illisible')) return avant ?? null;
+  if (!lecture.questionnaire || !lecture.du || lecture.cause === 'ancienne' || (lecture.etat !== 'lue' && lecture.etat !== 'partielle' && lecture.etat !== 'illisible')) return avant ?? null;
   if (avant && avant.du > lecture.du) return avant;
   const q = lecture.questionnaire;
   const garde = avant ?? { jours: null, jour_sl: null, nb_seances: null, du: lecture.du };

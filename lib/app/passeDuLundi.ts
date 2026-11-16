@@ -160,10 +160,11 @@ export function pointsDeLaReponse(p: { journal: { regle?: string; du?: string; s
   revue: { lu?: { questionnaire_etat?: string; reponse?: { illisibles?: string[] } }; demande?: Demande | null; lundi?: Pick<LundiGarde, 'etat' | 'changements'> } | null }): PointDeLaReponse[] {
   const points: PointDeLaReponse[] = [];
   const repli = p.journal.find((j) => j.regle === 'REPONSE');
-  const illisible = p.revue?.lu?.questionnaire_etat === 'illisible';
-  if (illisible) {
+  const partielle = p.revue?.lu?.questionnaire_etat === 'partielle';
+  if (partielle || p.revue?.lu?.questionnaire_etat === 'illisible') {
     const en = (p.revue?.lu?.reponse?.illisibles ?? []).map((c) => ({ jours: 'des jours', jour_sl: 'du jour de sortie longue', nb_seances: 'du nombre de séances' }[c] ?? c));
-    points.push({ genre: 'illisible', texte: `sa réponse du samedi est illisible${en.length ? ` (la question ${en.join(' et ')})` : ''} : la semaine suit sa réponse d’avant.` });
+    points.push({ genre: 'illisible', texte: partielle ? `sa réponse du samedi est en partie lue${en.length ? ` (la question ${en.join(' et ')} est illisible)` : ''} : le reste de la semaine suit sa réponse d’avant.`
+      : `sa réponse du samedi est illisible${en.length ? ` (la question ${en.join(' et ')})` : ''} : la semaine suit sa réponse d’avant.` });
   } else if (repli) {
     points.push({ genre: 'reponse', texte: `sa semaine est écrite sur un repli : sa réponse du samedi n’a pas été lue${repli.du ? ` (elle suit celle du ${jm(String(repli.du))})` : ''}.` });
   }
@@ -172,4 +173,14 @@ export function pointsDeLaReponse(p: { journal: { regle?: string; du?: string; s
   const n = p.revue?.lundi?.changements?.length ?? 0;
   if (p.revue?.lundi?.etat === 'non_reecrite') points.push({ genre: 'lundi', texte: `la passe du lundi n’a pas réécrit sa semaine : ${n} changement${n > 1 ? 's' : ''} à voir.` });
   return points;
+}
+
+// Après « Appliquer » (décision du coach du 16/11/2026) : la note « Ta semaine » du dimanche est REMPLACÉE par `resultat.bilan`,
+// la note que le moteur a réécrite. Rend l'identifiant Nolio de la note déjà posée pour cette semaine (clé « S14:bilan »), ou null
+// quand il n'y a pas de bilan (la note ne se touche pas) ou pas de note posée (l'écriture de la semaine la pose alors).
+export function noteARemplacer(envois: { semaine: string; seances: { nolio_id: string | number | null }[] }[], numero: string,
+  bilan: string | null | undefined): string | null {
+  if (!bilan || !bilan.trim()) return null;
+  const id = envois.find((e) => e.semaine === `${numero}:bilan`)?.seances.find((x) => x.nolio_id !== null && String(x.nolio_id) !== '')?.nolio_id;
+  return id === undefined || id === null ? null : String(id);
 }
