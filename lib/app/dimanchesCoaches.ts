@@ -14,11 +14,12 @@
 import { enAttenteDeProfil, estAncien } from './anciens';
 import { destinataire } from './coaching';
 import { QUESTIONNAIRE_SEMAINE, type Compte } from './ecriture';
+import { QUESTION_OUVERTE } from './questionnaireSamedi';
 import { appelNolio, listeNolio, refusNolio } from './nolio';
 import { ajouterJours } from './plan';
 import { clientService } from './supabase';
 
-export const QUESTION_OUVERTE = 'Une information à remonter à ton coach ?';
+export { QUESTION_OUVERTE };
 // Sur la fiche d'un coaché : son dimanche en place (dimanche, et jusqua, sa date, pour son entrée), ses deux questionnaires,
 // le dernier mot écrit à la question ouverte.
 export type DimanchesCoache = { dimanche?: string; semaine?: string | null; hooper?: string | null; jusqua?: string; mot_le?: string | null;

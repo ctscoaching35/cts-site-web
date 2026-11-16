@@ -297,7 +297,7 @@ function revueDe(l: Ligne): Revue | null {
   const pourquoi = sortie?.pourquoi ?? null;
   return {
     quoi: 'Semaine', pourquoi, realise: (avant?.realise ?? null) as Revue['realise'],
-    lu: { questionnaire: { jours: (c.jours_disponibles ?? []) as string[], jour_sl: c.jour_sl ? String(c.jour_sl) : null, nb_seances: Number(c.freq_hebdo) || null },
+    lu: { questionnaire: { jours: (c.jours_disponibles ?? []) as string[], jour_sl: c.jour_sl ? String(c.jour_sl) : null, nb_seances: Number(c.freq_hebdo) || null, arret: 'non' },
       questionnaire_du: ajouterJours(lundi, -2), lues },
   };
 }
@@ -342,6 +342,7 @@ function questionnaires(a: Athlete): Ligne[] {
         { question: QUESTIONNAIRE_SEMAINE.items[0].question, value: ((c.jours_disponibles ?? []) as string[]).map((x) => JOURS.indexOf(x)) },
         { question: QUESTIONNAIRE_SEMAINE.items[1].question, value: JOURS.indexOf(String(c.jour_sl)) },
         { question: QUESTIONNAIRE_SEMAINE.items[2].question, value: Number(c.freq_hebdo) },
+        { question: QUESTIONNAIRE_SEMAINE.items[3].question, value: 0 },
       ],
     };
   });

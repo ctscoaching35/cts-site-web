@@ -14,6 +14,8 @@
  *   puis, pour une question, par sa place. Le texte de la question du jour de sortie longue a changé (décision du coach du
  *   16/11/2026) : l'ancien et le nouveau se lisent ;
  * - DEUX RÉPONSES LA MÊME SEMAINE : la plus récente, par sa date et son heure (puis son identifiant) ;
+ * - L'ARRÊT (16/11/2026, moteur 8.469) : la quatrième question, lue comme les autres, mais jamais reprise d'une réponse plus ancienne ni
+ *   gardée dans « ses jours » ; un questionnaire posé avant elle n'en a pas (`arret` à null, la réponse reste « lue ») ;
  * - L'ÉTAT DE LA LECTURE, dit au moteur (`questionnaire_etat`) et au coach : « lue », « partielle » (au moins un champ lu et
  *   au moins un illisible : les champs lus partent, les autres à `null` ; moteur 8.468, décision du 16/11/2026), « absente »,
  *   « illisible » (AUCUN champ lu), « echec » (la lecture de Nolio a échoué : posé par lib/app/ecriture.ts, pas ici).
@@ -24,8 +26,11 @@ const JOURS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dim
 const LIBELLES = JOURS.map((j) => j[0].toUpperCase() + j.slice(1));
 
 // Un jour de la réponse est `null` quand il ne se lit pas (voir l'en-tête).
-export type Questionnaire = { jours: string[] | null; jour_sl: string | null; nb_seances: number | null };
-export type Champ = 'jours' | 'jour_sl' | 'nb_seances';
+// arret (moteur 8.469, décision du coach du 16/11/2026) : la réponse à « Cette semaine, as-tu dû arrêter de courir ? » ; `null` quand
+// elle est illisible ou que le questionnaire posé n'avait pas la question. Jamais reprise d'une réponse plus ancienne.
+export type Arret = 'non' | 'quelques_jours' | 'semaine';
+export type Questionnaire = { jours: string[] | null; jour_sl: string | null; nb_seances: number | null; arret: Arret | null };
+export type Champ = 'jours' | 'jour_sl' | 'nb_seances' | 'arret';
 export type EtatLecture = 'lue' | 'partielle' | 'absente' | 'illisible' | 'echec';
 
 export const QUESTION_JOURS = 'Quels jours peux-tu courir la semaine prochaine ?';
@@ -34,11 +39,20 @@ export const QUESTION_JOURS = 'Quels jours peux-tu courir la semaine prochaine ?
 export const QUESTION_SL = 'Quel jour pour ta sortie longue (parmi les jours cochés) ?';
 export const QUESTION_SL_AVANT = 'Quel jour pour ta sortie longue ?';
 export const QUESTION_NB = 'Combien de séances veux-tu faire ?';
+// La quatrième question (moteur 8.469, décision du coach du 16/11/2026), à choix unique, dans cet ordre : le rang d'une réponse
+// (0, 1, 2) est celui de sa place dans la liste. BROUILLON (le coach valide les textes).
+export const QUESTION_ARRET = 'Cette semaine, as-tu dû arrêter de courir ?';
+export const CHOIX_ARRET = ['Non', 'Oui, quelques jours', 'Oui, toute la semaine'];
+const ARRETS: Arret[] = ['non', 'quelques_jours', 'semaine'];
+// La question ouverte des coachés, posée après les quatre autres : avant l'arrêt, elle était la quatrième ; une réponse d'avant sa
+// question d'arrêt la garde à cette place, et elle ne se lit jamais comme l'arrêt.
+export const QUESTION_OUVERTE = 'Une information à remonter à ton coach ?';
 
 // Le questionnaire du samedi (décision coach du 19/10/2026, question 13 ; le samedi depuis le 24/10/2026, pour laisser
 // le week-end), lu par le passage du dimanche soir : trois questions courtes. Sans `order` :
 // Nolio le compte à partir de 0 et le déduit de la place dans la liste (refus du 19/10/2026, essai sur « (toi) »).
-// S1 (décision coach du 05/11/2026, audits D1 et J8) : la question « As-tu dû arrêter de courir cette semaine (blessure,
+// S1 (décision coach du 05/11/2026, audits D1 et J8 ; reposée le 16/11/2026 sous une autre forme, voir QUESTION_ARRET : le moteur
+// 8.469 la lit, alléger et orienter vers un professionnel de santé) : la question « As-tu dû arrêter de courir cette semaine (blessure,
 // maladie) ? » est retirée. Un « oui » comptait 8 jours d'arrêt sans rien alléger ni orienter, et la réponse était une
 // donnée de santé lue sans accord. Le questionnaire se pose une semaine à la fois (lib/app/dimanchesCoaches.ts) : celui
 // déjà posé pour le samedi qui vient la garde une dernière fois, sa réponse n'est plus lue ici, et le moteur l'ignore si
@@ -51,6 +65,7 @@ export const QUESTIONNAIRE_SEMAINE = {
     { question: QUESTION_JOURS, type: 'multiple_choices', is_mandatory: true, choices: { choices: LIBELLES } },
     { question: QUESTION_SL, type: 'unique_choice', is_mandatory: true, choices: { choices: LIBELLES } },
     { question: QUESTION_NB, type: 'number', is_mandatory: true, unit: 'séances' },
+    { question: QUESTION_ARRET, type: 'unique_choice', is_mandatory: true, choices: { choices: CHOIX_ARRET } },
   ],
 };
 
@@ -65,8 +80,12 @@ const TEXTES: Record<Champ, Set<string>> = {
   jours: new Set([normaliser(QUESTION_JOURS)]),
   jour_sl: new Set([normaliser(QUESTION_SL), normaliser(QUESTION_SL_AVANT)]),
   nb_seances: new Set([normaliser(QUESTION_NB)]),
+  arret: new Set([normaliser(QUESTION_ARRET)]),
 };
-const CHAMPS: Champ[] = ['jours', 'jour_sl', 'nb_seances'];
+// Les trois champs d'avant l'arrêt, dans l'ordre ; arret est le quatrième, à part (sa présence dépend du questionnaire posé).
+const CHAMPS: Champ[] = ['jours', 'jour_sl', 'nb_seances', 'arret'];
+const CHAMPS_DE_BASE: Champ[] = ['jours', 'jour_sl', 'nb_seances'];
+const OUVERTE = normaliser(QUESTION_OUVERTE);
 const NOM = normaliser(QUESTIONNAIRE_SEMAINE.name);
 
 // ─── Les valeurs ──────────────────────────────────────────────────────────
@@ -113,6 +132,20 @@ export function lireNombre(v: unknown): number | null {
   return Number.isFinite(n) && n > 0 ? Math.round(n) : null;
 }
 
+// L'arrêt : un rang (0 « Non », 1 « Oui, quelques jours », 2 « Oui, toute la semaine »), `[rang]`, le rang écrit, ou le libellé (avec ou
+// sans « Oui, » ; l'identifiant du moteur aussi). Un « oui » seul, ou autre chose : illisible.
+export function lireArret(v: unknown): Arret | null {
+  if (Array.isArray(v)) return v.length === 1 ? lireArret(v[0]) : null;
+  if (typeof v === 'number') return Number.isInteger(v) && v >= 0 && v < ARRETS.length ? ARRETS[v] : null;
+  if (typeof v !== 'string') return null;
+  const t = sansAccents(normaliser(v)).replace(/[_,.;:!]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (/^\d+$/.test(t)) return ARRETS[Number(t)] ?? null;
+  if (t === 'non') return 'non';
+  if (/^(oui )?quelques jours$/.test(t)) return 'quelques_jours';
+  if (/^(oui )?(toute la )?semaine$/.test(t)) return 'semaine';
+  return null;
+}
+
 // ─── Une réponse ──────────────────────────────────────────────────────────
 
 export type ItemNolio = { question?: string; order?: number | null; item_type?: string; value: unknown };
@@ -130,24 +163,35 @@ export function estLeQuestionnaire(r: ResultatNolio, idsPoses: ReadonlySet<strin
 }
 
 // La valeur d'une question : par son texte (l'ancien ou le nouveau), sinon par sa place (la nième des questions, dans l'ordre
-// de Nolio) quand cette place ne porte pas le texte d'une autre question.
+// de Nolio) quand cette place ne porte pas le texte d'une autre question. L'ARRÊT, quatrième : un questionnaire posé avant lui
+// n'a pas sa place (la quatrième est alors la question ouverte, ou rien) ; sans son texte, sa place ne compte que si la valeur se
+// lit (une valeur illisible à cette place pourrait être celle d'une autre question).
 function valeurDe(items: ItemNolio[], champ: Champ): { trouvee: boolean; value: unknown } {
   const parTexte = items.find((i) => TEXTES[champ].has(normaliser(i.question)));
   if (parTexte) return { trouvee: true, value: parTexte.value };
   const rangees = items.some((i) => typeof i.order === 'number')
     ? [...items].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)) : items;
   const place = rangees[CHAMPS.indexOf(champ)];
-  const autre = place && CHAMPS.some((c) => c !== champ && TEXTES[c].has(normaliser(place.question)));
-  return place && !autre ? { trouvee: true, value: place.value } : { trouvee: false, value: undefined };
+  const autre = place && (normaliser(place.question) === OUVERTE || CHAMPS.some((c) => c !== champ && TEXTES[c].has(normaliser(place.question))));
+  if (!place || autre) return { trouvee: false, value: undefined };
+  if (champ === 'arret' && lireArret(place.value) === null) return { trouvee: false, value: undefined };
+  return { trouvee: true, value: place.value };
 }
 
-// Chaque question à part : le questionnaire lu (null par champ illisible) et les champs en cause.
+// Chaque question à part : le questionnaire lu (null par champ illisible) et les champs en cause. L'ARRÊT compte comme les
+// autres champs quand le questionnaire a la question (illisible : « partielle » si d'autres champs sont lus) ; sans la question
+// (un questionnaire posé avant elle), il est `null` sans rien rendre illisible ; une réponse qui ne porte que lui est « lue ».
 export function lireQuestionnaire(items: ItemNolio[]): { questionnaire: Questionnaire; illisibles: Champ[] } {
   const jours = valeurDe(items, 'jours');
   const sl = valeurDe(items, 'jour_sl');
   const nb = valeurDe(items, 'nb_seances');
-  const questionnaire: Questionnaire = { jours: lireJours(jours.value), jour_sl: lireJourSl(sl.value), nb_seances: lireNombre(nb.value) };
-  return { questionnaire, illisibles: CHAMPS.filter((c) => questionnaire[c] === null) };
+  const arret = valeurDe(items, 'arret');
+  const questionnaire: Questionnaire = { jours: lireJours(jours.value), jour_sl: lireJourSl(sl.value), nb_seances: lireNombre(nb.value),
+    arret: arret.trouvee ? lireArret(arret.value) : null };
+  const seulementArret = questionnaire.arret !== null && !jours.trouvee && !sl.trouvee && !nb.trouvee;
+  const illisibles = seulementArret ? [] : CHAMPS_DE_BASE.filter((c) => questionnaire[c] === null);
+  if (arret.trouvee && questionnaire.arret === null) illisibles.push('arret');
+  return { questionnaire, illisibles };
 }
 
 // La plus récente d'abord : sa date et son heure, puis son identifiant.
@@ -176,7 +220,9 @@ export function reponseDuSamedi(resultats: ResultatNolio[], au: string, declaree
   const semaine = envoyees.find((r) => r.date_start.slice(0, 10) >= debut);
   if (semaine) {
     const { questionnaire, illisibles } = lireQuestionnaire(semaine.items ?? []);
-    const etat: EtatLecture = !illisibles.length ? 'lue' : illisibles.length === CHAMPS.length ? 'illisible' : 'partielle';
+    // « illisible » : AUCUN champ lu (le nombre de champs de cette réponse : trois, ou quatre quand elle porte la question d'arrêt).
+    const lus = CHAMPS.filter((c) => questionnaire[c] !== null).length;
+    const etat: EtatLecture = !illisibles.length ? 'lue' : lus === 0 ? 'illisible' : 'partielle';
     return { etat, questionnaire, du: semaine.date_start.slice(0, 10), id: semaine.id,
       ...(illisibles.length ? { illisibles } : {}) };
   }
@@ -186,7 +232,8 @@ export function reponseDuSamedi(resultats: ResultatNolio[], au: string, declaree
     const { questionnaire } = lireQuestionnaire(r.items ?? []);
     if (!questionnaire.jours) continue;
     if (declareeLe && r.date_start.slice(0, 10) < declareeLe.slice(0, 10)) break;
-    return { etat: 'absente', questionnaire, du: r.date_start.slice(0, 10), id: r.id, cause: nonEnvoyee ? 'non_envoyee' : 'ancienne' };
+    // L'arrêt n'est jamais repris d'une réponse plus ancienne.
+    return { etat: 'absente', questionnaire: { ...questionnaire, arret: null }, du: r.date_start.slice(0, 10), id: r.id, cause: nonEnvoyee ? 'non_envoyee' : 'ancienne' };
   }
   return { etat: 'absente', ...(nonEnvoyee ? { cause: 'non_envoyee' as const } : {}) };
 }
@@ -209,7 +256,7 @@ export function sesJoursApres(avant: SesJours | null | undefined, lecture: Pick<
 // de l'objectif).
 export function reponseDepuisSesJours(s: SesJours | null | undefined, declareeLe = ''): ReponseLue | null {
   if (!s?.jours || (declareeLe && s.du < declareeLe.slice(0, 10))) return null;
-  return { etat: 'absente', questionnaire: { jours: s.jours, jour_sl: s.jour_sl, nb_seances: s.nb_seances }, du: s.du, cause: 'ancienne' };
+  return { etat: 'absente', questionnaire: { jours: s.jours, jour_sl: s.jour_sl, nb_seances: s.nb_seances, arret: null }, du: s.du, cause: 'ancienne' };
 }
 
 // « mar, jeu, sam, dim ; sortie longue dim ; 4 séances — réponse du 14/11 » (l'espace coach).
@@ -219,4 +266,23 @@ export function sesJoursEnClair(s: SesJours): string {
   const morceaux = [s.jours?.length ? s.jours.map(COURT).join(', ') : null, s.jour_sl ? `sortie longue ${COURT(s.jour_sl)}` : null,
     s.nb_seances ? `${s.nb_seances} séance${s.nb_seances > 1 ? 's' : ''}` : null].filter(Boolean);
   return `${morceaux.join(' ; ') || 'rien de lisible'} — réponse du ${jm}`;
+}
+
+// ─── L'arrêt dit, pour l'acheteur d'un plan ───────────────────────────────
+
+// L'ARRÊT DIT À LA SEMAINE ÉCRITE (16/11/2026, décision du coach) : l'arrêt (« quelques jours » ou « toute la semaine ») que la revue gardée
+// d'une semaine écrite a lu à la réponse du samedi ; sinon null. Jamais « non », jamais illisible.
+export function arretDitDeLaRevue(revue: unknown): 'quelques_jours' | 'semaine' | null {
+  const a = (revue as { lu?: { questionnaire?: { arret?: unknown } } } | null | undefined)?.lu?.questionnaire?.arret;
+  return a === 'quelques_jours' || a === 'semaine' ? a : null;
+}
+
+// La carte de l'accueil d'un acheteur : la semaine en cours a été écrite à partir d'une réponse qui dit un arrêt, et la semaine d'après
+// n'est pas encore écrite (la carte quitte l'accueil à son écriture). lignes : les semaines écrites de son plan (leur numéro, « S14 », et
+// leur revue) ; numero : sa semaine en cours.
+export function arretDitALAccueil(lignes: { numero: string; revue?: unknown }[], numero: string): boolean {
+  const rang = (n: string) => Number(String(n).replace(/^S/, ''));
+  const ici = lignes.find((l) => l.numero === numero);
+  if (!ici || arretDitDeLaRevue(ici.revue) === null) return false;
+  return !lignes.some((l) => /^S\d+$/.test(l.numero) && rang(l.numero) > rang(numero));
 }

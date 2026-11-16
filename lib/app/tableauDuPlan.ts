@@ -9,6 +9,7 @@ import { continuiteDe, objectifAffiche, trameDuPlan, type LigneTrame, type Reali
 import { listeNolio, SPORTS_COURSE } from './nolio';
 import { semainesDeLaFiche } from './semainesNolio';
 import { ajouterJours, type CleTest, type Semaine } from './plan';
+import { arretDitALAccueil } from './questionnaireSamedi';
 import { clientService } from './supabase';
 import { ajustementDuJournal, debutDeLObjectif, detailDeLaSemaine, minutesDe, trameDesDonnees, volumeDeNolio, type Ajustement, type CourseDuGraphique, type Fiche } from './tableau';
 import { ajustementDeDemonstration, lectureDeDemonstration, recuperationDeDemonstration, semaineDeDemonstration, tableauDeDemonstration } from './demonstration';
@@ -145,6 +146,16 @@ export async function semaineEcrite(ctx: Contexte, numero: string): Promise<Sema
   const duPlan = ctx.plan.semaines.find((s) => s.numero === numero) ?? null;
   const { data } = await clientService().from('semaines_ecrites').select('donnees').eq('plan_id', ctx.cle).eq('numero', numero).maybeSingle();
   return (data?.donnees as Semaine | undefined) ?? duPlan;
+}
+
+// La carte « Tu as dû t'arrêter » de l'accueil d'un acheteur (16/11/2026) : la revue gardée de la semaine en cours dit un arrêt à la réponse
+// du samedi (questionnaireSamedi.arretDitALAccueil). Sans la colonne « revue » (la migration du 08/11/2026), ou en démonstration : non.
+export async function arretDitCetteSemaine(ctx: Contexte, numero: string): Promise<boolean> {
+  if (ctx.demonstration) return false;
+  try {
+    const { data, error } = await clientService().from('semaines_ecrites').select('numero, revue').eq('plan_id', ctx.cle);
+    return error ? false : arretDitALAccueil((data ?? []) as { numero: string; revue?: unknown }[], numero);
+  } catch { return false; }
 }
 
 // « Cette semaine » telle qu'elle est dans Nolio (décision coach du 20/10/2026 : « on envoie et je modifie au besoin »,

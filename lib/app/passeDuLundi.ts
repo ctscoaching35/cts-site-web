@@ -162,19 +162,26 @@ export function ligneDe(x: unknown): string {
 // dans la note, une passe du lundi qui n'a pas réécrit (« ce qui aurait changé »), une semaine standard (moteur 8.468 : rien de
 // lu de sa semaine passée, journal `STANDARD`). Chacun pour la semaine, un seul par genre. BROUILLONS (les textes, à valider par
 // le coach).
-export type PointDeLaReponse = { genre: 'standard' | 'reponse' | 'illisible' | 'ecart' | 'lundi'; texte: string };
+export type PointDeLaReponse = { genre: 'standard' | 'reponse' | 'illisible' | 'ecart' | 'lundi' | 'arret_dit'; texte: string };
 export function pointsDeLaReponse(p: { journal: { regle?: string; du?: string; source?: string }[];
-  revue: { lu?: { questionnaire_etat?: string; reponse?: { illisibles?: string[] } }; demande?: Demande | null; lundi?: Pick<LundiGarde, 'etat' | 'changements'> } | null }): PointDeLaReponse[] {
+  revue: { lu?: { questionnaire?: { arret?: string | null }; questionnaire_etat?: string; reponse?: { illisibles?: string[] } }; demande?: Demande | null; lundi?: Pick<LundiGarde, 'etat' | 'changements'> } | null }): PointDeLaReponse[] {
   const points: PointDeLaReponse[] = [];
   if (p.journal.some((j) => j.regle === 'STANDARD')) points.push({ genre: 'standard', texte: 'rien n’est remonté de sa semaine (ni séance, ni réponse, ni Hooper) : semaine prévue.' });
   const repli = p.journal.find((j) => j.regle === 'REPONSE');
   const partielle = p.revue?.lu?.questionnaire_etat === 'partielle';
   if (partielle || p.revue?.lu?.questionnaire_etat === 'illisible') {
-    const en = (p.revue?.lu?.reponse?.illisibles ?? []).map((c) => ({ jours: 'des jours', jour_sl: 'du jour de sortie longue', nb_seances: 'du nombre de séances' }[c] ?? c));
+    const en = (p.revue?.lu?.reponse?.illisibles ?? []).map((c) => ({ jours: 'des jours', jour_sl: 'du jour de sortie longue', nb_seances: 'du nombre de séances', arret: 'de l’arrêt' }[c] ?? c));
     points.push({ genre: 'illisible', texte: partielle ? `sa réponse du samedi est en partie lue${en.length ? ` (la question ${en.join(' et ')} est illisible)` : ''} : le reste de la semaine suit sa réponse d’avant.`
       : `sa réponse du samedi est illisible${en.length ? ` (la question ${en.join(' et ')})` : ''} : la semaine suit sa réponse d’avant.` });
   } else if (repli) {
     points.push({ genre: 'reponse', texte: `sa semaine est écrite sur un repli : sa réponse du samedi n’a pas été lue${repli.du ? ` (elle suit celle du ${jm(String(repli.du))})` : ''}.` });
+  }
+  // Moteur 8.469 (décision du coach du 16/11/2026) : l'arrêt que l'athlète dit au questionnaire. Texte du coach seul, BROUILLON ; la
+  // ligne de santé est dans la note Nolio (écrite par le moteur), jamais répétée ici. Le genre `arret_dit` n'est pas `arret`, celui de
+  // l'arrêt lu dans Nolio (espaceCoach.ts), pour que leurs clés « Réglé » restent à part.
+  const arret = p.revue?.lu?.questionnaire?.arret;
+  if (arret === 'quelques_jours' || arret === 'semaine') {
+    points.push({ genre: 'arret_dit', texte: `Arrêt dit au questionnaire : ${arret === 'semaine' ? 'toute la semaine' : 'quelques jours'}.` });
   }
   const sans = ecartsSansPhrase(p.revue?.demande);
   if (sans.length) points.push({ genre: 'ecart', texte: `la semaine s’écarte de sa demande sans que la note le dise : ${sans.map((x) => x.detail).join(' ; ')}.` });

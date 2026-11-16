@@ -23,7 +23,7 @@ import { joursRecuperation, lireTemps } from '@/lib/plan';
 import { ajouterJours, dateLongue, joursEntre, moment, type CleTest } from '@/lib/app/plan';
 import { blocsDuPlan, fichesDeLaSemaine, jaugeDuPlan, momentDe } from '@/lib/app/tableau';
 import {
-  donneesTableau, lireSemaineNolio, semaineEcrite, testDeLaSemaine, testVcNonRepropose,
+  arretDitCetteSemaine, donneesTableau, lireSemaineNolio, semaineEcrite, testDeLaSemaine, testVcNonRepropose,
 } from '@/lib/app/tableauDuPlan';
 
 // L'accueil de l'athlète (CTS_NOLIO_CADRAGE.md dans le dépôt du moteur, T1, AP1, AP2 ; maquette validée par le coach le
@@ -265,6 +265,8 @@ export default async function AccueilAthlete({ ctx, demarrage, montre = false, d
         {etape !== 'apres' && (!demarrage || d.nolio === 'sorti' || d.nolio === 'coaching') && <CarteNolio etat={d.nolio} inviteLe={inviteLe} confirmer={confirmer} avantCourse={plan.course.date >= jour} />}
         {/* Décision du coach du 16/11/2026 : la seule rigueur demandée, sur l'accueil de l'athlète (acheteur ou coaché) dont la semaine est écrite par le moteur. */}
         {etape !== 'apres' && !ctx.aLaMain && <CarteUneSeuleChose />}
+        {/* Moteur 8.469 (décision du coach du 16/11/2026) : l'acheteur qui a dit un arrêt au questionnaire du samedi ; BROUILLON à valider. */}
+        {!ctx.coache && etape !== 'apres' && !ctx.aLaMain && ligne && await arretDitCetteSemaine(ctx, ligne.numero) && <CarteArretDit />}
         {vcNonRepropose && <CarteTestVitesseCritique saisie={plan.zones ? `${lien('/app/plan/zones', ctx)}#vitesse_critique` : null} />}
 
         {/* Q10 (décision coach du 05/11/2026 au soir, « A ») : la carte ouvre la fiche de course à « Ton jour J » ; la page
@@ -282,6 +284,19 @@ export default async function AccueilAthlete({ ctx, demarrage, montre = false, d
         {etape !== 'apres' && <FichesDeLaSemaine fiches={fiches} ctx={ctx} />}
       </main>
     </>
+  );
+}
+
+// Tu as dû t'arrêter (BROUILLON, texte à faire valider) : aucun texte qui invite à échanger avec le coach, pas de ligne de santé (elle est
+// dans la note Nolio, écrite par le moteur) ; le lien mène à l'offre de coaching du site.
+function CarteArretDit() {
+  return (
+    <Carte className="space-y-1">
+      <p className="text-[0.875rem] text-[#4A4866] leading-relaxed">
+        Tu as dû t’arrêter cette semaine. Si tu veux un suivi de près pour reprendre, le coaching City to Summit est fait pour ça.
+      </p>
+      <Link href="/#offre" className={LIEN}>Découvrir le coaching ›</Link>
+    </Carte>
   );
 }
 

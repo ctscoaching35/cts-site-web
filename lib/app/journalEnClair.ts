@@ -44,7 +44,7 @@ export type DetailLecture = {
   // La passe du lundi a réécrit ou relu la semaine : la réponse est arrivée après l'écriture du dimanche.
   tardive?: boolean;
 };
-const QUESTION_EN_CAUSE: Record<string, string> = { jours: 'la question des jours', jour_sl: 'la question du jour de sortie longue', nb_seances: 'la question du nombre de séances' };
+const QUESTION_EN_CAUSE: Record<string, string> = { jours: 'la question des jours', jour_sl: 'la question du jour de sortie longue', nb_seances: 'la question du nombre de séances', arret: 'la question de l’arrêt' };
 const nomDuJour = (j: string) => j[0].toUpperCase() + j.slice(1);
 const jours = (q: Questionnaire) => [q.jours?.length ? q.jours.map(nomDuJour).join(', ') : null, q.jour_sl ? `sortie longue le ${q.jour_sl}` : null,
   q.nb_seances ? `${q.nb_seances} séance${q.nb_seances > 1 ? 's' : ''}` : null].filter(Boolean).join(' ; ');
@@ -122,6 +122,13 @@ export function enClair(e: Entree, seances?: string[], realise?: Pick<Realise, '
       return [e.source === 'derniere' ? `Réponse du samedi non lue${lecture} : la semaine suit sa réponse${du || ' d’avant'}.`
         : e.source === 'fraiche' ? `Réponse du samedi lue en partie${champs ? ` : ${champs} repris de sa réponse d’avant` : ''}${lecture}.`
           : `Réponse du samedi non lue${lecture} : la semaine suit les jours de son profil.`];
+    }
+    // Moteur 8.469 (décision du coach du 16/11/2026) : l'arrêt dit au questionnaire ; la ligne de santé est dans la note Nolio, écrite par le
+    // moteur. BROUILLON. R2d (qui remplace CH) n'a pas de libellé : son effet tel quel (la branche par défaut).
+    case 'ARRET': {
+      const dit = e.dit === 'semaine' ? 'toute la semaine' : e.dit === 'quelques_jours' ? 'quelques jours' : null;
+      const suite = (effet ?? '').trim().replace(/\.$/, '');
+      return [`Arrêt dit au questionnaire${dit ? ` (${dit})` : ''}${suite ? ` : ${suite}` : ''}.`];
     }
     case 'LUNDI': return [`Semaine réécrite le lundi matin : ${e.cause === 'reponse' ? 'sa réponse arrivée après l’écriture' : effet ?? 'ce qui est remonté depuis l’écriture a changé la semaine'}.`];
     // Moteur 8.468 (décisions du coach du 16/11/2026) : ce qui n'est pas lu n'est pas manqué. Une séance sans activité reliée
