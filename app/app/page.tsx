@@ -6,6 +6,7 @@ import type { Metadata } from 'next';
 import AccueilGratuit from '@/components/app/AccueilGratuit';
 import { estGratuit, lireAcces } from '@/lib/app/acces';
 import { contexte, lien, objectifAVenir, type Recherche } from '@/lib/app/contexte';
+import { nombreDeDossiers } from '@/lib/app/dossiersGratuit';
 
 // Le gabarit du titre (app/app/layout.tsx) ne vaut que pour les pages filles : l'accueil écrit le sien en entier.
 export const metadata: Metadata = { title: { absolute: 'Accueil · CTS' } };
@@ -29,5 +30,7 @@ export default async function Accueil({ searchParams }: { searchParams: Recherch
   // L'appli Nolio et la montre cochées d'un appui, pour ce plan (décision coach du 07/11/2026) ; en démonstration, jamais
   // retenues.
   const montre = !ctx.demo && !ctx.sansObjectif && montreCochee((await cookies()).get(COOKIE_MONTRE)?.value, ctx.cle);
-  return <AccueilAthlete ctx={ctx} demarrage={demarrage} montre={montre} demande={(await searchParams).demande === 'envoyee'} aVenir={objectifAVenir} />;
+  // Ses dossiers de course de l'app gratuite (lot B), lisibles ici : hors du mode « coupe », pour un compte qui en a.
+  const dossiers = acces.mode !== 'coupe' && acces.compteId && !ctx.demonstration ? await nombreDeDossiers(acces.compteId) : 0;
+  return <AccueilAthlete ctx={ctx} demarrage={demarrage} montre={montre} demande={(await searchParams).demande === 'envoyee'} aVenir={objectifAVenir} dossiers={dossiers} />;
 }

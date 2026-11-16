@@ -36,8 +36,10 @@ import {
 // sa dernière course.
 // Par exception (audits du 05/11/2026, Q6 et suivantes) : ce qui sort de l'ordinaire a sa ligne (la semaine ajustée, la
 // semaine d'un test, le jour J), ce qui est vide ne s'affiche pas.
-export default async function AccueilAthlete({ ctx, demarrage, montre = false, demande = false, aVenir }: {
+export default async function AccueilAthlete({ ctx, demarrage, montre = false, demande = false, aVenir, dossiers = 0 }: {
   ctx: Contexte; demarrage: boolean; montre?: boolean; demande?: boolean; aVenir: () => Promise<boolean>;
+  // Les dossiers de course qu'il avait faits dans l'app gratuite (lot B) : ils restent lisibles ici.
+  dossiers?: number;
 }) {
   const { plan, jour } = ctx;
   const installer = `${lien('/app/compte', ctx)}#installer`;
@@ -78,6 +80,7 @@ export default async function AccueilAthlete({ ctx, demarrage, montre = false, d
           <CetteSemaine semaine={null} ligne={null} nolio={lecture.seances} raison={lecture.raison} coache
             lundi={lundiCourant} jour={jour} />
           <CarteNouveauBadge badges={nouveaux} href={`${lien('/app/profil', ctx)}#badges`} />
+          <LienDossiers dossiers={dossiers} />
         </main>
       </>
     );
@@ -104,6 +107,7 @@ export default async function AccueilAthlete({ ctx, demarrage, montre = false, d
               </Link>
             ))}
           </nav>
+          <LienDossiers dossiers={dossiers} />
         </main>
       </>
     );
@@ -279,9 +283,21 @@ export default async function AccueilAthlete({ ctx, demarrage, montre = false, d
         {etape !== 'avant' && !ctx.aLaMain && <Piliers jauge={jauge} />}
         <CarteNouveauBadge badges={nouveaux} href={`${lien('/app/profil', ctx)}#badges`} />
         {etape !== 'apres' && !plan.fond && <CoursesPreparation courses={d.courses.filter((c) => c.date >= jour)} ajout={ajout} />}
+        <LienDossiers dossiers={dossiers} />
         {etape !== 'apres' && <FichesDeLaSemaine fiches={fiches} ctx={ctx} />}
       </main>
     </>
+  );
+}
+
+// « Tes dossiers de course › » (lot B, décision du coach du 16/11/2026) : les dossiers faits dans l'app gratuite restent lisibles
+// (et supprimables) ici, près de ses courses ; rien quand il n'en a pas.
+function LienDossiers({ dossiers }: { dossiers: number }) {
+  if (dossiers <= 0) return null;
+  return (
+    <Link href="/app/courses" className="flex items-center justify-between min-h-[52px] bg-white rounded-2xl border border-indigo/[0.08] px-[18px] text-sm font-semibold text-indigo">
+      <span>Tes dossiers de course</span><span aria-hidden className="text-[#5E5C78]">›</span>
+    </Link>
   );
 }
 
