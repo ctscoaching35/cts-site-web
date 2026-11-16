@@ -4,7 +4,7 @@ import ConfirmationCharge from './ConfirmationCharge';
 import EnTeteApp from './EnTeteApp';
 import PourBienDemarrer from './PourBienDemarrer';
 import {
-  CarteNolio, CarteObjectif, CarteTestVitesseCritique, CetteSemaine, CoursesPreparation, FichesDeLaSemaine, Piliers,
+  CarteNolio, CarteObjectif, CarteTestVitesseCritique, CetteSemaine, CoursesPreparation, FichesDeLaSemaine,
   type TestDeLaSemaine,
 } from './TableauDeBord';
 import { BOUTON, BOUTON_SECONDAIRE, Carte, CarteSombre, LIEN, Surtitre } from './Ui';
@@ -280,7 +280,7 @@ export default async function AccueilAthlete({ ctx, demarrage, montre = false, d
           </Link>
         )}
 
-        {etape !== 'avant' && !ctx.aLaMain && <Piliers jauge={jauge} />}
+        {/* Les piliers sont dans « Tes données » (onglet Plan ; maquette de l'app payante du 16/11/2026). */}
         <CarteNouveauBadge badges={nouveaux} href={`${lien('/app/profil', ctx)}#badges`} />
         {etape !== 'apres' && !plan.fond && <CoursesPreparation courses={d.courses.filter((c) => c.date >= jour)} ajout={ajout} />}
         <LienDossiers dossiers={dossiers} />

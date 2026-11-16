@@ -10,12 +10,14 @@ import { contexte, lien, plansDuCompte, type PlanDuCompte, type Recherche } from
 import { annulerDemande, demanderRetrait } from '@/lib/app/actionsObjectifs';
 import { demandesDeLAthlete, estRetrait, ficheDuCompte } from '@/lib/app/demandes';
 import { clientServeur, clientService } from '@/lib/app/supabase';
-import { aujourdhuiIso, dateLongue } from '@/lib/app/plan';
+import { aujourdhuiIso, dateLongue, joursEntre, moment } from '@/lib/app/plan';
 import { blocsDuPlan, jaugeDuPlan } from '@/lib/app/tableau';
 import { donneesTableau, fichesDePreparation, recuperationAvantLObjectif, semainesDetaillees, type CourseSecondaire } from '@/lib/app/tableauDuPlan';
 import { BlocsDeLaSaison } from '@/components/app/SaisonDeFond';
 import { datesDesFiches, objectifsDeDemonstration } from '@/lib/app/demonstration';
 import SemainesDuPlan from '@/components/app/SemainesDuPlan';
+import SelecteurPlan from '@/components/app/SelecteurPlan';
+import { CarteMontagne } from '@/components/app/TableauDeBord';
 
 export const metadata: Metadata = { title: 'Ta préparation' };
 
@@ -62,7 +64,9 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
   const d = await donneesTableau(ctx);
   // En démonstration : l'objectif affiché, et l'objectif suivant demandé (?objectif=demande).
   const objectifs = ctx.demonstration ? await objectifsDeDemonstration(ctx, d.courses) : await mesObjectifs();
-  const jauge = jaugeDuPlan(d.trame, d.realises, jour);
+  // La montagne (déplacée de l'accueil dans l'onglet Plan, maquette du 16/11/2026) : la même avancée que l'accueil.
+  const depuisMontagne = ctx.coache ? d.debut ?? null : plan.course.rejoint?.lundi ?? null;
+  const jauge = jaugeDuPlan(d.trame, d.realises, jour, depuisMontagne);
   const courseAVenir = plan.course.date >= jour;
   const fichesPrepa = ctx.demonstration ? await datesDesFiches(ctx) : await fichesDePreparation(ctx.cle);
   const { course } = plan;
@@ -78,7 +82,8 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
     <>
       <EnTeteApp ctx={ctx} />
       <main className="mx-auto max-w-2xl px-4 pt-3 pb-6 space-y-4">
-        <Link href={lien('/app', ctx)} className="inline-flex items-center min-h-11 text-sm font-bold text-teal">‹ Accueil</Link>
+        {/* L'onglet Plan : « Ta préparation » et « Tes données » (le retour « ‹ Accueil » est remplacé par la barre d'onglets). */}
+        <SelecteurPlan actif="preparation" ctx={ctx} />
         {plan.fond ? (
           <div className="-mt-1">
             <Surtitre as="div">Ta saison de fond</Surtitre>
@@ -96,6 +101,14 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
               {dateLongue(course.date, course.date.slice(0, 4) !== jour.slice(0, 4))} · {course.format_clair}{course.dplus_m ? ` · ${Math.round(course.distance_km)} km · ${course.dplus_m.toLocaleString('fr-FR')} m D+` : ' sur route'}
             </p>
           </div>
+        )}
+
+        {/* Ta montagne (ou ta route), puis ta semaine : la montagne ne se lit plus que de la fiche à l'accueil (étape (d)). Un
+            programme à la main n'en a pas (jauge nulle : elle suit la trame du moteur). */}
+        {!plan.fond && !ctx.aLaMain && (
+          <CarteMontagne plan={plan} restants={joursEntre(jour, plan.course.date)} jauge={jauge} etape={moment(plan, jour)}
+            coache={Boolean(ctx.coache)} jour={jour} debut={depuisMontagne ?? d.trame.find((l) => l.lundi)?.lundi ?? null}
+            bloc={blocsDuPlan(d.trame, plan, jour, depuisMontagne).find((b) => b.moment === 'encours')?.nom ?? null} />
         )}
 
         {/* Plus de PDF dans l'app (décision coach du 19/10/2026) : la préparation vit et s'ajuste semaine après semaine ;
@@ -117,6 +130,11 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
         )}
 
         {plan.fond && <BlocsDeLaSaison trame={d.trame} jour={jour} />}
+
+        {/* Ta semaine, avant les blocs (maquette du 16/11/2026) ; S16 (décision coach du 05/11/2026) : la trame semaine par semaine que promettent les CGV ; pour les deux versions
+            depuis le 07/11/2026. */}
+        {semaines && <SemainesDuPlan trame={d.trame} jour={jour} course={course.date} realises={d.realises}
+          encours={semaines.encours} suivante={semaines.suivante} depuis={depuis} reprises={d.reprises} />}
 
         {/* Programmé à la main (décision coach du 20/10/2026) : pas de blocs, qui suivent la trame du moteur. */}
         {!ctx.aLaMain && !plan.fond && <Carte className="!pb-1.5">
@@ -161,11 +179,6 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
             ))}
           </ol>
         </Carte>}
-
-        {/* S16 (décision coach du 05/11/2026) : la trame semaine par semaine que promettent les CGV ; pour les deux versions
-            depuis le 07/11/2026. */}
-        {semaines && <SemainesDuPlan trame={d.trame} jour={jour} course={course.date} realises={d.realises}
-          encours={semaines.encours} suivante={semaines.suivante} depuis={depuis} reprises={d.reprises} />}
 
         {d.ecrit && !plan.fond && (
           <Carte id="ajouter-course" className="space-y-3 scroll-mt-20">

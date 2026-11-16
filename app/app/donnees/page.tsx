@@ -2,9 +2,12 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import EnTeteApp from '@/components/app/EnTeteApp';
 import { GraphiqueCharge, GraphiqueHooper, GraphiqueVolume } from '@/components/app/Graphiques';
+import SelecteurPlan from '@/components/app/SelecteurPlan';
+import { Piliers } from '@/components/app/TableauDeBord';
 import { Carte, LIEN, Surtitre, TITRE } from '@/components/app/Ui';
 import { contexte, lien, type Recherche } from '@/lib/app/contexte';
-import { barresDeVolume, pointsHooper } from '@/lib/app/tableau';
+import { moment } from '@/lib/app/plan';
+import { barresDeVolume, jaugeDuPlan, pointsHooper } from '@/lib/app/tableau';
 import { donneesTableau, saisonDuCoureur } from '@/lib/app/tableauDuPlan';
 
 export const metadata: Metadata = { title: 'Tes données' };
@@ -39,10 +42,15 @@ export default async function MesDonnees({ searchParams }: { searchParams: Reche
   // C18 (audits du 05/11/2026) : sans accord, le renvoi à l'accord est un lien, pour un acheteur (celui d'un coaché se
   // donne dans Nolio).
   const accord = `${lien('/app/compte', ctx)}#accord`;
+  // Les piliers (déplacés de l'accueil, maquette du 16/11/2026) : la même jauge que l'accueil ; pas avant le départ de la
+  // préparation, ni pour un programme à la main.
+  const piliers = !ctx.aLaMain && !ctx.sansObjectif && moment(ctx.plan, ctx.jour) !== 'avant'
+    ? jaugeDuPlan(d.trame, d.realises, ctx.jour, ctx.coache ? d.debut ?? null : ctx.plan.course.rejoint?.lundi ?? null) : null;
   return (
     <>
       <EnTeteApp ctx={ctx} />
       <main className="mx-auto max-w-2xl px-4 pt-5 pb-6 space-y-4">
+        <SelecteurPlan actif="donnees" ctx={ctx} />
         <div>
           <h1 className={TITRE}>Tes données</h1>
           {/* C40 : une seule phrase de mise à jour, et juste. Validé par le coach le 05/11/2026 (1A). */}
@@ -74,6 +82,7 @@ export default async function MesDonnees({ searchParams }: { searchParams: Reche
             {!ctx.coache && <Link href={accord} className={LIEN}>Donner mon accord ›</Link>}
           </Carte>
         )}
+        {piliers && <Piliers jauge={piliers} />}
       </main>
     </>
   );

@@ -284,6 +284,39 @@ export function CarteObjectif({ plan, restants, jauge, etape, href, surtitre = '
   );
 }
 
+// « Ta montagne » (ou « Ta route ») de l'onglet Plan (maquette de l'app payante, Plan.dc.html, 16/11/2026) : le dessin, le
+// compte à rebours et la montée, sans le nom ni la date de la course, que l'écran dit au-dessus. Mêmes règles que
+// CarteObjectif (la part de temps avant deux semaines lues, puis la montée ; rien pour un programme à la main).
+export function CarteMontagne({ plan, restants, jauge, etape, coache = false, jour = null, debut = null, bloc = null }: {
+  plan: Plan; restants: number; jauge: Jauge; etape: 'avant' | 'pendant' | 'apres'; coache?: boolean; jour?: string | null;
+  debut?: string | null; bloc?: string | null;
+}) {
+  const depart = debut ?? plan.course.date_debut_plan;
+  const total = depart ? Math.max(1, (Date.parse(`${plan.course.date}T12:00:00Z`) - Date.parse(`${depart}T12:00:00Z`)) / 86_400_000) : 0;
+  const temps = !jour || !depart ? null : etape === 'avant' ? 0 : etape === 'apres' ? 1
+    : Math.max(0, Math.min(1, (Date.parse(`${jour}T12:00:00Z`) - Date.parse(`${depart}T12:00:00Z`)) / 86_400_000 / total));
+  const montee = etape === 'avant' ? null : jauge.montee ?? null;
+  const route = estRoute(plan.course.format);
+  const cestLeJour = etape === 'pendant' && restants === 0;
+  return (
+    <CarteSombre className="space-y-3.5">
+      <div className="flex items-center justify-between gap-3">
+        <Surtitre ton="clair" as="div">{route ? 'Ta route' : 'Ta montagne'}</Surtitre>
+        {(restants > 0 || cestLeJour) && (
+          <span className="text-xs font-extrabold text-indigo bg-[#8FD1C3] rounded-full px-2.5 py-1 whitespace-nowrap">{cestLeJour ? 'Jour J' : `J-${restants}`}</span>
+        )}
+      </div>
+      <Montagne part={montee ? montee.fait : temps} neutre={!montee} route={route}
+        libelle={montee ? libelleDeLaMontee(montee, coache) : undefined} />
+      {cestLeJour ? <p className="text-base font-bold">C’est le jour J. Bonne course !</p>
+        : etape === 'apres' ? null
+        : etape === 'avant' ? <p className="text-[0.9375rem] font-bold">{coache ? 'Tes séances arrivent chaque dimanche dans Nolio.' : plan.couverture.debut}</p>
+        : montee ? <ChiffreDeLaMontee montee={montee} coache={coache} bloc={bloc} />
+        : <p className="text-base font-bold">Ta préparation est lancée</p>}
+    </CarteSombre>
+  );
+}
+
 // ─── Les piliers (T4) ─────────────────────────────────────────────────────
 
 export function Piliers({ jauge }: { jauge: Jauge }) {
