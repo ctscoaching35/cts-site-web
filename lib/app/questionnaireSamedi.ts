@@ -267,22 +267,3 @@ export function sesJoursEnClair(s: SesJours): string {
     s.nb_seances ? `${s.nb_seances} séance${s.nb_seances > 1 ? 's' : ''}` : null].filter(Boolean);
   return `${morceaux.join(' ; ') || 'rien de lisible'} — réponse du ${jm}`;
 }
-
-// ─── L'arrêt dit, pour l'acheteur d'un plan ───────────────────────────────
-
-// L'ARRÊT DIT À LA SEMAINE ÉCRITE (16/11/2026, décision du coach) : l'arrêt (« quelques jours » ou « toute la semaine ») que la revue gardée
-// d'une semaine écrite a lu à la réponse du samedi ; sinon null. Jamais « non », jamais illisible.
-export function arretDitDeLaRevue(revue: unknown): 'quelques_jours' | 'semaine' | null {
-  const a = (revue as { lu?: { questionnaire?: { arret?: unknown } } } | null | undefined)?.lu?.questionnaire?.arret;
-  return a === 'quelques_jours' || a === 'semaine' ? a : null;
-}
-
-// La carte de l'accueil d'un acheteur : la semaine en cours a été écrite à partir d'une réponse qui dit un arrêt, et la semaine d'après
-// n'est pas encore écrite (la carte quitte l'accueil à son écriture). lignes : les semaines écrites de son plan (leur numéro, « S14 », et
-// leur revue) ; numero : sa semaine en cours.
-export function arretDitALAccueil(lignes: { numero: string; revue?: unknown }[], numero: string): boolean {
-  const rang = (n: string) => Number(String(n).replace(/^S/, ''));
-  const ici = lignes.find((l) => l.numero === numero);
-  if (!ici || arretDitDeLaRevue(ici.revue) === null) return false;
-  return !lignes.some((l) => /^S\d+$/.test(l.numero) && rang(l.numero) > rang(numero));
-}
