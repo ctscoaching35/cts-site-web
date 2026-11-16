@@ -83,17 +83,21 @@ export async function accepterDemande(demandeId: string): Promise<EtatDemande> {
   const nom = String(d.reponses.nom ?? '').trim();
   if (!nom) return { ok: false, message: 'Cette demande n’a pas de nom : relis-la.' };
 
-  // Ses repères du profil gratuit, seulement avec son consentement FC.
+  // Ses repères du profil gratuit : sa vitesse critique toujours (le profil gratuit la garde sans consentement), ses FC et
+  // l'allure de son test de la parole seulement avec son consentement FC.
   const joint = await jointesDuCompte(d.compte_id);
   const jour = new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris' }).format(new Date());
   const reperes: Record<string, number> = {};
+  if (joint.tests.vc) {
+    reperes.vc_ms = Math.round(joint.tests.vc.vc_ms * 1000) / 1000;
+    reperes.d_prime_m = Math.round(joint.tests.vc.d_prime_m);
+  }
   if (joint.consentementFc) {
-    if (joint.tests.parole) reperes.fc_seuil1 = joint.tests.parole.fc_seuil1;
-    if (joint.tests.fc2) reperes.fc_seuil2 = joint.tests.fc2.fc_seuil2;
-    if (joint.tests.vc) {
-      reperes.vc_ms = Math.round(joint.tests.vc.vc_ms * 1000) / 1000;
-      reperes.d_prime_m = Math.round(joint.tests.vc.d_prime_m);
+    if (joint.tests.parole) {
+      reperes.fc_seuil1 = joint.tests.parole.fc_seuil1;
+      if (joint.tests.parole.v_seuil1_ms !== null) reperes.v_seuil1_ms = joint.tests.parole.v_seuil1_ms;
     }
+    if (joint.tests.fc2) reperes.fc_seuil2 = joint.tests.fc2.fc_seuil2;
   }
   const sources = Object.fromEntries((['fc_seuil1', 'vc_ms', 'fc_seuil2'] as const).filter((k) => k in reperes)
     .map((k) => [k, { le: jour, source: 'athlete' }]));
