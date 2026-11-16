@@ -22,7 +22,7 @@ import { BOUTON, BOUTON_SECONDAIRE, CHAMP, Carte, CarteSombre, Surtitre, TITRE }
 const etiquette = 'block text-xs font-semibold text-indigo mb-1.5';
 const COCHE = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
 
-export const CONSENTEMENT_FC = 'J’accepte que CTS garde ces valeurs dans mon compte, seulement pour calibrer mes séances. Je peux les effacer à tout moment.';
+export const CONSENTEMENT_FC = 'J’accepte que City to Summit garde ces valeurs dans mon compte, seulement pour calculer mes zones et mes repères. Je peux les effacer à tout moment.';
 
 export default function ProfilGratuit({ compte, gardee, consentementDonne, ouvrirTest }: {
   compte: boolean; gardee: { experience: Experience | null; tests: TestsGratuits } | null; consentementDonne: boolean; ouvrirTest: boolean;

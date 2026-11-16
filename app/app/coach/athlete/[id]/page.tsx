@@ -17,6 +17,7 @@ import { associerNolio, changerProgrammation, retirerAcces, retirerAthlete } fro
 import { accordRecu, relireMaintenant, retirerAccord } from '@/lib/app/actionsSuivi';
 import { adresseDuCompte } from '@/lib/app/espaceAthlete';
 import { ficheAthlete } from '@/lib/app/coaching';
+import { demandeDeLAthlete } from '@/lib/app/demandesCoaching';
 import { initiales } from '@/lib/app/contexte';
 import { entreeDe } from '@/lib/app/entree';
 import { coursesDansNolio, pasEncoreIci } from '@/lib/app/coursesNolio';
@@ -30,6 +31,7 @@ import { enHeures } from '@/lib/app/tableau';
 import { PROFIL_VIDE, type Profil } from '@/lib/app/zones';
 import { reperesDeBase } from '@/lib/app/reperes';
 import { demonstrationCoachOuverte } from '@/lib/app/demonstrationCoach';
+import { modeAppGratuite } from '@/lib/app/gratuitRegles';
 import { clientService, espaceCoachOuvert } from '@/lib/app/supabase';
 import type { CourseSecondaire } from '@/lib/app/tableauDuPlan';
 import type { Niveau as Couleur } from '@/lib/app/prevision';
@@ -74,6 +76,8 @@ export default async function PageAthlete({ params, searchParams }: {
   const service = clientService();
   const relie = nolioConfigure();
   const adresse = await adresseDuCompte(a.compte_id).catch(() => null);
+  // Lot A2 de l'app gratuite : la demande de coaching qui a donné cette fiche, s'il y en a une (rien en mode « coupe »).
+  const demandeFiche = modeAppGratuite() === 'coupe' ? null : await demandeDeLAthlete(a.id);
   let liste: AthleteNolio[] = [];
   let erreur: string | null = null;
   try {
@@ -245,6 +249,13 @@ export default async function PageAthlete({ params, searchParams }: {
           </div>
         </div>
       </div>
+
+      {/* Lot A2 de l'app gratuite : la demande de coaching qui a ouvert cette fiche reste lisible ici. */}
+      {demandeFiche && (
+        <Link href={`/app/coach/demandes/${demandeFiche.id}`} className="flex items-center justify-between gap-3 min-h-12 px-5 py-3 rounded-2xl bg-white border border-indigo/[0.08] text-sm font-bold text-teal">
+          <span>Sa demande de coaching, du {dateLongue(demandeFiche.envoyee_le.slice(0, 10), true)}</span><span aria-hidden>›</span>
+        </Link>
+      )}
 
       {!entree.complete && (
         <CarteEntree entree={entree} accordRecu={a.nolio_athlete_id && !accord ? accordRecu.bind(null, a.nolio_athlete_id, a.nom) : undefined} />

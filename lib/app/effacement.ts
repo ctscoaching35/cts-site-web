@@ -6,12 +6,20 @@
  * J7 (audits du 05/11/2026, S3) : d'abord, ses préparations achetées s'arrêtent dans Nolio (ce qui est à venir en part),
  * il quitte l'équipe s'il n'y est que pour elles, et ses badges s'effacent (lib/app/ecriture.ts, sortirDeNolioAvantEffacement).
  * Nolio muet ne bloque pas l'effacement : le coach est prévenu de ce qui reste à faire à la main.
+ * Lot A2 de l'app gratuite : son contact est aussi supprimé chez Brevo (la liste e-mail), avant le compte (il faut son adresse) ;
+ * Brevo muet ne bloque rien. Ses demandes de coaching et ses données gratuites partent avec le compte (clés étrangères en cascade).
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export async function effacerCompte(service: SupabaseClient, id: string) {
   const { sortirDeNolioAvantEffacement } = await import('./ecriture');
   await sortirDeNolioAvantEffacement(id).catch((e) => console.error(`Sortie de Nolio du compte ${id} :`, e instanceof Error ? e.message : e));
+  try {
+    const adresse = (await service.auth.admin.getUserById(id)).data?.user?.email;
+    if (adresse) await (await import('./listeEmail')).supprimerDuCarnet(adresse);
+  } catch (e) {
+    console.error(`Contact Brevo du compte ${id} :`, e instanceof Error ? e.name : 'erreur');
+  }
   const { data: fichiers } = await service.storage.from('plans-pdf').list(id);
   if (fichiers?.length) await service.storage.from('plans-pdf').remove(fichiers.map((f) => `${id}/${f.name}`));
   const { error } = await service.auth.admin.deleteUser(id);

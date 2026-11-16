@@ -2,6 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import clsx from 'clsx';
 import { Deconnexion } from './BoutonsCompte';
+import LienDemandes from './LienDemandes';
 import { demonstrationCoachOuverte, jourSimuleEnClair, MOMENTS } from '@/lib/app/demonstrationCoach';
 
 // Le cadre de l'espace coach (maquettes validées par le coach le 19/10/2026, puis le 24/10/2026) : un menu à gauche sur
@@ -11,7 +12,8 @@ import { demonstrationCoachOuverte, jourSimuleEnClair, MOMENTS } from '@/lib/app
 // semaine » et « Dimanche » ne sont plus dans le menu : fondues dans la liste, la page de chaque athlète et « Urgent ».
 // Plus de Bibliothèque (décision coach du 20/10/2026) ni de lien « Voir l'app d'un athlète » : chaque version se voit par
 // son propre compte (coach, coaché, acheteur).
-export type RubriqueCoach = 'athletes' | 'urgent' | 'chiffres';
+// Lot A2 de l'app gratuite : « Demandes », les demandes de coaching (le premier coach de CTS_COACHS, app gratuite ouverte seulement).
+export type RubriqueCoach = 'athletes' | 'urgent' | 'chiffres' | 'demandes';
 
 // urgents : le nombre d'athlètes qui ont au moins une ligne dans « Urgent », le même sur chaque page qui le donne. Plus de
 // nom du coach ni de « Nolio relié » en bas du menu (décision coach du 04/11/2026).
@@ -46,6 +48,7 @@ export default function CadreCoach({ actif, urgents = 0, children }: {
               )}
             </Link>
           ))}
+          <LienDemandes actif={actif === 'demandes'} />
         </nav>
         {/* Changer de compte : coach, coaché ou acheteur, chacun voit sa version par son compte. */}
         <div className="-mt-3"><Deconnexion menu /></div>

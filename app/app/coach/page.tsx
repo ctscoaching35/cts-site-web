@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import CadreCoach from '@/components/app/CadreCoach';
+import { CarteDemandes } from '@/components/app/LienDemandes';
 import { Carte, Surtitre } from '@/components/app/Ui';
 import TableauAthletes, { filtreDe } from '@/components/app/TableauAthletes';
 import { equipeNolio, synchroniserLEquipe } from '@/lib/app/espaceCoach';
@@ -57,6 +58,9 @@ export default async function MesAthletes({ searchParams }: { searchParams: Prom
           + Ajouter un athlète
         </Link>
       </div>
+
+      {/* Lot A2 de l'app gratuite : une demande de coaching attend (rien tant que l'app gratuite est coupée). */}
+      <CarteDemandes />
 
       {bilan && (
         <Link href="/app/coach/urgent" className="flex items-center justify-between gap-3 bg-indigo text-white rounded-[14px] p-4">

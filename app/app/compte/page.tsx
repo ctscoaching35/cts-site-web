@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import EnTeteApp from '@/components/app/EnTeteApp';
 import { Avertissement } from '@/components/app/Texte';
 import { Deconnexion, Suppression } from '@/components/app/BoutonsCompte';
+import { ListeEmail, MaDemande } from '@/components/app/ReglagesGratuit';
 import Installation from '@/components/app/Installation';
 import { DonnerAccord, RetirerAccord } from '@/components/app/GestesEcriture';
 import { Carte, CarteSombre, Surtitre, TITRE } from '@/components/app/Ui';
@@ -36,6 +37,10 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
   const acces = await lireAcces();
   if (acces.cas === 'visiteur') redirect('/app');
   if (acces.cas === 'gratuit') {
+    // Lot A2 : l'accord à la liste e-mail (sa date) et sa demande de coaching, lues avec SA session.
+    const supabaseGratuit = await clientServeur();
+    const { data: profilG } = await supabaseGratuit.from('profils_gratuits').select('liste_email_le').eq('compte_id', acces.compteId ?? '').maybeSingle();
+    const { data: demandeG } = await supabaseGratuit.from('demandes_coaching').select('envoyee_le').eq('compte_id', acces.compteId ?? '').maybeSingle();
     return (
       <>
         <EnTeteGratuit acces={acces} />
@@ -45,6 +50,8 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
             <Surtitre>Connecté avec</Surtitre>
             <p className="text-sm font-bold text-indigo break-all">{acces.email || 'un compte sans adresse'}</p>
           </Carte>
+          <ListeEmail inscrit={Boolean(profilG?.liste_email_le)} />
+          {demandeG?.envoyee_le && <MaDemande envoyeeLe={dateLongue(String(demandeG.envoyee_le).slice(0, 10), true)} />}
           <Deconnexion />
           <Suppression />
         </main>

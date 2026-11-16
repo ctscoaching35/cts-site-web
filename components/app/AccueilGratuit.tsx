@@ -5,7 +5,7 @@ import { AllerPlusLoin } from './AllerPlusLoin';
 import { TITRE } from './Ui';
 
 // L'accueil de l'app gratuite (maquette « Main » validée le 16/11/2026, textes mot pour mot) : trois entrées, la phrase
-// sur le compte (un visiteur seulement) et « Aller plus loin », qui mène à la page de vente des plans.
+// sur le compte (un visiteur seulement) et « Aller plus loin », qui mène à la page /app/aller-plus-loin (lot A2).
 const trait = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
 
 const ENTREES = [

@@ -8,6 +8,8 @@
 import { revalidatePath } from 'next/cache';
 import { lireAcces } from './acces';
 import { gratuitOuvert } from './gratuit';
+import { listeBranchee, retirerDeLaListe } from './listeEmail';
+import { majListeSiInscrit, synchroniserListe } from './listeGratuit';
 import { aDesFcGardees, calculer, saisieSure, sansLaFc, testsSurs, type Experience, type TestsGratuits } from './profilGratuit';
 import { clientServeur, clientService } from './supabase';
 
@@ -73,6 +75,9 @@ export async function garderApresConnexion(entree: { saisie: unknown; liste: boo
       maj_le: maintenant,
     }, { onConflict: 'compte_id' });
     if (error) throw new Error(error.message);
+    // La liste e-mail (Brevo) : inscrit avec ce que l'app connaît ; un échec ne bloque rien (journalisé, réessayé au prochain
+    // changement du profil).
+    if (acces.email && (existant?.liste_email_le || entree.liste)) await synchroniserListe(acces.compteId, acces.email);
   } catch (e) {
     console.error('Garder le profil du visiteur :', e instanceof Error ? e.message : e);
     return { ok: false, message: 'Ton compte est ouvert, mais ton profil n’a pas pu être gardé. Refais ton test depuis ton profil.', gratuit: true };
@@ -105,6 +110,43 @@ export async function enregistrerProfilGratuit(entree: { saisie: unknown; consen
     console.error('Tes tests (compte gratuit) :', e instanceof Error ? e.message : e);
     return { ok: false, message: 'L’enregistrement n’a pas abouti. Réessaie dans un moment.' };
   }
+  // Ses attributs suivent chez Brevo, s'il est inscrit ; un échec ne bloque rien.
+  if (acces.email) await majListeSiInscrit(acces.compteId, acces.email);
   revalidatePath('/app', 'layout');
   return { ok: true, message: 'C’est enregistré.' };
+}
+
+// La case « les e-mails de City to Summit » de Compte : s'inscrire ou se désinscrire. La date de l'accord est gardée avec le
+// profil (liste_email_le), vide sans accord. Se désinscrire : le contact quitte la liste chez Brevo ; la date ne s'efface que
+// quand Brevo a répondu (ou que la liste n'est pas branchée : rien n'a jamais été envoyé), pour qu'une désinscription ratée
+// ne passe jamais pour faite.
+export async function changerListeEmail(inscrit: boolean): Promise<EtatGratuit & { inscrit: boolean }> {
+  const acces = await lireAcces();
+  if (acces.cas !== 'gratuit' || !acces.compteId || !acces.email) return { ok: false, message: 'Ta session a expiré : reconnecte-toi.', inscrit: !inscrit };
+  try {
+    const supabase = await clientServeur();
+    const existant = await ligneDuCompte(acces.compteId);
+    const maintenant = new Date().toISOString();
+    if (inscrit) {
+      await assurerCompte(acces.compteId);
+      const { error } = await supabase.from('profils_gratuits').upsert({
+        compte_id: acces.compteId, experience: existant?.experience ?? null, tests: existant?.tests ?? {},
+        consentement_fc_le: existant?.consentement_fc_le ?? null, liste_email_le: existant?.liste_email_le ?? maintenant, maj_le: maintenant,
+      }, { onConflict: 'compte_id' });
+      if (error) throw new Error(error.message);
+      await synchroniserListe(acces.compteId, acces.email);
+    } else {
+      if (listeBranchee() && !(await retirerDeLaListe(acces.email)))
+        return { ok: false, inscrit: true, message: 'La désinscription n’a pas abouti. Réessaie dans un moment, ou utilise le lien de désinscription en bas d’un de nos e-mails.' };
+      if (existant) {
+        const { error } = await supabase.from('profils_gratuits').update({ liste_email_le: null, maj_le: maintenant }).eq('compte_id', acces.compteId);
+        if (error) throw new Error(error.message);
+      }
+    }
+  } catch (e) {
+    console.error('Liste e-mail (compte gratuit) :', e instanceof Error ? e.message : e);
+    return { ok: false, message: 'Ça n’a pas abouti. Réessaie dans un moment.', inscrit: !inscrit };
+  }
+  revalidatePath('/app/compte');
+  return { ok: true, inscrit, message: inscrit ? 'C’est noté : tu recevras les e-mails de City to Summit.' : 'C’est noté : tu ne recevras plus nos e-mails.' };
 }

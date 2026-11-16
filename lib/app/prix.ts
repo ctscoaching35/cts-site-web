@@ -22,3 +22,16 @@ export async function prixLePlusBas(): Promise<number | null> {
   }
   return demonstrationOuverte() ? Math.min(...Object.values(PRIX_DE_DEMONSTRATION)) : null;
 }
+
+// Les prix de chaque formule (3, 4 ou 6 mois), tels que l'API les donne (GET /v1/config, prix_eur_par_mois : la formule en
+// mois, son prix en euros), pour la page « Aller plus loin » de l'app gratuite ; null sans réponse de l'API (jamais de prix
+// écrit en dur : la carte s'affiche alors sans prix).
+export async function prixDesFormules(): Promise<Record<string, number> | null> {
+  try {
+    const r = await fetch(`${API_URL}/v1/config`, { next: { revalidate: 3600 }, headers: enTetesMoteur() });
+    const prix = r.ok ? ((await r.json()).prix_eur_par_mois ?? null) as Record<string, number> | null : null;
+    return prix && Object.keys(prix).length ? prix : null;
+  } catch {
+    return null;
+  }
+}

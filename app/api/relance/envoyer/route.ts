@@ -1,4 +1,5 @@
 import { passerComptesInactifs } from '@/lib/app/comptesInactifs';
+import { effacerLesDemandesEchues } from '@/lib/app/demandesCoaching';
 import { programmerLesDimanches } from '@/lib/app/dimanchesCoaches';
 import { saisonsDuJour } from '@/lib/app/fond';
 import { passageQuotidienLeger, passageQuotidienLong, retirerLaTrameAuDela } from '@/lib/app/ecriture';
@@ -7,7 +8,7 @@ import { effacerLesAchatsEchus, renvoyerLesConfirmations } from '@/lib/app/range
 import { supabaseConfigure } from '@/lib/app/supabase';
 
 // Le passage quotidien (vercel.json, crons) : les relances ; les comptes inactifs (E7 : avertis 30 jours avant,
-// supprimés 3 ans après leur dernière activité) ; les achats de plus de 10 ans, effacés (3A, décision coach du
+// supprimés 3 ans après leur dernière activité) ; les demandes de coaching sans suite (app gratuite : 3 mois après leur envoi) ; les achats de plus de 10 ans, effacés (3A, décision coach du
 // 05/11/2026) ; l'écriture semaine par semaine (la fatigue du jour, les invitations
 // Nolio à refaire, le résumé au coach). Vercel l'appelle avec le secret CRON_SECRET, saisi par le coach dans Vercel ;
 // sans lui, rien ne part.
@@ -33,6 +34,8 @@ export async function GET(request: Request) {
   // Les invitations, les alertes, les départs, les semaines du dimanche à reprendre : avant tout le reste (X1).
   const leger = await passageQuotidienLeger().catch((e) => [{ plan: '', quoi: 'passage léger en échec', erreur: e instanceof Error ? e.message : String(e) }]);
   const comptesInactifs = await passerComptesInactifs();
+  // Les demandes de coaching sans suite (app gratuite, lot A2) : effacées 3 mois après leur envoi.
+  const demandesEchues = await effacerLesDemandesEchues().catch(() => 0);
   // La saison de fond (décisions coach du 24/10/2026) : celle de chaque coaché sans objectif à préparer, pour le lundi qui
   // vient ; le passage du dimanche l'écrit. D'abord : le dimanche soir, ses reprises de 21 h et 23 h l'attendent.
   const saisons = await saisonsDuJour().catch((e) => [{ plan: '', quoi: 'saisons de fond en échec', erreur: e instanceof Error ? e.message : String(e) }]);
@@ -43,6 +46,6 @@ export async function GET(request: Request) {
   // La fatigue du jour et les tests, dans le temps qui reste ; le résumé au coach.
   const reste = Math.max(20_000, BUDGET_MS - (Date.now() - debut));
   const long = await passageQuotidienLong(reste).catch((e) => [{ plan: '', quoi: 'passage en échec', erreur: e instanceof Error ? e.message : String(e) }]);
-  return Response.json({ envoyees, comptes_inactifs: comptesInactifs,
+  return Response.json({ envoyees, comptes_inactifs: comptesInactifs, demandes_coaching_effacees: demandesEchues,
     ecriture: [...confirmations, ...achats, ...leger, ...dimanches, ...saisons, ...trames, ...long].map(({ plan, quoi, erreur }) => ({ plan, quoi, erreur: erreur ?? null })) });
 }

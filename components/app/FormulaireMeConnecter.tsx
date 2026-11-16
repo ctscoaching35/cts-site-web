@@ -15,7 +15,8 @@ import { BOUTON, BOUTON_SECONDAIRE, CHAMP, Carte, Surtitre, TITRE } from './Ui';
 const etiquette = 'block text-xs font-semibold text-indigo mb-1.5';
 const coche = { fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
 
-export default function FormulaireMeConnecter() {
+// suite : où la personne revient une fois connectée (la demande de coaching, qui passe par un compte).
+export default function FormulaireMeConnecter({ suite = null }: { suite?: string | null }) {
   const router = useRouter();
   const [etape, setEtape] = useState<'email' | 'code' | 'fait'>('email');
   const [email, setEmail] = useState('');
@@ -76,6 +77,11 @@ export default function FormulaireMeConnecter() {
       return;
     }
     if (!r.ok) setMessage(r.message);
+    // Un chargement complet : l'app relit la session toute fraîche, et la personne revient où elle allait.
+    if (r.ok && suite) {
+      window.location.assign(suite);
+      return;
+    }
     setEtape('fait');
   }
 
@@ -134,6 +140,7 @@ export default function FormulaireMeConnecter() {
         <Surtitre>Me connecter</Surtitre>
         <h1 className={TITRE}>Ton compte, sans mot de passe</h1>
         <p className="text-sm text-[#5E5C78] leading-relaxed">Ton e-mail suffit : un code à 6 chiffres, et tu retrouves ton profil et tes courses sur ton téléphone comme sur ton ordinateur.</p>
+        {suite && <p className="text-sm font-semibold text-indigo leading-relaxed">Pour demander le coaching, ton adresse e-mail doit être vérifiée : c’est le rôle du code. Ta demande t’attend juste après.</p>}
       </div>
       <div className="space-y-3">
         <label className="block">

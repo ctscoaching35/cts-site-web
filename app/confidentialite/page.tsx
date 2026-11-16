@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Liste, PageLegale, Section } from '@/components/PageLegale';
+import { modeAppGratuite } from '@/lib/app/gratuitRegles';
 import { plansVisibles, vendeur, VERSION_CONFIDENTIALITE } from '@/lib/legal';
 
 // TEXTE CORRIGÉ LE 05/11/2026 d'après les audits A et B de la Préparation CTS (S3, « A » : corrigé sans juriste, relu par
@@ -23,6 +24,8 @@ export const dynamic = 'force-dynamic';
 
 export default async function Confidentialite() {
   const plans = await plansVisibles();
+  // L'app gratuite (lot A2) : ce qu'elle garde ne se dit que lorsqu'elle est ouverte (comme les plans, derrière leur porte).
+  const gratuit = modeAppGratuite() !== 'coupe';
   // Les sections numérotées dans l'ordre où elles s'affichent.
   let n = 0;
   const no = (titre: string) => `${++n}. ${titre}`;
@@ -70,6 +73,37 @@ export default async function Confidentialite() {
           </li>
         </Liste>
       </Section>
+
+      {gratuit && (
+        <Section titre={no('Dans l’app gratuite : ton compte, la liste e-mail, ta demande de coaching')}>
+          {/* BROUILLON (lot A2, 16/11/2026), à valider par le coach ; la date de version change à la mise en ligne. */}
+          <Liste>
+            <li>
+              <strong>Ton compte gratuit.</strong> Tu le crées avec ton e-mail et un code à 6 chiffres, sans mot de passe. Il garde
+              ton e-mail, ton expérience en trail, tes tests (vitesse critique, test de la parole, FC au seuil 2) et tes courses.
+              Ta FC est une donnée de santé : elle n’est gardée qu’avec ton accord (la case du profil), daté ; sans accord, elle
+              n’est pas enregistrée. Tu effaces tout quand tu veux (Compte, puis « Supprimer mon compte »). Sans activité pendant
+              3 ans, il est supprimé, après un e-mail d’avertissement 30 jours avant. Sans compte, rien n’est gardé : ton résultat
+              reste dans ton navigateur le temps de ta visite.
+            </li>
+            <li>
+              <strong>La liste e-mail.</strong> Si tu coches « Je veux aussi les e-mails de City to Summit » (case non cochée par
+              défaut, facultative), ton e-mail rejoint notre liste chez Brevo (France), avec ton expérience, ton style de coureur et
+              ta prochaine course (son type et sa date), pour t’envoyer ce qui te concerne. Nous gardons la date de ton accord. Tu te
+              désinscris en un clic au bas de chaque e-mail, ou dans Compte ; supprimer ton compte supprime aussi ton contact chez
+              Brevo (ton consentement).
+            </li>
+            <li>
+              <strong>Ta demande de coaching.</strong> Elle va à Romain, qui t’appelle. Elle garde tes réponses, ton téléphone, les moments
+              où t’appeler, et, joints par l’app, ton profil et tes courses. Les informations de santé sont facultatives, derrière
+              une case à part, non cochée : sans elle, rien n’est envoyé ni gardé. Une demande sans suite est effacée 3 mois après
+              ton envoi, avec ta santé ; tu peux l’effacer toi-même à tout moment (Compte, « Effacer ma demande »), et elle l’est tout de suite
+              si le coach la classe sans suite. Si tu deviens coaché, ta demande reste lisible sur ta fiche, et tes données suivent les
+              règles de la section « Si tu es coaché par CTS sur Nolio » (le contrat, et ton consentement pour la santé).
+            </li>
+          </Liste>
+        </Section>
+      )}
 
       {plans && (
         <>
