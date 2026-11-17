@@ -13,7 +13,7 @@ import test from 'node:test';
 
 const RACINE = new URL('..', import.meta.url).pathname;
 const lire = (c) => readFileSync(`${RACINE}${c}`, 'utf8');
-const { ORDRE_GRATUIT, ORDRE_PAYANT, TITRE_ONGLET, ordreDesOnglets, ongletAllume, destinationCourses, estDansPlan } =
+const { ORDRE_GRATUIT, ORDRE_PAYANT, TITRE_ONGLET, ordreDesOnglets, ongletAllume, estDansPlan } =
   await import(new URL('../lib/app/ongletsApp.ts', import.meta.url).href);
 
 const titres = (ordre) => ordre.map((c) => TITRE_ONGLET[c]);
@@ -58,11 +58,11 @@ test('le gratuit garde ses règles : Accueil seulement sur /app, les autres par 
   assert.ok(ongletAllume('profil', '/app/profil', true));
 });
 
-test('l’onglet Courses d’un acheteur ou d’un coaché : sa fiche de course, sinon ses dossiers, sinon l’accueil', () => {
-  assert.equal(destinationCourses({ sansObjectif: false, dossiers: 0 }), '/app/plan/course');
-  assert.equal(destinationCourses({ sansObjectif: false, dossiers: 3 }), '/app/plan/course');
-  assert.equal(destinationCourses({ sansObjectif: true, dossiers: 2 }), 'liste');
-  assert.equal(destinationCourses({ sansObjectif: true, dossiers: 0 }), '/app');
+test('l’onglet Courses d’un acheteur ou d’un coaché mène toujours à /app/courses (plus de lien provisoire)', () => {
+  const barre = lire('components/app/BarreOnglets.tsx');
+  assert.doesNotMatch(barre, /coursesHref/);
+  assert.match(barre, /CHEMIN_ONGLET\[cle\]/);
+  assert.doesNotMatch(lire('app/app/layout.tsx'), /hrefOngletCourses|coursesHref/);
 });
 
 test('l’en-tête est unique : « City to Summit », jamais « CTS COACHING », dans l’app de l’athlète ; le compte par les initiales', () => {
@@ -83,7 +83,7 @@ test('la barre d’onglets n’a plus « Données » ni « Compte » ; elle suit
   const barre = lire('components/app/BarreOnglets.tsx');
   assert.match(barre, /ordreDesOnglets\(gratuit\)/);
   assert.doesNotMatch(barre, /titre: 'Données'|titre: 'Compte'/);
-  assert.match(lire('app/app/layout.tsx'), /coursesHref=\{coursesHref\}/);
+  assert.match(lire('app/app/layout.tsx'), /<BarreOnglets gratuit=\{gratuit\} \/>/);
 });
 
 test('le sélecteur « Ta préparation / Tes données » est sur les deux écrans, et les piliers passent de l’accueil à Tes données', () => {
