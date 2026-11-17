@@ -189,7 +189,7 @@ test('le code : refusé en coupe et sans le lien secret, avec création de compt
 });
 
 // ─── Le calcul du profil : les fonctions de l'app des acheteurs ──────────────────
-const SAISIE = { ...profilG.SAISIE_VIDE, experience: 'intermediaire', e1t: '3', e1d: '1020', e2t: '12', e2d: '3480', fc1: '152', al1: '4:30', fc2: '172' };
+const SAISIE = { ...profilG.SAISIE_VIDE, e1t: '3', e1d: '1020', e2t: '12', e2d: '3480', fc1: '152', al1: '4:30', fc2: '172' };
 
 test('le profil : la vitesse critique, le seuil 1 et le style viennent de zones.ts', async () => {
   const zones = await lib('zones');
@@ -214,7 +214,8 @@ test('le profil : les mêmes refus que l’app des acheteurs (écart, durées, F
   assert.match(msg({ fc1: '150', al1: '1:00' }), /entre 2:30 et 12:00/);
   assert.match(msg({ fc2: '170' }), /vitesse critique/);
   assert.match(msg({}), /au moins un test/);
-  assert.equal(profilG.calculer({ ...profilG.SAISIE_VIDE, experience: 'debutant' }, j).ok, true);
+  assert.equal(profilG.calculer({ ...profilG.SAISIE_VIDE }, j).ok, false);
+  assert.equal('experience' in profilG.SAISIE_VIDE, false);
 });
 
 test('le profil : sans l’accord, la FC ne se garde pas, la vitesse critique si', () => {
@@ -222,7 +223,7 @@ test('le profil : sans l’accord, la FC ne se garde pas, la vitesse critique si
   const sans = profilG.sansLaFc(c.tests);
   assert.deepEqual(Object.keys(sans), ['vc']);
   assert.equal(profilG.aDesFcGardees(sans), false);
-  const retour = profilG.saisieDepuis('intermediaire', c.tests);
+  const retour = profilG.saisieDepuis(c.tests);
   assert.equal(profilG.calculer(retour, '2026-11-17').ok, true);
   assert.equal(retour.e1t, '3:00');
 });
@@ -241,7 +242,7 @@ test('garder : le nouveau compte reçoit son profil, sa FC avec l’accord, l’
   assert.equal(compte.options.ignoreDuplicates, true);
   const p = m.ecrits.find((e) => e.table === 'profils_gratuits').ligne;
   assert.equal(p.compte_id, 'u1');
-  assert.equal(p.experience, 'intermediaire');
+  assert.equal('experience' in p, false);
   assert.ok(p.tests.vc && p.tests.parole && p.tests.fc2);
   assert.ok(p.consentement_fc_le && p.liste_email_le);
 });
@@ -263,7 +264,7 @@ test('garder : un acheteur ou un coaché qui se connecte ici ne reçoit rien, et
   m = poser({ mode: 'ouvert', session: connecte });
   r = await (await frais('actionsGratuit')).garderApresConnexion({ saisie: null, liste: true, consentementFc: false });
   const p = m.ecrits.find((e) => e.table === 'profils_gratuits').ligne;
-  assert.deepEqual([r.gratuit, p.experience, p.tests, Boolean(p.liste_email_le)], [true, null, {}, true]);
+  assert.deepEqual([r.gratuit, p.tests, Boolean(p.liste_email_le)], [true, {}, true]);
 });
 
 test('enregistrer ses tests : la FC exige l’accord, une fois ; sans session, rien', async () => {

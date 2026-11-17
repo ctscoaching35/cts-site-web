@@ -119,12 +119,12 @@ test('repères : dans les bornes du moteur, et deux seuils qui se contredisent n
 });
 
 test('la demande : ce qui est vide ne part pas ; le temps visé et la date partent tels quels', () => {
-  const d = courseLibre.construireDemande({ nom: ' ', date: '2027-03-14', temps: ' 2h15 ', distance: '18,5', dplus: '', }, { experience: null, reperes: null });
+  const d = courseLibre.construireDemande({ nom: ' ', date: '2027-03-14', temps: ' 2h15 ', distance: '18,5', dplus: '', }, { reperes: null });
   assert.deepEqual(d, { date_course: '2027-03-14', temps_cible: '2h15', distance_km: 18.5 });
-  const e = courseLibre.construireDemande({ nom: 'Trail', date: '2027-03-14', temps: '90 min', distance: '', dplus: '' }, { experience: 'confirme', reperes: { vc_ms: 3.6 } });
-  assert.deepEqual(e, { date_course: '2027-03-14', temps_cible: '90 min', experience: 'confirme', reperes: { vc_ms: 3.6 }, course_nom: 'Trail' });
+  const e = courseLibre.construireDemande({ nom: 'Trail', date: '2027-03-14', temps: '90 min', distance: '', dplus: '' }, { reperes: { vc_ms: 3.6 } });
+  assert.deepEqual(e, { date_course: '2027-03-14', temps_cible: '90 min', reperes: { vc_ms: 3.6 }, course_nom: 'Trail' });
   // Un nombre illisible part tel quel : c'est le moteur qui refuse, avec sa phrase.
-  assert.equal(courseLibre.construireDemande({ nom: '', date: 'd', temps: 't', distance: 'abc', dplus: '' }, { experience: null, reperes: null }).distance_km, 'abc');
+  assert.equal(courseLibre.construireDemande({ nom: '', date: 'd', temps: 't', distance: 'abc', dplus: '' }, { reperes: null }).distance_km, 'abc');
 });
 
 // ─── L'appel au moteur ────────────────────────────────────────────────────────────────────────────
@@ -246,7 +246,7 @@ function faussaire() {
   return c;
 }
 
-test('la carte : 1080 × 1920, le nom, la date, les chiffres, la classe et l’adresse ; ni FC, ni allure, ni temps visé', () => {
+test('la carte : 1080 × 1920, le nom, la date, les chiffres et l’adresse, sans la classe ; ni FC, ni allure, ni temps visé', () => {
   assert.equal(carte.LARGEUR, 1080);
   assert.equal(carte.HAUTEUR, 1920);
   const c = faussaire();
@@ -254,7 +254,8 @@ test('la carte : 1080 × 1920, le nom, la date, les chiffres, la classe et l’a
   const tout = c.textes.map((x) => x.t).join('|');
   assert.ok(tout.includes('Course de 16,93 km'.split(' ')[0]));
   assert.ok(tout.includes('cts-coaching.com'));
-  assert.ok(tout.includes('vallonnée'));
+  assert.ok(!/vallonn|de montagne|roulante|^COURSE$|\|COURSE\|/.test(tout), tout);
+  assert.ok(tout.includes('Comprends ta course, gratuitement'));
   assert.ok(tout.includes('KM') && tout.includes('M D+'));
   assert.ok(tout.includes('dimanche 14 mars 2027'));
   assert.ok(!/temps|2h15|FC |min\/km|seuil/i.test(tout), tout);

@@ -164,8 +164,8 @@ test('envoyer : la demande est posée, le coach reçoit le prénom et la ville, 
   assert.equal(ligne.statut, 'ouverte');
   assert.equal(ligne.sante, 'Tendinite du genou en 2026');
   assert.ok(ligne.consentement_sante_le);
-  // L'expérience est celle du profil : elle n'est pas dans la demande.
-  assert.equal(ligne.reponses.experience_trail, null);
+  // Le profil gratuit ne garde plus d'expérience : la demande la porte elle-même.
+  assert.equal(ligne.reponses.experience_trail, 'intermediaire');
   assert.equal(m.mails.length, 1);
   assert.match(m.mails[0].sujet, /Clara, Rennes/);
   assert.ok(!/Tendinite|0612345678|06 12/.test(m.mails[0].sujet + m.mails[0].texte));
@@ -413,15 +413,15 @@ test('Brevo : se désinscrire retire de la liste ; l’effacement du compte supp
   } finally { b.fin(); }
 });
 
-test('Brevo : les quatre attributs (expérience, style, type de course, date de la course)', () => {
-  assert.deepEqual(liste.attributsListe({ experience: 'debutant', vc_ms: null, d_prime_m: null, prochaineCourse: null }), { EXPERIENCE: 'debutant' });
+test('Brevo : les trois attributs du gratuit (style, type de course, date de la course ; plus d’expérience)', () => {
+  assert.deepEqual(liste.attributsListe({ vc_ms: null, d_prime_m: null, prochaineCourse: null }), {});
   assert.equal(liste.typeDeCourse(20, 300), 'roulante');
   assert.equal(liste.typeDeCourse(20, 400), 'vallonnee');
   assert.equal(liste.typeDeCourse(20, 800), 'vallonnee');
   assert.equal(liste.typeDeCourse(20, 801), 'montagne');
   assert.equal(liste.typeDeCourse(null, 800), null);
-  const a = liste.attributsListe({ experience: 'confirme', vc_ms: 4.1, d_prime_m: 160, prochaineCourse: { date: '2027-03-14', distance_km: 18, dplus_m: 540 } });
-  assert.deepEqual(Object.keys(a).sort(), ['DATE_COURSE', 'EXPERIENCE', 'STYLE', 'TYPE_COURSE']);
+  const a = liste.attributsListe({ vc_ms: 4.1, d_prime_m: 160, prochaineCourse: { date: '2027-03-14', distance_km: 18, dplus_m: 540 } });
+  assert.deepEqual(Object.keys(a).sort(), ['DATE_COURSE', 'STYLE', 'TYPE_COURSE']);
   assert.equal(a.DATE_COURSE, '2027-03-14');
   assert.equal(a.TYPE_COURSE, 'vallonnee');
   assert.ok(['endurant', 'rapide'].includes(a.STYLE));
@@ -460,10 +460,10 @@ test('Connexion : un échec de Brevo ne bloque pas le profil gardé', async () =
   const b = brevo({ statut: 500 });
   try {
     const a = await frais('actionsGratuit');
-    const r = await a.garderApresConnexion({ saisie: { experience: 'confirme' }, liste: true, consentementFc: false });
+    const r = await a.garderApresConnexion({ saisie: {}, liste: true, consentementFc: false });
     assert.equal(r.ok, true);
     assert.equal(r.gratuit, true);
-    assert.equal(m.base.tables.profils_gratuits[0].experience, 'confirme');
+    assert.equal('experience' in m.base.tables.profils_gratuits[0], false);
     assert.ok(m.base.tables.profils_gratuits[0].liste_email_le);
   } finally { b.fin(); }
 });
@@ -473,7 +473,7 @@ test('Connexion : la case non cochée n’appelle pas Brevo', async () => {
   const b = brevo();
   try {
     const a = await frais('actionsGratuit');
-    await a.garderApresConnexion({ saisie: { experience: 'confirme' }, liste: false, consentementFc: false });
+    await a.garderApresConnexion({ saisie: {}, liste: false, consentementFc: false });
     assert.equal(b.appels.length, 0);
   } finally { b.fin(); }
 });
