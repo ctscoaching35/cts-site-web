@@ -908,6 +908,7 @@ export default function Questionnaire({
                   titre={o.titre} description={o.description} detail={coach ? undefined : o.formats} />
               ))}
             </div>
+            <p className={aideCls}>{textes.niveau.sousLesCases}</p>
           </>
         )}
         <div>

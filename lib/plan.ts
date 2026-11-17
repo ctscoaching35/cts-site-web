@@ -7,6 +7,8 @@
  * Aucune logique d'entraînement ici : les refus métier sont décidés par l'API.
  */
 
+import { EXPERIENCES, PHRASE_SOUS_LA_GRILLE } from './grilleExperience';
+
 export const API_URL = (process.env.NEXT_PUBLIC_CTS_API_URL || 'http://localhost:5070').replace(/\/$/, '');
 
 export type ConfigPlan = {
@@ -85,29 +87,16 @@ export const textes = {
     // P3-a (07/11/2026) : l'aide et la note sous les trois choix fusionnent en une phrase, sous le titre.
     aide:
       'Coche celle où tu te reconnais aujourd’hui, pas celle que tu vises : un niveau surestimé donne un plan plus dur que ce que tu peux encaisser.',
-    options: [
-      {
-        valeur: 'debutant',
-        titre: 'Débutant',
-        description:
-          'Je cours depuis moins de deux ans. Je n’ai jamais suivi de plan structuré. Le fractionné ne fait pas partie de mes habitudes. Au-delà d’1h30 de course, je commence à subir.',
-        // P3-b (07/11/2026) : la ligne des formats sous le débutant seulement, le seul niveau qu'elle ferme ; jamais pour
-        // le coach, où tout format s'ouvre à tout niveau.
-        formats: 'Formats ouverts : Trail Court et Trail Marathon.',
-      },
-      {
-        valeur: 'intermediaire',
-        titre: 'Intermédiaire',
-        description:
-          'Je cours régulièrement depuis deux ans ou plus. J’ai déjà suivi un plan d’entraînement. Je pratique le fractionné. Je tiens 2h30 de course sans difficulté majeure.',
-      },
-      {
-        valeur: 'confirme',
-        titre: 'Confirmé',
-        description:
-          'Je m’entraîne de façon structurée depuis plusieurs années, plusieurs fois par semaine. J’ai déjà terminé des courses longues. Les sorties de 4h font partie de ma pratique.',
-      },
-    ] as { valeur: string; titre: string; description: string; formats?: string }[],
+    options: EXPERIENCES.map((e) => ({
+      valeur: e.cle,
+      titre: e.titre,
+      description: e.texte,
+      // P3-b (07/11/2026) : la ligne des formats sous le débutant seulement, le seul niveau qu'elle ferme ; jamais pour
+      // le coach, où tout format s'ouvre à tout niveau.
+      ...(e.cle === 'debutant' ? { formats: 'Formats ouverts : Trail Court et Trail Marathon.' } : {}),
+    })) as { valeur: string; titre: string; description: string; formats?: string }[],
+    // Sous les cases : la phrase de la grille, une seule constante (lib/app/profilGratuit.ts).
+    sousLesCases: PHRASE_SOUS_LA_GRILLE,
   },
   // Charge actuelle (24/09/2026). Aucun pourcentage dans l'aide, décision du coach du
   // 26/09/2026 : l'étude dit 10 %, le plan monte par marches de 15 % au plus, et

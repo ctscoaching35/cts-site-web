@@ -7,13 +7,8 @@
  */
 import { PROFIL_VIDE, lireDistance, lireDuree, vitesseCritique, type Effort, type Profil } from './zones';
 
-export type Experience = 'debutant' | 'intermediaire' | 'confirme';
-// Les phrases de la maquette, mot pour mot.
-export const EXPERIENCES: { cle: Experience; titre: string; texte: string }[] = [
-  { cle: 'debutant', titre: 'Débutant', texte: 'Moins d’un an de trail, ou peu de dénivelé couru.' },
-  { cle: 'intermediaire', titre: 'Intermédiaire', texte: 'Des trails finis, des côtes et des descentes déjà travaillées.' },
-  { cle: 'confirme', titre: 'Confirmé', texte: 'Plusieurs saisons, de l’intensité et des sauts déjà pratiqués.' },
-];
+import { EXPERIENCES, type Experience } from '../grilleExperience';
+export { EXPERIENCES, PHRASE_SOUS_LA_GRILLE, type Experience } from '../grilleExperience';
 export const estExperience = (v: unknown): v is Experience => EXPERIENCES.some((e) => e.cle === v);
 export const titreExperience = (v: Experience | null) => EXPERIENCES.find((e) => e.cle === v)?.titre.toLowerCase() ?? null;
 

@@ -5,7 +5,7 @@ import { useState } from 'react';
 import clsx from 'clsx';
 import { envoyerDemandeCoaching } from '@/lib/app/actionsDemandesCoaching';
 import { JOURS, PLAGES, QUESTIONS_COACHING as Q, type ReponsesCoaching } from '@/lib/app/coachingRegles';
-import { EXPERIENCES, type Experience } from '@/lib/app/profilGratuit';
+import { EXPERIENCES, PHRASE_SOUS_LA_GRILLE, type Experience } from '@/lib/app/profilGratuit';
 import { BOUTON, BOUTON_SECONDAIRE, CHAMP, Carte, Surtitre } from './Ui';
 
 // LE FORMULAIRE DE DEMANDE DE COACHING (app gratuite, lot A2 ; maquette « Demander le coaching » du 16/11/2026, questions du
@@ -88,19 +88,20 @@ function Zone({ id, titre, valeur, onChange, aideTexte, lignes = 3 }: { id: stri
 }
 
 // Un seul choix parmi quelques-uns : des boutons radio, rendus en pastilles de 44 px.
-function Un({ nom, titre, choix, valeur, onChange }: { nom: string; titre: string; choix: { cle: string; titre: string }[]; valeur: string; onChange: (v: string) => void }) {
+function Un({ nom, titre, choix, valeur, onChange, large, sous }: { nom: string; titre: string; choix: { cle: string; titre: string }[]; valeur: string; onChange: (v: string) => void; large?: boolean; sous?: string }) {
   return (
     <fieldset>
       <legend className={etiquette}>{titre}</legend>
-      <div className="flex flex-wrap gap-2">
+      <div className={clsx('flex gap-2', large ? 'flex-col' : 'flex-wrap')}>
         {choix.map((c) => (
-          <label key={c.cle} className={clsx('inline-flex items-center min-h-11 px-3.5 rounded-xl border text-sm font-semibold cursor-pointer focus-within:ring-2 focus-within:ring-teal/50',
+          <label key={c.cle} className={clsx(large ? 'flex items-start py-2.5 leading-relaxed' : 'inline-flex items-center', 'min-h-11 px-3.5 rounded-xl border text-sm font-semibold cursor-pointer focus-within:ring-2 focus-within:ring-teal/50',
             valeur === c.cle ? 'border-teal bg-[#E1EFEA] text-teal-dark' : 'border-indigo/20 bg-white text-indigo')}>
             <input type="radio" name={nom} value={c.cle} checked={valeur === c.cle} onChange={() => onChange(c.cle)} className="sr-only" />
             {c.titre}
           </label>
         ))}
       </div>
+      {sous && <p className="text-sm text-[#5E5C78] leading-relaxed mt-2">{sous}</p>}
     </fieldset>
   );
 }
@@ -196,7 +197,7 @@ export default function FormulaireCoaching({ experienceConnue, courses, demande,
 
       <Section n="02" titre={Q.vecu.titre}>
         <Un nom="depuis" titre={Q.vecu.depuis} choix={Q.vecu.depuisChoix} valeur={v.course_depuis} onChange={pose('course_depuis')} />
-        {!experienceConnue && <Un nom="experience" titre={Q.vecu.experience} choix={titreExperience} valeur={v.experience_trail} onChange={(x) => pose('experience_trail')(x as Experience)} />}
+        {!experienceConnue && <Un nom="experience" titre={Q.vecu.experience} choix={titreExperience} valeur={v.experience_trail} onChange={(x) => pose('experience_trail')(x as Experience)} large sous={PHRASE_SOUS_LA_GRILLE} />}
         <Zone id="marquantes" titre={Q.vecu.marquantes} valeur={v.courses_marquantes} onChange={pose('courses_marquantes')} aideTexte={Q.vecu.marquantesAide} />
       </Section>
 
