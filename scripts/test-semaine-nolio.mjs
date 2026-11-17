@@ -24,7 +24,7 @@ registerHooks({
     }
   },
 });
-const { comparerLaSemaine, familleDuNom, jourDe, septReponses } = await import('../lib/app/semaineDansNolio.ts');
+const { comparerLaSemaine, familleDuNom, jourDe, septReponses, tonsDesReponses } = await import('../lib/app/semaineDansNolio.ts');
 const { empreinteSeance } = await import('../lib/app/trameNolio.ts');
 
 const COURSE = 'spt_course';
@@ -253,4 +253,17 @@ test('les sept réponses : semaine.pourquoi du moteur 8.460 ({ n, libelle, texte
   assert.equal(septReponses(undefined), null);
   assert.equal(septReponses([]), null);
   assert.equal(septReponses([{ libelle: '', texte: 'x' }]), null);
+});
+
+test('le ton des sept réponses (8.471) : « Dose » est la conclusion, « Contrôle » n’alerte qu’en cas de repli ou de refus', () => {
+  const sept = (controle) => ['Sécurité', 'Fait', 'Dose', 'Contenu', 'Cadre', 'Tri et placement', 'Contrôle']
+    .map((libelle, i) => ({ n: i + 1, libelle, texte: i === 6 ? controle : `réponse ${i + 1}`, manque: [] }));
+  assert.deepEqual(tonsDesReponses(sept('rien à reprendre.')), [null, null, 'conclusion', null, null, null, null]);
+  assert.deepEqual(tonsDesReponses(sept('Rien à reprendre')), [null, null, 'conclusion', null, null, null, null]);
+  assert.deepEqual(tonsDesReponses(sept('repli : la semaine reste au niveau de la précédente.')), [null, null, 'conclusion', null, null, null, 'alerte']);
+  // Une semaine écrite par un moteur d'avant (sans « Dose ») : la dernière réponse, l'ancien « Donc », reste la conclusion.
+  const avant = ['Qui', 'Objectif', 'Où en est l’athlète', 'Prévu', 'Couru', 'Séances clés', 'Donc']
+    .map((libelle, i) => ({ n: i + 1, libelle, texte: 'x', manque: [] }));
+  assert.deepEqual(tonsDesReponses(avant), [null, null, null, null, null, null, 'conclusion']);
+  assert.deepEqual(tonsDesReponses([{ n: 1, libelle: 'Seule', texte: 'x', manque: [] }]), [null]);
 });
