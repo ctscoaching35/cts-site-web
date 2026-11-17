@@ -26,7 +26,7 @@ export default function CoursesPayant({ ctx, preparation, avecFiche, dossiers }:
   // Une saison de fond n'est pas un objectif : ni carte, ni dossier (ses blocs sont dans Ta préparation).
   const objectif = !ctx.sansObjectif && !plan.fond;
   const aVenir = objectif && plan.course.date >= jour;
-  const restants = joursEntre(jour, plan.course.date);
+  const restants = objectif ? joursEntre(jour, plan.course.date) : 0;
   const ajouter = lien('/app/objectif/nouveau', ctx);
   const vide = !objectif && preparation.length === 0 && dossiers.length === 0;
   return (
