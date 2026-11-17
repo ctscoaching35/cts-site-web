@@ -250,8 +250,8 @@ export async function retirerAthlete(athleteId: string): Promise<void> {
 export async function enregistrerProfil(athleteId: string, _e: EtatCoach, form: FormData): Promise<EtatCoach> {
   const coach = await coachConnecte();
   if (!coach) return { ok: false, message: 'Ta session a expiré : reconnecte-toi.' };
-  const { lireProfil } = await import('./profilEntrainement');
-  const lu = lireProfil(form, 'son');
+  const { lireProfil, plafondsDeSeances } = await import('./profilEntrainement');
+  const lu = lireProfil(form, 'son', null, await plafondsDeSeances());
   if ('erreur' in lu) return { ok: false, message: lu.erreur };
   const { error } = await clientService().from('athletes_coaches').update({ profil: lu.profil })
     .eq('id', athleteId).eq('coach_id', coach.compteId);

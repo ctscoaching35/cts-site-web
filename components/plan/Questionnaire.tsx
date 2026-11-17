@@ -300,8 +300,8 @@ export default function Questionnaire({
         }
       }
       if (n.jour_sl && !n.jours_disponibles.includes(n.jour_sl)) n.jour_sl = '';
-      // Plafond du niveau (second audit, D4) : passer en débutant avec 5 séances ou plus
-      // vide le champ, comme les autres réponses devenues invalides.
+      // Plafond du niveau (freq_max_par_niveau de /v1/config, 7 sans la valeur) : un niveau qui plafonne vide le champ
+      // au-delà, comme les autres réponses devenues invalides.
       if (n.freq_hebdo && Number(n.freq_hebdo) > (config.freq_max_par_niveau?.[n.niveau] ?? 7)) n.freq_hebdo = '';
       // Les séances en boutons (P5, 07/11/2026) : un nombre que ses boutons ne proposent plus (moins de jours cochés, un
       // minimum relevé par la course) se vide aussi. Pas dans la version courte, où « Ta semaine » n'est pas posée.

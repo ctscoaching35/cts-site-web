@@ -5,7 +5,8 @@
  * de son dernier objectif. Il ne sert qu'à ses prochains objectifs ; sa semaine s'ajuste chaque dimanche par son
  * questionnaire. Une seule règle de lecture et de vérification, pour le coach et pour l'athlète. Côté serveur seulement.
  */
-import { textes } from '@/lib/plan';
+import { API_URL, textes } from '@/lib/plan';
+import { enTetesMoteur } from './cleMoteur';
 import { niveauDesFaits, texteDesFaits } from './niveau';
 import { ACCENTS } from './accentFond';
 import { ficheDuCompte } from './demandes';
@@ -102,10 +103,20 @@ export function lignesDuNiveau(n: NiveauLu | null | undefined): [string, string]
     ...(n.sl_min ? [['Plus longue sortie récente', enHeures(Math.round(n.sl_min))] as [string, string]] : [])];
 }
 
+// Le plafond de séances par semaine de chaque niveau, tel que /v1/config le rend (freq_max_par_niveau, moteur 8.471 : 7 pour
+// les trois). Aucune valeur en dur : sans la valeur (config injoignable, niveau absent), 7.
+export async function plafondsDeSeances(): Promise<Record<string, number>> {
+  try {
+    const r = await fetch(`${API_URL}/v1/config`, { cache: 'no-store', headers: enTetesMoteur() });
+    const j = r.ok ? await r.json() : null;
+    return (j?.freq_max_par_niveau ?? {}) as Record<string, number>;
+  } catch { return {}; }
+}
+
 // Le profil d'un formulaire, vérifié : le profil, ou la phrase de ce qui manque. pour : « son » (le coach, qui peut
 // choisir le niveau : niveau_coach, vide pour celui des faits), « ton » (l'athlète, qui garde le choix de son coach,
 // pris dans ancien).
-export function lireProfil(form: FormData, pour: 'son' | 'ton', ancien?: ProfilEntrainement | null): { profil: ProfilEntrainement } | { erreur: string } {
+export function lireProfil(form: FormData, pour: 'son' | 'ton', ancien?: ProfilEntrainement | null, plafonds: Record<string, number> = {}): { profil: ProfilEntrainement } | { erreur: string } {
   const anciennete = String(form.get('anciennete') ?? '');
   const entrainement = String(form.get('entrainement') ?? '');
   const choix = pour === 'son' ? String(form.get('niveau_coach') ?? '') : String(ancien?.niveau_coach ?? '');
@@ -128,10 +139,11 @@ export function lireProfil(form: FormData, pour: 'son' | 'ton', ancien?: ProfilE
   if (!jours.length || !jours.includes(jourSl)) return { erreur: `Coche ${ses} jours disponibles, dont celui de ${pour === 'son' ? 'sa' : 'ta'} sortie longue.` };
   if (!Number.isInteger(freq) || freq < 1 || freq > Math.min(7, jours.length))
     return { erreur: `Le nombre de séances doit tenir dans ${ses} jours disponibles.` };
-  // Le plafond du débutant (second audit, D4 : 4 séances au plus), que le moteur refuserait à l'objectif.
-  if (niveau === 'debutant' && freq > 4) return { erreur: pour === 'son'
-    ? 'Au niveau débutant, 4 séances par semaine au plus : choisis-en 4, ou change son niveau.'
-    : 'Au niveau débutant, 4 séances par semaine au plus : choisis-en 4. Ton coach peut revoir ton niveau.' };
+  // Le plafond de séances du niveau, lu dans /v1/config (7 sans la valeur) : le moteur l'aurait refusé à l'objectif.
+  const plafond = Math.min(7, plafonds[niveau] ?? 7);
+  if (freq > plafond) return { erreur: pour === 'son'
+    ? `À ce niveau, ${plafond} séances par semaine au plus : choisis-en ${plafond}, ou change son niveau.`
+    : `À ton niveau, ${plafond} séances par semaine au plus : choisis-en ${plafond}. Ton coach peut revoir ton niveau.` };
   return { profil: {
     niveau, ...(faits ? { anciennete, entrainement } : {}), ...(niveauCoach ? { niveau_coach: niveauCoach } : {}),
     terrain, tapis: tapis ? 'oui' : 'non', jours_disponibles: jours, jour_sl: jourSl, freq_hebdo: String(freq),

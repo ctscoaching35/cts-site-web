@@ -514,15 +514,15 @@ export function plancherSeances(c: Champs, config: ConfigPlan): { min: number; m
   const ke = km > 0 ? km + dp / 100 : null;
   const parDifficulte = ke !== null && ke >= seuil ? auDela : 0;
   const min = Math.max(parFormat, parDifficulte, 3);
-  // Plafond du niveau (second audit du 28/09/2026, D4) : le débutant, 4 séances au plus.
-  // Lu dans /v1/config ; l'API reste seule juge (refus 5 ter).
+  // Plafond du niveau, lu dans /v1/config (freq_max_par_niveau : 7 pour les trois niveaux depuis le moteur 8.471) ; sans la
+  // valeur, 7. L'API reste seule juge.
   const max = config.freq_max_par_niveau?.[c.niveau] ?? 7;
   const parties = [
     min <= 3 ? ''
       : parFormat === min ? (c.format === 'UT' ? `Au moins ${min} séances par semaine pour un ultra.` : '')
         : `Au moins ${min} séances par semaine pour une course de cette taille (${seuil} km-effort et plus).`,
     // Sans « Pas plus que de jours cochés. » ni le coût de la 4e séance (décision coach du
-    // 07/10/2026 : « ça n'apporte rien ») ; le plafond du débutant reste, il évite un refus.
+    // 07/10/2026 : « ça n'apporte rien ») ; le plafond d'un niveau, s'il en est un, se dit.
     c.niveau === 'debutant' && max < 7 ? `${max} au plus en débutant.` : '',
   ];
   return { min, max, note: parties.filter(Boolean).join(' ') };

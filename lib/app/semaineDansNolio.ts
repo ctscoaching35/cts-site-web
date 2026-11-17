@@ -249,8 +249,8 @@ export function comparerLaSemaine({ semaine, envoyees, nolio, posees = new Set()
 
 // ─── « Pourquoi cette semaine » en sept réponses ──────────────────────────────────────────────────────────────────
 
-// Une réponse : son rang, son intitulé (« Qui », « Objectif », « Où il en est », « Prévu », « Couru », « Séances clés »,
-// « Donc »), sa ligne, et ce qui a manqué pour y répondre.
+// Une réponse : son rang, son intitulé (« Sécurité », « Fait », « Dose », « Contenu », « Cadre », « Tri et placement »,
+// « Contrôle », moteur 8.471), sa ligne, et ce qui a manqué pour y répondre.
 export type Reponse = { n: number; libelle: string; texte: string; manque: string[] };
 
 // Les sept réponses de la semaine écrite par le moteur 8.460 (`semaine.pourquoi`, CONTRAT_API_CTS.md : une liste de sept

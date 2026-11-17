@@ -56,9 +56,9 @@ export async function modifierMonProfil(_e: { ok: boolean; message: string } | n
   if (demonstrationOuverte()) return { ok: false, message: 'Démonstration : rien ne s’enregistre.' };
   const fiche = await maFiche();
   if (!fiche) return { ok: false, message: 'Ta session a expiré : reconnecte-toi.' };
-  const { lireProfil, profilDeLaFiche } = await import('./profilEntrainement');
+  const { lireProfil, plafondsDeSeances, profilDeLaFiche } = await import('./profilEntrainement');
   // Le niveau choisi par son coach reste le sien (décision coach du 23/10/2026).
-  const lu = lireProfil(form, 'ton', await profilDeLaFiche(fiche.id));
+  const lu = lireProfil(form, 'ton', await profilDeLaFiche(fiche.id), await plafondsDeSeances());
   if ('erreur' in lu) return { ok: false, message: lu.erreur };
   const { error } = await clientService().from('athletes_coaches').update({ profil: lu.profil }).eq('id', fiche.id);
   if (error) return { ok: false, message: 'L’enregistrement n’a pas abouti : réessaie dans un moment.' };

@@ -160,7 +160,7 @@ export type Semaine = {
 
 export type SeptReponse = {
   n: number;
-  libelle: 'Qui' | 'Objectif' | 'Où il en est' | 'Prévu' | 'Couru' | 'Séances clés' | 'Donc';
+  libelle: 'Sécurité' | 'Fait' | 'Dose' | 'Contenu' | 'Cadre' | 'Tri et placement' | 'Contrôle';
   texte: string;
   manque?: string;
 };

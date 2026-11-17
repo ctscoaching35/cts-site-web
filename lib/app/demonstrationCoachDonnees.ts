@@ -95,14 +95,14 @@ function prevuesDe(a: Pick<Athlete, 'id'>, instant: number): Ligne[] {
 // manque }).
 const SEPT_REPONSES: Record<string, { n: number; libelle: string; texte: string; manque?: string }[]> = {
   'demo-plan-lea:S9': [
-    { n: 1, libelle: 'Qui', texte: 'confirmé, trail en très pentu, 7 jours par semaine, vitesse critique, FC au seuil 1 et FC au seuil 2 connues.' },
-    { n: 2, libelle: 'Objectif', texte: 'OCC : 56 km et 3467 m de D+ le 06/03.' },
-    { n: 3, libelle: 'Où il en est', texte: 'bloc développement, semaine 1 sur 4, charge ; le bloc travaille la VO2max ; J-110.' },
-    { n: 4, libelle: 'Prévu', texte: '7 séances, 5h34, « Seuil 2 court · 15 min — 5 × 3 min », sortie longue 1h45.' },
-    { n: 5, libelle: 'Couru', texte: '7 séances sur 7, 5h34, plus longue sortie 1h45.' },
-    { n: 6, libelle: 'Séances clés', texte: 'Seuil 2 : « Seuil 2 court · 15 min — 5 × 3 min » fait au bon effort (RPE 7 pour 7 prévu) ; sortie longue de 1h45 bien passée (RPE 3 pour 3) ; fatigue : aucun signal, Hooper 11.',
+    { n: 1, libelle: 'Sécurité', texte: 'confirmé, trail en très pentu, 7 jours par semaine, vitesse critique, FC au seuil 1 et FC au seuil 2 connues.' },
+    { n: 2, libelle: 'Fait', texte: 'OCC : 56 km et 3467 m de D+ le 06/03.' },
+    { n: 3, libelle: 'Dose', texte: 'bloc développement, semaine 1 sur 4, charge ; le bloc travaille la VO2max ; J-110.' },
+    { n: 4, libelle: 'Contenu', texte: '7 séances, 5h34, « Seuil 2 court · 15 min — 5 × 3 min », sortie longue 1h45.' },
+    { n: 5, libelle: 'Cadre', texte: '7 séances sur 7, 5h34, plus longue sortie 1h45.' },
+    { n: 6, libelle: 'Tri et placement', texte: 'Seuil 2 : « Seuil 2 court · 15 min — 5 × 3 min » fait au bon effort (RPE 7 pour 7 prévu) ; sortie longue de 1h45 bien passée (RPE 3 pour 3) ; fatigue : aucun signal, Hooper 11.',
       manque: 'le RPE de son EF de jeudi ; elle compte au RPE prévu.' },
-    { n: 7, libelle: 'Donc', texte: 'VO2max : la marche suivante, « VO2 long · 15 min — 2 × 4′, 4 × 1′, 6 × 30″ · vallonné » ; mécanique : la marche suivante, « Myocrossmax » ; sortie longue 2h30, un pas vers la sortie longue visée par le bloc ; volume 7h33, au plus +30 % de sa dernière semaine de charge.' },
+    { n: 7, libelle: 'Contrôle', texte: 'VO2max : la marche suivante, « VO2 long · 15 min — 2 × 4′, 4 × 1′, 6 × 30″ · vallonné » ; mécanique : la marche suivante, « Myocrossmax » ; sortie longue 2h30, un pas vers la sortie longue visée par le bloc ; volume 7h33, au plus +30 % de sa dernière semaine de charge.' },
   ],
 };
 
