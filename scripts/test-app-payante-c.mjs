@@ -128,3 +128,9 @@ test('le dossier de l’objectif : l’ordre du dossier du gratuit, les blocs du
   assert.match(lire('app/app/plan/jour-j/page.tsx'), /#jour-j/);
   assert.match(lire('app/app/plan/course/page.tsx'), /if \(plan\.fond\) redirect\(/);
 });
+
+test('la page Courses sans objectif (coaché sans objectif, saison de fond) ne lit pas la course du plan', () => {
+  const src = lire('components/app/courses/CoursesPayant.tsx');
+  assert.match(src, /const restants = objectif \? joursEntre\(jour, plan\.course\.date\) : 0;/);
+  assert.match(src, /const objectif = !ctx\.sansObjectif && !plan\.fond;/);
+});
