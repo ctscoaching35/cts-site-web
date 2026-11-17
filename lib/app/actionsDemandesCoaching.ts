@@ -13,7 +13,6 @@ import { ficheDuCompte } from './demandes';
 import { prevenirCoach } from './ecriture';
 import { adresseDuCompte, ouvrirEspace } from './espaceAthlete';
 import { coachConnecte } from './nolio';
-import { estExperience } from './profilGratuit';
 import { clientServeur, clientService } from './supabase';
 import { site } from '@/lib/content';
 
@@ -26,10 +25,9 @@ export async function envoyerDemandeCoaching(entree: unknown): Promise<EtatDeman
   const acces = await lireAcces();
   if (acces.cas !== 'gratuit' || !acces.compteId) return { ok: false, message: 'Ta session a expiré : reconnecte-toi.' };
   const supabase = await clientServeur();
-  const { data: profil } = await supabase.from('profils_gratuits').select('experience').eq('compte_id', acces.compteId).maybeSingle();
   const { data: courses } = await supabase.from('courses_gratuites').select('id, nom, course_date, distance_km, dplus_m').eq('compte_id', acces.compteId);
   const lue = lireDemande(entree, {
-    experienceConnue: estExperience(profil?.experience) ? profil.experience : null,
+    experienceConnue: null, // l'expérience du profil n'existe plus dans l'app gratuite : la demande la redemande
     anneeCourante: anneeParis(),
     coursesDuCompte: (courses ?? []).map((c) => ({ id: String(c.id), nom: String(c.nom), date: c.course_date ?? null,
       distance_km: c.distance_km == null ? null : Number(c.distance_km), dplus_m: c.dplus_m ?? null })),
