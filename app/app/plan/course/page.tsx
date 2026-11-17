@@ -1,32 +1,31 @@
 import type { Metadata } from 'next';
-import StrategieCourse from '@/components/app/StrategieCourse';
-import { AjouterTrace } from '@/components/app/GestesEcriture';
+import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import EnTeteApp from '@/components/app/EnTeteApp';
 import CorpsFichePreparation, { type FichePrep } from '@/components/app/FichePreparation';
-import ProfilCourse from '@/components/app/ProfilCourse';
-import RepartitionPentes from '@/components/app/RepartitionPentes';
-import RetourPlan from '@/components/app/RetourPlan';
-import EnTeteCourse from '@/components/app/EnTeteCourse';
-import { Partie, Puces, Tableau } from '@/components/app/Texte';
+import DossierObjectif from '@/components/app/courses/DossierObjectif';
 import { effacerStrategie } from '@/lib/app/actionsStrategie';
 import { contexte, lien, type Recherche } from '@/lib/app/contexte';
+import { demandeDuPlan, placeDansLaPreparation } from '@/lib/app/coursePlan';
 import { COURSE_OBJECTIF, parametresCalculateur, STRATEGIE_EXEMPLE, strategiesDuPlan } from '@/lib/app/strategie';
+import { blocsDuPlan } from '@/lib/app/tableau';
+import { donneesTableau } from '@/lib/app/tableauDuPlan';
 import { clientService } from '@/lib/app/supabase';
 import { ficheDeDemonstration, niveauDeDemonstration } from '@/lib/app/demonstration';
 
-export const metadata: Metadata = { title: 'Ta fiche de course' };
+export const metadata: Metadata = { title: 'Ton dossier de course' };
 
-// Q1 (décision coach du 05/11/2026 au soir, « A ») : des mots de coureur hors des noms de séance.
-const enMotsDeCoureur = (t: string) => t.replace(/le déterminant physiologique central de ta préparation/g, 'ce qui compte le plus pour ta course');
-
-// Ta fiche de course (cadrage, 3.4 ; maquette validée le 19/10/2026 : « profil, tronçons, ravitaillement ») : la fiche,
-// le profil et ses pentes, ton terrain, les tronçons, les déterminants de la performance, puis ton jour J et ta
-// stratégie de course et les fiches qui la préparent (StrategieCourse), comme la fiche de course privée des coachés.
+// Le dossier de course de l'objectif (cadrage, 3.4 ; maquette validée le 19/10/2026, puis refonte de l'app payante, étape (c) :
+// maquette du 16/11/2026) : la présentation du dossier de l'app gratuite (components/app/courses/DossierObjectif.tsx), avec les
+// données et les textes du plan. Son adresse reste celle d'avant : « /app/plan/jour-j » y mène, à « Ton jour J » (#jour-j). Avec
+// ?course=AAAA-MM-JJ, la fiche d'une course de préparation (PO3), dans l'app (décision coach du 19/10/2026).
 export default async function TaCourse({ searchParams }: { searchParams: Recherche }) {
   const ctx = await contexte(searchParams);
   const { plan } = ctx;
-  const { profil, terrain, determinants: d, jour_j: j } = plan;
-  // Le niveau du questionnaire, pour préremplir le calculateur de nutrition (rien en démonstration).
+  // Une saison de fond n'a pas de course : ni dossier ni fiche, sa page Courses (ses courses de préparation, « Ajouter »).
+  if (plan.fond) redirect(lien('/app/courses', ctx));
+  // Le niveau du questionnaire, pour préremplir le calculateur de nutrition (rien en démonstration) ; c'est aussi l'expérience
+  // envoyée au moteur pour le dossier.
   const { data: q } = ctx.demonstration ? { data: { intake: { niveau: await niveauDeDemonstration(ctx) } } }
     : await clientService().from('plans').select('intake').eq('id', ctx.cle).maybeSingle();
   const niveau = String(((q?.intake ?? {}) as Record<string, unknown>).niveau ?? '');
@@ -35,7 +34,6 @@ export default async function TaCourse({ searchParams }: { searchParams: Recherc
   const strategie = strategies[COURSE_OBJECTIF] ?? null;
   const calculateur = lien('/app/calculateurs/calculateur-nutrition', ctx,
     parametresCalculateur(plan.course.temps_cible, niveau, strategie, COURSE_OBJECTIF));
-  const t = profil.troncons;
   // ?course=AAAA-MM-JJ : la fiche d'une course de préparation (PO3), dans l'app (décision coach du 19/10/2026).
   const course = (await searchParams).course;
   if (typeof course === 'string') {
@@ -52,7 +50,7 @@ export default async function TaCourse({ searchParams }: { searchParams: Recherc
         <>
           <EnTeteApp ctx={ctx} />
           <main className="mx-auto max-w-2xl px-4 py-5 space-y-5">
-            <RetourPlan ctx={ctx} />
+            <Link href={lien('/app/courses', ctx)} className="inline-flex items-center min-h-11 text-sm font-bold text-teal">‹ Tes courses</Link>
             <CorpsFichePreparation fiche={fiche} calculateur={calculateurPrep}
               cheminFiche={(slug) => lien(`/app/bibliotheque/${slug}`, ctx)}
               strategie={strategiePrep} effacer={effacerStrategie.bind(null, ctx.cle, course)} />
@@ -61,63 +59,20 @@ export default async function TaCourse({ searchParams }: { searchParams: Recherc
       );
     }
   }
+  // Où il en est dans sa préparation (la carte « Dans ta préparation ») : rien pour un programme à la main, sans trame du moteur.
+  const d = ctx.aLaMain ? null : await donneesTableau(ctx).catch(() => null);
+  const depuis = ctx.coache ? d?.debut ?? null : null;
+  const semaine = d ? placeDansLaPreparation(d.trame, ctx.jour, depuis) : null;
+  const depuisMontagne = ctx.coache ? d?.debut ?? null : plan.course.rejoint?.lundi ?? null;
+  const place = d && semaine ? {
+    ...semaine, bloc: blocsDuPlan(d.trame, plan, ctx.jour, depuisMontagne).find((b) => b.moment === 'encours')?.nom ?? null,
+  } : null;
   return (
     <>
       <EnTeteApp ctx={ctx} />
-      <main className="mx-auto max-w-2xl px-4 py-5 space-y-5">
-        <RetourPlan ctx={ctx} />
-        <EnTeteCourse surtitre="Ta fiche de course" nom={plan.course.nom} lignes={plan.ta_course.lignes} />
-
-        {/* C29 et Q11 (audits du 05/11/2026 ; décision coach du 05/11/2026 au soir, « A ») : sans trace, une phrase de
-            coureur à la place des phrases de fichier, et de quoi la donner. Validé par le coach le 05/11/2026 (1A). */}
-        <Partie titre={profil.titre}>
-          {profil.sans_trace ? (
-            <>
-              <p>Sans la trace GPX de ta course, sa fiche n’a pas encore son profil ni ses tronçons : ta préparation part de son dénivelé total.</p>
-              {/* En démonstration, le geste répond que rien ne s'enregistre. */}
-              <AjouterTrace planId={ctx.cle} />
-            </>
-          ) : (
-            <>
-              {profil.points && <ProfilCourse points={profil.points} />}
-              {profil.pentes && <RepartitionPentes pentes={profil.pentes} />}
-            </>
-          )}
-        </Partie>
-
-        {terrain && (
-          <Partie titre={terrain.titre}>
-            <p>{terrain.texte}</p>
-          </Partie>
-        )}
-
-        {t && (t.homogene || t.tableau) && (
-          <Partie titre={t.titre}>
-            {t.homogene ? <p>{t.homogene}</p> : t.tableau && <Tableau lignes={t.tableau} />}
-          </Partie>
-        )}
-
-        <h2 className="pt-3 text-[1.25rem] font-extrabold text-indigo tracking-tight">{d.titre}</h2>
-        <Partie titre={d.physio.titre}>
-          <Puces puces={d.physio.puces.map(enMotsDeCoureur)} />
-        </Partie>
-        {d.mecanique && (
-          <Partie titre={d.mecanique.titre}>
-            <Puces puces={d.mecanique.puces} />
-          </Partie>
-        )}
-        {d.secteurs_cles && (
-          <Partie titre={d.secteurs_cles.titre}>
-            <Puces puces={d.secteurs_cles.puces} />
-          </Partie>
-        )}
-
-        <h2 id="jour-j" className="pt-3 text-[1.25rem] font-extrabold text-indigo tracking-tight scroll-mt-20">{j.titre}</h2>
-        <Partie titre={j.nutrition.titre}>
-          <StrategieCourse lignes={j.nutrition.lignes as [string, string][]} href={calculateur}
-            fiche={(slug) => lien(`/app/bibliotheque/${slug}`, ctx)} ultra={Boolean(j.fiche_ultra)}
-            strategie={strategie} effacer={effacerStrategie.bind(null, ctx.cle, COURSE_OBJECTIF)} />
-        </Partie>
+      <main className="mx-auto max-w-2xl px-4 py-5">
+        <DossierObjectif ctx={ctx} demande={demandeDuPlan(plan, niveau, ctx.jour)} strategie={strategie} calculateur={calculateur}
+          effacer={effacerStrategie.bind(null, ctx.cle, COURSE_OBJECTIF)} place={place} />
       </main>
     </>
   );

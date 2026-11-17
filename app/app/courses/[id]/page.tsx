@@ -42,7 +42,7 @@ export default async function DossierDeCourse({ params }: { params: Promise<{ id
     <>
       <EnTeteDesCourses acces={acces} genre={genre} />
       <main className="mx-auto max-w-2xl px-4 pt-5 pb-6 space-y-3">
-        <Link href="/app/courses" className="inline-flex items-center min-h-11 text-sm font-bold text-teal">‹ {genre === 'ancien' ? 'Tes dossiers de course' : 'Tes courses'}</Link>
+        <Link href="/app/courses" className="inline-flex items-center min-h-11 text-sm font-bold text-teal">‹ Tes courses</Link>
         <DossierCourse dossier={dossier} fiches={fiches.filter((f) => ultra || f.slug !== 'ultra')} fiche={(slug) => `/app/bibliotheque/${slug}`}
           nutritionHref={modifiable ? `/app/courses/${id}/nutrition`
             : `/app/calculateurs/calculateur-nutrition?${new URLSearchParams(parametresNutrition(dossier.reponse, dossier.strategie, false)).toString()}`} profilHref={modifiable ? '/app/profil?test=1' : null}

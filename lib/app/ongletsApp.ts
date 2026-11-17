@@ -21,7 +21,7 @@ export const ordreDesOnglets = (gratuit: boolean) => (gratuit ? ORDRE_GRATUIT : 
 // Les deux écrans de l'onglet Plan : « Ta préparation » (/app/plan) et « Tes données » (/app/donnees).
 export const estDansPlan = (chemin: string) => chemin === '/app/donnees' || chemin.startsWith('/app/donnees/')
   || (chemin.startsWith('/app/plan') && !estFicheDeCourse(chemin) && !estTests(chemin));
-// La fiche de course d'un acheteur ou d'un coaché (/app/plan/course) : l'onglet Courses jusqu'à l'étape (c).
+// Le dossier de l'objectif d'un acheteur ou d'un coaché (/app/plan/course, et la fiche d'une course de préparation) : dans l'onglet Courses.
 export const estFicheDeCourse = (chemin: string) => chemin === '/app/plan/course' || chemin.startsWith('/app/plan/course/');
 // La page des tests (/app/plan/zones) s'ouvre depuis Profil.
 export const estTests = (chemin: string) => chemin.startsWith('/app/plan/zones');
@@ -40,13 +40,4 @@ export function ongletAllume(cle: CleOnglet, chemin: string, gratuit: boolean, d
     case 'profil': return chemin.startsWith('/app/profil') || estTests(chemin);
     case 'bibliotheque': return chemin.startsWith('/app/bibliotheque') || (calculateur && !depuisUneFiche);
   }
-}
-
-/**
- * Où mène l'onglet Courses d'un acheteur ou d'un coaché, pour cette nuit (étape (c) à venir) : sa fiche de course s'il a un
- * objectif ; sans objectif, la liste de ses dossiers du gratuit s'il en a ; sinon l'accueil. Jamais une page vide.
- */
-export function destinationCourses(o: { sansObjectif: boolean; dossiers: number }): '/app/plan/course' | 'liste' | '/app' {
-  if (!o.sansObjectif) return '/app/plan/course';
-  return o.dossiers > 0 ? 'liste' : '/app';
 }

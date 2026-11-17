@@ -230,18 +230,29 @@ export type ModeleCarte = {
   profil: { km: number[]; altitude_m: number[]; plages: [number, number, string][] | null } | null;
 };
 export function modeleCarte(r: ReponseCourseLibre): ModeleCarte {
-  const p = r.profil?.points;
+  return modeleCarteDe({
+    nom: nomDeLaCourse(r), date: r.course.date, distance_km: r.course.distance_km, dplus_m: r.course.dplus_m, classe: r.course.classe,
+    points: r.profil?.points, secteurs: r.secteurs,
+  });
+}
+
+// La même carte, depuis les morceaux de la course (celle du dossier de l'objectif d'un acheteur ou d'un coaché : la course de son plan,
+// seule). Sans points fins : le dénivelé cumulé, secteur par secteur (comme ProfilCourse) ; `km_fin` est la fin du secteur, en km.
+export function modeleCarteDe(c: {
+  nom: string; date: string; distance_km: number; dplus_m: number; classe: Classe;
+  points?: Plan['profil']['points'] | null; secteurs?: { km_fin: number; dplus_m: number; dmoins_m: number }[] | null;
+}): ModeleCarte {
+  const p = c.points;
   let profil: ModeleCarte['profil'] = null;
   if (p?.altitude_m && p.altitude_m.length > 1) {
     const a = allegerPoints(p, 400);
     const alt = a.altitude_m!;
     profil = { km: a.km ?? alt.map((_, i) => i * (a.pas_km ?? 0)), altitude_m: alt, plages: a.plages ?? null };
-  } else if (r.secteurs?.length) {
-    // Sans points fins : le dénivelé cumulé, secteur par secteur (comme ProfilCourse).
+  } else if (c.secteurs?.length) {
     const km = [0];
     const altitude_m = [0];
-    for (const s of r.secteurs) { km.push(s.km_fin); altitude_m.push(altitude_m[altitude_m.length - 1]! + s.dplus_m - s.dmoins_m); }
+    for (const s of c.secteurs) { km.push(s.km_fin); altitude_m.push(altitude_m[altitude_m.length - 1]! + s.dplus_m - s.dmoins_m); }
     profil = { km, altitude_m, plages: null };
   }
-  return { nom: nomDeLaCourse(r), date: r.course.date, distance_km: r.course.distance_km, dplus_m: r.course.dplus_m, classe: r.course.classe, profil };
+  return { nom: c.nom, date: c.date, distance_km: c.distance_km, dplus_m: c.dplus_m, classe: c.classe, profil };
 }

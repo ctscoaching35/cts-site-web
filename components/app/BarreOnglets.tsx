@@ -24,7 +24,7 @@ const ICONES: Record<CleOnglet, React.ReactNode> = {
 // Pas d'onglets avant d'avoir un plan à lire, ni dans l'espace coach.
 const SANS_ONGLETS = ['/app/connexion', '/app/sans-plan', '/app/bienvenue'];
 
-export default function BarreOnglets({ gratuit = false, coursesHref = null }: { gratuit?: boolean; coursesHref?: string | null }) {
+export default function BarreOnglets({ gratuit = false }: { gratuit?: boolean }) {
   const chemin = usePathname();
   const params = useSearchParams();
   // Les pages vues dans l'app pendant la session : le bouton retour (Retour) revient d'où l'on vient s'il y en a une.
@@ -49,9 +49,6 @@ export default function BarreOnglets({ gratuit = false, coursesHref = null }: { 
   // bibliothèque, Bibliothèque. L'onglet Plan est allumé sur « Ta préparation » comme sur « Tes données ».
   const depuisUneFiche = Boolean(params.get('garder'));
   const liste = ordreDesOnglets(gratuit);
-  // L'onglet Courses d'un acheteur ou d'un coaché (étape (c) à venir) ; en démonstration, un coaché sans objectif (?sansobjectif=1)
-  // n'a pas de fiche de course : son accueil.
-  const destination = params.get('sansobjectif') === '1' ? '/app' : coursesHref ?? CHEMIN_ONGLET.courses;
   return (
     <nav
       aria-label="Navigation de l’app"
@@ -64,7 +61,7 @@ export default function BarreOnglets({ gratuit = false, coursesHref = null }: { 
         {liste.map((cle) => (
           <li key={cle}>
             <Link
-              href={`${cle === 'courses' && !gratuit ? destination : CHEMIN_ONGLET[cle]}${suite}`}
+              href={`${CHEMIN_ONGLET[cle]}${suite}`}
               aria-current={ongletAllume(cle, chemin, gratuit, depuisUneFiche) ? 'page' : undefined}
               className={clsx(
                 'flex flex-col items-center justify-center gap-1 h-16 text-[0.656rem] tracking-tight whitespace-nowrap',

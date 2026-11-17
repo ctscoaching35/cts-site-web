@@ -1,12 +1,12 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import clsx from 'clsx';
 import EnTeteCourse from '../EnTeteCourse';
 import ProfilCourse from '../ProfilCourse';
 import RepartitionPentes from '../RepartitionPentes';
 import { Partie, Puces, Tableau } from '../Texte';
+import { EffortDuJourJ, TypeDeLaCourse } from './BlocsCourse';
 import { Carte, LIEN, Surtitre } from '../Ui';
-import { CLASSES, nomDeLaCourse, pentesPourBarres, type Classe, type Dossier } from '@/lib/app/courseLibre';
+import { nomDeLaCourse, pentesPourBarres, type Dossier } from '@/lib/app/courseLibre';
 import { dateLongue } from '@/lib/app/plan';
 import { lignesDeZones, lignesDesEtapes, nomDeZone, ORDRE_ZONES, texteAllure, texteFc } from '@/lib/app/dossierTexte';
 
@@ -18,12 +18,6 @@ import { lignesDeZones, lignesDesEtapes, nomDeZone, ORDRE_ZONES, texteAllure, te
 // serveur) l'affichent de la même façon. Les gestes (partager, supprimer, effacer la stratégie) arrivent en `partager`, `pied`
 // et `effacerStrategie`, déjà bâtis par la page.
 export type FicheDeCourse = { slug: string; titre: string; texte: string };
-
-const ECHELLE: Record<Classe, { titre: string; seuil: string }> = {
-  roulante: { titre: 'Roulante', seuil: 'moins de 20 m/km' },
-  vallonnee: { titre: 'Vallonnée', seuil: '20 à 40 m/km' },
-  montagne: { titre: 'Montagne', seuil: 'plus de 40 m/km' },
-};
 
 const titreDeSection = 'pt-3 text-[1.25rem] font-extrabold text-indigo tracking-tight scroll-mt-20';
 
@@ -40,12 +34,6 @@ export default function DossierCourse({ dossier, fiches, fiche, nutritionHref, p
   const barres = pentesPourBarres(r);
   const t = r.profil.troncons;
   const nom = (z: string) => zones.find((l) => l.zone === z)?.libelle ?? nomDeZone(z);
-  const chiffre = (liste: NonNullable<typeof e.chiffres>['plat'] | undefined, avecAllure: boolean) => (liste ?? []).map((x) => {
-    const morceaux = [texteFc(x.fc), avecAllure ? texteAllure(x.allure) : null].filter(Boolean);
-    return morceaux.length ? `${nom(x.zone)} : ${morceaux.join(' · ')}` : null;
-  }).filter((x): x is string => Boolean(x));
-  const chiffresPlat = chiffre(e.chiffres?.plat, true);
-  const chiffresCote = chiffre(e.chiffres?.cote, false);
   const lignesEntete: [string, string][] = [
     ['Date', dateLongue(c.date, true)],
     ['Distance', `${String(c.distance_km).replace('.', ',')} km`],
@@ -60,16 +48,7 @@ export default function DossierCourse({ dossier, fiches, fiche, nutritionHref, p
 
       {/* Le type de la course : sa phrase est celle du moteur (AF.2), l'échelle les trois seuils. */}
       <Partie titre="Le type de ta course">
-        <p className="font-bold text-indigo">{c.classe_libelle}</p>
-        <ol className="grid grid-cols-3 gap-1.5" aria-label="Les trois types de course">
-          {CLASSES.map((k) => (
-            <li key={k} aria-current={k === c.classe ? 'true' : undefined}
-              className={clsx('rounded-xl px-2 py-2.5 text-center', k === c.classe ? 'bg-teal text-white' : 'bg-sand text-[#4A4866]')}>
-              <span className="block text-[0.8125rem] font-extrabold">{ECHELLE[k].titre}</span>
-              <span className="block text-[0.6875rem] leading-snug">{ECHELLE[k].seuil}</span>
-            </li>
-          ))}
-        </ol>
+        <TypeDeLaCourse classe={c.classe} libelle={c.classe_libelle} />
       </Partie>
 
       {/* Le profil : fin, comme dans l'app des acheteurs ; sans trace, la phrase du moteur. */}
@@ -107,27 +86,7 @@ export default function DossierCourse({ dossier, fiches, fiche, nutritionHref, p
       {/* L'effort du jour J : la grille du moteur, et, avec des repères, leurs FC et allures. */}
       <h2 id="jour-j" className={titreDeSection}>Ton effort le jour J</h2>
       <Partie titre="Selon le terrain">
-        <p className="font-semibold text-indigo">Pour {e.duree} d’effort :</p>
-        <dl className="space-y-3">
-          <div>
-            <dt className="text-[0.75rem] font-bold text-[#5E5C78]">Sur le plat</dt>
-            <dd className="font-bold text-indigo">{e.plat.libelle}</dd>
-            {chiffresPlat.map((x) => <dd key={x} className="text-[0.8125rem]">{x}</dd>)}
-          </div>
-          <div>
-            <dt className="text-[0.75rem] font-bold text-[#5E5C78]">Dans les côtes</dt>
-            <dd className="font-bold text-indigo">{e.cote.libelle}</dd>
-            {chiffresCote.map((x) => <dd key={x} className="text-[0.8125rem]">{x}</dd>)}
-          </div>
-          <div>
-            <dt className="text-[0.75rem] font-bold text-[#5E5C78]">En descente</dt>
-            <dd>{e.descente}</dd>
-          </div>
-        </dl>
-        {e.note && <p className="text-[0.8125rem] font-semibold text-indigo">{e.note}</p>}
-        {!e.chiffres && profilHref && (
-          <Link href={profilHref} className={LIEN}>Fais ton test pour avoir tes FC et tes allures ›</Link>
-        )}
+        <EffortDuJourJ effort={e} nom={nom} profilHref={profilHref} />
       </Partie>
 
       {/* Tes zones, avec les repères du profil. */}
