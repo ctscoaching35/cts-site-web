@@ -11,7 +11,6 @@
  * Côté serveur seulement.
  */
 import { profilCoureur } from './zones';
-import type { Experience } from './profilGratuit';
 
 const BREVO = 'https://api.brevo.com/v3';
 
@@ -30,14 +29,12 @@ export function typeDeCourse(distanceKm: number | null | undefined, dplusM: numb
 }
 
 export type EntreeAttributs = {
-  experience: Experience | null;
   vc_ms: number | null; d_prime_m: number | null;
   prochaineCourse: { date: string | null; distance_km: number | null; dplus_m: number | null } | null;
 };
 // Les attributs que l'app connaît : ceux qu'elle ne connaît pas ne sont pas envoyés (Brevo garde ce qu'il avait).
 export function attributsListe(e: EntreeAttributs): Record<string, string> {
   const a: Record<string, string> = {};
-  if (e.experience) a.EXPERIENCE = e.experience;
   const style = profilCoureur({ vc_ms: e.vc_ms, d_prime_m: e.d_prime_m });
   if (style) a.STYLE = style.coefficient < 0.9 ? 'rapide' : 'endurant';
   const c = e.prochaineCourse;

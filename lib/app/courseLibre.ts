@@ -102,11 +102,10 @@ const nombre = (t: string): number | string => {
 };
 
 // Le corps de la demande : ce qui est vide ne part pas ; avec une trace, la distance et le D+ donnés font foi (le moteur).
-export function construireDemande(s: SaisieCourse, profil: { experience: Experience | null; reperes: DemandeCourseLibre['reperes'] | null }): DemandeCourseLibre {
+export function construireDemande(s: SaisieCourse, profil: { reperes: DemandeCourseLibre['reperes'] | null }): DemandeCourseLibre {
   const d: DemandeCourseLibre = { date_course: s.date.trim(), temps_cible: s.temps.trim() };
   if (s.distance.trim()) d.distance_km = nombre(s.distance);
   if (s.dplus.trim()) d.dplus_m = nombre(s.dplus);
-  if (profil.experience) d.experience = profil.experience;
   if (profil.reperes && Object.keys(profil.reperes).length) d.reperes = profil.reperes;
   if (s.nom.trim()) d.course_nom = s.nom.trim().slice(0, 120);
   return d;

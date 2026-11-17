@@ -63,7 +63,7 @@ export function ListeVisiteur() {
         </Carte>
       ) : dossier === null ? (
         <Carte className="space-y-1.5">
-          <p className="text-sm font-bold text-indigo">Prépare ta course sans plan.</p>
+          <p className="text-sm font-bold text-indigo">Comprends ta course.</p>
           <p className="text-[0.8125rem] text-[#4A4866] leading-relaxed">
             Sa trace GPX fait tout le dossier : profil, pentes, type de course, effort du jour J, zones, nutrition, carte à partager.
           </p>

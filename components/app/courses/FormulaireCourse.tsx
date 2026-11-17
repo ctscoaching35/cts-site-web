@@ -9,7 +9,7 @@ import {
   SAISIE_COURSE_VIDE, allegerReponse, appelerCourseLibre, construireDemande, reperesDuProfil,
   type SaisieCourse,
 } from '@/lib/app/courseLibre';
-import { calculer, type Experience, type TestsGratuits } from '@/lib/app/profilGratuit';
+import { calculer, type TestsGratuits } from '@/lib/app/profilGratuit';
 import { BOUTON, CHAMP, Carte, Surtitre, TITRE } from '../Ui';
 
 // La nouvelle course (maquette « Course » validée le 16/11/2026) : sa trace GPX, ou sa distance et son D+ ; sa date ; le temps visé.
@@ -22,7 +22,7 @@ const TAILLE_MAX_GPX = 10 * 1024 * 1024;
 // Le refus d'une trace trop lourde : la phrase du moteur (AF.1), dite avant l'envoi.
 const TRACE_TROP_LOURDE = 'Ta trace GPX est trop lourde : exporte-la de nouveau, sans les points inutiles.';
 
-export type ProfilDeLaCourse = { experience: Experience | null; tests: TestsGratuits; avecFc: boolean };
+export type ProfilDeLaCourse = { tests: TestsGratuits; avecFc: boolean };
 
 export default function FormulaireCourse({ compte, profil }: { compte: boolean; profil: ProfilDeLaCourse | null }) {
   const router = useRouter();
@@ -36,7 +36,7 @@ export default function FormulaireCourse({ compte, profil }: { compte: boolean; 
     if (compte) return;
     const b = lireBrouillon();
     const c = b ? calculer(b, '') : null;
-    setVu(c?.ok ? { experience: c.experience, tests: c.tests, avecFc: false } : { experience: b?.experience ?? null, tests: {}, avecFc: false });
+    setVu({ tests: c?.ok ? c.tests : {}, avecFc: false });
   }, [compte]);
 
   const reperes = vu ? reperesDuProfil(vu.tests, vu.avecFc) : null;
@@ -48,7 +48,7 @@ export default function FormulaireCourse({ compte, profil }: { compte: boolean; 
     setErreur('');
     if (fichier && fichier.size > TAILLE_MAX_GPX) { setErreur(TRACE_TROP_LOURDE); return; }
     setEnCours(true);
-    const demande = construireDemande(saisie, { experience: vu?.experience ?? null, reperes });
+    const demande = construireDemande(saisie, { reperes });
     const r = await appelerCourseLibre(demande, fichier);
     if (!r.ok) { setErreur(r.message); setEnCours(false); return; }
     // Ce qui se range : la réponse allégée, et ce qui est parti (jamais le fichier).
@@ -129,18 +129,12 @@ export default function FormulaireCourse({ compte, profil }: { compte: boolean; 
         {reperes ? (
           <p className="text-[0.8125rem] text-[#4A4866] leading-relaxed">
             Ton profil donne tes repères
-            {vu?.experience ? '' : ', sans ton expérience en trail'} : le dossier s’en sert pour tes zones.
+            : le dossier s’en sert pour tes zones.
           </p>
         ) : (
           <p className="text-[0.8125rem] text-[#4A4866] leading-relaxed">
             Sans test, le dossier n’a pas de zones : il se lit sans tes FC ni tes allures.{' '}
             <Link href="/app/profil?test=1" className="font-bold text-teal whitespace-nowrap">Faire un test ›</Link>
-          </p>
-        )}
-        {vu && !vu.experience && (
-          <p className="text-[0.8125rem] text-[#4A4866] leading-relaxed">
-            Ton expérience n’est pas renseignée : le dossier suppose « intermédiaire ».{' '}
-            <Link href="/app/profil?test=1" className="font-bold text-teal whitespace-nowrap">La renseigner ›</Link>
           </p>
         )}
       </Carte>

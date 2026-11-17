@@ -1,6 +1,6 @@
 /**
  * LA CARTE À PARTAGER (app gratuite, lot B, d'après l'écran « Partager » de la maquette validée le 16/11/2026) : un visuel au
- * format story (1080 × 1920), dessiné dans un canvas, la course seule (son nom, sa date, la distance, le D+, sa classe, son profil) et
+ * format story (1080 × 1920), dessiné dans un canvas, la course seule (son nom, sa date, la distance, le D+, son profil) et
  * l'adresse de l'app. AUCUNE donnée personnelle : la fonction ne reçoit qu'un ModeleCarte (lib/app/courseLibre.ts), qui n'en porte pas
  * (ni FC, ni allure, ni temps visé). Pur : le dessin prend un contexte 2D, que le navigateur (CarteStory.tsx) et les tests fournissent.
  *
@@ -14,7 +14,7 @@ export const HAUTEUR = 1920;
 export const ADRESSE_CARTE = 'cts-coaching.com';
 // Les phrases de la carte et de son écran : celles de la maquette (« Partager »).
 export const SURTITRE_CARTE = 'Ma prochaine course';
-export const ACCROCHE_CARTE = 'Prépare ta course gratuitement';
+export const ACCROCHE_CARTE = 'Comprends ta course, gratuitement';
 export const COMPTE_INSTAGRAM = '@cts.coaching';
 
 const FOND = '#1F1D38';
@@ -141,7 +141,7 @@ export function dessinerCarte(c: Ctx, m: ModeleCarte, o: OptionsCarte) {
   const date = dateDeLaCarte(m.date);
   if (date) texte(c, date, marge, yDate, { taille: 46, poids: 600, couleur: CLAIR, famille: f });
 
-  // Les chiffres : distance, D+, classe. Sans profil à montrer, ils descendent vers le milieu de la carte.
+  // Les chiffres : distance, D+. Sans profil à montrer, ils descendent vers le milieu de la carte.
   const avecProfil = Boolean(m.profil && m.profil.altitude_m.length > 1);
   const yc = Math.max(yDate + 190, avecProfil ? 0 : 1130);
   const km = String(Math.round(m.distance_km * 10) / 10).replace('.', ',');
@@ -152,23 +152,7 @@ export function dessinerCarte(c: Ctx, m: ModeleCarte, o: OptionsCarte) {
   const dplus = String(Math.round(m.dplus_m));
   texte(c, dplus, xDplus, yc, { taille: 150, poids: 800, couleur: '#FFFFFF', famille: f, espacement: -3 });
   texte(c, 'M D+', xDplus, yc + 52, { taille: 34, poids: 700, couleur: MENTHE, famille: f, espacement: 5 });
-  c.font = `800 150px ${f}`;
-  const xClasse = xDplus + c.measureText(dplus).width + 70;
-  const largeurClasse = LARGEUR - marge - xClasse;
-  let finChiffres = yc + 52;
-  if (largeurClasse > 200) {
-    arrondi(c, xClasse, yc - 116, largeurClasse, 168, 28);
-    c.fillStyle = TEAL;
-    c.fill();
-    texte(c, 'COURSE', xClasse + 28, yc - 62, { taille: 26, poids: 700, couleur: CLAIR, famille: f, espacement: 5 });
-    c.font = `800 52px ${f}`;
-    const mot = CLASSE_COURTE[m.classe];
-    texte(c, mot, xClasse + 28, yc - 8, { taille: c.measureText(mot).width > largeurClasse - 56 ? 40 : 52, poids: 800, couleur: '#FFFFFF', famille: f });
-  } else {
-    // Trop de chiffres pour une pastille : la classe passe dessous.
-    texte(c, `course ${CLASSE_COURTE[m.classe]}`, marge, yc + 120, { taille: 50, poids: 800, couleur: '#FFFFFF', famille: f });
-    finChiffres = yc + 120;
-  }
+  const finChiffres = yc + 52;
 
   // Le profil, d'un bord à l'autre, entre les chiffres et l'accroche.
   if (m.profil && avecProfil) {

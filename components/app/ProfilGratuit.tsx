@@ -7,14 +7,14 @@ import clsx from 'clsx';
 import { enregistrerProfilGratuit } from '@/lib/app/actionsGratuit';
 import { brouillonVide, garderBrouillon, lireBrouillon } from '@/lib/app/brouillonGratuit';
 import {
-  CONSEILS_GRATUITS, EXPERIENCES, SAISIE_VIDE, aDesFc, aDesTests, calculer, saisieDepuis, titreExperience,
-  type Calcul, type Experience, type Saisie, type TestsGratuits,
+  CONSEILS_GRATUITS, SAISIE_VIDE, aDesFc, aDesTests, calculer, saisieDepuis,
+  type Calcul, type Saisie, type TestsGratuits,
 } from '@/lib/app/profilGratuit';
 import { allure, profilCoureur } from '@/lib/app/zones';
 import { AllerPlusLoin } from './AllerPlusLoin';
 import { BOUTON, BOUTON_SECONDAIRE, CHAMP, Carte, CarteSombre, Surtitre, TITRE } from './Ui';
 
-// Le profil de l'app gratuite (maquette « Profil » validée le 16/11/2026, textes mot pour mot) : l'expérience en trail, les
+// Le profil de l'app gratuite (maquette « Profil » validée le 16/11/2026, textes mot pour mot) : les
 // trois tests, les repères et le style de coureur qui en sortent (les calculs de l'app des acheteurs, lib/app/zones.ts).
 // « Tes zones » et « Des séances types » viennent du moteur (lot B) : une ligne à leur place.
 // Un visiteur voit son résultat sans rien enregistrer (le calcul tourne ici, dans son navigateur ; son brouillon ne
@@ -25,10 +25,10 @@ const COCHE = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLi
 export const CONSENTEMENT_FC = 'J’accepte que City to Summit garde ces valeurs dans mon compte, seulement pour calculer mes zones et mes repères. Je peux les effacer à tout moment.';
 
 export default function ProfilGratuit({ compte, gardee, consentementDonne, ouvrirTest }: {
-  compte: boolean; gardee: { experience: Experience | null; tests: TestsGratuits } | null; consentementDonne: boolean; ouvrirTest: boolean;
+  compte: boolean; gardee: { tests: TestsGratuits } | null; consentementDonne: boolean; ouvrirTest: boolean;
 }) {
   const router = useRouter();
-  const depart: Saisie = gardee ? saisieDepuis(gardee.experience, gardee.tests) : SAISIE_VIDE;
+  const depart: Saisie = gardee ? saisieDepuis(gardee.tests) : SAISIE_VIDE;
   const calculDepart = gardee ? calculer(depart, '') : null;
   const [saisie, setSaisie] = useState<Saisie>(depart);
   const [calcul, setCalcul] = useState<Calcul | null>(calculDepart?.ok ? calculDepart : null);
@@ -84,25 +84,8 @@ export default function ProfilGratuit({ compte, gardee, consentementDonne, ouvri
         )}
         <div className="space-y-2">
           <h1 className={TITRE}>Tes tests de terrain</h1>
-          <p className="text-[0.8125rem] text-[#4A4866] leading-relaxed">Dis d’abord où tu en es, puis remplis ce que tu as : ton profil se complète test après test.</p>
+          <p className="text-[0.8125rem] text-[#4A4866] leading-relaxed">Remplis ce que tu as : ton profil se complète test après test.</p>
         </div>
-
-        <Carte className="space-y-2.5">
-          <Surtitre>Ton expérience en trail</Surtitre>
-          <div role="radiogroup" aria-label="Ton expérience en trail" className="space-y-2">
-            {EXPERIENCES.map((x) => (
-              <label key={x.cle} className={clsx('flex gap-3 items-start rounded-xl border p-3 cursor-pointer',
-                saisie.experience === x.cle ? 'border-teal bg-[#E1EFEA]' : 'border-indigo/[0.12]')}>
-                <input type="radio" name="experience" className="mt-1 w-4 h-4 accent-teal" checked={saisie.experience === x.cle}
-                  onChange={() => setSaisie((s) => ({ ...s, experience: x.cle }))} />
-                <span>
-                  <span className="block text-sm font-bold text-indigo">{x.titre}</span>
-                  <span className="block text-[0.78rem] text-[#4A4866] leading-snug">{x.texte}</span>
-                </span>
-              </label>
-            ))}
-          </div>
-        </Carte>
 
         <Carte className="space-y-3">
           <Numero n="01" titre="La vitesse critique" />
@@ -165,12 +148,6 @@ export default function ProfilGratuit({ compte, gardee, consentementDonne, ouvri
       <h1 className={TITRE}>Ton profil de coureur</h1>
       {statut && <p role="status" className="text-sm text-teal font-semibold">{statut}</p>}
       <p className="text-[0.8125rem] text-[#5E5C78] leading-relaxed">Tes repères, tirés de tes tests. Ils règlent tes zones, et la façon de gérer ta course.</p>
-
-      <button type="button" onClick={ouvrir}
-        className="w-full flex items-center justify-between gap-2 min-h-12 px-4 rounded-xl bg-white border border-indigo/[0.08] text-sm text-indigo text-left">
-        <span>Ton expérience en trail : <strong className={c?.experience ? '' : 'text-[#8A5E10]'}>{titreExperience(c?.experience ?? null) ?? 'à indiquer'}</strong></span>
-        <span aria-hidden className="text-teal font-bold">›</span>
-      </button>
 
       <section className="grid grid-cols-3 gap-2" aria-label="Tes repères">
         {reperes.map(([titre, valeur, unite, test]) => {

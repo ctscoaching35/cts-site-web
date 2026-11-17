@@ -21,7 +21,7 @@ export default async function NouvelleCourse() {
       <EnTeteDesCourses acces={acces} genre={genre} />
       <main className="mx-auto max-w-2xl px-4 pt-5 pb-6">
         <FormulaireCourse compte={genre === 'gratuit'}
-          profil={garde ? { experience: garde.experience, tests: garde.tests, avecFc: garde.consentementFc } : null} />
+          profil={garde ? { tests: garde.tests, avecFc: garde.consentementFc } : null} />
       </main>
     </>
   );

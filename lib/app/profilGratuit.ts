@@ -19,12 +19,11 @@ export const titreExperience = (v: Experience | null) => EXPERIENCES.find((e) =>
 
 // Ce que la personne a tapé, tel quel (des textes : « 3 », « 3:00 », « 1020 », « 4:30 »).
 export type Saisie = {
-  experience: Experience | null;
   e1t: string; e1d: string; e2t: string; e2d: string; // la vitesse critique : deux efforts (durée, distance)
   fc1: string; al1: string; // le test de la parole : FC et allure au premier palier où la respiration coupe
   fc2: string; // la FC au seuil 2, facultative
 };
-export const SAISIE_VIDE: Saisie = { experience: null, e1t: '', e1d: '', e2t: '', e2d: '', fc1: '', al1: '', fc2: '' };
+export const SAISIE_VIDE: Saisie = { e1t: '', e1d: '', e2t: '', e2d: '', fc1: '', al1: '', fc2: '' };
 
 // Ce qui se garde (jsonb de profils_gratuits.tests).
 export type TestsGratuits = {
@@ -34,7 +33,7 @@ export type TestsGratuits = {
 };
 
 export type Calcul =
-  | { ok: true; experience: Experience | null; tests: TestsGratuits; profil: Profil }
+  | { ok: true; tests: TestsGratuits; profil: Profil }
   | { ok: false; message: string };
 
 const plein = (t: string) => t.trim() !== '';
@@ -84,9 +83,8 @@ export function calculer(s: Saisie, jour: string): Calcul {
     tests.fc2 = { fc_seuil2: fc, le: jour };
     profil = { ...profil, fc_seuil2: fc, fc_seuil2_le: jour };
   }
-  if (!aDesTests(tests) && s.experience === null)
-    return { ok: false, message: 'Entre au moins un test, ou ton expérience en trail.' };
-  return { ok: true, experience: s.experience, tests, profil };
+  if (!aDesTests(tests)) return { ok: false, message: 'Entre au moins un test.' };
+  return { ok: true, tests, profil };
 }
 
 // Sans l'accord de la personne, la FC (une donnée de santé) ne se garde pas : le reste, si.
@@ -101,9 +99,8 @@ export const profilDesTests = (t: TestsGratuits): Profil => ({
 
 const minutesSecondes = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
 // Ce qui est gardé, remis dans les champs du formulaire.
-export function saisieDepuis(experience: Experience | null, t: TestsGratuits): Saisie {
+export function saisieDepuis(t: TestsGratuits): Saisie {
   return {
-    experience,
     e1t: t.vc ? minutesSecondes(t.vc.efforts[0].duree_s) : '', e1d: t.vc ? String(Math.round(t.vc.efforts[0].distance_m)) : '',
     e2t: t.vc ? minutesSecondes(t.vc.efforts[1].duree_s) : '', e2d: t.vc ? String(Math.round(t.vc.efforts[1].distance_m)) : '',
     fc1: t.parole ? String(t.parole.fc_seuil1) : '',
@@ -117,7 +114,6 @@ export function saisieSure(brut: unknown): Saisie {
   const o = (brut && typeof brut === 'object' ? brut : {}) as Record<string, unknown>;
   const t = (k: string) => (typeof o[k] === 'string' ? (o[k] as string).slice(0, 12) : '');
   return {
-    experience: estExperience(o.experience) ? o.experience : null,
     e1t: t('e1t'), e1d: t('e1d'), e2t: t('e2t'), e2d: t('e2d'), fc1: t('fc1'), al1: t('al1'), fc2: t('fc2'),
   };
 }

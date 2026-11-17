@@ -30,9 +30,9 @@ export default function AccueilGratuit({ acces }: { acces: Acces }) {
       <main className="mx-auto max-w-2xl px-4 pt-5 pb-6 space-y-4">
         <div className="space-y-2.5 pt-2">
           <span className="text-[0.6875rem] font-bold tracking-[0.12em] uppercase text-teal">L’app gratuite</span>
-          <h1 className={TITRE}>Comprends ton profil. Prépare ta course.</h1>
+          <h1 className={TITRE}>Connais ton profil. Comprends ta course.</h1>
           <p className="text-sm text-[#5E5C78] leading-relaxed">
-            Comprendre ton profil, t’entraîner avec méthode et progresser en trail, même loin de la montagne : la méthode de deux kinés, adaptée chaque semaine à ce que tu cours.
+            Tes tests, tes zones, ce que ta course demande à ton corps : les repères de deux kinés, en accès libre.
           </p>
         </div>
 

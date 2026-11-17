@@ -141,7 +141,7 @@ export default function DossierCourse({ dossier, fiches, fiche, nutritionHref, p
         </Partie>
       )}
 
-      {/* La nutrition du jour J : le calculateur, au niveau de l'expérience du profil. */}
+      {/* La nutrition du jour J : le calculateur (niveau de l'expérience rendu par le moteur). */}
       <h2 className={titreDeSection}>Ta nutrition en course</h2>
       <Partie titre="Avec le calculateur City to Summit">
         {strategie ? (

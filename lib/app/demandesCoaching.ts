@@ -67,11 +67,11 @@ export type Jointes = {
 };
 export async function jointesDuCompte(compteId: string): Promise<Jointes> {
   const service = clientService();
-  const { data: profil } = await service.from('profils_gratuits').select('experience, tests, consentement_fc_le').eq('compte_id', compteId).maybeSingle();
+  const { data: profil } = await service.from('profils_gratuits').select('tests, consentement_fc_le').eq('compte_id', compteId).maybeSingle();
   const { data: courses } = await service.from('courses_gratuites').select('id, nom, course_date, temps_vise_s, distance_km, dplus_m')
     .eq('compte_id', compteId).order('course_date', { ascending: true, nullsFirst: false });
   return {
-    experience: profil?.experience ?? null, tests: testsSurs(profil?.tests), consentementFc: Boolean(profil?.consentement_fc_le),
+    experience: null, tests: testsSurs(profil?.tests), consentementFc: Boolean(profil?.consentement_fc_le),
     courses: (courses ?? []).map((c) => ({ id: String(c.id), nom: String(c.nom), course_date: c.course_date ?? null,
       temps_vise_s: c.temps_vise_s ?? null, distance_km: c.distance_km == null ? null : Number(c.distance_km), dplus_m: c.dplus_m ?? null })),
   };

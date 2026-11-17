@@ -43,7 +43,7 @@ export default async function MonProfil({ searchParams }: { searchParams: Recher
       <>
         <EnTeteGratuit acces={acces} />
         <main className="mx-auto max-w-2xl px-4 pt-5 pb-6">
-          <ProfilGratuit compte={acces.cas === 'gratuit'} gardee={gardee ? { experience: gardee.experience, tests: gardee.tests } : null}
+          <ProfilGratuit compte={acces.cas === 'gratuit'} gardee={gardee ? { tests: gardee.tests } : null}
             consentementDonne={Boolean(gardee?.consentementFc)} ouvrirTest={(await searchParams).test === '1'} />
         </main>
       </>

@@ -20,10 +20,10 @@ async function prochaineCourse(compteId: string) {
 // Inscrit le compte à la liste avec ses attributs du moment ; true : Brevo a répondu par un succès.
 export async function synchroniserListe(compteId: string, email: string): Promise<boolean> {
   try {
-    const { data } = await (await clientServeur()).from('profils_gratuits').select('experience, tests').eq('compte_id', compteId).maybeSingle();
+    const { data } = await (await clientServeur()).from('profils_gratuits').select('tests').eq('compte_id', compteId).maybeSingle();
     const profil = profilDesTests(testsSurs(data?.tests));
     return await inscrireAListe(email, attributsListe({
-      experience: data?.experience ?? null, vc_ms: profil.vc_ms, d_prime_m: profil.d_prime_m, prochaineCourse: await prochaineCourse(compteId),
+      vc_ms: profil.vc_ms, d_prime_m: profil.d_prime_m, prochaineCourse: await prochaineCourse(compteId),
     }));
   } catch (e) {
     console.error('Liste e-mail (attributs) :', e instanceof Error ? e.message : e);

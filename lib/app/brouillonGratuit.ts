@@ -1,6 +1,6 @@
 'use client';
 /**
- * Ce que le visiteur a sous les yeux (son expérience, ses tests) tient le temps de son parcours : en mémoire de l'onglet
+ * Ce que le visiteur a sous les yeux (ses tests) tient le temps de son parcours : en mémoire de l'onglet
  * (sessionStorage), jamais plus. Il sert à une chose : être gardé dans son compte quand il se connecte, dans la même
  * session. Effacé dès que le compte l'a reçu (ou qu'il n'y en a pas besoin), et à la fermeture de l'onglet. Rien d'autre
  * ne reste dans le navigateur (ni localStorage, ni cookie).

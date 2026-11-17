@@ -11,7 +11,7 @@ import { gratuitOuvert } from './gratuit';
 import { listeBranchee, retirerDeLaListe } from './listeEmail';
 import { majListeSiInscrit, synchroniserListe } from './listeGratuit';
 import { rangerDossier } from './rangerDossier';
-import { aDesFcGardees, calculer, saisieSure, sansLaFc, testsSurs, type Experience, type TestsGratuits } from './profilGratuit';
+import { aDesFcGardees, calculer, saisieSure, sansLaFc, testsSurs, type TestsGratuits } from './profilGratuit';
 import { assurerCompte } from './compteGratuit';
 import { clientServeur } from './supabase';
 
@@ -36,11 +36,11 @@ export async function demanderCodeGratuit(email: string): Promise<EtatGratuit> {
   return { ok: true, message: '' };
 }
 
-type Ligne = { experience: Experience | null; tests: TestsGratuits; consentement_fc_le: string | null; liste_email_le: string | null };
+type Ligne = { tests: TestsGratuits; consentement_fc_le: string | null; liste_email_le: string | null };
 async function ligneDuCompte(compteId: string): Promise<Ligne | null> {
-  const { data } = await (await clientServeur()).from('profils_gratuits').select('experience, tests, consentement_fc_le, liste_email_le')
+  const { data } = await (await clientServeur()).from('profils_gratuits').select('tests, consentement_fc_le, liste_email_le')
     .eq('compte_id', compteId).maybeSingle();
-  return data ? { experience: data.experience ?? null, tests: testsSurs(data.tests), consentement_fc_le: data.consentement_fc_le ?? null,
+  return data ? { tests: testsSurs(data.tests), consentement_fc_le: data.consentement_fc_le ?? null,
     liste_email_le: data.liste_email_le ?? null } : null;
 }
 
@@ -64,7 +64,6 @@ export async function garderApresConnexion(entree: { saisie: unknown; liste: boo
     const maintenant = new Date().toISOString();
     const { error } = await (await clientServeur()).from('profils_gratuits').upsert({
       compte_id: acces.compteId,
-      experience: saisie.experience ?? existant?.experience ?? null,
       tests,
       consentement_fc_le: existant?.consentement_fc_le ?? (entree.consentementFc && calcul.ok && aDesFcGardees(calcul.tests) ? maintenant : null),
       liste_email_le: existant?.liste_email_le ?? (entree.liste ? maintenant : null),
@@ -109,7 +108,7 @@ export async function enregistrerProfilGratuit(entree: { saisie: unknown; consen
     await assurerCompte(acces.compteId);
     const maintenant = new Date().toISOString();
     const { error } = await (await clientServeur()).from('profils_gratuits').upsert({
-      compte_id: acces.compteId, experience: calcul.experience, tests: calcul.tests,
+      compte_id: acces.compteId, tests: calcul.tests,
       consentement_fc_le: existant?.consentement_fc_le ?? (avecFc ? maintenant : null), maj_le: maintenant,
     }, { onConflict: 'compte_id' });
     if (error) throw new Error(error.message);
@@ -137,7 +136,7 @@ export async function changerListeEmail(inscrit: boolean): Promise<EtatGratuit &
     if (inscrit) {
       await assurerCompte(acces.compteId);
       const { error } = await supabase.from('profils_gratuits').upsert({
-        compte_id: acces.compteId, experience: existant?.experience ?? null, tests: existant?.tests ?? {},
+        compte_id: acces.compteId, tests: existant?.tests ?? {},
         consentement_fc_le: existant?.consentement_fc_le ?? null, liste_email_le: existant?.liste_email_le ?? maintenant, maj_le: maintenant,
       }, { onConflict: 'compte_id' });
       if (error) throw new Error(error.message);

@@ -4,7 +4,6 @@ import EnTeteGratuit from '@/components/app/EnTeteGratuit';
 import FormulaireCoaching, { type CourseDuCompte } from '@/components/app/FormulaireCoaching';
 import { pageGratuite } from '@/lib/app/accesGratuit';
 import { reponsesSures } from '@/lib/app/coachingRegles';
-import { estExperience } from '@/lib/app/profilGratuit';
 import { clientServeur } from '@/lib/app/supabase';
 import { gratuitOuvert } from '@/lib/app/gratuit';
 
@@ -26,7 +25,6 @@ export default async function Coaching() {
   const acces = await pageGratuite();
   if (acces.cas === 'visiteur' || !acces.compteId) redirect('/app/me-connecter?suite=/app/coaching');
   const supabase = await clientServeur();
-  const { data: profil } = await supabase.from('profils_gratuits').select('experience').eq('compte_id', acces.compteId).maybeSingle();
   const { data: lignes } = await supabase.from('courses_gratuites').select('id, nom, course_date, distance_km, dplus_m')
     .eq('compte_id', acces.compteId).order('course_date', { ascending: true, nullsFirst: false });
   const courses: CourseDuCompte[] = (lignes ?? []).map((c) => ({
@@ -41,7 +39,7 @@ export default async function Coaching() {
       <EnTeteGratuit acces={acces} />
       <main className="mx-auto max-w-2xl px-4 pt-5 pb-6">
         <FormulaireCoaching
-          experienceConnue={estExperience(profil?.experience) ? profil.experience : null}
+          experienceConnue={null}
           courses={courses}
           envoyeeLe={d ? String(d.envoyee_le) : null}
           demande={d ? {
