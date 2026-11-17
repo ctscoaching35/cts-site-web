@@ -14,7 +14,7 @@ const ENTREES = [
     icone: <path d="M4 14h3l2-6 3 10 2-6 2 3h4" {...trait} />,
   },
   {
-    href: '/app/courses', titre: 'Préparer ma course', texte: 'Importe ta trace GPX : profil, pentes, gestion de l’effort, nutrition, carte à partager.',
+    href: '/app/courses', titre: 'Comprendre ma course', texte: 'Importe ta trace GPX : profil, pentes, gestion de l’effort, nutrition, carte à partager.',
     icone: <path d="M3 20 9 9l4 6 3-4 5 9z" {...trait} />,
   },
   {
