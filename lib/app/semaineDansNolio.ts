@@ -269,3 +269,19 @@ export function septReponses(source: unknown): Reponse[] | null {
   });
   return reponses.length ? reponses.sort((a, b) => a.n - b.n) : null;
 }
+
+// Le ton de chaque réponse dans l'espace coach (moteur 8.471, réponse du chantier Moteur du 17/11/2026) : la conclusion de la
+// semaine (ce qui monte, ce qui tient, ce qui redescend) est la ligne « Dose », mise en avant en vert ; « Contrôle » ne passe
+// en couleur d'alerte que quand son texte n'est pas « rien à reprendre. » (un repli, une semaine refusée). Une semaine écrite
+// par un moteur d'avant, sans « Dose » : la dernière réponse (l'ancien « Donc ») reste la conclusion.
+export type TonDeReponse = 'conclusion' | 'alerte' | null;
+const sansAccent = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+const estRienAReprendre = (texte: string) => sansAccent(texte).replace(/[.\s]+$/, '') === 'rien a reprendre';
+export function tonsDesReponses(reponses: Reponse[]): TonDeReponse[] {
+  const dose = reponses.findIndex((r) => sansAccent(r.libelle) === 'dose');
+  return reponses.map((r, i) => {
+    if (sansAccent(r.libelle) === 'controle' && !estRienAReprendre(r.texte)) return 'alerte';
+    if (dose >= 0) return i === dose ? 'conclusion' : null;
+    return i === reponses.length - 1 && reponses.length > 1 ? 'conclusion' : null;
+  });
+}

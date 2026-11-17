@@ -15,7 +15,7 @@ import type { Lu } from './CeQuIlALu';
 import { ajouterJours, type Semaine } from '@/lib/app/plan';
 import type { Prevision } from '@/lib/app/prevision';
 import { aujourdhuiIso } from '@/lib/app/plan';
-import { septReponses, type LigneNolio, type Reponse, type SemaineComparee } from '@/lib/app/semaineDansNolio';
+import { septReponses, tonsDesReponses, type LigneNolio, type Reponse, type SemaineComparee } from '@/lib/app/semaineDansNolio';
 import { heureDe, heureDuPassage, jourDeLInstant, reponseAncienne, type SemaineQuiArrive } from '@/lib/app/semaineQuiArrive';
 import { enHeures } from '@/lib/app/tableau';
 
@@ -93,8 +93,10 @@ function JoursNolio({ semaine, comparee }: { semaine: Semaine; comparee: Semaine
 }
 
 // « Pourquoi cette semaine » en sept réponses, une ligne chacune (doctrine de la semaine : « Ce que voit le coach ») ; la
-// dernière (« Donc ») mise en avant ; une donnée manquante, sous sa réponse.
+// conclusion (« Dose » depuis 8.471, l'ancien « Donc » avant) mise en avant en vert ; « Contrôle » en couleur d'alerte quand il
+// annonce un repli ou un refus (tonsDesReponses) ; une donnée manquante, sous sa réponse.
 function SeptReponses({ reponses, sousTitre }: { reponses: Reponse[]; sousTitre: string | null }) {
+  const tons = tonsDesReponses(reponses);
   return (
     <div className="space-y-1.5">
       <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
@@ -103,14 +105,15 @@ function SeptReponses({ reponses, sousTitre }: { reponses: Reponse[]; sousTitre:
       </div>
       <ol>
         {reponses.map((r, i) => {
-          const donc = i === reponses.length - 1 && reponses.length > 1;
+          const donc = tons[i] === 'conclusion';
+          const alerte = tons[i] === 'alerte';
           return (
             <li key={`${r.n}-${r.libelle}`} className={clsx('grid grid-cols-[22px_minmax(0,1fr)] xl:grid-cols-[22px_96px_minmax(0,1fr)] gap-x-2.5 gap-y-0.5 items-start text-[0.85rem] leading-relaxed text-[#3B3957]',
-              donc ? 'mt-1 rounded-xl bg-[#E1EFEA] p-2.5 pl-2' : 'py-2 border-t first:border-t-0 border-indigo/10')}>
+              donc ? 'my-1 rounded-xl bg-[#E1EFEA] p-2.5 pl-2' : alerte ? 'my-1 rounded-xl bg-[#FFF6E5] p-2.5 pl-2' : 'py-2 border-t first:border-t-0 border-indigo/10')}>
               <span aria-hidden className={clsx('w-[22px] h-[22px] rounded-full flex items-center justify-center text-[0.6875rem] font-extrabold',
-                donc ? 'bg-teal text-white' : 'bg-[#E4E3EE] text-indigo')}>{r.n}</span>
+                donc ? 'bg-teal text-white' : alerte ? 'bg-[#C8952E] text-white' : 'bg-[#E4E3EE] text-indigo')}>{r.n}</span>
               <span className="font-bold text-indigo"><span className="sr-only">{r.n}. </span>{r.libelle}</span>
-              <span className={clsx('col-start-2 xl:col-start-3 xl:row-start-1', donc && 'text-[#0B4A40] font-semibold')}>
+              <span className={clsx('col-start-2 xl:col-start-3 xl:row-start-1', donc && 'text-[#0B4A40] font-semibold', alerte && 'text-[#7A520D] font-semibold')}>
                 {r.texte}
                 {r.manque.map((m) => (
                   <span key={m} className="mt-1.5 flex gap-2 items-start rounded-[10px] bg-[#FFF6E5] px-2.5 py-1.5 text-[0.8rem] font-semibold leading-snug text-[#7A520D]">
