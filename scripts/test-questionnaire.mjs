@@ -31,7 +31,7 @@ const CONFIG = {
   freq_min_par_format: { TC: 3, TM: 3, TL: 3, UT: 4, R10: 3, R21: 3, R42: 3 },
   freq_min_km_effort_seuil: 100,
   freq_min_au_dela_du_seuil: 4,
-  freq_max_par_niveau: { debutant: 4, intermediaire: 7, confirme: 7 },
+  freq_max_par_niveau: { debutant: 7, intermediaire: 7, confirme: 7 },
 };
 const course = (format, distance_km, dplus_m, niveau = 'intermediaire') => ({ ...champsVides, format, distance_km, dplus_m, niveau });
 
@@ -94,10 +94,29 @@ test('séances : 100 km-effort et plus, le minimum dit par la taille de la cours
   assert.equal(plancherSeances(course('TM', '60', '4000'), CONFIG).min, 4);
 });
 
-test('séances : le débutant, son plafond seul, ou après le minimum', () => {
-  assert.deepEqual(plancherSeances(course('TC', '20', '500', 'debutant'), CONFIG), { min: 3, max: 4, note: '4 au plus en débutant.' });
+test('séances (moteur 8.471) : le débutant monte à 7, plus de note de plafond ; la valeur vient de la config, 7 sans elle', () => {
+  assert.deepEqual(plancherSeances(course('TC', '20', '500', 'debutant'), CONFIG), { min: 3, max: 7, note: '' });
   assert.equal(plancherSeances(course('TM', '55', '4500', 'debutant'), CONFIG).note,
-    'Au moins 4 séances par semaine pour une course de cette taille (100 km-effort et plus). 4 au plus en débutant.');
+    'Au moins 4 séances par semaine pour une course de cette taille (100 km-effort et plus).');
+  const sans = { ...CONFIG }; delete sans.freq_max_par_niveau;
+  assert.equal(plancherSeances(course('TC', '20', '500', 'debutant'), sans).max, 7);
+  // Un plafond que le moteur rendrait quand même, il se dit : lu, jamais en dur.
+  const plafonne = { ...CONFIG, freq_max_par_niveau: { debutant: 5, intermediaire: 7, confirme: 7 } };
+  assert.deepEqual(plancherSeances(course('TC', '20', '500', 'debutant'), plafonne), { min: 3, max: 5, note: '5 au plus en débutant.' });
+});
+
+test('la grille des trois niveaux (17/11) : mêmes textes au questionnaire et à la demande de coaching, valeurs inchangées', async () => {
+  const { textes } = await import('../lib/plan.ts');
+  const { EXPERIENCES, PHRASE_SOUS_LA_GRILLE } = await import('../lib/grilleExperience.ts');
+  assert.deepEqual(textes.niveau.options.map((o) => o.valeur), ['debutant', 'intermediaire', 'confirme']);
+  assert.deepEqual(textes.niveau.options.map((o) => o.description), EXPERIENCES.map((e) => e.texte));
+  assert.equal(EXPERIENCES[0].texte, 'Je cours régulièrement depuis moins de 2 ans, ou à l’envie, sans fractionné. Ma plus longue course fait moins de 20 km, ou je n’ai pas encore couru de trail. Je cours moins de 3 h par semaine.');
+  assert.equal(EXPERIENCES[1].texte, 'Je cours régulièrement depuis 2 à 5 ans et j’ai déjà suivi un plan avec du fractionné. J’ai déjà couru un trail ou une course de 20 à 50 km. Je cours 3 à 5 h par semaine.');
+  assert.equal(EXPERIENCES[2].texte, 'Je cours depuis plus de 5 ans, avec un plan structuré depuis plusieurs saisons. J’ai déjà couru un trail de plus de 50 km ou un marathon. Je cours plus de 5 h par semaine.');
+  assert.equal(PHRASE_SOUS_LA_GRILLE, 'Si tu hésites entre deux cases, choisis la plus prudente : celle du niveau en dessous.');
+  assert.equal(textes.niveau.sousLesCases, PHRASE_SOUS_LA_GRILLE);
+  assert.equal(textes.niveau.options[0].formats, 'Formats ouverts : Trail Court et Trail Marathon.');
+  assert.equal(textes.niveau.options[1].formats, undefined);
 });
 
 test('séances : le minimum de 3 seul, pas de note', () => {

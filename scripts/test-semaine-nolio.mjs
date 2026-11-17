@@ -231,17 +231,17 @@ test('la famille d’un nom et le jour d’une date', () => {
 
 test('les sept réponses : semaine.pourquoi du moteur 8.460 ({ n, libelle, texte, manque? }) ; sinon rien', () => {
   const contrat = [
-    { n: 7, libelle: 'Donc', texte: 'Seuil 2 à la marche suivante.' },
-    { n: 1, libelle: 'Qui', texte: 'intermédiaire, trail en vallonné, 4 jours par semaine.' },
-    { n: 6, libelle: 'Séances clés', texte: 'Seuil 2 fait au bon effort.', manque: 'son Hooper de dimanche, pas de réponse ; sa fatigue n’est lue que sur ses RPE.' },
-    { n: 4, libelle: 'Prévu', texte: 'x.', manque: 'Manque : sa réponse du samedi.' },
+    { n: 7, libelle: 'Contrôle', texte: 'Seuil 2 à la marche suivante.' },
+    { n: 1, libelle: 'Sécurité', texte: 'intermédiaire, trail en vallonné, 4 jours par semaine.' },
+    { n: 6, libelle: 'Tri et placement', texte: 'Seuil 2 fait au bon effort.', manque: 'son Hooper de dimanche, pas de réponse ; sa fatigue n’est lue que sur ses RPE.' },
+    { n: 4, libelle: 'Contenu', texte: 'x.', manque: 'Manque : sa réponse du samedi.' },
   ];
   // Dans l'ordre de leur rang ; « Manque : » devant ce qui manque, jamais doublé.
   assert.deepEqual(septReponses(contrat).map((r) => [r.n, r.libelle, r.manque]), [
-    [1, 'Qui', []],
-    [4, 'Prévu', ['Manque : sa réponse du samedi.']],
-    [6, 'Séances clés', ['Manque : son Hooper de dimanche, pas de réponse ; sa fatigue n’est lue que sur ses RPE.']],
-    [7, 'Donc', []],
+    [1, 'Sécurité', []],
+    [4, 'Contenu', ['Manque : sa réponse du samedi.']],
+    [6, 'Tri et placement', ['Manque : son Hooper de dimanche, pas de réponse ; sa fatigue n’est lue que sur ses RPE.']],
+    [7, 'Contrôle', []],
   ]);
   // Le pourquoi d'avant (cts_pourquoi), sans les sept réponses : rien (« Pourquoi cette semaine » reste replié dessous).
   assert.equal(septReponses({ profil: ['Niveau : confirmé.'], ou: '', seances: [], placement: '' }), null);
