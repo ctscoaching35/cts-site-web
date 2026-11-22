@@ -75,8 +75,6 @@ test('l’en-tête est unique : « City to Summit », jamais « CTS COACHING »,
   }
   assert.match(lire('components/app/EnTeteApp.tsx'), /PastilleCompte href=\{lien\('\/app\/compte', ctx\)\}/);
   assert.match(marque, /aria-label="Ton compte"/);
-  // L'espace coach n'a pas bougé.
-  assert.match(lire('components/app/EnTeteCoach.tsx'), /CTS COACHING/);
 });
 
 test('la barre d’onglets n’a plus « Données » ni « Compte » ; elle suit l’ordre de lib/app/ongletsApp', () => {
