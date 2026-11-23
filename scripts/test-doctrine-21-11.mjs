@@ -265,3 +265,14 @@ test('portes : aucune porte de plus au questionnaire — le temps minimum est ce
   const mesure = lire('lib/mesure.ts');
   assert.ok(!/porte_attestation/.test(mesure));
 });
+
+test('configuration du nouveau moteur : sans formats par niveau ni fréquence minimale, le questionnaire ne tombe pas et ne ferme rien', () => {
+  const sans = { ...CONFIG, temps_max_par_format: { TC: 7, TM: 15, TL: 24, UT: 70 } };
+  for (const cle of ['formats_par_niveau', 'freq_min_par_format', 'freq_min_km_effort_seuil', 'freq_min_au_dela_du_seuil', 'freq_max_par_niveau', 'porte_ultra'])
+    assert.ok(!(cle in sans), cle);
+  const c = { ...plan.champsVides, format: 'UT', niveau: 'debutant', distance_km: '110', dplus_m: '5000', temps_cible: '20h' };
+  assert.equal(plan.formatOuvert(c, sans), true, 'sans table de formats par niveau, aucun format n’est fermé');
+  assert.match(plan.noteFormat(c, sans), /^Ta course est un Ultra-Trail/);
+  assert.deepEqual(plan.plancherSeances(c, sans), { min: 3, max: 7, note: '' });
+  assert.equal(plan.referenceExigee(c, sans), null, 'plus de course de référence exigée');
+});
