@@ -58,6 +58,7 @@ export default function DemandeLue({ d, jointes }: { d: LigneDemande; jointes: J
 
       <Bloc titre="Son terrain">
         <Ligne titre="Près de chez la personne" valeur={r.terrain?.length ? r.terrain.map(enClair.terrain).join(', ') : null} />
+        <Ligne titre="Plus longue côte" valeur={enClair.cote(r.cote_min)} />
         <Ligne titre="D+ possible" valeur={r.dplus_pres} />
         <Ligne titre="Montagne" valeur={r.montagne ? enClair.montagne(r.montagne) : null} />
       </Bloc>
