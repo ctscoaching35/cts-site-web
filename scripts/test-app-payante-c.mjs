@@ -88,7 +88,7 @@ test('la carte à partager de l’objectif : la course seule, aucune donnée per
   assert.deepEqual(m.profil.altitude_m, [100, 150, 130]);
   assert.ok(!JSON.stringify(m).includes('6h30'), 'le temps visé ne part pas sur la carte');
   const sans = cp.modeleCarteDuPlan({ ...plan, profil: { points: { pas_km: null, km: null, altitude_m: null, plages: null,
-    secteurs: [{ distance_km: 2, dplus_m: 100, dmoins_m: 20, type: 'x', categorie: 'y' }, { distance_km: 3, dplus_m: 0, dmoins_m: 60, type: 'x', categorie: 'y' }] } } }, 'vallonnee');
+    secteurs: [{ distance_km: 2, dplus_m: 100, dmoins_m: 20, type: 'x', categorie: 'y' }, { distance_km: 3, dplus_m: 0, dmoins_m: 60, type: 'x', categorie: 'y' }] } } }, 'vallonne');
   assert.deepEqual(sans.profil.km, [0, 2, 5]);
   assert.deepEqual(sans.profil.altitude_m, [0, 80, 20]);
 });

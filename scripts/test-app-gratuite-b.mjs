@@ -136,7 +136,8 @@ const reponseHttp = (statut, corps) => async (url, options) => {
 test('appel sans trace : le JSON en corps de requête, sur la route publique du moteur, sans clé', async () => {
   const r = await courseLibre.appelerCourseLibre({ date_course: '2027-03-14', temps_cible: '2h15', distance_km: 18, dplus_m: 540 }, null, reponseHttp(200, SANS_TRACE));
   assert.equal(r.ok, true);
-  assert.equal(r.reponse.course.classe, 'vallonnee');
+  // La fixture est une réponse du moteur d'avant le changement de noms : sa clé « vallonnee » se lit « vallonne ».
+  assert.equal(r.reponse.course.classe, 'vallonne');
   const { url, options } = reponseHttp.dernier;
   assert.ok(url.endsWith('/v1/course-libre'));
   assert.equal(options.method, 'POST');
@@ -407,7 +408,7 @@ test('la liste e-mail : un compte inscrit voit TYPE_COURSE et DATE_COURSE suivre
     const contact = appels.find((x) => x.url.endsWith('/contacts'));
     assert.ok(contact, 'Brevo a reçu la mise à jour');
     assert.equal(contact.corps.email, 'a@b.fr');
-    assert.equal(contact.corps.attributes.TYPE_COURSE, 'vallonnee');
+    assert.equal(contact.corps.attributes.TYPE_COURSE, 'montagne');
     assert.equal(contact.corps.attributes.DATE_COURSE, '2027-03-14');
     // Supprimer son dossier : la prochaine course change, les attributs suivent.
     appels.length = 0;
@@ -471,11 +472,11 @@ test('un dossier se relit : la liste du plus proche au plus ancien, un autre com
   base.tables.courses_gratuites.push({ id: '22222222-2222-4222-8222-222222222222', compte_id: 'autre', nom: 'Autre', course_date: '2027-05-01', distance_km: 10, dplus_m: 0, cree_le: 'x', classe: null });
   const liste = await dossiersG.dossiersDuCompte('u1');
   assert.deepEqual(liste.map((l) => l.nom), ['Course fictive', 'Passée']);
-  assert.equal(liste[1].classe, 'roulante');
+  assert.equal(liste[1].classe, 'roulant', 'une ligne d’avant le changement de noms se lit sous la clé d’aujourd’hui');
   assert.equal(await dossiersG.nombreDeDossiers('u1'), 2);
   assert.equal(await dossiersG.dossierDuCompte('u1', '22222222-2222-4222-8222-222222222222'), null);
   assert.equal(await dossiersG.dossierDuCompte('u1', 'x'), null);
-  assert.equal((await dossiersG.dossierDuCompte('u1', un.id)).reponse.course.classe, 'vallonnee');
+  assert.equal((await dossiersG.dossierDuCompte('u1', un.id)).reponse.course.classe, 'vallonne');
 });
 
 test('l’ordre des dossiers : à venir par date, puis passés du plus récent, puis sans date', () => {

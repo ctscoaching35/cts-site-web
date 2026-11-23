@@ -415,15 +415,16 @@ test('Brevo : se désinscrire retire de la liste ; l’effacement du compte supp
 
 test('Brevo : les trois attributs du gratuit (style, type de course, date de la course ; plus d’expérience)', () => {
   assert.deepEqual(liste.attributsListe({ vc_ms: null, d_prime_m: null, prochaineCourse: null }), {});
-  assert.equal(liste.typeDeCourse(20, 300), 'roulante');
-  assert.equal(liste.typeDeCourse(20, 400), 'vallonnee');
-  assert.equal(liste.typeDeCourse(20, 800), 'vallonnee');
-  assert.equal(liste.typeDeCourse(20, 801), 'montagne');
+  // Les quatre classes (doctrine du 18/11/2026) : moins de 10 m/km roulant, 10 à 30 vallonné, 30 à 50 montagne, 50 et plus raide.
+  assert.equal(liste.typeDeCourse(20, 180), 'roulant');
+  assert.equal(liste.typeDeCourse(20, 400), 'vallonne');
+  assert.equal(liste.typeDeCourse(20, 800), 'montagne');
+  assert.equal(liste.typeDeCourse(20, 1200), 'montagne_raide');
   assert.equal(liste.typeDeCourse(null, 800), null);
   const a = liste.attributsListe({ vc_ms: 4.1, d_prime_m: 160, prochaineCourse: { date: '2027-03-14', distance_km: 18, dplus_m: 540 } });
   assert.deepEqual(Object.keys(a).sort(), ['DATE_COURSE', 'STYLE', 'TYPE_COURSE']);
   assert.equal(a.DATE_COURSE, '2027-03-14');
-  assert.equal(a.TYPE_COURSE, 'vallonnee');
+  assert.equal(a.TYPE_COURSE, 'montagne');
   assert.ok(['endurant', 'rapide'].includes(a.STYLE));
 });
 
