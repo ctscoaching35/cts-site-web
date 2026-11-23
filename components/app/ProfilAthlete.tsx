@@ -7,6 +7,7 @@ import { modifierMonProfil } from '@/lib/app/actionsObjectifs';
 import { ANCIENNETES, ENTRAINEMENTS, niveauDesFaits } from '@/lib/app/niveau';
 import { ACCENTS } from '@/lib/app/accentFond';
 import { COTE_MAX_MIN, SANS_COTE } from '@/lib/cote';
+import { CRITERES, REPONSES_CRITERE, SANS_CRITERE, TITRE_CRITERES_FICHE } from '@/lib/criteres';
 import { textes } from '@/lib/plan';
 
 const JOURS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
@@ -74,6 +75,22 @@ export default function ProfilAthlete({ athleteId, profil, pourMoi = false, rafr
           </label>
         )}
       </fieldset>
+      {/* Les deux critères (entrée 183 du 23/11/2026) : le coach les remplit lui-même sur la fiche, pas l'athlète ; sans réponse, ils
+          valent « jamais ». TEXTES : BROUILLONS. */}
+      {!moi && (
+        <fieldset className="space-y-2.5">
+          <legend className="text-[0.8125rem] font-bold text-indigo">{TITRE_CRITERES_FICHE}</legend>
+          {CRITERES.map((q) => (
+            <label key={q.champ} className="block text-xs font-semibold text-indigo">{q.fiche}
+              <span className="block font-normal text-[#5E5C78]">{q.fichePrecision}</span>
+              <select name={q.champ} defaultValue={String(profil[q.champ] ?? '')} className={champ}>
+                <option value="">{SANS_CRITERE}</option>
+                {REPONSES_CRITERE.map((r) => <option key={r.valeur} value={r.valeur}>{r.precision ? `${r.titre} — ${r.precision}` : r.titre}</option>)}
+              </select>
+            </label>
+          ))}
+        </fieldset>
+      )}
       {/* La plus longue côte, en minutes (décision du coach du 23/11/2026, entrée 188), à la place des quatre cases du terrain : un
           nombre, ou « pas de côte ». Un profil d'avant dit sa réponse à quatre cases au-dessous, à remplacer. */}
       <fieldset className="space-y-1.5">

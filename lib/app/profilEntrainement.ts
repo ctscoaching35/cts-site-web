@@ -6,6 +6,7 @@
  * questionnaire. Une seule règle de lecture et de vérification, pour le coach et pour l'athlète. Côté serveur seulement.
  */
 import { coteEnClair, lireCote, SANS_COTE, terrainDeLaCote, TEXTES_COTE } from '@/lib/cote';
+import { CRITERES, estReponseCritere, titreReponse } from '@/lib/criteres';
 import { API_URL, textes } from '@/lib/plan';
 import { enTetesMoteur } from './cleMoteur';
 import { niveauDesFaits, texteDesFaits } from './niveau';
@@ -19,7 +20,8 @@ export type ProfilEntrainement = Record<string, string | string[]>;
 // Le tapis qui monte (FT3-1, décision coach du 01/11/2026) part aussi : facultatif, dans le profil (jsonb), sans migration.
 // La côte en minutes (décision du coach du 23/11/2026, entrée 188) aussi : `cote_min`, à côté de `terrain`, l'ancien terrain à quatre
 // valeurs qu'elle donne et que lit encore le moteur en ligne (lib/cote.ts).
-const CLES = ['niveau', 'terrain', 'cote_min', 'tapis', 'jours_disponibles', 'jour_sl', 'freq_hebdo'];
+// Les deux critères que le coach remplit sur la fiche (entrée 183 du 23/11/2026, lib/criteres.ts) suivent aussi, sous les clés du questionnaire.
+const CLES = ['niveau', 'terrain', 'cote_min', 'tapis', 'critere_intensite', 'critere_denivele', 'jours_disponibles', 'jour_sl', 'freq_hebdo'];
 const JOURS_SEMAINE = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
 
 export async function profilDeLaFiche(athleteId: string): Promise<ProfilEntrainement> {
@@ -61,6 +63,8 @@ export function lignesDuProfil(profil: ProfilEntrainement, pourCoach = false): [
       : profil.niveau_coach ? `${niveau}, choisi par ton coach`
       : faits && pourCoach ? `${niveau}, proposé d’après ses réponses (${faits})`
       : faits ? `${niveau} · ${faits}` : niveau],
+    // Ses deux critères, pour le coach, quand il les a remplis (sans réponse, ils valent « jamais »).
+    ...(pourCoach ? CRITERES.filter((q) => estReponseCritere(profil[q.champ])).map((q) => [q.fiche, titreReponse(String(profil[q.champ]))] as [string, string]) : []),
     [ligneDeLaCote(profil)[0], (ligneDeLaCote(profil)[1] ?? '—') + (profil.tapis === 'oui' ? ' · un tapis qui monte' : '')],
     ['Semaine habituelle', profil.freq_hebdo
       ? `${profil.freq_hebdo} séances · ${jours.map((j) => j.slice(0, 3)).join(', ')} · sortie longue le ${String(profil.jour_sl ?? '—')}`
@@ -143,6 +147,12 @@ export function lireProfil(form: FormData, pour: 'son' | 'ton', ancien?: ProfilE
   // Ce qui lui coûte le plus en trail (décisions coach du 24/10/2026) : facultatif.
   const cout = String(form.get('cout_trail') ?? '');
   const ses = pour === 'son' ? 'ses' : 'tes';
+  // Les deux critères : le coach les remplit (« son »), l'athlète garde ceux de son coach (« ton »). Sans réponse lue, la clé manque,
+  // et le critère vaut « jamais ».
+  const criteres = Object.fromEntries(CRITERES.flatMap((q) => {
+    const v = pour === 'son' ? form.get(q.champ) : ancien?.[q.champ];
+    return estReponseCritere(v) ? [[q.champ, v]] : [];
+  }));
   if (!niveau) return { erreur: pour === 'son'
     ? 'Réponds aux deux questions de son niveau, ou choisis-le.'
     : 'Réponds aux deux questions de ton niveau.' };
@@ -157,7 +167,7 @@ export function lireProfil(form: FormData, pour: 'son' | 'ton', ancien?: ProfilE
     : `À ton niveau, ${plafond} séances par semaine au plus : choisis-en ${plafond}. Ton coach peut revoir ton niveau.` };
   return { profil: {
     niveau, ...(faits ? { anciennete, entrainement } : {}), ...(niveauCoach ? { niveau_coach: niveauCoach } : {}),
-    terrain, cote_min: String(cote), tapis: tapis ? 'oui' : 'non', jours_disponibles: jours, jour_sl: jourSl, freq_hebdo: String(freq),
+    terrain, cote_min: String(cote), tapis: tapis ? 'oui' : 'non', ...criteres, jours_disponibles: jours, jour_sl: jourSl, freq_hebdo: String(freq),
     ...(ACCENTS.some(([cle]) => cle === cout) ? { cout_trail: cout } : {}),
   } };
 }

@@ -26,8 +26,10 @@ export const REPONSES_CRITERE: { valeur: ReponseCritere; titre: string; precisio
 // Les deux critères, dans l'ordre où le questionnaire les pose. `champ` : la clé du formulaire (Champs), PROVISOIRE jusqu'au
 // contrat du nouveau moteur ; `court` : le libellé du récapitulatif (BROUILLON).
 export const CRITERES = [
-  { champ: 'critere_intensite', question: 'Ces 3 derniers mois, as-tu fait des séances de fractionné ou de seuil ?', court: 'Fractionné ou seuil, 3 mois' },
-  { champ: 'critere_denivele', question: 'Ces 3 derniers mois, as-tu couru avec du dénivelé (côtes, trails) ?', court: 'Dénivelé, 3 mois' },
+  { champ: 'critere_intensite', question: 'Ces 3 derniers mois, as-tu fait des séances de fractionné ou de seuil ?', court: 'Fractionné ou seuil, 3 mois',
+    fiche: 'Intensité', fichePrecision: 'Fractionné ou seuil, ces 3 derniers mois' },
+  { champ: 'critere_denivele', question: 'Ces 3 derniers mois, as-tu couru avec du dénivelé (côtes, trails) ?', court: 'Dénivelé, 3 mois',
+    fiche: 'Mécanique', fichePrecision: 'Dénivelé (côtes, trails), ces 3 derniers mois' },
 ] as const;
 export type ChampCritere = (typeof CRITERES)[number]['champ'];
 export const CHAMPS_CRITERES: ChampCritere[] = CRITERES.map((q) => q.champ);
@@ -36,6 +38,13 @@ export const CHAMPS_CRITERES: ChampCritere[] = CRITERES.map((q) => q.champ);
 // route n'a pas de catégorie de mécanique (les sauts du renfo suivent la catégorie d'intensité). La question et la réponse du
 // dénivelé ne sont ni posées, ni résumées, ni envoyées (intakePourApi, lib/plan.ts).
 export const criteresDe = (route: boolean) => (route ? CRITERES.filter((q) => q.champ === 'critere_intensite') : CRITERES);
+
+// LA FICHE DU COACHÉ (entrée 183 de la mémoire du coach, 23/11/2026) : le coach remplit lui-même les deux critères, sur la fiche (« Modifier
+// son profil »), dans le profil (jsonb, sans migration) sous les mêmes clés ; un critère manquant vaut « jamais ». `fiche` et
+// `fichePrecision` : ses mots, `Intensité` et `Mécanique` (BROUILLONS). Rien n'en part au moteur tant que `CRITERES_BRANCHES` est faux.
+export const TITRE_CRITERES_FICHE = 'Ses deux critères';
+export const SANS_CRITERE = 'Pas renseigné : compte comme « Jamais »';
+export const estReponseCritere = (v: unknown): v is ReponseCritere => REPONSES_CRITERE.some((r) => r.valeur === v);
 
 // L'intitulé de la section à la place de « Ton niveau » (BROUILLON).
 export const TITRE_SECTION_CRITERES = 'Ton entraînement';
