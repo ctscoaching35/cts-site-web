@@ -550,10 +550,14 @@ export function plancherSeances(c: Champs, config: ConfigPlan): { min: number; m
 /**
  * L'intake envoyé à l'API : tous les champs sauf la blessure et le cœur, qui restent sur la page. Les deux critères ne partent
  * que branchés (lib/criteres.ts), et alors le niveau ne part plus ; avant, c'est l'inverse : l'intake est celui d'aujourd'hui.
+ * Sur route (10 km, semi, marathon ; décision du coach du 23/11/2026) : l'intensité seule, même si la réponse sur le dénivelé a été
+ * donnée avant de passer de trail à route.
  */
-export function intakePourApi(c: Champs) {
+export function intakeSelon(c: Champs, criteres: boolean) {
   const { blessure, coeur, critere_intensite, critere_denivele, niveau, ...reste } = c;
   void blessure;
   void coeur;
-  return CRITERES_BRANCHES ? { ...reste, critere_intensite, critere_denivele } : { ...reste, niveau };
+  if (!criteres) return { ...reste, niveau };
+  return FORMATS_ROUTE.some((f) => f.code === c.format) ? { ...reste, critere_intensite } : { ...reste, critere_intensite, critere_denivele };
 }
+export const intakePourApi = (c: Champs) => intakeSelon(c, CRITERES_BRANCHES);

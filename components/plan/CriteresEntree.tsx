@@ -2,16 +2,16 @@
 
 import clsx from 'clsx';
 import type { Champs } from '@/lib/plan';
-import { CRITERES, REPONSES_CRITERE } from '@/lib/criteres';
+import { criteresDe, REPONSES_CRITERE } from '@/lib/criteres';
 
 // Les deux questions des critères du questionnaire d'entrée (doctrine du 21/11/2026), à la place de la case « niveau ».
 // PRÉPARÉ, PAS BRANCHÉ : le questionnaire ne l'affiche que si CRITERES_BRANCHES est vrai (lib/criteres.ts), le jour où le
 // nouveau moteur est en ligne. Trois réponses par question, une seule possible, obligatoire ; aucune porte : le moteur
-// s'adapte, rien ne se refuse ici.
-export default function CriteresEntree({ c, maj }: { c: Champs; maj: (champ: keyof Champs) => (v: string) => void }) {
+// s'adapte, rien ne se refuse ici. Sur route : la seule question d'intensité (décision du coach du 23/11/2026).
+export default function CriteresEntree({ c, maj, route = false }: { c: Champs; maj: (champ: keyof Champs) => (v: string) => void; route?: boolean }) {
   return (
     <div className="space-y-6">
-      {CRITERES.map((q) => (
+      {criteresDe(route).map((q) => (
         <fieldset key={q.champ}>
           <legend className="font-bold text-indigo mb-3">{q.question}</legend>
           <div className="grid sm:grid-cols-3 gap-3">

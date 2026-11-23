@@ -5,7 +5,7 @@ import { compterEtape, porteDuRefus } from '@/lib/mesure';
 import clsx from 'clsx';
 import ApercuPlan from './ApercuPlan';
 import CriteresEntree from './CriteresEntree';
-import { CRITERES, CRITERES_BRANCHES, TITRE_SECTION_CRITERES, titreReponse } from '@/lib/criteres';
+import { CRITERES_BRANCHES, criteresDe, TITRE_SECTION_CRITERES, titreReponse } from '@/lib/criteres';
 import { type Apercu, type ApercuGarde, apercuGardeValide, apercuPourCeParcours, CLE_CACHE_APERCU, classerReponse, empreinteApercu, jourParis, MESSAGE_APERCU_INDISPONIBLE, PHRASE_AUTRE_JOUR, type ResultatApercu, retirerIdentite } from '@/lib/apercu';
 import { estimerChrono } from '@/lib/app/route';
 import { attestationDuFormat, phraseCaseNonCochee } from '@/lib/attestation';
@@ -544,8 +544,8 @@ export default function Questionnaire({
   if (etape === 'recap') {
     const lignes: [string, string][] = [
       ['Nom', c.nom], ...(coach ? [] : [['E-mail', c.email] as [string, string]]),
-      // Branchés, les deux critères remplacent la ligne du niveau (lib/criteres.ts).
-      ...(CRITERES_BRANCHES ? CRITERES.map((q) => [q.court, titreReponse(c[q.champ])] as [string, string])
+      // Branchés, les critères remplacent la ligne du niveau (lib/criteres.ts) : les deux sur trail, l'intensité seule sur route.
+      ...(CRITERES_BRANCHES ? criteresDe(route).map((q) => [q.court, titreReponse(c[q.champ])] as [string, string])
         : [['Niveau', nomNiveau] as [string, string]]),
       ['En ce moment', `${c.volume_hebdo_actuel} de course par semaine · plus longue sortie ${c.sortie_longue_actuelle}`],
       ['Formule', coach ? `${nomFormat} — jusqu’à la course` : `${nomFormat} — ${c.duree_mois} mois`],
@@ -941,7 +941,7 @@ export default function Questionnaire({
       </Section>}
 
       <Section numero={numero('niveau')} titre={court ? (demande ? 'Ta charge du moment' : 'Sa charge du moment') : CRITERES_BRANCHES ? TITRE_SECTION_CRITERES : 'Ton niveau'}>
-        {!court && CRITERES_BRANCHES && <CriteresEntree c={c} maj={maj} />}
+        {!court && CRITERES_BRANCHES && <CriteresEntree c={c} maj={maj} route={route} />}
         {!court && !CRITERES_BRANCHES && (
           <>
             <p className={aideCls}>{textes.niveau.aide}</p>

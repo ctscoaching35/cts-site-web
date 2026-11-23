@@ -32,6 +32,11 @@ export const CRITERES = [
 export type ChampCritere = (typeof CRITERES)[number]['champ'];
 export const CHAMPS_CRITERES: ChampCritere[] = CRITERES.map((q) => q.champ);
 
+// SUR ROUTE (10 km, semi, marathon ; décision du coach du 23/11/2026) : la seule question d'intensité. Pas celle du dénivelé : la
+// route n'a pas de catégorie de mécanique (les sauts du renfo suivent la catégorie d'intensité). La question et la réponse du
+// dénivelé ne sont ni posées, ni résumées, ni envoyées (intakePourApi, lib/plan.ts).
+export const criteresDe = (route: boolean) => (route ? CRITERES.filter((q) => q.champ === 'critere_intensite') : CRITERES);
+
 // L'intitulé de la section à la place de « Ton niveau » (BROUILLON).
 export const TITRE_SECTION_CRITERES = 'Ton entraînement';
 
