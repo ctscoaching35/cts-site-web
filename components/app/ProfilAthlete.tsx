@@ -6,6 +6,7 @@ import { enregistrerProfil, type EtatCoach } from '@/lib/app/actionsCoaching';
 import { modifierMonProfil } from '@/lib/app/actionsObjectifs';
 import { ANCIENNETES, ENTRAINEMENTS, niveauDesFaits } from '@/lib/app/niveau';
 import { ACCENTS } from '@/lib/app/accentFond';
+import { COTE_MAX_MIN, SANS_COTE } from '@/lib/cote';
 import { textes } from '@/lib/plan';
 
 const JOURS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
@@ -27,6 +28,9 @@ export default function ProfilAthlete({ athleteId, profil, pourMoi = false, rafr
   const [entrainement, setEntrainement] = useState(String(profil.entrainement ?? ''));
   const [choix, setChoix] = useState(String(profil.niveau_coach ?? ''));
   const moi = pourMoi || !athleteId;
+  const [sansCote, setSansCote] = useState(profil.cote_min === SANS_COTE);
+  // La réponse d'avant, à quatre cases, d'un profil sans minutes.
+  const avant = profil.cote_min ? null : textes.terrain.options.find((o) => o.valeur === profil.terrain);
   const titre = (n: string | null) => textes.niveau.options.find((o) => o.valeur === n)?.titre;
   const desFaits = titre(niveauDesFaits(anciennete, entrainement));
   const jours = Array.isArray(profil.jours_disponibles) ? profil.jours_disponibles : [];
@@ -70,17 +74,28 @@ export default function ProfilAthlete({ athleteId, profil, pourMoi = false, rafr
           </label>
         )}
       </fieldset>
-      <label className="block text-xs font-semibold text-indigo">Terrain d’entraînement
-        <select name="terrain" defaultValue={String(profil.terrain ?? '')} className={champ} required>
-          <option value="" disabled>Choisis</option>
-          {textes.terrain.options.map((o) => <option key={o.valeur} value={o.valeur}>{o.titre} — {o.description}</option>)}
-        </select>
-      </label>
-      {/* Le tapis qui monte (FT3-1, décision coach du 01/11/2026) : facultatif ; sert quand la côte fait moins de 5 min. */}
+      {/* La plus longue côte, en minutes (décision du coach du 23/11/2026, entrée 188), à la place des quatre cases du terrain : un
+          nombre, ou « pas de côte ». Un profil d'avant dit sa réponse à quatre cases au-dessous, à remplacer. */}
+      <fieldset className="space-y-1.5">
+        <legend className="text-xs font-semibold text-indigo leading-relaxed">{moi ? textes.cote.question : textes.cote.sa}</legend>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <input name="cote_min" type="number" inputMode="decimal" step="any" min="0.5" max={COTE_MAX_MIN} aria-label={textes.cote.sa}
+            defaultValue={profil.cote_min === SANS_COTE ? '' : String(profil.cote_min ?? '')} disabled={sansCote} required={!sansCote}
+            className={`${champ} !mt-0 !w-24`} />
+          <span className="text-xs text-indigo">{textes.cote.unite}</span>
+          <label className="inline-flex items-center gap-2 text-xs font-semibold text-indigo">
+            <input type="checkbox" name="sans_cote" value="oui" checked={sansCote} onChange={(e) => setSansCote(e.target.checked)} className="accent-teal" />
+            {moi ? textes.cote.aucune : textes.cote.sansCoteSon}
+          </label>
+        </div>
+        {/* TEXTE : BROUILLON. */}
+        {avant && <p className="text-xs text-[#5E5C78]">Réponse d’avant : {avant.description.replace(/\.$/, '').toLowerCase()}.</p>}
+      </fieldset>
+      {/* Le tapis qui monte (FT3-1, décision coach du 01/11/2026) : facultatif, posé à tous (23/11/2026). */}
       <label className="flex items-start gap-2.5 text-xs font-semibold text-indigo">
         <input type="checkbox" name="tapis" value="oui" defaultChecked={profil.tapis === 'oui'} className="mt-0.5 accent-teal" />
         <span>{moi ? 'J’ai accès à un tapis de course qui monte' : 'Accès à un tapis de course qui monte'}
-          <span className="block font-normal text-[#5E5C78]">Utile avec une côte de moins de 5 min, pour une course qui monte.</span></span>
+          <span className="block font-normal text-[#5E5C78]">Utile pour une course qui monte.</span></span>
       </label>
       {/* Facultative (décisions coach du 24/10/2026) : l'accent du terrain de sa saison de fond. */}
       <label className="block text-xs font-semibold text-indigo">{moi ? 'Ce qui te coûte le plus en trail' : 'Ce qui lui coûte le plus en trail'}

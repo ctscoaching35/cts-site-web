@@ -5,6 +5,7 @@
  * de son dernier objectif. Il ne sert qu'à ses prochains objectifs ; sa semaine s'ajuste chaque dimanche par son
  * questionnaire. Une seule règle de lecture et de vérification, pour le coach et pour l'athlète. Côté serveur seulement.
  */
+import { coteEnClair, lireCote, SANS_COTE, terrainDeLaCote, TEXTES_COTE } from '@/lib/cote';
 import { API_URL, textes } from '@/lib/plan';
 import { enTetesMoteur } from './cleMoteur';
 import { niveauDesFaits, texteDesFaits } from './niveau';
@@ -16,7 +17,9 @@ import { enHeures } from './tableau';
 export type ProfilEntrainement = Record<string, string | string[]>;
 // Les réponses qui partent au questionnaire d'un objectif ; les deux faits du niveau et le choix du coach restent ici.
 // Le tapis qui monte (FT3-1, décision coach du 01/11/2026) part aussi : facultatif, dans le profil (jsonb), sans migration.
-const CLES = ['niveau', 'terrain', 'tapis', 'jours_disponibles', 'jour_sl', 'freq_hebdo'];
+// La côte en minutes (décision du coach du 23/11/2026, entrée 188) aussi : `cote_min`, à côté de `terrain`, l'ancien terrain à quatre
+// valeurs qu'elle donne et que lit encore le moteur en ligne (lib/cote.ts).
+const CLES = ['niveau', 'terrain', 'cote_min', 'tapis', 'jours_disponibles', 'jour_sl', 'freq_hebdo'];
 const JOURS_SEMAINE = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
 
 export async function profilDeLaFiche(athleteId: string): Promise<ProfilEntrainement> {
@@ -38,6 +41,13 @@ export function profilPourLeQuestionnaire(profil: ProfilEntrainement | null | un
 
 const titreNiveau = (n: unknown) => textes.niveau.options.find((o) => o.valeur === n)?.titre;
 
+// La côte en une ligne : ses minutes quand elles sont données (« 12 min », « Pas de côte »), sinon la réponse d'avant, à quatre
+// cases (un profil d'avant le 23/11/2026). TEXTE : BROUILLON (« Plus longue côte »).
+function ligneDeLaCote(profil: ProfilEntrainement): [string, string | undefined] {
+  const minutes = coteEnClair(profil.cote_min);
+  return minutes ? ['Plus longue côte', minutes] : ['Terrain', textes.terrain.options.find((o) => o.valeur === profil.terrain)?.titre];
+}
+
 // Le profil en clair : « Niveau », « Terrain », « Semaine habituelle ». pourCoach : le niveau qu'il a choisi, à côté
 // de celui des faits.
 export function lignesDuProfil(profil: ProfilEntrainement, pourCoach = false): [string, string][] {
@@ -51,8 +61,7 @@ export function lignesDuProfil(profil: ProfilEntrainement, pourCoach = false): [
       : profil.niveau_coach ? `${niveau}, choisi par ton coach`
       : faits && pourCoach ? `${niveau}, proposé d’après ses réponses (${faits})`
       : faits ? `${niveau} · ${faits}` : niveau],
-    ['Terrain', (textes.terrain.options.find((o) => o.valeur === profil.terrain)?.titre ?? '—')
-      + (profil.tapis === 'oui' ? ' · un tapis qui monte' : '')],
+    [ligneDeLaCote(profil)[0], (ligneDeLaCote(profil)[1] ?? '—') + (profil.tapis === 'oui' ? ' · un tapis qui monte' : '')],
     ['Semaine habituelle', profil.freq_hebdo
       ? `${profil.freq_hebdo} séances · ${jours.map((j) => j.slice(0, 3)).join(', ')} · sortie longue le ${String(profil.jour_sl ?? '—')}`
       : '—'],
@@ -69,11 +78,11 @@ export function lignesDeLaCarte(profil: ProfilEntrainement | null | undefined): 
   const n = Number(profil.freq_hebdo);
   const semaine = n > 0 ? [`${n} séance${n > 1 ? 's' : ''}`, jours.length ? jours.map((j) => j.slice(0, 3)).join(', ') : '',
     profil.jour_sl ? `sortie longue le ${String(profil.jour_sl)}` : ''].filter(Boolean).join(' · ') : '';
-  const terrain = textes.terrain.options.find((o) => o.valeur === profil.terrain)?.titre;
+  const [titreCote, cote] = ligneDeLaCote(profil);
   const lignes: [string, string | undefined][] = [
     ['Niveau', titreNiveau(profil.niveau)],
     ['Semaine habituelle', semaine],
-    ['Terrain', terrain && `${terrain}${profil.tapis === 'oui' ? ' · un tapis qui monte' : ''}`],
+    [titreCote, cote && `${cote}${profil.tapis === 'oui' ? ' · un tapis qui monte' : ''}`],
     ['Ce qui te coûte le plus', ACCENTS.find(([cle]) => cle === profil.cout_trail)?.[1]],
   ];
   return lignes.filter((l): l is [string, string] => Boolean(l[1]));
@@ -123,7 +132,9 @@ export function lireProfil(form: FormData, pour: 'son' | 'ton', ancien?: ProfilE
   const niveauCoach = textes.niveau.options.some((o) => o.valeur === choix) ? choix : '';
   const faits = niveauDesFaits(anciennete, entrainement);
   const niveau = niveauCoach || faits || '';
-  const terrain = String(form.get('terrain') ?? '');
+  // La plus longue côte, en minutes, ou « pas de côte » (23/11/2026) ; l'ancien terrain, que lit le moteur en ligne, s'en déduit.
+  const cote = form.get('sans_cote') === 'oui' ? SANS_COTE : lireCote(form.get('cote_min'));
+  const terrain = terrainDeLaCote(cote);
   // Le tapis qui monte (FT3-1) : facultatif, « oui » ou rien.
   const tapis = form.get('tapis') === 'oui';
   const jours = form.getAll('jours_disponibles').map(String).filter((j) => JOURS_SEMAINE.includes(j));
@@ -135,7 +146,7 @@ export function lireProfil(form: FormData, pour: 'son' | 'ton', ancien?: ProfilE
   if (!niveau) return { erreur: pour === 'son'
     ? 'Réponds aux deux questions de son niveau, ou choisis-le.'
     : 'Réponds aux deux questions de ton niveau.' };
-  if (!textes.terrain.options.some((o) => o.valeur === terrain)) return { erreur: `Choisis ${pour} terrain.` };
+  if (cote === null || !terrain) return { erreur: pour === 'son' ? TEXTES_COTE.illisibleSa : TEXTES_COTE.illisible };
   if (!jours.length || !jours.includes(jourSl)) return { erreur: `Coche ${ses} jours disponibles, dont celui de ${pour === 'son' ? 'sa' : 'ta'} sortie longue.` };
   if (!Number.isInteger(freq) || freq < 1 || freq > Math.min(7, jours.length))
     return { erreur: `Le nombre de séances doit tenir dans ${ses} jours disponibles.` };
@@ -146,7 +157,7 @@ export function lireProfil(form: FormData, pour: 'son' | 'ton', ancien?: ProfilE
     : `À ton niveau, ${plafond} séances par semaine au plus : choisis-en ${plafond}. Ton coach peut revoir ton niveau.` };
   return { profil: {
     niveau, ...(faits ? { anciennete, entrainement } : {}), ...(niveauCoach ? { niveau_coach: niveauCoach } : {}),
-    terrain, tapis: tapis ? 'oui' : 'non', jours_disponibles: jours, jour_sl: jourSl, freq_hebdo: String(freq),
+    terrain, cote_min: String(cote), tapis: tapis ? 'oui' : 'non', jours_disponibles: jours, jour_sl: jourSl, freq_hebdo: String(freq),
     ...(ACCENTS.some(([cle]) => cle === cout) ? { cout_trail: cout } : {}),
   } };
 }

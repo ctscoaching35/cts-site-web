@@ -31,6 +31,8 @@ export const TEXTES_COTE = {
   illisible: 'Ta plus longue côte ne se lit pas : un nombre de minutes, par exemple 12, ou coche « Je n’ai pas de côte ».',
   // La fiche du coaché, dite par le coach.
   sa: 'Sa plus longue côte, en minutes',
+  sansCoteSon: 'Pas de côte',
+  illisibleSa: 'Sa plus longue côte ne se lit pas : un nombre de minutes, par exemple 12, ou coche « Pas de côte ».',
 };
 
 /**
