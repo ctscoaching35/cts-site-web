@@ -4,9 +4,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { compterEtape, porteDuRefus } from '@/lib/mesure';
 import clsx from 'clsx';
 import ApercuPlan from './ApercuPlan';
+import CriteresEntree from './CriteresEntree';
+import { CRITERES, CRITERES_BRANCHES, TITRE_SECTION_CRITERES, titreReponse } from '@/lib/criteres';
 import { type Apercu, type ApercuGarde, apercuGardeValide, apercuPourCeParcours, CLE_CACHE_APERCU, classerReponse, empreinteApercu, jourParis, MESSAGE_APERCU_INDISPONIBLE, PHRASE_AUTRE_JOUR, type ResultatApercu, retirerIdentite } from '@/lib/apercu';
 import { estimerChrono } from '@/lib/app/route';
-import { alerteSortieLongue, API_URL, avertissements, type Champs, champsVides, type ConfigPlan, courseTropProche, debutFormule, dureeCocheeDOffice, dureesProposees, formatDepuisDistance, MESSAGE_COURSE_TROP_PROCHE, formatOuvert, intakePourApi, noteFormat, PHRASE_TEMPS_DE_TETE, placementReference, referenceExigee, plancherSeances, reperesChrono, FORMATS_ROUTE, tempsDeTete, textes, type CourseReference } from '@/lib/plan';
+import { attestationDuFormat, phraseCaseNonCochee } from '@/lib/attestation';
+import { alerteSortieLongue, API_URL, avertissements, type Champs, champsVides, type ConfigPlan, courseTropProche, debutFormule, dureeCocheeDOffice, dureesProposees, formatDepuisDistance, MESSAGE_COURSE_TROP_PROCHE, messageTempsMinimum, formatOuvert, intakePourApi, noteFormat, PHRASE_TEMPS_DE_TETE, placementReference, referenceExigee, plancherSeances, reperesChrono, FORMATS_ROUTE, tempsDeTete, textes, type CourseReference } from '@/lib/plan';
 
 const NOMS_JOURS: Record<string, string> = {
   lundi: 'Lundi', mardi: 'Mardi', mercredi: 'Mercredi', jeudi: 'Jeudi',
@@ -149,6 +152,9 @@ export default function Questionnaire({
   const [dmoinsOuvert, setDmoinsOuvert] = useState(false);
   // « Vérifier mes réponses » cliqué une fois : ce qui manque à « Ta semaine » se dit dessous (P5).
   const [tente, setTente] = useState(false);
+  // L'attestation sur l'honneur du format (doctrine du 19/11/2026) : le format qu'elle couvre. Cochée pour un format, elle ne
+  // vaut pas pour un autre (une distance changée la redemande) ; jamais envoyée au moteur, jamais gardée dans le brouillon.
+  const [attestePour, setAttestePour] = useState('');
 
   useEffect(() => {
     fetch(`${API_URL}/v1/config`)
@@ -218,13 +224,19 @@ export default function Questionnaire({
   const tropProche = !coach && courseTropProche(c);
   const durees = config && !tropProche && formatOuvert(c, config, coach) ? dureesProposees(c, config) : [];
   const conseillee = config ? dureeCocheeDOffice(c, config, durees) : null;
+  // Le temps minimum du format (doctrine du 21/11/2026) : la course admet des formules, mais aucune ne tient avant sa date.
+  // Pas pour le coach, qui prépare aussi une course plus proche, prise en route.
+  const tempsMinimum = config && !coach && !tropProche ? messageTempsMinimum(c, config) : null;
+  // L'attestation du format, sous la distance : le Trail Court n'en demande pas, la route n'est que pour le coach.
+  const attestation = !coach && !route ? attestationDuFormat(c.format) : null;
+  const attestee = attestation !== null && attestePour === c.format;
   // La date de début de la formule choisie (C1) : dite au choix de la durée et au récapitulatif.
   const debutChoisi = config && c.duree_mois ? debutFormule(c, config, Number(c.duree_mois)) : null;
+  // Plus de formule rejointe en route (doctrine du 21/11/2026) : seules celles qui tiennent avant la course sont proposées,
+  // et chacune démarre à sa date, la course moins sa durée.
   const quandFormule = (mois: number) => {
     const f = config ? debutFormule(c, config, mois) : null;
-    if (!f) return null;
-    return f.rejointe ? `Déjà commencée : tu la rejoins en semaine ${f.rejointe} sur ${f.semaines}, dès le ${jourEnLettres(f.premierJour)}.`
-      : `Commence le ${jourEnLettres(f.premierJour)}, en entier (${f.semaines} semaines).`;
+    return f ? `Commence le ${jourEnLettres(f.premierJour)}, en entier (${f.semaines} semaines).` : null;
   };
   const notePourFormat = config ? noteFormat(c, config, coach) : null;
   const blocDistance = (
@@ -243,11 +255,15 @@ export default function Questionnaire({
   const valeursFreq = Array.from({ length: Math.max(0, Math.min(7, joursCoches.length, freqMax) - freqMin + 1) }, (_, i) => String(freqMin + i));
   // Ce qui manque à « Ta semaine » : ses boutons n'ont pas de required natif, « Vérifier mes réponses » le dit, sur le
   // modèle du récapitulatif. Pas dans la version courte, où la section n'est pas posée.
-  const manqueSemaine = court ? [] : [
-    joursCoches.length < freqMin ? `coche au moins ${freqMin} jours` : null,
-    // Les deux suites de « Pour continuer, … » (P5), validées par le coach le 08/11/2026.
-    !c.freq_hebdo ? 'choisis ton nombre de séances par semaine' : null,
-    !c.jour_sl ? 'choisis le jour de ta sortie longue' : null,
+  const manqueSemaine = [
+    ...(court ? [] : [
+      joursCoches.length < freqMin ? `coche au moins ${freqMin} jours` : null,
+      // Les deux suites de « Pour continuer, … » (P5), validées par le coach le 08/11/2026.
+      !c.freq_hebdo ? 'choisis ton nombre de séances par semaine' : null,
+      !c.jour_sl ? 'choisis le jour de ta sortie longue' : null,
+    ]),
+    // L'attestation du format (BROUILLON) : elle se coche dans la version courte aussi, c'est une porte d'achat.
+    attestation && !attestee ? 'coche l’attestation sous ta course' : null,
   ].filter(Boolean) as string[];
   // Ouvert, il le reste : vidé pendant la frappe, le champ ne disparaît pas.
   const dmoinsVisible = dmoinsOuvert || Boolean(c.dmoins_m);
@@ -527,13 +543,14 @@ export default function Questionnaire({
 
   if (etape === 'recap') {
     const lignes: [string, string][] = [
-      ['Nom', c.nom], ...(coach ? [] : [['E-mail', c.email] as [string, string]]), ['Niveau', nomNiveau],
+      ['Nom', c.nom], ...(coach ? [] : [['E-mail', c.email] as [string, string]]),
+      // Branchés, les deux critères remplacent la ligne du niveau (lib/criteres.ts).
+      ...(CRITERES_BRANCHES ? CRITERES.map((q) => [q.court, titreReponse(c[q.champ])] as [string, string])
+        : [['Niveau', nomNiveau] as [string, string]]),
       ['En ce moment', `${c.volume_hebdo_actuel} de course par semaine · plus longue sortie ${c.sortie_longue_actuelle}`],
       ['Formule', coach ? `${nomFormat} — jusqu’à la course` : `${nomFormat} — ${c.duree_mois} mois`],
       // La date de début, avant de payer (C1, audit de l'app plan du 03/11/2026).
-      ...(!coach && debutChoisi ? [['Début', debutChoisi.rejointe
-        ? `Formule déjà commencée : tu la rejoins en semaine ${debutChoisi.rejointe}, dès le ${jourEnLettres(debutChoisi.premierJour)}`
-        : `Ta préparation commence le ${jourEnLettres(debutChoisi.premierJour)}`] as [string, string]] : []),
+      ...(!coach && debutChoisi ? [['Début', `Ta préparation commence le ${jourEnLettres(debutChoisi.premierJour)}`] as [string, string]] : []),
       ['Course', `${c.course_nom}, le ${new Date(`${c.date_course}T00:00:00`).toLocaleDateString('fr-FR')}`],
       ['Parcours', infoRoute ? `${infoRoute.nom}${c.premier_marathon === 'oui' ? ' · son premier' : ''}` : `${nombreFr(c.distance_km)} km, ${nombreFr(c.dplus_m)} m D+${c.dmoins_m ? `, ${nombreFr(c.dmoins_m)} m D−` : ''}${gpx ? ` · trace ${gpx.name}` : modification?.trace ? ' · sa trace déjà donnée' : ' · sans trace GPX'}`],
       ...(route ? [['Chrono visé', c.temps_cible] as [string, string]] : [['Temps cible', c.temps_cible] as [string, string], ['Terrain', nomTerrain] as [string, string]]),
@@ -745,6 +762,24 @@ export default function Questionnaire({
             )}
           </>
         ) : blocDistance}
+        {/* L'attestation du format (doctrine du 19/11/2026), sous la distance qui fixe le format : une case, sans refus. Non
+            cochée, la page propose une course plus courte ou le coaching, avant l'achat. TEXTES : BROUILLONS. */}
+        {attestation && (
+          <div>
+            <label className={clsx('flex gap-3 items-start p-4 rounded-xl border cursor-pointer transition-colors',
+              attestee ? 'border-teal bg-teal/5' : 'border-indigo/15')}>
+              <input type="checkbox" checked={attestee} onChange={(e) => setAttestePour(e.target.checked ? c.format : '')}
+                className="mt-1 accent-teal" />
+              <span className="text-indigo">{attestation.texte}</span>
+            </label>
+            {tente && !attestee && (
+              <p role="alert" className="mt-2 text-[0.8125rem] text-indigo leading-relaxed">
+                {phraseCaseNonCochee(attestation)}{' '}
+                <a href="/#offre" className="font-bold text-teal underline underline-offset-2">Voir le coaching ›</a>
+              </p>
+            )}
+          </div>
+        )}
         {coach && !route && (
           <p className="text-sm text-indigo/75 leading-relaxed">
             La préparation part du lundi qui vient et va jusqu’à la course : 24 semaines au plus (16 pour un trail court),
@@ -764,6 +799,13 @@ export default function Questionnaire({
                 {MESSAGE_COURSE_TROP_PROCHE}{' '}
                 <a href="/bibliotheque/checklist.html" className="font-bold text-teal underline underline-offset-2">La check-list avant course ›</a>{' '}
                 <a href="/#offre" className="font-bold text-teal underline underline-offset-2">Le coaching individualisé ›</a>
+              </p>
+            )}
+            {/* Le temps minimum du format (doctrine du 21/11/2026) : une course plus lointaine, ou le coaching, avant l'achat. */}
+            {tempsMinimum && (
+              <p role="alert" className="bg-white rounded-r-xl border-l-4 border-[#E3A23B] px-4 py-3 mt-2 text-[0.8125rem] text-indigo leading-relaxed">
+                {tempsMinimum}{' '}
+                <a href="/#offre" className="font-bold text-teal underline underline-offset-2">Voir le coaching ›</a>
               </p>
             )}
           </div>
@@ -898,8 +940,9 @@ export default function Questionnaire({
         </div>
       </Section>}
 
-      <Section numero={numero('niveau')} titre={court ? (demande ? 'Ta charge du moment' : 'Sa charge du moment') : 'Ton niveau'}>
-        {!court && (
+      <Section numero={numero('niveau')} titre={court ? (demande ? 'Ta charge du moment' : 'Sa charge du moment') : CRITERES_BRANCHES ? TITRE_SECTION_CRITERES : 'Ton niveau'}>
+        {!court && CRITERES_BRANCHES && <CriteresEntree c={c} maj={maj} />}
+        {!court && !CRITERES_BRANCHES && (
           <>
             <p className={aideCls}>{textes.niveau.aide}</p>
             <div className="space-y-3">
@@ -952,11 +995,13 @@ export default function Questionnaire({
                   {d === conseillee && <span className="text-xs font-semibold text-teal">conseillée</span>}
                 </label>
               ))}
-              <p className={aideCls}>Seules les durées qui conviennent à ta course sont proposées. Une formule déjà commencée se rejoint en route : ses semaines passées sont sautées.</p>
+              {/* Plus de formule rejointe en route (doctrine du 21/11/2026). TEXTE : BROUILLON. */}
+              <p className={aideCls}>Seules les formules qui tiennent avant ta course sont proposées. Plus ta course est loin, plus ton plan commence tard : il démarre toujours à sa date, en entier.</p>
             </div>
           ) : (
             <p className="text-sm text-indigo/70 leading-relaxed">
               {tropProche ? MESSAGE_COURSE_TROP_PROCHE
+                : tempsMinimum ? tempsMinimum
                 : !c.format ? 'Indique d’abord la distance de ta course, plus haut.'
                 : !formatOuvert(c, config, coach) ? 'Aucune durée : ce format n’est pas ouvert à ton niveau.'
                   : 'Aucune durée ne prépare une course visée en ce temps : vérifie ton temps visé.'}

@@ -7,6 +7,7 @@
  * Aucune logique d'entraînement ici : les refus métier sont décidés par l'API.
  */
 
+import { CRITERES_BRANCHES } from './criteres';
 import { EXPERIENCES, PHRASE_SOUS_LA_GRILLE } from './grilleExperience';
 
 export const API_URL = (process.env.NEXT_PUBLIC_CTS_API_URL || 'http://localhost:5070').replace(/\/$/, '');
@@ -42,6 +43,10 @@ export type Champs = {
   nom: string;
   email: string;
   niveau: string;
+  // Les deux critères qui remplacent le niveau (doctrine du 21/11/2026) : 'jamais' | 'parfois' | 'regulier'. PRÉPARÉS, PAS
+  // BRANCHÉS (lib/criteres.ts) : vides et jamais envoyés tant que le nouveau moteur n'est pas en ligne.
+  critere_intensite: string;
+  critere_denivele: string;
   volume_hebdo_actuel: string;
   sortie_longue_actuelle: string;
   format: string;
@@ -73,7 +78,7 @@ export type Champs = {
 };
 
 export const champsVides: Champs = {
-  nom: '', email: '', niveau: '', volume_hebdo_actuel: '', sortie_longue_actuelle: '',
+  nom: '', email: '', niveau: '', critere_intensite: '', critere_denivele: '', volume_hebdo_actuel: '', sortie_longue_actuelle: '',
   format: '', duree_mois: '', course_nom: '', date_course: '',
   distance_km: '', dplus_m: '', dmoins_m: '', temps_cible: '', terrain: '',
   jours_disponibles: [], jour_sl: '', freq_hebdo: '', blessure: '', coeur: '', coupure: '', premier_marathon: '',
@@ -162,28 +167,6 @@ export function avertissements(c: Champs, config: ConfigPlan, aujourdhui = new D
     out.push(
       'Trois séances par semaine pour une course de cette taille : ton plan garde la même sortie longue, avec un peu moins de volume autour. Une séance de marche en côte, de vélo ou de renforcement en plus, si tu le peux, compense une partie de l’écart.'
     );
-  }
-  const n = config.semaines_par_formule[`${c.format}-${c.duree_mois}`];
-  if (n && c.date_course) {
-    const course = new Date(`${c.date_course}T00:00:00`);
-    const decalageLundi = (course.getDay() + 6) % 7;
-    const lundiS1 = new Date(course);
-    lundiS1.setDate(course.getDate() - decalageLundi - 7 * (n - 1));
-    const jour = new Date(aujourdhui.getFullYear(), aujourdhui.getMonth(), aujourdhui.getDate());
-    const semainesPassees = Math.floor((jour.getTime() - lundiS1.getTime()) / (7 * 86400000));
-    if (semainesPassees >= 1) {
-      const dans = Math.max(Math.floor((course.getTime() - jour.getTime()) / (7 * 86400000)), 0);
-      // Le plan repart de la semaine rejointe (audit du 27/09/2026, B4 ; décision coach du
-      // 28/09/2026) : plus de « choisis une formule plus courte », qui n'existait pas
-      // toujours (Trail Marathon de 3 mois) et que le site ne peut pas vérifier.
-      // Accord et arrondi (audit du 27/09/2026, K3) : « dans 1 semaines », et « il y a 3
-      // semaines » pour un plan commencé depuis 27 jours.
-      const ilYa = Math.round((jour.getTime() - lundiS1.getTime()) / (7 * 86400000));
-      const semaines = (n: number) => (n === 0 ? 'moins d’une semaine' : `${n} semaine${n > 1 ? 's' : ''}`);
-      out.push(
-        `Ta course est dans ${semaines(dans)} : ton plan de ${c.duree_mois} mois a commencé le ${lundiS1.toLocaleDateString('fr-FR')}, il y a ${semaines(ilYa)}. Tu le rejoins cette semaine, les semaines déjà passées sont sautées : ta sortie longue repart de ta plus longue sortie récente, sans jamais la dépasser de plus d’une petite marche.`
-      );
-    }
   }
   return out;
 }
@@ -349,34 +332,68 @@ export function dureeConseillee(c: Champs, config: ConfigPlan, durees: number[],
   return triees[triees.length - 1];
 }
 
-// Les durées proposées à l'achat (audit de la programmation trail du 30/10/2026, T2 ; décision coach, « A ») : celles
-// que la course admet, sans dépasser celle qui colle à sa date, le choix que le coaching fait déjà. Une formule plus
-// longue serait rejointe plus loin en route, payée pour des semaines déjà passées : à 12 semaines d'un trail marathon,
-// le 6 mois ne donnait plus que du spécifique. Sans date, toutes celles que la course admet.
+// LE TEMPS MINIMUM PAR FORMAT (doctrine du 21/11/2026, la porte que le coach avait proposée lui-même) : une formule n'est
+// proposée que si elle TIENT avant la course, c'est-à-dire si son lundi de départ (la course moins la durée de la formule)
+// n'est pas déjà passé. Trail Court et Trail Marathon 12 semaines, Trail Long 16, Ultra 24 : ce sont les semaines de la
+// plus courte formule de chaque format, lues dans /v1/config (semaines_par_formule), jamais recopiées ici. Il n'y a plus
+// de plan rejoint en cours de route : acheté plus tôt, le plan démarre à sa date, et le questionnaire le dit.
+// Sans date de course lisible, rien ne se juge : tout ce que la course admet reste proposé.
+const dateLisible = (c: Champs) => /^\d{4}-\d{2}-\d{2}$/.test(c.date_course ?? '');
+export function tient(c: Champs, config: ConfigPlan, mois: number, aujourdhui = new Date()): boolean {
+  const f = debutFormule(c, config, mois, aujourdhui);
+  return f !== null && f.rejointe === null;
+}
+
+// Les durées proposées à l'achat : celles que la course admet (le format et son temps visé) ET qui tiennent avant sa date.
+// Avant le 21/11/2026, une formule déjà commencée se rejoignait en route, ses semaines passées sautées ; la plus longue
+// qui collait à la date était le plafond. « Tient » remplace les deux.
 export function dureesProposees(c: Champs, config: ConfigPlan, aujourdhui = new Date()): number[] {
   const possibles = dureesPossibles(c, config);
-  const colle = dureeConseillee(c, config, possibles, aujourdhui);
-  const proposees = colle === null ? possibles : possibles.filter((m) => m <= colle);
-  return troisMoisEnPlus(c, config, aujourdhui) ? [3, ...proposees.filter((m) => m !== 3)] : proposees;
+  if (!dateLisible(c)) return possibles;
+  const tenues = possibles.filter((m) => tient(c, config, m, aujourdhui));
+  return troisMoisEnPlus(c, config, aujourdhui) ? [3, ...tenues.filter((m) => m !== 3)] : tenues;
 }
 
 // LE 3 MOIS POUR UNE COURSE DE 4 À 8 H (S15, décision coach du 05/11/2026, « A » ; audit G-12, I8) : une course de 4 à
-// 8 h ne se prépare pas en 3 mois, sauf quand le 4 mois serait rejoint au-delà de sa semaine 2, c'est-à-dire en semaine
-// 3 ou plus tard : le 3 mois, qui commence alors entier ou presque, est AUSSI proposé, moins cher que le 4 mois rejoint en
-// route. Seulement si le format a un 3 mois et que le temps visé admet le 4 mois.
-// La semaine rejointe est celle de debutFormule, comme ce que l'acheteur lit sous chaque durée : ses séances partent du
-// lendemain de l'achat (Paris), rejointe = floor((lendemain − lundi de la semaine 1) / 7) + 1. Semaine 3 ou plus : 14
-// jours ou plus entre le lendemain de l'achat et le lundi de la semaine 1 du 4 mois. Le seuil de /v1/config,
-// trois_mois_si_quatre_rejoint_au_dela_j (14), a ce sens depuis le moteur 8.453, la même formule (correction d'écart du
-// 05/11/2026 au soir : avant, plus de 14 jours écoulés le jour de l'achat, soit un achat le dimanche refusé jusqu'au mardi).
-export const SEMAINE_REJOINTE_TROIS_MOIS = 3;
-export function troisMoisEnPlus(c: Champs, config: ConfigPlan, aujourdhui = new Date()): boolean {
+// 8 h ne se prépare pas en 3 mois, sauf quand le 4 mois ne tient plus avant la course : le 3 mois, qui tient, est alors
+// proposé à sa place (avant le 21/11/2026, quand le 4 mois aurait été rejoint en semaine 3 ou plus tard : sans plan rejoint,
+// le seuil des 14 jours n'a plus d'objet). Seulement si le format a un 3 mois et que le temps visé admet le 4 mois.
+const troisMoisPossible = (c: Champs, config: ConfigPlan): boolean => {
   const h = lireTemps(c.temps_cible ?? '');
   const bornes = config.bandes_temps_cible?.bornes_h;
   if (h === null || !bornes || bornes.length < 3 || !(h >= bornes[1] && h < bornes[2])) return false;
   const possibles = dureesPossibles(c, config);
-  if (!(config.durees_par_format[c.format] ?? []).includes(3) || possibles.includes(3) || !possibles.includes(4)) return false;
-  return (debutFormule(c, config, 4, aujourdhui)?.rejointe ?? 0) >= SEMAINE_REJOINTE_TROIS_MOIS;
+  return (config.durees_par_format[c.format] ?? []).includes(3) && !possibles.includes(3) && possibles.includes(4);
+};
+export function troisMoisEnPlus(c: Champs, config: ConfigPlan, aujourdhui = new Date()): boolean {
+  return troisMoisPossible(c, config) && !tient(c, config, 4, aujourdhui) && tient(c, config, 3, aujourdhui);
+}
+
+// Le temps minimum que SA course demande : les semaines de la plus courte formule qu'elle admet (son format et son temps visé,
+// le 3 mois des courses de 4 à 8 h compris). null sans format ou sans durée admise.
+export function semainesMinimum(c: Champs, config: ConfigPlan): number | null {
+  const admises = new Set(dureesPossibles(c, config));
+  if (troisMoisPossible(c, config)) admises.add(3);
+  const semaines = [...admises].map((m) => config.semaines_par_formule[`${c.format}-${m}`]).filter((n): n is number => typeof n === 'number');
+  return semaines.length ? Math.min(...semaines) : null;
+}
+
+// « 3 semaines », « moins d'une semaine » : l'accord du texte du temps minimum.
+const enSemaines = (n: number) => (n <= 0 ? 'moins d’une semaine' : `${n} semaine${n > 1 ? 's' : ''}`);
+
+// LE REFUS DU TEMPS MINIMUM (doctrine du 21/11/2026 : « un refus propose une course plus lointaine ou le coaching »). La phrase
+// quand la course admet des formules mais qu'aucune ne tient avant sa date ; null sinon. TEXTE À FAIRE VALIDER PAR LE COACH.
+// Avant l'achat seulement (l'acheteur d'un plan n'est jamais invité à échanger avec le coach : le coaching se propose AVANT).
+export function messageTempsMinimum(c: Champs, config: ConfigPlan, aujourdhui = new Date()): string | null {
+  if (!c.format || !dateLisible(c) || dureesPossibles(c, config).length === 0) return null;
+  if (dureesProposees(c, config, aujourdhui).length > 0) return null;
+  const minimum = semainesMinimum(c, config);
+  if (minimum === null) return null;
+  const jour = new Date(`${aujourdhuiIso(aujourdhui)}T12:00:00Z`);
+  const restantes = Math.max(Math.floor((midiUtc(c.date_course).getTime() - jour.getTime()) / (7 * JOUR_MS)), 0);
+  const nom = config.formats.find((f) => f.code === c.format)?.nom ?? 'cette course';
+  return `Pour un ${nom} de ce temps, la préparation dure au moins ${enSemaines(minimum)} : ta course est dans ${enSemaines(restantes)}. `
+    + 'Choisis une course plus lointaine, ou regarde le coaching individualisé.';
 }
 
 const JOUR_MS = 86_400_000;
@@ -528,10 +545,13 @@ export function plancherSeances(c: Champs, config: ConfigPlan): { min: number; m
   return { min, max, note: parties.filter(Boolean).join(' ') };
 }
 
-/** L'intake envoyé à l'API : tous les champs sauf la blessure et le cœur, qui restent sur la page. */
+/**
+ * L'intake envoyé à l'API : tous les champs sauf la blessure et le cœur, qui restent sur la page. Les deux critères ne partent
+ * que branchés (lib/criteres.ts), et alors le niveau ne part plus ; avant, c'est l'inverse : l'intake est celui d'aujourd'hui.
+ */
 export function intakePourApi(c: Champs) {
-  const { blessure, coeur, ...reste } = c;
+  const { blessure, coeur, critere_intensite, critere_denivele, niveau, ...reste } = c;
   void blessure;
   void coeur;
-  return reste;
+  return CRITERES_BRANCHES ? { ...reste, critere_intensite, critere_denivele } : { ...reste, niveau };
 }

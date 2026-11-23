@@ -266,8 +266,10 @@ export const plansOffre = {
     items: [
       'Elle se suit dans Nolio : il te faut un compte Nolio, gratuit (Nolio te le crée si tu n’en as pas), et son appli sur ton téléphone.',
       'Pas de coach qui suit ta préparation : elle se construit et s’ajuste d’après tes réponses et ce que tu cours. Pour un suivi par Juliette ou Romain, il y a le coaching individualisé.',
-      'Les formats ouverts dépendent de ton niveau : un débutant prépare un Trail Court ou un Trail Marathon ; au-delà de 10 h de course, il faut avoir déjà terminé une course d’au moins la moitié de sa taille.',
-      'Une course à moins de 4 semaines ne se prépare plus : notre check-list avant course est gratuite.',
+      // Doctrine du 19 et du 21/11/2026 : l'attestation sur l'honneur par format, le temps minimum par format. TEXTES : BROUILLONS, à
+      // faire valider par le coach (avec les conditions générales de vente).
+      'Le Trail Marathon, le Trail Long et l’ultra demandent d’avoir déjà couru le format d’avant et de pouvoir t’entraîner 3 ou 4 fois par semaine : tu l’attestes sur l’honneur au questionnaire, sans justificatif.',
+      'Chaque formule a un temps minimum : 12 semaines pour un Trail Court ou un Trail Marathon, 16 pour un Trail Long, 24 pour un ultra. Une course plus proche ne se prépare pas en plan : notre check-list avant course est gratuite.',
       'Elle ne remplace pas un avis médical.',
     ],
     lienCoaching: { label: 'Découvrir le coaching individualisé', href: '/#offre' },
@@ -282,7 +284,7 @@ export const plansOffre = {
       },
       {
         q: 'Ma course est plus proche que la durée de la formule.',
-        r: 'Le questionnaire te conseille la formule qui commence en entier dans les 14 jours. Sinon, tu rejoins une formule déjà commencée à la semaine en cours : ses semaines passées sont sautées. Avant de payer, tu vois le jour où elle commence.',
+        r: 'Le questionnaire ne propose que les formules qui tiennent avant ta course. Si aucune ne tient, il te le dit avant le paiement : choisis une course plus lointaine, ou le coaching individualisé. Si ta course est plus loin, ton plan démarre à sa date, en entier : tu vois ce jour avant de payer.',
       },
       {
         q: 'J’ai déjà un compte Nolio.',
