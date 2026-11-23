@@ -4,7 +4,7 @@
  * gratuit comme par un acheteur ou un coaché qui en avait fait avant d'acheter (décision du coach du 16/11/2026).
  */
 import { clientServeur } from './supabase';
-import { dossierSur, estClasse, type Classe, type Dossier } from './courseLibre';
+import { dossierSur, lireClasse, type Classe, type Dossier } from './courseLibre';
 import { lireStrategie, type Strategie } from './strategiePure';
 
 export type LigneDossier = { id: string; nom: string; date: string | null; distance_km: number | null; dplus_m: number | null; classe: Classe | null; cree_le: string };
@@ -32,7 +32,7 @@ export async function dossiersDuCompte(compteId: string): Promise<LigneDossier[]
   const jour = new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris' }).format(new Date());
   return ordreDesDossiers(((data ?? []) as unknown as (Omit<Brute, 'resultat' | 'strategie'> & { classe: unknown })[]).map((l) => ({
     id: l.id, nom: l.nom, date: l.course_date, distance_km: l.distance_km == null ? null : Number(l.distance_km), dplus_m: l.dplus_m,
-    classe: estClasse(l.classe) ? l.classe : null, cree_le: l.cree_le,
+    classe: lireClasse(l.classe), cree_le: l.cree_le,
   })), jour);
 }
 

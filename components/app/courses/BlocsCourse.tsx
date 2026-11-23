@@ -8,18 +8,20 @@ import { nomDeZone, texteAllure, texteFc } from '@/lib/app/dossierTexte';
 // coaché (app/app/plan/course) partagent : le type de la course et l'effort du jour J. Leur texte est celui du moteur
 // (POST /v1/course-libre) ; ils rendent le CONTENU d'une partie (la carte et son titre sont ceux de l'appelant).
 
+// Les quatre classes et leurs seuils (doctrine du 18/11/2026 : roulant, vallonné, montagne, montagne raide).
 const ECHELLE: Record<Classe, { titre: string; seuil: string }> = {
-  roulante: { titre: 'Roulante', seuil: 'moins de 20 m/km' },
-  vallonnee: { titre: 'Vallonnée', seuil: '20 à 40 m/km' },
-  montagne: { titre: 'Montagne', seuil: 'plus de 40 m/km' },
+  roulant: { titre: 'Roulant', seuil: 'moins de 10 m/km' },
+  vallonne: { titre: 'Vallonné', seuil: '10 à 30 m/km' },
+  montagne: { titre: 'Montagne', seuil: '30 à 50 m/km' },
+  montagne_raide: { titre: 'Montagne raide', seuil: '50 m/km et plus' },
 };
 
-// Le type de la course : sa phrase est celle du moteur (AF.2), l'échelle les trois seuils.
+// Le type de la course : sa phrase est celle du moteur (AF.2), l'échelle les quatre seuils.
 export function TypeDeLaCourse({ classe, libelle }: { classe: Classe; libelle: string }) {
   return (
     <>
       <p className="font-bold text-indigo">{libelle}</p>
-      <ol className="grid grid-cols-3 gap-1.5" aria-label="Les trois types de course">
+      <ol className="grid grid-cols-2 sm:grid-cols-4 gap-1.5" aria-label="Les quatre types de course">
         {CLASSES.map((k) => (
           <li key={k} aria-current={k === classe ? 'true' : undefined}
             className={clsx('rounded-xl px-2 py-2.5 text-center', k === classe ? 'bg-teal text-white' : 'bg-sand text-[#4A4866]')}>

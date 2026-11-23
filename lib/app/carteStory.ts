@@ -25,7 +25,8 @@ const TEAL = '#0C6E5F';
 const PENTES_SUR_SOMBRE: Record<string, string> = {
   descente_raide: '#2F2D4E', descente: '#3F3D6A', vallonne: CLAIR, montee: MENTHE, montee_raide: TEAL,
 };
-export const CLASSE_COURTE: Record<Classe, string> = { roulante: 'roulante', vallonnee: 'vallonnée', montagne: 'de montagne' };
+// « course roulante », « course vallonnée », « course de montagne », « course de montagne raide ».
+export const CLASSE_COURTE: Record<Classe, string> = { roulant: 'roulante', vallonne: 'vallonnée', montagne: 'de montagne', montagne_raide: 'de montagne raide' };
 
 // « dimanche 14 mars 2027 »
 export const dateDeLaCarte = (iso: string) =>

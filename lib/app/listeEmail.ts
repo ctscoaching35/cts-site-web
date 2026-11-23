@@ -10,6 +10,7 @@
  * Le lien de désinscription des campagnes est géré par Brevo : pas de webhook dans ce lot.
  * Côté serveur seulement.
  */
+import type { Classe } from './courseLibre';
 import { profilCoureur } from './zones';
 
 const BREVO = 'https://api.brevo.com/v3';
@@ -20,12 +21,14 @@ export function numeroDeLaListe(brut: string | undefined = process.env.BREVO_LIS
   return /^\d{1,9}$/.test(t) && Number(t) > 0 ? Number(t) : null;
 }
 
-// Les trois types de course de l'app : roulante (moins de 20 m D+ par km), vallonnée (20 à 40), montagne (plus de 40).
-export type TypeCourse = 'roulante' | 'vallonnee' | 'montagne';
+// Les quatre types de course de l'app (doctrine du 18/11/2026) : roulant (moins de 10 m D+ par km), vallonné (10 à 30),
+// montagne (30 à 50), montagne raide (50 et plus). Seulement pour segmenter la liste ; la classe d'un dossier est celle du
+// moteur. Les valeurs de l'attribut TYPE_COURSE de Brevo sont les clés de Classe (lib/app/courseLibre.ts).
+export type TypeCourse = Classe;
 export function typeDeCourse(distanceKm: number | null | undefined, dplusM: number | null | undefined): TypeCourse | null {
   if (!distanceKm || distanceKm <= 0 || dplusM === null || dplusM === undefined || dplusM < 0) return null;
   const densite = dplusM / distanceKm;
-  return densite < 20 ? 'roulante' : densite <= 40 ? 'vallonnee' : 'montagne';
+  return densite < 10 ? 'roulant' : densite < 30 ? 'vallonne' : densite < 50 ? 'montagne' : 'montagne_raide';
 }
 
 export type EntreeAttributs = {

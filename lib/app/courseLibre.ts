@@ -16,8 +16,11 @@ import { API_URL } from '@/lib/plan';
 // L'identifiant du dossier d'un visiteur : celui de son onglet (les dossiers d'un compte ont celui de leur ligne).
 export const ID_VISITEUR = 'ici';
 
-export type Classe = 'roulante' | 'vallonnee' | 'montagne';
-export const CLASSES: Classe[] = ['roulante', 'vallonnee', 'montagne'];
+// LES QUATRE CLASSES DE COURSE (doctrine du 18/11/2026, consigne App du 21/11) : roulant (moins de 10 m de D+ par km),
+// vallonné (10 à 30), montagne (30 à 50), montagne raide (50 et plus), les mêmes noms partout (moteur, app, carte de
+// course, communication). Avant : roulante (moins de 20), vallonnée (20 à 40), montagne (plus de 40).
+export type Classe = 'roulant' | 'vallonne' | 'montagne' | 'montagne_raide';
+export const CLASSES: Classe[] = ['roulant', 'vallonne', 'montagne', 'montagne_raide'];
 export type CleZone = 'ef' | 'seuil1' | 'tempo' | 'seuil2' | 'vo2max';
 
 export type LigneZone = {
@@ -152,6 +155,18 @@ export async function appelerCourseLibre(demande: DemandeCourseLibre, gpx: Blob 
 
 const estObjet = (x: unknown): x is Record<string, unknown> => Boolean(x) && typeof x === 'object' && !Array.isArray(x);
 const num = (x: unknown) => typeof x === 'number' && Number.isFinite(x);
+// La classe d'une réponse ou d'une ligne de base, quelle que soit l'orthographe de sa clé : celles d'avant (roulante,
+// vallonnee) et la raide du moteur (raide, montagne raide, très raide) se ramènent aux quatre clés ci-dessus. Les clés exactes du
+// nouveau contrat sont à confirmer avec le moteur ; une classe inconnue reste inconnue (null), jamais devinée.
+export function lireClasse(x: unknown): Classe | null {
+  if (typeof x !== 'string') return null;
+  const k = x.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[\s-]+/g, '_');
+  if (k === 'roulant' || k === 'roulante') return 'roulant';
+  if (k === 'vallonne' || k === 'vallonnee') return 'vallonne';
+  if (k === 'montagne') return 'montagne';
+  if (k === 'montagne_raide' || k === 'raide' || k === 'tres_raide') return 'montagne_raide';
+  return null;
+}
 export const estClasse = (x: unknown): x is Classe => CLASSES.includes(x as Classe);
 
 // La réponse relue : seulement ce qui a la forme dont l'écran se sert. Jamais crue sur parole (elle revient d'un navigateur
@@ -159,13 +174,14 @@ export const estClasse = (x: unknown): x is Classe => CLASSES.includes(x as Clas
 export function reponseSure(brut: unknown): ReponseCourseLibre | null {
   if (!estObjet(brut)) return null;
   const { course, determinants, effort_jour_j: e, profil } = brut as Record<string, any>;
-  if (!estObjet(course) || !estClasse(course.classe) || !num(course.distance_km) || !num(course.dplus_m) || typeof course.date !== 'string'
+  if (!estObjet(course) || lireClasse(course.classe) === null || !num(course.distance_km) || !num(course.dplus_m) || typeof course.date !== 'string'
     || typeof course.temps_cible !== 'string' || !num(course.temps_cible_h) || typeof course.classe_libelle !== 'string') return null;
   if (!estObjet(determinants) || !estObjet(determinants.physio) || !Array.isArray(determinants.physio.puces)) return null;
   if (!estObjet(e) || !estObjet(e.plat) || !estObjet(e.cote) || typeof e.plat.libelle !== 'string' || typeof e.cote.libelle !== 'string'
     || typeof e.descente !== 'string') return null;
   if (!estObjet(profil) || !Array.isArray(brut.seances_types)) return null;
-  return brut as unknown as ReponseCourseLibre;
+  // La classe se range sous sa clé d'aujourd'hui : un dossier gardé avant le changement de noms se lit comme les autres.
+  return { ...brut, course: { ...course, classe: lireClasse(course.classe) } } as unknown as ReponseCourseLibre;
 }
 
 export function dossierSur(brut: unknown): Omit<Dossier, 'id' | 'cree_le' | 'strategie'> | null {
