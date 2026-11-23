@@ -7,6 +7,7 @@
  * Aucune logique d'entraînement ici : les refus métier sont décidés par l'API.
  */
 
+import { TEXTES_COTE, terrainDeLaCote } from './cote';
 import { CRITERES_BRANCHES } from './criteres';
 import { EXPERIENCES, PHRASE_SOUS_LA_GRILLE } from './grilleExperience';
 
@@ -59,7 +60,11 @@ export type Champs = {
   dplus_m: string;
   dmoins_m: string;
   temps_cible: string;
+  // Le terrain à quatre valeurs que lit le moteur en ligne : plus demandé (la côte se dit en minutes, ci-dessous) ; il se déduit
+  // des minutes à l'envoi (intakeSelon) et se garde pour relire un profil ou un plan d'avant.
   terrain: string;
+  // La plus longue côte, en minutes (décision du coach du 23/11/2026, entrée 188) : un nombre, ou « aucune » (lib/cote.ts).
+  cote_min: string;
   jours_disponibles: string[];
   jour_sl: string;
   freq_hebdo: string;
@@ -75,14 +80,14 @@ export type Champs = {
   // « oui » : un premier marathon (route, signalé au coach sous 20 semaines de préparation).
   premier_marathon: string;
   // « oui » : un tapis de course qui monte (FT3-1, décision coach du 01/11/2026), facultatif ; le moteur s'en sert quand
-  // la côte manque (moins de 5 min) et que la course monte.
+  // la côte manque (moins de 5 min) et que la course monte. Posé à tous (23/11/2026), plus seulement sous 5 min de côte.
   tapis: string;
 };
 
 export const champsVides: Champs = {
   nom: '', email: '', niveau: '', critere_intensite: '', critere_denivele: '', volume_hebdo_actuel: '', sortie_longue_actuelle: '',
   format: '', duree_mois: '', course_nom: '', date_course: '',
-  distance_km: '', dplus_m: '', dmoins_m: '', temps_cible: '', terrain: '',
+  distance_km: '', dplus_m: '', dmoins_m: '', temps_cible: '', terrain: '', cote_min: '',
   jours_disponibles: [], jour_sl: '', freq_hebdo: '', blessure: '', coeur: '', coupure: '', premier_marathon: '',
   tapis: '',
 };
@@ -121,8 +126,11 @@ export const textes = {
   // P3-d (07/11/2026).
   gpx: 'Elle donne le vrai profil du parcours et affine ton plan ; sans elle, il se construit sur le D+ que tu indiques.',
   tempsCible: 'Même une estimation large vaut mieux que rien — c’est ce qui calibre l’intensité de tout le plan.',
-  // Sans paragraphe d'aide (décision coach du 07/10/2026 : « ça n'apporte rien ») : les quatre
-  // descriptions disent la longueur de côte.
+  // LA CÔTE EN MINUTES (décision du coach du 23/11/2026, entrée 188) : la question, son unité, « Je n'ai pas de côte » et le tapis,
+  // posé à tous (lib/cote.ts).
+  cote: TEXTES_COTE,
+  // Les quatre anciennes cases du terrain : PLUS POSÉES (23/11/2026), gardées pour relire un profil ou un plan d'avant. Sans
+  // paragraphe d'aide (décision coach du 07/10/2026 : « ça n'apporte rien ») : les quatre descriptions disent la longueur de côte.
   terrain: {
     options: [
       { valeur: 'vallonne', titre: 'Vallonné', description: 'Côtes courtes, jusqu’à 1min30 de montée.' },
@@ -132,9 +140,6 @@ export const textes = {
       { valeur: 'pentu', titre: 'Pentu', description: 'Côtes de 5 à 10 min de montée.' },
       { valeur: 'tres_pentu', titre: 'Très pentu', description: 'Côtes de plus de 10 min de montée.' },
     ],
-    // Posée avec une côte de moins de 5 min seulement (FT3-1, décision coach du 01/11/2026) : facultative, sans effet
-    // ailleurs.
-    tapis: 'As-tu accès à un tapis de course qui monte ?',
   },
   // La section « Ta semaine » (« Ta disponibilité » jusqu'au 07/11/2026, P2).
   disponibilite: {
@@ -554,9 +559,13 @@ export function plancherSeances(c: Champs, config: ConfigPlan): { min: number; m
  * donnée avant de passer de trail à route.
  */
 export function intakeSelon(c: Champs, criteres: boolean) {
-  const { blessure, coeur, critere_intensite, critere_denivele, niveau, ...reste } = c;
+  const { blessure, coeur, critere_intensite, critere_denivele, niveau, cote_min, ...lu } = c;
   void blessure;
   void coeur;
+  // La côte se dit en minutes (23/11/2026) ; le moteur en ligne lit encore l'ancien terrain, que ce nombre donne (lib/cote.ts).
+  // Les minutes ne partent pas tant que le contrat du moteur n'a pas écrit leur nom ; sans nombre lu, le terrain d'avant reste
+  // (un profil d'avant, la route).
+  const reste = { ...lu, terrain: terrainDeLaCote(cote_min) ?? lu.terrain };
   if (!criteres) return { ...reste, niveau };
   return FORMATS_ROUTE.some((f) => f.code === c.format) ? { ...reste, critere_intensite } : { ...reste, critere_intensite, critere_denivele };
 }

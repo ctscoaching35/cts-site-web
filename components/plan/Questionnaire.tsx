@@ -5,6 +5,7 @@ import { compterEtape, porteDuRefus } from '@/lib/mesure';
 import clsx from 'clsx';
 import ApercuPlan from './ApercuPlan';
 import CriteresEntree from './CriteresEntree';
+import { COTE_MAX_MIN, coteEnClair, SANS_COTE } from '@/lib/cote';
 import { CRITERES_BRANCHES, criteresDe, TITRE_SECTION_CRITERES, titreReponse } from '@/lib/criteres';
 import { type Apercu, type ApercuGarde, apercuGardeValide, apercuPourCeParcours, CLE_CACHE_APERCU, classerReponse, empreinteApercu, jourParis, MESSAGE_APERCU_INDISPONIBLE, PHRASE_AUTRE_JOUR, type ResultatApercu, retirerIdentite } from '@/lib/apercu';
 import { estimerChrono } from '@/lib/app/route';
@@ -553,7 +554,9 @@ export default function Questionnaire({
       ...(!coach && debutChoisi ? [['Début', `Ta préparation commence le ${jourEnLettres(debutChoisi.premierJour)}`] as [string, string]] : []),
       ['Course', `${c.course_nom}, le ${new Date(`${c.date_course}T00:00:00`).toLocaleDateString('fr-FR')}`],
       ['Parcours', infoRoute ? `${infoRoute.nom}${c.premier_marathon === 'oui' ? ' · son premier' : ''}` : `${nombreFr(c.distance_km)} km, ${nombreFr(c.dplus_m)} m D+${c.dmoins_m ? `, ${nombreFr(c.dmoins_m)} m D−` : ''}${gpx ? ` · trace ${gpx.name}` : modification?.trace ? ' · sa trace déjà donnée' : ' · sans trace GPX'}`],
-      ...(route ? [['Chrono visé', c.temps_cible] as [string, string]] : [['Temps cible', c.temps_cible] as [string, string], ['Terrain', nomTerrain] as [string, string]]),
+      ...(route ? [['Chrono visé', c.temps_cible] as [string, string]] : [['Temps cible', c.temps_cible] as [string, string],
+        // La côte en minutes (23/11/2026) ; l'ancien terrain d'un profil d'avant, tant qu'elle n'est pas donnée. TEXTE : BROUILLON.
+        (coteEnClair(c.cote_min) ? ['Plus longue côte', coteEnClair(c.cote_min)] : ['Terrain', nomTerrain]) as [string, string]]),
       ['Disponibilité', `${c.freq_hebdo} séances par semaine · ${joursCoches.map((j) => NOMS_JOURS[j]).join(', ')} · sortie longue le ${c.jour_sl}`],
     ];
     // L'avertissement santé se lit et se coche à chaque fois (décision coach du 07/10/2026), avec
@@ -1011,27 +1014,38 @@ export default function Questionnaire({
       </Section>}
 
       {!court && !route && <Section numero={numero('terrain')} titre="Ton terrain d’entraînement">
-        <div className="grid sm:grid-cols-2 gap-3">
-          {textes.terrain.options.map((o) => (
-            <Choix key={o.valeur} nom="terrain" valeur={o.valeur} courant={c.terrain} onChange={maj('terrain')}
-              titre={o.titre} description={o.description} />
-          ))}
-        </div>
-        {/* Le tapis qui monte (FT3-1, décision coach du 01/11/2026) : avec une côte de moins de 5 min seulement, facultatif. */}
-        {(c.terrain === 'vallonne' || c.terrain === 'intermediaire') && (
-          <div className="mt-5">
-            <p className="font-bold text-indigo mb-3">{textes.terrain.tapis}</p>
-            <div className="flex gap-3">
-              {['non', 'oui'].map((v) => (
-                <label key={v} className={clsx('flex items-center gap-2 px-5 py-2.5 rounded-xl border cursor-pointer',
-                  c.tapis === v ? 'border-teal bg-teal/5' : 'border-indigo/15')}>
-                  <input type="radio" name="tapis" value={v} checked={c.tapis === v} onChange={() => maj('tapis')(v)} className="accent-teal" />
-                  <span className="text-indigo capitalize">{v}</span>
-                </label>
-              ))}
+        {/* La côte en minutes (décision du coach du 23/11/2026, entrée 188), à la place des quatre cases : un nombre, ou « Je n'ai
+            pas de côte ». */}
+        <div role="group" aria-labelledby="cote-titre">
+          <p id="cote-titre" className="font-bold text-indigo mb-3 leading-relaxed">{textes.cote.question}</p>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+            <div className="flex items-center gap-2">
+              <input type="number" id="cote" inputMode="decimal" step="any" min="0.5" max={COTE_MAX_MIN} aria-labelledby="cote-titre"
+                className={clsx(inputCls, '!w-28')} required={c.cote_min !== SANS_COTE} disabled={c.cote_min === SANS_COTE}
+                value={c.cote_min === SANS_COTE ? '' : c.cote_min} onChange={(e) => maj('cote_min')(e.target.value)} />
+              <span className="text-indigo">{textes.cote.unite}</span>
             </div>
+            <label className={clsx('flex items-center gap-2 px-5 py-2.5 rounded-xl border cursor-pointer',
+              c.cote_min === SANS_COTE ? 'border-teal bg-teal/5' : 'border-indigo/15')}>
+              <input type="checkbox" checked={c.cote_min === SANS_COTE} onChange={(e) => maj('cote_min')(e.target.checked ? SANS_COTE : '')} className="accent-teal" />
+              <span className="text-indigo">{textes.cote.aucune}</span>
+            </label>
           </div>
-        )}
+        </div>
+        {/* Le tapis qui monte (FT3-1, décision coach du 01/11/2026) : facultatif, posé à tous (23/11/2026), plus seulement avec une
+            côte de moins de 5 min. */}
+        <div className="mt-5">
+          <p className="font-bold text-indigo mb-3">{textes.cote.tapis}</p>
+          <div className="flex gap-3">
+            {['non', 'oui'].map((v) => (
+              <label key={v} className={clsx('flex items-center gap-2 px-5 py-2.5 rounded-xl border cursor-pointer',
+                c.tapis === v ? 'border-teal bg-teal/5' : 'border-indigo/15')}>
+                <input type="radio" name="tapis" value={v} checked={c.tapis === v} onChange={() => maj('tapis')(v)} className="accent-teal" />
+                <span className="text-indigo capitalize">{v}</span>
+              </label>
+            ))}
+          </div>
+        </div>
       </Section>}
 
       {/* « Ta semaine » (« Ta disponibilité » jusqu'au 07/11/2026, P2) ; les séances et le jour de la sortie longue en
