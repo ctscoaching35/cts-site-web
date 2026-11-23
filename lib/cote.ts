@@ -4,11 +4,12 @@
  * base, partagées par l'achat, le coaching et la fiche du coaché.
  *
  * CE QUE LIT LE MOTEUR : le moteur en ligne (8.474) lit encore l'ancien `terrain`, à quatre valeurs ; il vient de ce nombre
- * (`terrainDeLaCote`) et la clé des minutes ne part pas au moteur tant que CONTRAT_API_CTS.md n'a pas écrit son nom (Moteur v1 le
- * dira). La 9.0 lit `cote_max` (`1m30` | `2-5` | `5-10` | `10+`) : `coteMaxDe` donne la même tranche.
+ * (`terrainDeLaCote`), et les minutes ne partent pas à l'achat tant que l'achat reste sur la 8.474. La 9.0 lit `parametres.cote_min`,
+ * le nombre de minutes, 0 pour pas de côte (CONTRAT_API_CTS.md, 23/11/2026 : lib/app/moteurV9.ts) ; sa tranche `cote_max` (`1m30` |
+ * `2-5` | `5-10` | `10+`) n'est lue que sans `cote_min`, en transition : `coteMaxDe` la donne.
  *
- * LES BORNES (provisoires, à confirmer avec le moteur) : jusqu'à 1 min 30, `1m30` ; moins de 5 min, `2-5` (le tapis sert sous
- * 5 min) ; moins de 10 min, `5-10` ; 10 min et plus, `10+`. Pas de côte : `1m30` (sa valeur par défaut, comme une clé absente).
+ * LES BORNES de la tranche (celles du moteur : 1,5 / 5 / 10 min, « 10+ » vaut 10 min) : jusqu'à 1 min 30, `1m30` ; moins de 5 min,
+ * `2-5` (le tapis sert sous 5 min) ; moins de 10 min, `5-10` ; 10 min et plus, `10+`. Pas de côte : `1m30` (sa valeur par défaut).
  */
 
 // La réponse « je n'ai pas de côte » : la valeur gardée à la place d'un nombre de minutes.

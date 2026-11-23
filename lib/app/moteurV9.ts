@@ -14,6 +14,7 @@
  * LE SITE ET LES DEUX VERSIONS : tant que le moteur en ligne est une 8.x, rien n'est appelé d'ici. `estMoteurV9` lit la version que
  * `GET /v1/config` rend (`version_moteur`).
  */
+import { lireCote, SANS_COTE, TERRAIN_DE_COTE } from '../cote';
 import type { ReponsesDimanche, VersionDimanche } from './dimancheV9';
 
 export const estMoteurV9 = (versionMoteur: unknown): boolean => typeof versionMoteur === 'string' && /^9(\.|$)/.test(versionMoteur.trim());
@@ -30,6 +31,9 @@ export type CoteMax = '1m30' | '2-5' | '5-10' | '10+';
 export type EntreesAthlete = {
   // Les deux critères (`criteres.intensite`, `criteres.mecanique`) : un critère absent vaut « jamais », et « Pourquoi cette semaine » le dit.
   criteres?: { intensite?: Categorie | null; mecanique?: Categorie | null };
+  // La plus longue côte, en minutes (contrat du 23/11/2026, entrée 188) : un nombre, ou « aucune » (le site) qui part en 0 ; la réponse du
+  // questionnaire (`base.cote_min`, « 12 ») est lue à défaut. `cote_max` (la tranche) n'est lu par le moteur que sans `cote_min` : transition.
+  cote_min?: number | string | null;
   cote_max?: CoteMax | null; tapis?: 'oui' | 'non' | null;
   // Ce que Nolio montre de ses 4 dernières semaines : remplace le déclaré.
   lu?: { volume_min?: number | null; sl_min?: number | null } | null;
@@ -43,6 +47,8 @@ export type EntreesAthlete = {
 // Ce que le moteur 8.x lisait et que la 9.0 ne lit plus : le niveau, l'habitude, le terrain à quatre valeurs, et les deux critères à plat de
 // l'intake d'avant la 9.1 (ils deviennent `criteres`).
 const RETIRES = ['niveau', 'habitude', 'terrain', 'critere_intensite', 'critere_denivele', 'strategie', 'glucides_cible'];
+// Ce que `parametresV9` écrit lui-même : la réponse du site, « 12 » ou « aucune », ne passe pas telle quelle (le moteur lit un nombre).
+const REECRITS = [...RETIRES, 'cote_min'];
 const CATEGORIES: Categorie[] = ['jamais', 'parfois', 'regulier'];
 const categorie = (v: unknown): Categorie | null => (CATEGORIES as unknown[]).includes(v) ? (v as Categorie) : null;
 
@@ -55,11 +61,18 @@ export function glucidesPourLeMoteur(g: EntreesAthlete['glucides'] | unknown): n
 // Les `parametres` du moteur 9.0 d'après ceux du plan (l'intake d'avant) et ce que la fiche donne en plus. Rien n'est modifié ; les clés
 // que la 9.0 ne lit pas sont retirées ; une clé absente reste absente (jamais une valeur inventée).
 export function parametresV9(base: Record<string, unknown>, e: EntreesAthlete = {}): Record<string, unknown> {
-  const sortie: Record<string, unknown> = Object.fromEntries(Object.entries(base).filter(([k]) => !RETIRES.includes(k)));
+  const sortie: Record<string, unknown> = Object.fromEntries(Object.entries(base).filter(([k]) => !REECRITS.includes(k)));
   const intensite = categorie(e.criteres?.intensite) ?? categorie(base.critere_intensite);
   const mecanique = categorie(e.criteres?.mecanique) ?? categorie(base.critere_denivele);
   if (intensite || mecanique) sortie.criteres = { ...(intensite ? { intensite } : {}), ...(mecanique ? { mecanique } : {}) };
-  if (e.cote_max) sortie.cote_max = e.cote_max;
+  // La côte : `cote_min`, en minutes, 0 pour pas de côte (le moteur lit moins de 1 min 30 comme 1 min 30). Sans minutes lues, la tranche
+  // (`cote_max`) : celle qu'on donne, sinon celle de l'ancien terrain d'un profil d'avant ; le moteur ne la lit que sans `cote_min`.
+  const cote = lireCote(e.cote_min ?? base.cote_min);
+  if (cote !== null) sortie.cote_min = cote === SANS_COTE ? 0 : cote;
+  else {
+    const tranche = e.cote_max ?? (Object.entries(TERRAIN_DE_COTE).find(([, t]) => t === base.terrain)?.[0] as CoteMax | undefined);
+    if (tranche) sortie.cote_max = tranche;
+  }
   if (e.tapis) sortie.tapis = e.tapis;
   if (e.lu && (e.lu.volume_min || e.lu.sl_min)) sortie.lu = { ...(e.lu.volume_min ? { volume_min: e.lu.volume_min } : {}), ...(e.lu.sl_min ? { sl_min: e.lu.sl_min } : {}) };
   if (e.aisance) sortie.aisance = e.aisance;
