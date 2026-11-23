@@ -4,8 +4,9 @@
  * course et leurs seuils, la lecture d'une classe d'avant ou d'un autre nom, le temps minimum par format (seules les formules qui
  * tiennent avant la course, plus de plan rejoint à l'achat, la phrase quand aucune ne tient), l'attestation sur l'honneur par
  * format (sans refus, sans invitation à échanger avec le coach), et les deux questions des critères, préparées mais PAS
- * branchées (l'intake reste celui d'aujourd'hui). Des cas fictifs, sans réseau ; la configuration reprend /v1/config du moteur
- * 8.474 en ligne (relevée le 23/11/2026).
+ * branchées (l'intake reste celui d'aujourd'hui) ; sur route, l'intensité seule, sans attestation, et la cible de glucides part
+ * au moteur comme pour le trail (décision du coach du 23/11/2026). Des cas fictifs, sans réseau ; la configuration reprend
+ * /v1/config du moteur 8.474 en ligne (relevée le 23/11/2026).
  *
  *   node --test scripts/test-doctrine-21-11.mjs
  */
@@ -35,6 +36,7 @@ registerHooks({
 const plan = await import(`${RACINE}lib/plan.ts`);
 const attestation = await import(`${RACINE}lib/attestation.ts`);
 const criteres = await import(`${RACINE}lib/criteres.ts`);
+const strategieMoteur = await import(`${RACINE}lib/app/strategieMoteur.ts`);
 const courseLibre = await import(`${RACINE}lib/app/courseLibre.ts`);
 const liste = await import(`${RACINE}lib/app/listeEmail.ts`);
 const carte = await import(`${RACINE}lib/app/carteStory.ts`);
@@ -254,8 +256,66 @@ test('critères : tant qu’ils ne sont pas branchés, l’intake est celui d’
   assert.ok(!('blessure' in intake) && !('coeur' in intake));
   // Le questionnaire demande toujours le niveau, et affiche les critères seulement branchés.
   const source = lire('components/plan/Questionnaire.tsx');
-  assert.match(source, /\{!court && CRITERES_BRANCHES && <CriteresEntree c=\{c\} maj=\{maj\} \/>\}/);
+  assert.match(source, /\{!court && CRITERES_BRANCHES && <CriteresEntree c=\{c\} maj=\{maj\} route=\{route\} \/>\}/);
   assert.match(source, /\{!court && !CRITERES_BRANCHES && \(/);
+});
+
+// ─── Sur route : la seule question d'intensité (décision du coach du 23/11/2026) ────────────────────
+
+test('route : la question du dénivelé n’est pas posée, celle de l’intensité l’est', () => {
+  assert.deepEqual(criteres.criteresDe(true).map((q) => q.champ), ['critere_intensite']);
+  assert.deepEqual(criteres.criteresDe(false).map((q) => q.champ), ['critere_intensite', 'critere_denivele'], 'le trail garde les deux');
+  assert.equal(criteres.criteresDe(false), criteres.CRITERES);
+  // Le formulaire et le récapitulatif lisent la même liste : rien du dénivelé ne s'affiche sur route.
+  const source = lire('components/plan/Questionnaire.tsx');
+  assert.match(source, /criteresDe\(route\)\.map\(\(q\) => \[q\.court, titreReponse\(c\[q\.champ\]\)\]/);
+  const entree = lire('components/plan/CriteresEntree.tsx');
+  assert.match(entree, /criteresDe\(route\)\.map\(\(q\) =>/);
+  assert.match(entree, /route = false/);
+});
+
+test('route : branchée, l’intake ne porte que l’intensité, même si le dénivelé avait été répondu avant de passer à la route', () => {
+  const base = { ...plan.champsVides, nom: 'Essai', niveau: 'intermediaire', critere_intensite: 'parfois', critere_denivele: 'regulier', blessure: 'non', coeur: 'non' };
+  for (const format of ['R10', 'R21', 'R42']) {
+    const intake = plan.intakeSelon({ ...base, format }, true);
+    assert.equal(intake.critere_intensite, 'parfois', format);
+    assert.ok(!('critere_denivele' in intake), `${format} : pas de dénivelé`);
+    assert.ok(!('niveau' in intake), `${format} : plus de niveau`);
+    assert.ok(!('blessure' in intake) && !('coeur' in intake));
+  }
+  // Sur trail, les deux critères partent, sans le niveau.
+  for (const format of ['TC', 'TM', 'TL', 'UT', '']) {
+    const intake = plan.intakeSelon({ ...base, format }, true);
+    assert.equal(intake.critere_intensite, 'parfois', format);
+    assert.equal(intake.critere_denivele, 'regulier', format);
+    assert.ok(!('niveau' in intake), format);
+  }
+  // Non branché, rien ne change, route comprise : le niveau part, les critères non.
+  for (const format of ['R42', 'TM']) {
+    const intake = plan.intakeSelon({ ...base, format }, false);
+    assert.equal(intake.niveau, 'intermediaire', format);
+    assert.ok(!('critere_intensite' in intake) && !('critere_denivele' in intake), format);
+  }
+  // intakePourApi suit le commutateur (coupé aujourd'hui).
+  assert.deepEqual(plan.intakePourApi({ ...base, format: 'R42' }), plan.intakeSelon({ ...base, format: 'R42' }, false));
+});
+
+test('route : la cible de glucides du calculateur part au moteur pour tous les plans, sans condition de discipline (marathon compris)', () => {
+  // Déjà le cas avant la doctrine de la route : corpsDeLaSemaine relit la stratégie gardée du plan et la joint aux paramètres, sans
+  // regarder le format ni la discipline ; strategieMoteur.ts ne les connaît pas non plus. Rien à brancher pour la route.
+  const ecriture = lire('lib/app/ecriture.ts');
+  assert.match(ecriture, /parametres: options\.parametres \?\? parametresAvecLaStrategie\(o\.parametres, strategie\)/);
+  const codeStrategie = lire('lib/app/strategieMoteur.ts').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  assert.ok(!/FORMATS_ROUTE|discipline|R42|R21|R10|format/i.test(codeStrategie), 'aucune condition de format ni de discipline');
+  // Un marathon de 3 h 45 sur route : sa stratégie gardée sort en glucides_cible et en strategie.
+  const strategie = { entrees: { heures: '3', minutes: '45', conditions: 'tempere', sueur: 'moderee', intestin: 'cours' },
+    cartes: [{ nom: 'Glucides', valeur: '70 à 80 g', sous: 'par heure' }, { nom: 'Boisson', valeur: '500 à 700 mL', sous: 'par heure' },
+      { nom: 'Sodium', valeur: 'Rien', sous: '' }, { nom: 'Caféine', valeur: '170 mg', sous: 'une heure avant' }] };
+  const p = strategieMoteur.parametresAvecLaStrategie({ schema: 1 }, strategie);
+  assert.deepEqual(p.glucides_cible, [70, 80]);
+  assert.deepEqual(p.strategie.glucides_g_h, [70, 80]);
+  // Sans stratégie, rien : le moteur prend sa fourchette large.
+  assert.deepEqual(strategieMoteur.parametresAvecLaStrategie({ schema: 1 }, null), { schema: 1 });
 });
 
 test('portes : aucune porte de plus au questionnaire — le temps minimum est celui du coach, l’attestation ne refuse rien', () => {
