@@ -12,17 +12,19 @@ import { EXPERIENCES, PHRASE_SOUS_LA_GRILLE } from './grilleExperience';
 
 export const API_URL = (process.env.NEXT_PUBLIC_CTS_API_URL || 'http://localhost:5070').replace(/\/$/, '');
 
+// Les clés que le nouveau moteur retire de /v1/config (formats par niveau, fréquence minimale à l'achat, plafond par niveau :
+// doctrine du 19/11/2026) sont facultatives : sans elles, aucune porte, et le questionnaire ne tombe pas.
 export type ConfigPlan = {
-  formats_par_niveau: Record<string, string[]>;
+  formats_par_niveau?: Record<string, string[]>;
   // La course de référence de l'ultra et du Trail Long de plus de 10 h (P2, 30/10/2026) : sa part minimale du km-effort.
   porte_ultra?: { part_min: number; temps_tl_h: number };
   formats: { code: string; nom: string; bornes: string }[];
   formats_par_distance?: [string, number | null, boolean][];
   durees_par_format: Record<string, number[]>;
-  freq_min_par_format: Record<string, number>;
-  freq_min_km_effort_seuil: number;
-  freq_min_au_dela_du_seuil: number;
-  freq_max_par_niveau: Record<string, number>;
+  freq_min_par_format?: Record<string, number>;
+  freq_min_km_effort_seuil?: number;
+  freq_min_au_dela_du_seuil?: number;
+  freq_max_par_niveau?: Record<string, number>;
   temps_max_par_format: Record<string, number>;
   reperes_km_effort_h: Record<string, [number, number, number]>;
   sortie_longue_min?: { h: number; message: string };
@@ -447,7 +449,7 @@ export function courseTropProche(c: Champs, aujourdhui = new Date()): boolean {
 // coach : en coaching individualisé, tout format s'ouvre à tout niveau (décision coach du 23/10/2026, « lever la
 // porte », comme le moteur : cts_intake.valider_champs).
 export function formatOuvert(c: Champs, config: ConfigPlan, coach = false): boolean {
-  return !!c.format && (coach || !c.niveau || (config.formats_par_niveau[c.niveau] ?? []).includes(c.format));
+  return !!c.format && (coach || !c.niveau || !config.formats_par_niveau || (config.formats_par_niveau[c.niveau] ?? []).includes(c.format));
 }
 
 /**
@@ -461,7 +463,7 @@ export function noteFormat(c: Champs, config: ConfigPlan, coach = false): string
     return f ? `${f.nom} (${f.bornes})` : code;
   };
   if (formatOuvert(c, config, coach)) return `Ta course est un ${nom(c.format)}.`;
-  const ouverts = config.formats_par_niveau[c.niveau] ?? [];
+  const ouverts = config.formats_par_niveau?.[c.niveau] ?? [];
   const debut = `Une course de ${c.distance_km.replace('.', ',')} km est un ${nom(c.format)} : ce format n’est pas ouvert à ton niveau. Choisis une course ${ouverts.map((f) => `de ${nom(f)}`).join(' ou ')}`;
   return coach ? `${debut}. ${HORS_DU_MOTEUR}` : `${debut}, ou oriente-toi vers un coaching individualisé.`;
 }
@@ -523,9 +525,9 @@ export function alerteSortieLongue(c: Champs, config: ConfigPlan): string | null
  * qui n'existe pas aujourd'hui, n'aurait pas de note plutôt qu'une note fausse.
  */
 export function plancherSeances(c: Champs, config: ConfigPlan): { min: number; max: number; note: string } {
-  const parFormat = config.freq_min_par_format[c.format] ?? 0;
-  const seuil = config.freq_min_km_effort_seuil;
-  const auDela = config.freq_min_au_dela_du_seuil;
+  const parFormat = config.freq_min_par_format?.[c.format] ?? 0;
+  const seuil = config.freq_min_km_effort_seuil ?? Infinity;
+  const auDela = config.freq_min_au_dela_du_seuil ?? 0;
   const km = parseFloat(c.distance_km.replace(',', '.'));
   const dp = parseFloat(c.dplus_m.replace(',', '.')) || 0;
   const ke = km > 0 ? km + dp / 100 : null;
