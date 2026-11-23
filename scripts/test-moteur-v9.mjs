@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * LE CONTRAT DU MOTEUR 9.0 CÔTÉ SITE (lib/app/moteurV9.ts ; CONTRAT_API_CTS.md, « MOTEUR v1 », 23/11/2026) : la version lue sur
- * `/v1/config`, le numéro de semaine, les `parametres` sans niveau (criteres, cote_max, tapis, lu, aisance, coaching, glucides en un
+ * `/v1/config`, le numéro de semaine, les `parametres` sans niveau (criteres, cote_min en minutes, tapis, lu, aisance, coaching, glucides en un
  * nombre), les corps des quatre appels, et la réponse de `/v1/semaine` vérifiée. Des cas fictifs, sans réseau.
  *
  *   node --test scripts/test-moteur-v9.mjs
@@ -47,7 +47,9 @@ test('parametres : plus de niveau, d’habitude ni de terrain ; le reste passe t
     assert.deepEqual(p[k], BASE[k], k);
   assert.equal(JSON.stringify(BASE), avant, 'la base n’est pas modifiée');
   // Sans critère donné : aucune clé `criteres` (le moteur lit « jamais » et le dit), rien d’inventé.
-  for (const k of ['criteres', 'cote_max', 'tapis', 'lu', 'aisance', 'montees', 'coaching', 'entree', 'course_precedente', 'glucides_cible']) assert.ok(!(k in p), k);
+  for (const k of ['criteres', 'cote_min', 'tapis', 'lu', 'aisance', 'montees', 'coaching', 'entree', 'course_precedente', 'glucides_cible']) assert.ok(!(k in p), k);
+  // Le terrain d'avant n'est pas lu, mais sa tranche de côte passe en transition (voir plus bas) : ici « vallonne », la tranche par défaut.
+  assert.equal(p.cote_max, '1m30');
 });
 
 test('parametres : les deux critères, de la fiche ou de l’intake à plat (le dénivelé devient la mécanique)', () => {
@@ -68,6 +70,36 @@ test('parametres : côte, tapis, ce que Nolio montre, aisance, montées', () => 
   assert.equal(p.aisance, 'descente');
   assert.equal(p.montees, 'longues');
   assert.ok(!('lu' in m.parametresV9(BASE, { lu: { volume_min: null, sl_min: null } })));
+});
+
+test('parametres : la côte part en minutes (cote_min), 0 pour pas de côte ; la réponse du site est lue à défaut', () => {
+  for (const [donne, minutes] of [[12, 12], ['12', 12], ['12,5', 12.5], ['aucune', 0], [1, 1], [0.5, 0.5], [240, 240]]) {
+    const p = m.parametresV9(BASE, { cote_min: donne });
+    assert.strictEqual(p.cote_min, minutes, String(donne));
+    assert.ok(!('cote_max' in p), `${donne} : cote_max n’est lu que sans cote_min`);
+    assert.ok(!('terrain' in p));
+  }
+  // La réponse du questionnaire, dans la base du plan : un nombre, jamais la chaîne « 12 » ni « aucune ».
+  assert.strictEqual(m.parametresV9({ ...BASE, cote_min: '12' }).cote_min, 12);
+  assert.strictEqual(m.parametresV9({ ...BASE, cote_min: 'aucune' }).cote_min, 0);
+  assert.strictEqual(m.parametresV9({ ...BASE, cote_min: '12' }, { cote_min: 4 }).cote_min, 4, 'la fiche prime');
+  // Les minutes l'emportent sur la tranche.
+  const les2 = m.parametresV9({ ...BASE, terrain: 'pentu' }, { cote_min: 3, cote_max: '10+' });
+  assert.strictEqual(les2.cote_min, 3);
+  assert.ok(!('cote_max' in les2));
+});
+
+test('parametres : sans minutes lues, la tranche (cote_max) : celle qu’on donne, sinon celle de l’ancien terrain ; sinon rien', () => {
+  assert.equal(m.parametresV9(BASE, { cote_max: '5-10' }).cote_max, '5-10');
+  for (const [terrain, tranche] of [['vallonne', '1m30'], ['intermediaire', '2-5'], ['pentu', '5-10'], ['tres_pentu', '10+']])
+    assert.equal(m.parametresV9({ ...BASE, terrain }).cote_max, tranche, terrain);
+  const sans = m.parametresV9({ ...BASE, terrain: undefined });
+  assert.ok(!('cote_max' in sans) && !('cote_min' in sans), 'rien d’inventé');
+  assert.ok(!('cote_max' in m.parametresV9({ ...BASE, terrain: 'plat' })), 'un terrain inconnu ne part pas');
+  // Des minutes illisibles ne valent pas « 0 » : la tranche d'avant reste.
+  const illisible = m.parametresV9({ ...BASE, terrain: 'pentu', cote_min: 'douze' });
+  assert.ok(!('cote_min' in illisible));
+  assert.equal(illisible.cote_max, '5-10');
 });
 
 test('parametres : un coaché entre à son lundi et porte la course qu’il vient de courir ; un acheteur non', () => {

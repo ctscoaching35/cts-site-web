@@ -76,11 +76,13 @@ test('coteEnClair : « 12 min », « 1,5 min », « Pas de côte » ; rien quand
   assert.equal(cote.coteEnClair(undefined), null);
 });
 
-test('la tranche est celle que le contrat du moteur 9.0 lit (cote_max)', () => {
+test('la 9.0 lit les minutes (cote_min, 0 pour pas de côte) ; leur tranche (cote_max) reste celle de la transition', () => {
   const base = { format: 'TM', distance_km: '45', dplus_m: '2000' };
   for (const [minutes, tranche] of [[1, '1m30'], [3, '2-5'], [7, '5-10'], [12, '10+']]) {
     assert.equal(moteurV9.parametresV9(base, { cote_max: cote.coteMaxDe(minutes) }).cote_max, tranche, String(minutes));
+    assert.strictEqual(moteurV9.parametresV9({ ...base, cote_min: String(minutes) }).cote_min, minutes, String(minutes));
   }
+  assert.strictEqual(moteurV9.parametresV9({ ...base, cote_min: cote.SANS_COTE }).cote_min, 0);
 });
 
 // ─── Le texte ───────────────────────────────────────────────────────────────────────────────────────
