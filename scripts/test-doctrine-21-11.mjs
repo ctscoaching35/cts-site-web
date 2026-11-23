@@ -38,6 +38,7 @@ const attestation = await import(`${RACINE}lib/attestation.ts`);
 const criteres = await import(`${RACINE}lib/criteres.ts`);
 const strategieMoteur = await import(`${RACINE}lib/app/strategieMoteur.ts`);
 const courseLibre = await import(`${RACINE}lib/app/courseLibre.ts`);
+const profilFiche = await import(`${RACINE}lib/app/profilEntrainement.ts`);
 const liste = await import(`${RACINE}lib/app/listeEmail.ts`);
 const carte = await import(`${RACINE}lib/app/carteStory.ts`);
 
@@ -335,4 +336,69 @@ test('configuration du nouveau moteur : sans formats par niveau ni fréquence mi
   assert.match(plan.noteFormat(c, sans), /^Ta course est un Ultra-Trail/);
   assert.deepEqual(plan.plancherSeances(c, sans), { min: 3, max: 7, note: '' });
   assert.equal(plan.referenceExigee(c, sans), null, 'plus de course de référence exigée');
+});
+
+// ─── La fiche du coaché : les deux critères que le coach remplit (entrée 183, 23/11/2026) ───────────
+
+const formulaireFiche = (champs) => {
+  const f = new FormData();
+  for (const [k, v] of Object.entries(champs)) for (const x of [].concat(v)) f.append(k, x);
+  return f;
+};
+const FICHE = { anciennete: '2_5', entrainement: 'plan', cote_min: '12', jours_disponibles: ['mardi', 'jeudi', 'dimanche'], jour_sl: 'dimanche', freq_hebdo: '3' };
+const profilDeLaFiche = (extra, pour = 'son', ancien = null) => profilFiche.lireProfil(formulaireFiche({ ...FICHE, ...extra }), pour, ancien, {});
+
+test('fiche : le coach remplit intensité et mécanique, trois choix chacun, sous les clés du questionnaire', () => {
+  assert.deepEqual(criteres.REPONSES_CRITERE.map((r) => r.valeur), ['jamais', 'parfois', 'regulier']);
+  assert.deepEqual(criteres.CRITERES.map((q) => [q.champ, q.fiche]), [['critere_intensite', 'Intensité'], ['critere_denivele', 'Mécanique']]);
+  const r = profilDeLaFiche({ critere_intensite: 'regulier', critere_denivele: 'parfois' });
+  assert.ok(r.profil, r.erreur);
+  assert.equal(r.profil.critere_intensite, 'regulier');
+  assert.equal(r.profil.critere_denivele, 'parfois');
+});
+
+test('fiche : un critère sans réponse manque, et il vaut « jamais » ; une valeur inconnue n’est pas gardée', () => {
+  const sans = profilDeLaFiche({}).profil;
+  assert.ok(!('critere_intensite' in sans) && !('critere_denivele' in sans), 'sans réponse, la clé manque');
+  const une = profilDeLaFiche({ critere_intensite: '', critere_denivele: 'jamais' }).profil;
+  assert.ok(!('critere_intensite' in une));
+  assert.equal(une.critere_denivele, 'jamais');
+  const inconnue = profilDeLaFiche({ critere_intensite: 'toujours', critere_denivele: 'REGULIER' }).profil;
+  assert.ok(!('critere_intensite' in inconnue) && !('critere_denivele' in inconnue));
+  assert.equal(criteres.SANS_CRITERE, 'Pas renseigné : compte comme « Jamais »');
+});
+
+test('fiche : l’athlète n’a pas ces menus, et garde ceux de son coach quand il enregistre son profil', () => {
+  const ancien = { critere_intensite: 'regulier', critere_denivele: 'parfois' };
+  const lu = profilDeLaFiche({ critere_intensite: 'jamais', critere_denivele: 'jamais' }, 'ton', ancien).profil;
+  assert.equal(lu.critere_intensite, 'regulier', 'ce que le formulaire de l’athlète enverrait ne change rien');
+  assert.equal(lu.critere_denivele, 'parfois');
+  const sansCoach = profilDeLaFiche({ critere_intensite: 'regulier' }, 'ton', {}).profil;
+  assert.ok(!('critere_intensite' in sansCoach));
+  assert.ok(!('critere_intensite' in profilDeLaFiche({}, 'ton', null).profil));
+  const f = lire('components/app/ProfilAthlete.tsx');
+  assert.match(f, /\{!moi && \(\s*<fieldset[^>]*>\s*<legend[^>]*>\{TITRE_CRITERES_FICHE\}/, 'les menus ne sont posés qu’au coach');
+  assert.ok(f.includes('name={q.champ}') && f.includes('<option value="">{SANS_CRITERE}</option>'));
+});
+
+test('fiche : le coach relit les critères remplis ; l’athlète ne les voit pas sur sa carte ; le questionnaire d’un objectif les reprend', () => {
+  const p = { niveau: 'intermediaire', terrain: 'tres_pentu', cote_min: '12', critere_intensite: 'regulier', critere_denivele: 'jamais',
+    jours_disponibles: ['mardi'], jour_sl: 'mardi', freq_hebdo: '1' };
+  const ligne = (lignes, titre) => lignes.find(([t]) => t === titre)?.[1];
+  assert.equal(ligne(profilFiche.lignesDuProfil(p, true), 'Intensité'), 'Régulièrement');
+  assert.equal(ligne(profilFiche.lignesDuProfil(p, true), 'Mécanique'), 'Jamais');
+  assert.equal(ligne(profilFiche.lignesDuProfil({ ...p, critere_intensite: undefined }, true), 'Intensité'), undefined, 'rien de rempli : pas de ligne');
+  assert.equal(ligne(profilFiche.lignesDuProfil(p, false), 'Intensité'), undefined, 'ce n’est pas pour l’athlète');
+  assert.equal(ligne(profilFiche.lignesDeLaCarte(p), 'Intensité'), undefined);
+  const repris = profilFiche.profilPourLeQuestionnaire(p);
+  assert.equal(repris.critere_intensite, 'regulier');
+  assert.equal(repris.critere_denivele, 'jamais');
+});
+
+test('fiche : rien des critères ne part au moteur tant qu’ils ne sont pas branchés, même repris du profil', () => {
+  const repris = profilFiche.profilPourLeQuestionnaire({ niveau: 'intermediaire', critere_intensite: 'regulier', critere_denivele: 'parfois' });
+  const c = { ...plan.champsVides, ...repris, nom: 'Essai', blessure: 'non', coeur: 'non' };
+  const intake = plan.intakePourApi(c);
+  assert.equal(intake.niveau, 'intermediaire');
+  assert.ok(!('critere_intensite' in intake) && !('critere_denivele' in intake));
 });
