@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * LE RAPPEL DU DIMANCHE SOUS LE MOTEUR v1 (décision 206 du coach, 24/11/2026 ; lib/app/rappelDimancheV9.ts, lib/app/passeUnPlanV9.ts `pointSansReponse`, lib/app/passagesV9.ts
- * `rappelDuDimancheV9`) : un seul rappel vers 15 h (Paris), seulement à qui n'a pas répondu à son « point du dimanche » ; plus de rappel pour les séances non remontées ; le même
+ * `rappelDuDimancheV9`) : un seul rappel vers 19 h (Paris, décision 211), seulement à qui n'a pas répondu à son « point du dimanche » ; plus de rappel pour les séances non remontées ; le même
  * interrupteur `CTS_RAPPEL_DIMANCHE` qu'avant. Nolio et la base sont de fausses pièces qui notent chaque appel ; la trame est celle du moteur enregistré (athlète fictif).
  * Aucun réseau, aucune donnée d'athlète.
  *
@@ -68,7 +68,7 @@ const PARAMETRES = fixture('semaine-1').requete.corps.parametres;
 const [LUNDI_1, LUNDI_2] = TRAME.semaines.map((s) => s.lundi);
 const jour = (iso, n) => new Date(Date.parse(`${iso}T12:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
 const DIMANCHE = jour(LUNDI_1, 6); // le dimanche de la semaine 1 : la semaine 2 s'écrit ce soir
-const A_13H = new Date(`${DIMANCHE}T13:00:00Z`); // 14 h à Paris en novembre
+const A_13H = new Date(`${DIMANCHE}T13:00:00Z`); // 14 h à Paris en novembre : le message est programmé à 19 h (décision 211)
 
 const COACHE = 'Petit rappel : réponds à ton point du dimanche avant ce soir, pour que je prépare ta semaine au plus juste.';
 const ACHETEUR = 'Petit rappel : réponds à ton point du dimanche avant ce soir, pour que ta semaine colle à ce que tu as fait.';
@@ -140,7 +140,7 @@ test('qui rappeler : le point du dimanche posé ce matin n’a pas de réponse (
   await assert.rejects(() => demande({ planId: 'p1', usr: 'usr_1' }, new Error('Nolio ne répond pas')), /Nolio ne répond pas/);
 });
 
-test('l’interrupteur d’avant, tel quel : coupé, rien n’est lu ni envoyé ; ni un autre jour que le dimanche, ni après 17 h', async () => {
+test('l’interrupteur d’avant, tel quel : coupé, rien n’est lu ni envoyé ; ni un autre jour que le dimanche, ni trop tard le soir (après 20 h 30)', async () => {
   situation({ plans: [{ planId: 'p1', usr: 'usr_1' }] });
   for (const valeur of [undefined, '', 'non']) {
     const r = await avecInterrupteur(valeur, () => passages.rappelDuDimancheV9(240_000, A_13H));
@@ -149,22 +149,22 @@ test('l’interrupteur d’avant, tel quel : coupé, rien n’est lu ni envoyé 
   assert.deepEqual([globalThis.__lectures, globalThis.__appels, globalThis.__bd], [[], [], []], 'coupé : aucune lecture, aucun appel, aucune clé');
   const lundi = await avecInterrupteur('oui', () => passages.rappelDuDimancheV9(240_000, new Date(`${LUNDI_2}T13:00:00Z`)));
   assert.deepEqual(lundi.comptes, []);
-  const tard = await avecInterrupteur('oui', () => passages.rappelDuDimancheV9(240_000, new Date(`${DIMANCHE}T17:30:00Z`)));
+  const tard = await avecInterrupteur('oui', () => passages.rappelDuDimancheV9(240_000, new Date(`${DIMANCHE}T19:45:00Z`))); // 20 h 45 à Paris
   assert.match(tard.comptes[0].quoi, /trop tard/);
   assert.deepEqual([globalThis.__lectures, globalThis.__appels], [[], []]);
 });
 
-test('un coaché et un acheteur sans réponse : chacun son texte, un message programmé à 15 h pour lui seul ; qui a répondu n’est pas rappelé', async () => {
+test('un coaché et un acheteur sans réponse : chacun son texte, un message programmé à 19 h pour lui seul ; qui a répondu n’est pas rappelé', async () => {
   situation({ plans: [{ planId: 'p1', usr: 'usr_1', coache: true }, { planId: 'p2', usr: 'usr_2', coache: false }, { planId: 'p3', usr: 'usr_3', coache: true }],
     resultats: { usr_3: [reponse('usr_3')] } });
   const r = await avecInterrupteur('oui', () => passages.rappelDuDimancheV9(240_000, A_13H));
   assert.equal(r.actif, true);
   assert.ok(r.comptes.every((c) => !c.erreur), JSON.stringify(r.comptes));
   assert.deepEqual(messages(), [
-    { description: COACHE, date_start: DIMANCHE, hour_start: '15:00', show_to_the_athlete: false, athletes: ['usr_1'] },
-    { description: ACHETEUR, date_start: DIMANCHE, hour_start: '15:00', show_to_the_athlete: false, athletes: ['usr_2'] },
+    { description: COACHE, date_start: DIMANCHE, hour_start: '19:00', show_to_the_athlete: false, athletes: ['usr_1'] },
+    { description: ACHETEUR, date_start: DIMANCHE, hour_start: '19:00', show_to_the_athlete: false, athletes: ['usr_2'] },
   ]);
-  assert.deepEqual(r.comptes.map((c) => [c.plan, c.quoi, c.coache]), [['p1', 'rappel programmé à 15:00', true], ['p2', 'rappel programmé à 15:00', false]]);
+  assert.deepEqual(r.comptes.map((c) => [c.plan, c.quoi, c.coache]), [['p1', 'rappel programmé à 19:00', true], ['p2', 'rappel programmé à 19:00', false]]);
   assert.ok(globalThis.__lectures.every((l) => l.startsWith('real/quiz_results/')), 'seules les réponses du point sont lues : plus de séances non remontées');
 });
 

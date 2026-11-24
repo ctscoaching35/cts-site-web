@@ -82,7 +82,7 @@ test('les textes fixes de l’achat et de la FAQ ne disent ni le jour ni le nom 
 
 test('le rappel du dimanche sous le moteur 9.0 (décision 206) : celui de la 8.x garde sa chaîne, la 9.x a la sienne (essayé dans test-rappel-v9.mjs)', () => {
   const route = source('app/api/ecriture/rappel/route.ts');
-  assert.ok(route.includes('selonLeMoteur') && /avant: \(\) => rappelerLeDimanche\(240_000\)/.test(route) && /v1: \(\) => rappelDuDimancheV9\(240_000\)/.test(route));
+  assert.ok(route.includes('selonLeMoteur') && /rappelerLeDimanche\(240_000\)/.test(route) && /rappelDuDimancheV9\(240_000\)/.test(route));
 });
 
 test('le code TAPIS se dit « Séance sur tapis » (entrée 197), ses mots de la famille mécanique inchangés', () => {

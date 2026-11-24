@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { registerHooks } from 'node:module';
 import { pathToFileURL } from 'node:url';
-import test from 'node:test';
+import test, { mock } from 'node:test';
 
 const RACINE = new URL('..', import.meta.url).pathname;
 // Une fausse pièce : chaque fonction note son appel (nom et premier argument) et rend la valeur donnée.
@@ -21,8 +21,8 @@ const FAUX = {
   '/lib/app/ecriture.ts': `${fonctions('ecriture', { passageDuDimanche: [{ plan: 'a', quoi: 'avant' }], passageDuLundi: [{ plan: 'a', quoi: 'avant' }],
     passageQuotidienLeger: [], passageQuotidienLong: [], retirerLaTrameAuDela: [], prevenirCoach: null })}
 export const nomsDesPlans = async () => new Map(); export const REMIS = 'remis';`,
-  '/lib/app/passagesV9.ts': fonctions('passagesV9', { passageDuDimancheV9: [{ plan: 'b', quoi: 'v1' }], passageDuLundiV9: [{ plan: 'b', quoi: 'v1' }],
-    questionnaireDuMatinV9: [{ plan: 'b', quoi: 'v1' }], rappelDuDimancheV9: { actif: true, texteValide: true, comptes: [{ plan: 'b', quoi: 'rappel v1' }] } }),
+  '/lib/app/passagesV9.ts': `export const passageDuDimancheV9 = async (...a) => { globalThis.__appels.push(['passagesV9.passageDuDimancheV9', a[0]]); return [{ plan: 'b', quoi: 'v1', ...(globalThis.__echec ? { erreur: 'boum' } : {}) }]; };
+${fonctions('passagesV9', { passageDuLundiV9: [{ plan: 'b', quoi: 'v1' }], questionnaireDuMatinV9: [{ plan: 'b', quoi: 'v1' }], rappelDuDimancheV9: { actif: true, texteValide: true, comptes: [{ plan: 'b', quoi: 'rappel v1' }] } })}`,
   '/lib/app/rappelDuDimanche.ts': fonctions('rappelDuDimanche', { rappelerLeDimanche: { actif: true, texteValide: true, comptes: [{ plan: 'a', quoi: 'rappel avant' }] } }),
   '/lib/app/fond.ts': fonctions('fond', { saisonsDuJour: [{ plan: 's', quoi: 'saison' }] }),
   // Les dimanches notent aussi leurs options (le Hooper seul sous la 9.x) : globalThis.__options, le deuxième argument.
@@ -50,11 +50,19 @@ registerHooks({
 });
 process.env.CRON_SECRET = 'secret-d-essai';
 const route = async (chemin) => (await import(pathToFileURL(`${RACINE}app/api/${chemin}/route.ts`).href)).GET;
-const appeler = async (chemin, { v9, secret = 'secret-d-essai' }) => {
+// planif : l'en-tête de la planification de Vercel (absent d'un appel à la main) ; maintenant : l'instant simulé (ISO, UTC) ; echec : les passages rendent une erreur.
+const appeler = async (chemin, { v9, secret = 'secret-d-essai', planif = null, maintenant = null, echec = false }) => {
   globalThis.__appels = [];
   globalThis.__options = null;
   globalThis.__v9 = v9;
-  const reponse = await (await route(chemin))(new Request('https://exemple.test/api', { headers: secret ? { authorization: `Bearer ${secret}` } : {} }));
+  globalThis.__echec = echec;
+  if (maintenant) mock.timers.enable({ apis: ['Date'], now: new Date(maintenant) });
+  let reponse;
+  try {
+    reponse = await (await route(chemin))(new Request('https://exemple.test/api', { headers: { ...(secret ? { authorization: `Bearer ${secret}` } : {}), ...(planif ? { 'x-vercel-cron-schedule': planif } : {}) } }));
+  } finally {
+    if (maintenant) mock.timers.reset();
+  }
   return { reponse, corps: reponse.status === 200 ? await reponse.json() : null, appels: globalThis.__appels.map(([nom]) => nom), brut: globalThis.__appels, options: globalThis.__options };
 };
 
@@ -113,6 +121,67 @@ test('le rappel du dimanche : sous la 8.x, celui d’avant (240 s) ; sous la 9.x
   }
 });
 
+// ─── Les heures du dimanche (décision 211) : chaque moteur n'agit que sur ses lancements, à l'heure de Paris toute l'année ───────────────────────────────
+
+const DIM_HIVER = '2026-12-06';
+const DIM_ETE = '2027-06-06';
+const lance = (route, v9, jour, utc, planif, extra = {}) => appeler(route, { v9, planif, maintenant: `${jour}T${utc}:00Z`, ...extra });
+
+test('l’écriture du dimanche sous la 9.x : à 21 h et 22 h de Paris, l’hiver comme l’été ; les autres lancements de vercel.json ne font rien', async () => {
+  const resultats = {};
+  for (const [saison, jour] of [['hiver', DIM_HIVER], ['été', DIM_ETE]]) {
+    resultats[saison] = [];
+    for (const heureUtc of [17, 19, 20, 21]) {
+      const r = await lance('ecriture/dimanche', true, jour, `${heureUtc}:10`, `0 ${heureUtc} * * 0`);
+      assert.equal(r.reponse.status, 200);
+      resultats[saison].push([heureUtc, r.appels.includes('passagesV9.passageDuDimancheV9')]);
+      assert.ok(!r.appels.includes('ecriture.passageDuDimanche') && !r.appels.includes('fond.saisonsDuJour'), 'jamais la chaîne de la 8.x');
+    }
+  }
+  assert.deepEqual(resultats.hiver, [[17, false], [19, false], [20, true], [21, true]], 'l’hiver : 21 h et 22 h de Paris = 20 h et 21 h UTC');
+  assert.deepEqual(resultats.été, [[17, false], [19, true], [20, true], [21, false]], 'l’été : 21 h et 22 h de Paris = 19 h et 20 h UTC');
+  // Un lancement à la main (sans en-tête de planification) n'est jamais écarté.
+  const main = await lance('ecriture/dimanche', true, DIM_HIVER, '14:00', null);
+  assert.ok(main.appels.includes('passagesV9.passageDuDimancheV9'));
+});
+
+test('l’écriture du dimanche sous la 8.x : ses trois lancements d’avant comme avant, celui de 20 h UTC (de la v1) ne fait rien', async () => {
+  for (const jour of [DIM_HIVER, DIM_ETE]) {
+    for (const heureUtc of [17, 19, 21]) {
+      const r = await lance('ecriture/dimanche', false, jour, `${heureUtc}:10`, `0 ${heureUtc} * * 0`);
+      assert.deepEqual(r.appels, ['fond.saisonsDuJour', 'ecriture.passageDuDimanche'], `${jour} ${heureUtc} h UTC : comme avant`);
+    }
+    const v1seul = await lance('ecriture/dimanche', false, jour, '20:10', '0 20 * * 0');
+    assert.deepEqual(v1seul.appels, [], 'la 8.x ignore le lancement de la v1');
+    assert.deepEqual(v1seul.corps, { semaines: [] });
+  }
+  assert.deepEqual((await lance('ecriture/dimanche', false, DIM_HIVER, '14:00', null)).appels, ['fond.saisonsDuJour', 'ecriture.passageDuDimanche'], 'à la main : comme avant');
+});
+
+test('le coach n’est prévenu qu’après la dernière reprise : 22 h de Paris sous la 9.x, 21 h UTC sous la 8.x', async () => {
+  const prevenu = (r) => r.appels.includes('ecriture.prevenirCoach');
+  // Sous la 9.x : 21 h de Paris (reprise de 22 h à venir) : pas encore ; 22 h : oui. L'hiver et l'été.
+  assert.equal(prevenu(await lance('ecriture/dimanche', true, DIM_HIVER, '20:10', '0 20 * * 0', { echec: true })), false);
+  assert.equal(prevenu(await lance('ecriture/dimanche', true, DIM_HIVER, '21:10', '0 21 * * 0', { echec: true })), true);
+  assert.equal(prevenu(await lance('ecriture/dimanche', true, DIM_ETE, '19:10', '0 19 * * 0', { echec: true })), false);
+  assert.equal(prevenu(await lance('ecriture/dimanche', true, DIM_ETE, '20:10', '0 20 * * 0', { echec: true })), true);
+  // Rien d'en échec : personne à prévenir. À la main : le coach apprend ce qui reste.
+  assert.equal(prevenu(await lance('ecriture/dimanche', true, DIM_HIVER, '21:10', '0 21 * * 0')), false);
+  assert.equal(prevenu(await lance('ecriture/dimanche', true, DIM_HIVER, '14:00', null, { echec: true })), true);
+});
+
+test('le rappel du dimanche : sous la 9.x un seul lancement agit, à 19 h de Paris, l’hiver comme l’été ; sous la 8.x seulement celui de 14 h UTC', async () => {
+  const agit = async (v9, jour, heureUtc) => (await lance('ecriture/rappel', v9, jour, `${heureUtc}:10`, `0 ${heureUtc} * * 0`)).appels;
+  for (const [jour, bonne] of [[DIM_HIVER, 18], [DIM_ETE, 17]]) {
+    assert.deepEqual(await agit(true, jour, bonne), ['passagesV9.rappelDuDimancheV9'], `${jour} : 19 h de Paris = ${bonne} h UTC`);
+    for (const autre of [14, 17, 18].filter((x) => x !== bonne)) assert.deepEqual(await agit(true, jour, autre), [], `${jour} : ${autre} h UTC ne fait rien sous la v1`);
+    assert.deepEqual(await agit(false, jour, 14), ['rappelDuDimanche.rappelerLeDimanche'], 'la 8.x garde le sien');
+    for (const heureUtc of [17, 18]) assert.deepEqual(await agit(false, jour, heureUtc), [], `la 8.x ignore le lancement de ${heureUtc} h UTC`);
+  }
+  assert.deepEqual((await lance('ecriture/rappel', true, DIM_HIVER, '14:00', null)).appels, ['passagesV9.rappelDuDimancheV9'], 'à la main : celui du moteur en ligne');
+  assert.deepEqual((await lance('ecriture/rappel', false, DIM_HIVER, '14:00', null)).appels, ['rappelDuDimanche.rappelerLeDimanche']);
+});
+
 test('sans le secret des tâches planifiées : refusé, rien n’est appelé, sous les deux moteurs', async () => {
   for (const chemin of ['ecriture/dimanche', 'ecriture/lundi', 'ecriture/questionnaire']) {
     for (const v9 of [false, true]) {
@@ -135,7 +204,7 @@ test('l’aiguillage rend la chaîne d’avant sans une 9.x, y compris quand la 
 test('les tâches du site : le questionnaire du dimanche matin a sa ligne dans vercel.json, hors de la fenêtre d’écriture du moteur', () => {
   const crons = JSON.parse(readFileSync(`${RACINE}vercel.json`, 'utf8')).crons;
   assert.deepEqual(crons.filter((c) => c.path === '/api/ecriture/questionnaire'), [{ path: '/api/ecriture/questionnaire', schedule: '0 8 * * 0' }]);
-  assert.equal(crons.length, 19);
+  assert.equal(crons.length, 22, '19 d’avant, plus le passage de 20 h UTC du dimanche et les deux lancements du rappel (17 h et 18 h UTC) de la décision 211');
 });
 
 test('rien ne peut appeler les passages du moteur v1 sans l’aiguillage : chaque route qui les lit passe par selonLeMoteur, et personne d’autre ne les lit', async () => {
@@ -148,8 +217,13 @@ test('rien ne peut appeler les passages du moteur v1 sans l’aiguillage : chaqu
   assert.match(e, /if \(await moteurEstV9\(\)\) \{\n(?:[^\n]*\n)*?\s+const \{ ecrireLaSemaineDemandee \} = await import\('\.\/passagesV9'\);/, '« Réessayer » : derrière la garde');
   for (const f of lecteurs.filter((x) => x.startsWith('app/'))) {
     const source = readFileSync(`${RACINE}${f}`, 'utf8');
-    assert.match(source, /selonLeMoteur\(\{[\s\S]*v1: /, f);
-    assert.ok(!/passage\w*V9\(/.test(source.replace(/v1: \(\) => \w+V9\(\d+_?\d*\)/, '')), `${f} : la chaîne v1 n'est appelée que par la branche « v1 »`);
+    assert.match(source, /selonLeMoteur(<[^(]*>)?\(\{[\s\S]*v1: /, f);
+    // La chaîne v1 n'est appelée que dans la branche « v1 » : de `v1:` jusqu'à `avant:` quand elle vient la première, jusqu'à la fin sinon.
+    const iV1 = source.indexOf('v1:');
+    const iAvant = source.indexOf('avant:');
+    const finV1 = iAvant > iV1 ? iAvant : source.length;
+    const appels = [...source.matchAll(/\b(passageDuDimancheV9|passageDuLundiV9|questionnaireDuMatinV9|rappelDuDimancheV9)\(/g)].filter((m) => !source.slice(Math.max(0, m.index - 20), m.index).includes('import'));
+    assert.ok(appels.length >= 1 && appels.every((m) => m.index > iV1 && m.index < finV1), `${f} : la chaîne v1 n'est appelée que par la branche « v1 »`);
   }
 });
 

@@ -64,17 +64,28 @@ test('versions : sept questions en normale et en aucune séance vue, huit en fat
 });
 
 test('versions : le mot d’ouverture de chacune, en tête de la description, et la phrase de la fatigue validée par le coach', () => {
-  // Décision 206 : « Pense à synchroniser ta montre avant de répondre. » est la première ligne de toutes les versions.
-  const sync = 'Pense à synchroniser ta montre avant de répondre.';
-  assert.equal(d.PENSE_A_SYNCHRONISER, sync);
+  // Décision 211 (qui remplace « Pense à synchroniser ta montre avant de répondre. », décision 206) : la phrase d'accueil est la première ligne de toutes les versions, dite par le coach
+  // au coaché (« je ») et d'une voix neutre à l'acheteur.
+  const sync = 'Réponds après ta dernière sortie de la semaine, une fois ta montre synchronisée : ta semaine suivante tiendra compte de tout ce que tu as fait.';
+  const syncCoache = 'Réponds après ta dernière sortie de la semaine, une fois ta montre synchronisée : je vois ainsi toute ta semaine.';
+  assert.equal(d.ACCUEIL_ACHETEUR, sync);
+  assert.equal(d.ACCUEIL_COACHE, syncCoache);
+  assert.equal(d.accueilDuPoint(true), syncCoache);
+  assert.equal(d.accueilDuPoint(false), sync);
+  assert.equal(d.PENSE_A_SYNCHRONISER, undefined, 'l’ancienne phrase n’existe plus');
+  assert.ok(!/je\b|coach/i.test(sync), 'celle de l’acheteur n’invite à aucun échange avec le coach');
   const base = `${sync}\n\n${d.DESCRIPTION_DE_BASE}`;
+  for (const version of d.VERSIONS_DIMANCHE) {
+    assert.equal(d.questionnaireDuDimanche({ version, cles: CLES, coache: true }).description.split('\n\n')[0], syncCoache, `coaché, ${version}`);
+    assert.equal(d.questionnaireDuDimanche({ version, cles: CLES }).description.split('\n\n')[0], sync, `acheteur, ${version}`);
+  }
   assert.equal(d.questionnaireDuDimanche({ version: 'normale', cles: CLES }).description, base);
   assert.equal(d.questionnaireDuDimanche({ version: 'aucune_seance_vue', cles: CLES, accord: true }).description,
     `${sync}\n\nOn n’a vu aucune séance cette semaine. Si tu as couru sans montre, réponds « Non ». Si tu as arrêté de courir, dis-le-nous : depuis combien de temps et pourquoi.\n\n${d.DESCRIPTION_DE_BASE}`);
   // Décision 209 : sans l'accord de lecture, « et pourquoi » part, « depuis combien de temps » reste ; le « dis-le-nous » n'est pas touché.
   assert.equal(d.questionnaireDuDimanche({ version: 'aucune_seance_vue', cles: CLES }).description,
     `${sync}\n\nOn n’a vu aucune séance cette semaine. Si tu as couru sans montre, réponds « Non ». Si tu as arrêté de courir, dis-le-nous : depuis combien de temps.\n\n${d.DESCRIPTION_DE_BASE}`);
-  assert.equal(d.questionnaireDuDimanche({ version: 'aucune_seance_vue', cles: CLES, accord: false, coache: true }).description, d.questionnaireDuDimanche({ version: 'aucune_seance_vue', cles: CLES }).description);
+  assert.equal(d.questionnaireDuDimanche({ version: 'aucune_seance_vue', cles: CLES, accord: false, coache: true }).description, d.questionnaireDuDimanche({ version: 'aucune_seance_vue', cles: CLES, coache: true }).description);
   assert.ok(!/pourquoi/.test(d.questionnaireDuDimanche({ version: 'aucune_seance_vue', cles: CLES }).description), 'aucun « pourquoi » sans accord');
   // Les autres versions n'ont pas cette phrase : leur ouverture ne change pas avec l'accord.
   for (const version of ['normale', 'fatigue']) {
@@ -128,7 +139,8 @@ test('le dimanche d’avant la semaine 1 : les jours, le nombre de séances et l
   for (const version of d.VERSIONS_DIMANCHE) {
     const q = d.questionnaireDuDimanche({ version, cles: CLES, premiere: true });
     assert.deepEqual(questions(q), ['Quels jours peux-tu courir la semaine prochaine ?', 'Combien de séances peux-tu faire par semaine ?', 'Quel jour pour ta sortie longue ?'], version);
-    assert.equal(q.description, `${d.PENSE_A_SYNCHRONISER}\n\n${d.DESCRIPTION_DE_BASE}`, 'pas de mot d’ouverture : aucune semaine écoulée, mais la montre se synchronise toujours');
+    assert.equal(q.description, `${d.ACCUEIL_ACHETEUR}\n\n${d.DESCRIPTION_DE_BASE}`, 'pas de mot d’ouverture : aucune semaine écoulée, mais la phrase d’accueil est là');
+    assert.equal(d.questionnaireDuDimanche({ version, cles: CLES, premiere: true, coache: true }).description, `${d.ACCUEIL_COACHE}\n\n${d.DESCRIPTION_DE_BASE}`);
   }
 });
 

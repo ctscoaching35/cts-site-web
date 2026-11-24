@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * LE HOOPER DU DIMANCHE SOUS LE MOTEUR 9.x (décision 52 du coach, 20/11/2026 : sans Hooper, l'alerte fatigue ne part jamais ; lib/app/dimanchesCoaches.ts,
- * lib/app/hooperDuDimanche.ts) : « Ton point du dimanche » remplace « Ta semaine prochaine » du samedi, mais le Hooper reste posé chaque dimanche matin (8 h), pour le
+ * lib/app/hooperDuDimanche.ts) : « Ton point du dimanche » remplace « Ta semaine prochaine » du samedi, mais le Hooper reste posé chaque dimanche (à midi, avec lui, depuis la décision 211 ; 8 h sous la 8.x), pour le
  * dimanche qui vient, d'un coaché relié et d'un acheteur d'accord pour la lecture. Sous la 9.x le passage ne pose, ne garde ni ne retire que le Hooper ; sous la 8.x, rien
  * ne change. Nolio et la base sont de fausses pièces qui notent chaque appel. Aucun réseau, aucune donnée d'athlète.
  *
@@ -92,11 +92,12 @@ test('sous la 8.x, rien ne change : le questionnaire du samedi et le Hooper sont
   assert.deepEqual(retires().map((c) => c.split('/')[2]), ['q_double'], 'l’autre part : comme avant');
 });
 
-test('sous la 9.x, le Hooper seul : posé le dimanche à 8 h pour le dimanche qui vient ; « Ta semaine prochaine » n’est ni posé ni retiré, « Ton point du dimanche » non plus', async () => {
+test('sous la 9.x, le Hooper seul : posé le dimanche à midi (décision 211, avec le point du dimanche) pour le dimanche qui vient ; « Ta semaine prochaine » n’est ni posé ni retiré, « Ton point du dimanche » non plus', async () => {
   situation({ quizzes: [samedi('q_8x', { recurrence: { id: 'serie_1' } }), pointDuDimanche] });
   const r = await dimanches.poserLeDimanche('usr_1', { coache: true, avecHooper: true, seulementLeHooper: true });
   assert.equal(poses().length, 1);
-  assert.deepEqual(poses()[0], { quiz_frame: 'qf_hooper', date_start: DIMANCHE, hour_start: '08:00', athletes: ['usr_1'] });
+  assert.deepEqual(poses()[0], { quiz_frame: 'qf_hooper', date_start: DIMANCHE, hour_start: '12:00', athletes: ['usr_1'] });
+  assert.equal(aide.HEURE_DU_HOOPER_V9, '12:00', 'la même heure que « Ton point du dimanche »');
   assert.deepEqual([r.semaine, r.hooper], [null, 'q_nouveau_1']);
   assert.deepEqual(retires(), [], 'rien n’est retiré de Nolio : le questionnaire du samedi de la 8.x reste jusqu’à ce que le coach le retire');
 });

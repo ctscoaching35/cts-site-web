@@ -59,8 +59,8 @@ test('vercel.json : la passe du lundi, toutes les deux heures de 5 h à 21 h UTC
   // La fenêtre d'écriture du moteur (dimanche 16 h 45 au lundi 5 h 30 UTC) : aucun nouveau passage dedans (le 5 h existait).
   for (const h of l.HEURES_DES_PASSAGES_DU_LUNDI.filter((x) => x !== 5)) assert.ok(h >= 6 && h <= 23, `${h} h`);
   // Les autres tâches n'ont pas bougé.
-  assert.equal(crons.filter((c) => c.path === '/api/ecriture/dimanche').length, 3);
-  assert.equal(crons.length, 19, '10 tâches d’avant, les 8 passages du lundi de 7 h à 21 h, le questionnaire du dimanche matin');
+  assert.equal(crons.filter((c) => c.path === '/api/ecriture/dimanche').length, 4, 'les trois de la 8.x (17, 19, 21 h UTC) et celui de 20 h UTC de la v1 (décision 211, scripts/test-heures-v9.mjs)');
+  assert.equal(crons.length, 22, '10 tâches d’avant, les 8 passages du lundi de 7 h à 21 h, le questionnaire du dimanche matin, et pour la décision 211 le passage de 20 h UTC du dimanche et deux lancements de plus du rappel');
 });
 
 test('sous la 8.x, les passages de plus ne changent rien : une semaine déjà passée (sa note du lundi posée) est sautée', () => {
