@@ -18,7 +18,7 @@ import { appelNolio, convertirIdsV1, listeNolio, moiNolio, nolioConfigure, refus
 import { ficheDuCompte } from './demandes';
 import { profilPourLeQuestionnaire } from './profilEntrainement';
 import { clientServeur, clientService } from './supabase';
-import { fenetreDeCharge, semainesDeCharge, volumeDuMoment } from './charge';
+import { fenetreDeCharge, fenetreDuDepart, luAuDepart, semainesDeCharge, volumeDuMoment, type LuAuDepart } from './charge';
 
 // Les calculs purs de la charge du moment vivent dans charge.ts (testés seuls) ; ecriture.ts lit volumeDuMoment ici.
 export { volumeDuMoment };
@@ -237,6 +237,27 @@ export async function chargeDepuisNolio(coachId: string, usr: string | null): Pr
     detail: `Lu dans Nolio ${periode}, course, trail et tapis seulement (sans renfo ni autres sports${sansCourse}) : `
     + `${semaines.join(' · ')}, soit ${enHeuresMinutes(volume.moyenne)} en moyenne, ${retenu} ; plus longue sortie ${charge.sortie_longue_actuelle} le ${jm(longue.date)}`
     + `${sansTrou ? ' (sur 8 semaines, sans coupure)' : ''} ; ${seancesDures} séance${seancesDures > 1 ? 's' : ''} dure${seancesDures > 1 ? 's' : ''} (RPE 7 ou plus) en 4 semaines.` };
+}
+
+// ENTRÉE 203 (décision du coach du 24/11/2026) : CE QUE LE MOTEUR v1 LIT DE CE QU'IL COURT AU DÉPART, le seul lecteur. Il sert le premier passage d'un plan sans
+// état et le départ d'un objectif (lib/app/passagesV9.ts), et servira la saison de fond sous la 9.x ; il remplace pour elles le calcul de chargeDepuisNolio, qui
+// reste celui de la 8.x. `lundi` : le lundi de la semaine que le moteur va écrire ; les semaines lues sont les 8 complètes qui le précèdent (le calcul, lib/app/charge.ts,
+// luAuDepart). null : pas de Nolio relié, pas d'accord de lecture, ou aucune course, trail ni tapis lu : le moteur garde le déclaré. Une lecture de Nolio qui échoue
+// REMONTE (jamais un `lu` calculé sans le calendrier des courses : une course comptée comme une sortie de charge ferait partir trop haut) ; l'appelant la réessaie.
+export async function lireLuAuDepart(coachId: string, usr: string | null, lundi: string): Promise<LuAuDepart | null> {
+  if (!usr || !nolioConfigure()) return null;
+  const { data: accord } = await clientService().from('nolio_accords').select('accord_le').eq('coach_id', coachId).eq('nolio_athlete_id', usr).maybeSingle();
+  if (!accord) return null;
+  const { debut, fin } = fenetreDuDepart(lundi);
+  const dernier = ajouterJours(fin, -1);
+  const q = (await moiNolio()).id === usr ? '' : `&athlete=${usr}`;
+  const competitions = (await listeNolio<{ id: string; date_start: string }>(`planned/competitions/?date_from=${debut}&date_to=${dernier}&fields=id,date_start${q}`))
+    .map((c) => c.date_start.slice(0, 10));
+  type Reel = { id: string; date_start: string; duration?: { value?: number } | null; sport?: string | null; distance?: { value?: number; unit?: string } | number | null };
+  const reels = (await listeNolio<Reel>(`real/trainings/?date_from=${debut}&date_to=${dernier}&fields=id,date_start,duration,distance,sport${q}`)).map(sansVitesseImpossible);
+  const activites = reels.filter((r) => SPORTS_COURSE.includes(String(r.sport)) && r.duration?.value)
+    .map((r) => ({ date: r.date_start.slice(0, 10), min: (r.duration as { value: number }).value / 60 }));
+  return luAuDepart(lundi, activites, competitions);
 }
 
 // Les réponses d'un objectif, sans celles de sa course : le point de départ du suivant (N9, OM1).

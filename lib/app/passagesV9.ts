@@ -8,7 +8,7 @@
  */
 import { clientService } from './supabase';
 import { appelNolio, listeNolio, refusNolio, SPORTS_COURSE } from './nolio';
-import { destinataire, envoyerSemaineCible, mettreAJourSemaineCible } from './coaching';
+import { destinataire, envoyerSemaineCible, lireLuAuDepart, mettreAJourSemaineCible } from './coaching';
 import {
   aujourdhuiParis, garderNote, indiceHooper, moteur, noteDeLaSemaine, objectifEcrit, plansActifs, plansEnRecuperation, type Compte, type Objectif,
 } from './ecriture';
@@ -67,6 +67,20 @@ async function contextePlan(planId: string): Promise<{ c: ContextePlan; o: Objec
         console.error(`Nolio de ${planId} non lu pour le moteur :`, e instanceof Error ? e.message : e);
         return null;
       }
+    },
+
+    // Ce qu'il court au départ (entrée 203) : d'un coaché relié seulement (le lecteur demande lui-même l'accord de lecture) ; un acheteur garde le déclaré de son achat.
+    lireLeDepart: async (lundi) => (o.coache ? lireLuAuDepart(o.coachId, o.nolioAthlete, lundi) : null),
+    // Gardé avec le plan, dans ses réponses (`parametres.champs.lu`, lu comme le reste de l'intake) ; le plan est relu avant, pour ne rien écraser de ce qu'un autre a changé.
+    // La trame gardée repart de zéro (elle se refait avec `lu`).
+    garderLu: async (lu) => {
+      const { data, error } = await service.from('plans').select('parametres').eq('id', planId).single();
+      if (error || !data?.parametres) throw new Error(`Ce qu'il court au départ n'a pas pu être gardé : ${error?.message ?? 'plan sans paramètres'}`);
+      const parametres = data.parametres as Record<string, unknown>;
+      const garde = { ...parametres, champs: { ...((parametres.champs ?? {}) as Record<string, unknown>), lu } };
+      const { error: erreur } = await service.from('plans').update({ parametres: garde, trame: null }).eq('id', planId);
+      if (erreur) throw new Error(`Ce qu'il court au départ n'a pas pu être gardé : ${erreur.message}`);
+      o.parametres = garde;
     },
 
     // Les réponses au questionnaire posé à la fin de la semaine `numero` : par son identifiant Nolio ; celui d'avant la première, par son nom.

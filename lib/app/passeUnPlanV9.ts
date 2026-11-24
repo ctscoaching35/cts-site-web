@@ -10,6 +10,7 @@
  *   - LE LUNDI : une semaine pas encore écrite s'écrit (le filet) ; une réponse nouvelle réécrit la semaine tant qu'aucune séance n'est faite, sinon c'est
  *     une réponse tardive ; une semaine que le coach a retouchée dans Nolio n'est pas réécrite (« Nolio fait foi ») et le dit.
  */
+import type { LuAuDepart } from './charge';
 import type { QuestionnaireDimanche, ReponsesDimanche, SeanceCle, VersionDimanche } from './dimancheV9';
 import {
   etatApresEcriture, ecrireLaSemaine, lireLaTrame, preparerLeQuestionnaire, signatureDesReponses, suiteDeLaReponse, type Ports, type SemaineEcriteV9,
@@ -27,6 +28,10 @@ export type ContextePlan = {
   derniere: SemaineEnMemoire | null;
   // Ce que Nolio montre des semaines avant `lundi` (avec la sienne si avecLaSemaine) ; null si la lecture a manqué ou qu'il n'y a rien à lire.
   lireNolio: (lundi: string, avecLaSemaine: boolean) => Promise<NolioVu | null>;
+  // Ce qu'il court au départ (entrée 203, lib/app/charge.ts, luAuDepart), lu pour la semaine qui commence ce lundi ; null : rien à lire (pas un coaché relié et d'accord,
+  // ou aucune activité), le moteur garde le déclaré. Une lecture qui échoue remonte. garderLu : le garde avec le plan (`parametres.champs.lu`), pour ne plus jamais le relire.
+  lireLeDepart: (lundi: string) => Promise<LuAuDepart | null>;
+  garderLu: (lu: LuAuDepart) => Promise<void>;
   // Les réponses au questionnaire posé à la fin de la semaine `numero` (0 : celui d'avant la première), lues dans Nolio ; null si aucune n'est revenue.
   lireLesReponses: (numero: number, pose: QuestionnairePoseV9 | null) => Promise<{ reponses: ReponsesDimanche; illisibles: string[] } | null>;
   // Le questionnaire posé à la fin de la semaine `numero` (gardé avec elle), ou null.
@@ -58,6 +63,20 @@ async function reponsesDeLaVeille(c: ContextePlan): Promise<ReponsesDimanche | n
   return reponsesOuRien(await c.lireLesReponses(numero, c.derniere?.questionnaire ?? null));
 }
 
+// ─── Ce qu'il court au départ : lu une fois, au premier passage ─────────────────────────────────────
+
+// Un plan que le moteur v1 n'a jamais écrit : ni état gardé, ni semaine écrite (un coaché qui vient de la 8.x, un objectif qui démarre). Le moteur ne relit pas Nolio sans état :
+// sa SL et son volume de départ viennent de `parametres.lu` (entrée 203), que ce premier passage lit, garde avec le plan et ne relit plus.
+export const sansEtat = (c: Pick<ContextePlan, 'etat'>): boolean => !c.etat.courant && !c.etat.ecrites.length;
+
+export async function lireLeDepartSiBesoin(c: ContextePlan, lundi: string): Promise<void> {
+  if (!sansEtat(c) || c.parametres.lu) return;
+  const lu = await c.lireLeDepart(lundi);
+  if (!lu) return;
+  await c.garderLu(lu);
+  c.parametres = { ...c.parametres, lu };
+}
+
 // ─── Le dimanche soir : la semaine du lundi qui vient ───────────────────────────────────────────────
 
 // Le sort d'une semaine demandée : écrite maintenant, déjà écrite (les reprises du soir et du lundi la sautent), ou hors de la trame (avant l'entrée du plan, après sa fin).
@@ -68,6 +87,7 @@ export async function ecrireOuReprendre(c: ContextePlan, lundi: string, options:
   const numero = numeroDeLaSemaine(trame, lundi);
   if (numero === null) return { statut: 'hors_trame' };
   if (c.etat.ecrites.some((w) => w.numero === numero)) return { statut: 'deja', numero };
+  await lireLeDepartSiBesoin(c, lundi);
   const reponses = await reponsesDeLaVeille(c);
   const nolio = c.etat.ecrites.length ? await c.lireNolio(lundi, false) : null;
   const ecrite = await ecrireLaSemaine(c.ports, { parametres: c.parametres, lundi, etat: c.etat, nolio, reponses, trame });
@@ -159,19 +179,14 @@ export function parametresDuPlanV9({ parametres, profil, coache, accordLecture, 
 
 /**
  * Ce qu'un départ garde avec les réponses du plan pour le moteur v1 (parametres.champs, lu comme le reste de l'intake) : `entree`, le lundi de la première semaine écrite ;
- * `course_precedente`, l'objectif majeur qu'il vient de courir (sa date, sa durée en heures : le moteur en tire la récupération puis la reprise) ; `lu`, ce que Nolio montre de
- * ses 4 dernières semaines (volume et plus longue sortie, en minutes), qui remplace le déclaré. Une valeur qui ne se lit pas n'est pas gardée.
- * heures : le lecteur des durées de l'app (« 5h30 » -> 5,5).
+ * `course_precedente`, l'objectif majeur qu'il vient de courir (sa date, sa durée en heures : le moteur en tire la récupération puis la reprise). Pas `lu` : ce qu'il court au
+ * départ (entrée 203) se lit une fois, au premier passage du plan sans état (lireLeDepartSiBesoin), départ d'un objectif compris : un seul lecteur, un seul endroit.
  */
-export function entreesDuDepart({ premiere, apres, charge, heures }: {
-  premiere: string; apres: { course_date: string; temps_h: number } | null; charge: { volume?: string; sl?: string } | null; heures: (t: unknown) => number;
-}): { entree: string; course_precedente?: { date: string; duree_h: number }; lu?: { volume_min?: number; sl_min?: number } } {
-  const minutes = (t?: string) => { const m = Math.round(heures(t) * 60); return m > 0 ? m : undefined; };
-  const volume = minutes(charge?.volume);
-  const sl = minutes(charge?.sl);
+export function entreesDuDepart({ premiere, apres }: {
+  premiere: string; apres: { course_date: string; temps_h: number } | null;
+}): { entree: string; course_precedente?: { date: string; duree_h: number } } {
   return {
     entree: premiere,
     ...(apres && apres.temps_h > 0 ? { course_precedente: { date: apres.course_date, duree_h: apres.temps_h } } : {}),
-    ...(volume || sl ? { lu: { ...(volume ? { volume_min: volume } : {}), ...(sl ? { sl_min: sl } : {}) } } : {}),
   };
 }

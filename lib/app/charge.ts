@@ -116,3 +116,37 @@ export function niveauHabituel(semaines: HistoriqueSemaine[]): { volume_min: num
     semaines: normales.length,
   };
 }
+
+// ─── CE QUE LE MOTEUR LIT DE CE QU'IL COURT AU DÉPART (entrée 203, décision du coach du 24/11/2026, « Oui, valide ») ─────────────────────
+// Un seul calcul, pour le premier passage d'un plan sans état, le départ d'un objectif et la saison de fond : il donne `lu`, que le moteur v1 lit
+// dans `parametres` à la place du déclaré (CONTRAT_API_CTS.md, « MOTEUR v1 »). Il remplace « la moyenne des 4 dernières semaines » (C8) :
+//   - `sl_min` : sa plus longue sortie des 4 dernières semaines, jours de course exclus (4 semaines : le filet des 110 % porte sur 30 jours) ;
+//   - `volume_min` : la moyenne de ses 4 plus grosses semaines des 8 dernières, les semaines où il a couru une course exclues : la moitié haute, ses semaines de
+//     charge, que l'affûtage, la course et la récupération ne font pas baisser ; une semaine exceptionnelle y pèse peu, une semaine vide n'y est jamais ;
+//   - sans aucune activité (course, trail ou tapis, lues par le lecteur) : rien, le moteur garde le déclaré du questionnaire.
+// `lundi` : le lundi de la semaine que le moteur va écrire. Les semaines lues sont les complètes qui le précèdent, du lundi au dimanche, comme les
+// lignes du calendrier Nolio (décision du 23/10/2026) : de `lundi` - 56 jours à `lundi` exclu.
+export const SEMAINES_LUES_AU_DEPART = 8;
+export const SEMAINES_RETENUES_AU_DEPART = 4;
+export const SEMAINES_DE_LA_SL_AU_DEPART = 4;
+export type LuAuDepart = { volume_min?: number; sl_min?: number };
+export const fenetreDuDepart = (lundi: string): { debut: string; debutSl: string; fin: string } =>
+  ({ debut: ajouterJours(lundi, -7 * SEMAINES_LUES_AU_DEPART), debutSl: ajouterJours(lundi, -7 * SEMAINES_DE_LA_SL_AU_DEPART), fin: lundi });
+
+export function luAuDepart(lundi: string, activites: { date: string; min: number }[], competitions: string[]): LuAuDepart | null {
+  const { debut, debutSl, fin } = fenetreDuDepart(lundi);
+  const jours = new Set(competitions);
+  const lues = activites.filter((a) => a.min > 0 && a.date >= debut && a.date < fin);
+  const semaines = Array.from({ length: SEMAINES_LUES_AU_DEPART }, (_, i) => {
+    const du = ajouterJours(debut, 7 * i);
+    const au = ajouterJours(du, 7);
+    return { course: competitions.some((c) => c >= du && c < au), min: lues.filter((a) => a.date >= du && a.date < au).reduce((s, a) => s + a.min, 0) };
+  });
+  const grosses = semaines.filter((s) => !s.course && s.min > 0).map((s) => s.min).sort((a, b) => b - a).slice(0, SEMAINES_RETENUES_AU_DEPART);
+  const sl = Math.max(0, ...lues.filter((a) => a.date >= debutSl && !jours.has(a.date)).map((a) => a.min));
+  const lu: LuAuDepart = {
+    ...(grosses.length ? { volume_min: Math.round(grosses.reduce((s, m) => s + m, 0) / grosses.length) } : {}),
+    ...(sl > 0 ? { sl_min: Math.round(sl) } : {}),
+  };
+  return Object.keys(lu).length ? lu : null;
+}

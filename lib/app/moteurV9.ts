@@ -37,7 +37,8 @@ export type EntreesAthlete = {
   // que sans `cote_min` : transition.
   cote_min?: number | string | null;
   cote_max?: CoteMax | null; tapis?: 'oui' | 'non' | null;
-  // Ce que Nolio montre de ses 4 dernières semaines : remplace le déclaré.
+  // Ce qu'il court au départ, lu dans Nolio (entrée 203, lib/app/charge.ts, luAuDepart) : sa plus longue sortie des 4 dernières semaines (jours de course exclus) et la moyenne de
+  // ses 4 plus grosses semaines des 8 dernières (semaines de course exclues). Remplace le déclaré ; sans activité lue, il n'y a pas de `lu`.
   lu?: { volume_min?: number | null; sl_min?: number | null } | null;
   aisance?: 'montee' | 'descente' | null; montees?: 'courtes' | 'moyennes' | 'longues' | null;
   coaching?: boolean; entree?: string | null; course_precedente?: { date: string; duree_h: number } | null;

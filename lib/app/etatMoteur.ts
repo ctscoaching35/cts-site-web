@@ -26,8 +26,9 @@ export type ChoixDeLEtat = { etat: Etat | null; reecrite: boolean };
  *   - sinon, l'état de la dernière écriture ; un plan qui n'a jamais été écrit par le moteur v1 part sans état (une 8.x n'est pas lue). Confirmé par le
  *     moteur v1 (24/11/2026, C8) : un plan en cours sous la 8.x repart sans état à la 9.x, `entree` = le premier lundi de la trame de ce plan 8.x (mêmes rangs
  *     S1 à SN, mêmes lundis ; plus tôt, la v1 ajoute des semaines de fond et décale les rangs) ; la v1 ne relit PAS `nolio` sans état : les marches repartent du
- *     plancher (elle redescend, puis remonte de 15 % au plus), la SL et le volume viennent de `parametres.lu` (`volume_min` : la moyenne hebdomadaire des 4
- *     dernières semaines ; `sl_min` : la plus longue sortie de ces 4 semaines), que le site doit envoyer au premier appel (pas encore branché) ;
+ *     plancher (elle redescend, puis remonte de 15 % au plus), la SL et le volume viennent de `parametres.lu` (entrée 203 : `sl_min`, la plus longue
+ *     sortie des 4 dernières semaines, jours de course exclus ; `volume_min`, la moyenne des 4 plus grosses semaines des 8 dernières, semaines de course exclues), que le
+ *     premier passage du plan lit dans Nolio, garde avec le plan et ne relit plus (lib/app/passeUnPlanV9.ts, lireLeDepartSiBesoin) ;
  *   - une semaine plus ancienne que la dernière écrite, jamais écrite, est refusée.
  */
 export function etatPourEcrire(e: EtatDuPlan, numero: number): ChoixDeLEtat {
