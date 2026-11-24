@@ -72,3 +72,11 @@ test('209 : la page de confidentialité dit, sous la 9.x seulement, ce que le po
   // La phrase « personne ne la relit avant qu'elle parte » n'est pas touchée (revue avec le lot des deux voix).
   assert.ok(page.includes('personne ne la relit avant qu’elle parte'));
 });
+
+test('209 : la page de confidentialité (9.x) dit l’arrêt, sa durée, et sa cause seulement avec l’accord de lecture ; le texte de la 8.x ne change pas', async () => {
+  const { motsDuQuestionnaire } = await import(pathToFileURL(`${RACINE}lib/app/motsDuQuestionnaire.ts`).href);
+  const v9 = motsDuQuestionnaire('confidentialite', true);
+  assert.ok(v9.includes('ton arrêt éventuel et sa durée, et sa cause (blessure, maladie, autre) si tu nous as donné ton accord de lecture, les séances clés que tu n’as pas faites'), v9);
+  assert.ok(!v9.includes('ton arrêt éventuel et sa cause,'), 'plus de cause lue sans condition');
+  assert.equal(motsDuQuestionnaire('confidentialite', false), 'tes réponses au questionnaire du samedi (tes jours, ton jour de sortie longue, ton nombre de séances)', 'sous la 8.x, mot pour mot comme avant');
+});

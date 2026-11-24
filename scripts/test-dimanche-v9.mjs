@@ -69,8 +69,19 @@ test('versions : le mot d’ouverture de chacune, en tête de la description, et
   assert.equal(d.PENSE_A_SYNCHRONISER, sync);
   const base = `${sync}\n\n${d.DESCRIPTION_DE_BASE}`;
   assert.equal(d.questionnaireDuDimanche({ version: 'normale', cles: CLES }).description, base);
-  assert.equal(d.questionnaireDuDimanche({ version: 'aucune_seance_vue', cles: CLES }).description,
+  assert.equal(d.questionnaireDuDimanche({ version: 'aucune_seance_vue', cles: CLES, accord: true }).description,
     `${sync}\n\nOn n’a vu aucune séance cette semaine. Si tu as couru sans montre, réponds « Non ». Si tu as arrêté de courir, dis-le-nous : depuis combien de temps et pourquoi.\n\n${d.DESCRIPTION_DE_BASE}`);
+  // Décision 209 : sans l'accord de lecture, « et pourquoi » part, « depuis combien de temps » reste ; le « dis-le-nous » n'est pas touché.
+  assert.equal(d.questionnaireDuDimanche({ version: 'aucune_seance_vue', cles: CLES }).description,
+    `${sync}\n\nOn n’a vu aucune séance cette semaine. Si tu as couru sans montre, réponds « Non ». Si tu as arrêté de courir, dis-le-nous : depuis combien de temps.\n\n${d.DESCRIPTION_DE_BASE}`);
+  assert.equal(d.questionnaireDuDimanche({ version: 'aucune_seance_vue', cles: CLES, accord: false, coache: true }).description, d.questionnaireDuDimanche({ version: 'aucune_seance_vue', cles: CLES }).description);
+  assert.ok(!/pourquoi/.test(d.questionnaireDuDimanche({ version: 'aucune_seance_vue', cles: CLES }).description), 'aucun « pourquoi » sans accord');
+  // Les autres versions n'ont pas cette phrase : leur ouverture ne change pas avec l'accord.
+  for (const version of ['normale', 'fatigue']) {
+    assert.equal(d.ouvertureDe(version, true), d.ouvertureDe(version, false), version);
+    assert.equal(d.questionnaireDuDimanche({ version, cles: CLES }).description, d.questionnaireDuDimanche({ version, cles: CLES, accord: true }).description, version);
+  }
+  assert.equal(d.OUVERTURES.aucune_seance_vue, 'On n’a vu aucune séance cette semaine. Si tu as couru sans montre, réponds « Non ». Si tu as arrêté de courir, dis-le-nous : depuis combien de temps et pourquoi.', 'avec l’accord, la phrase d’avant, mot pour mot');
   const fatigue = d.questionnaireDuDimanche({ version: 'fatigue', cles: CLES });
   assert.equal(fatigue.description.split('\n\n')[0], sync);
   assert.equal(fatigue.description.split('\n\n')[1],
