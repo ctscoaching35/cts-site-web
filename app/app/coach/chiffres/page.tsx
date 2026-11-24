@@ -37,7 +37,7 @@ const PORTES: [string, string][] = [
 
 const FAMILLE: Record<FamilleRetouche, string> = {
   ef: 'EF', seuil1: 'Seuil 1', seuil2: 'Seuil 2', vo2max: 'VO2max, côtes, course test', allure: 'Allure de course',
-  sl: 'Sortie longue', mecanique: 'Mécanique (navettes, Myocrossmax)', renfo: 'Renfo',
+  sl: 'Sortie longue', mecanique: 'Mécanique (navettes, côtes et renfo, montée continue)', renfo: 'Renfo',
 };
 const part = (n: number, sur: number) => (sur ? `${Math.round((100 * n) / sur)} %` : '—');
 const ecart = (e: number | null) => (e === null ? '—' : `${e > 0 ? '+' : e < 0 ? '−' : ''}${Math.abs(Math.round(e * 100))} %`);

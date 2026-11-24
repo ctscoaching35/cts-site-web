@@ -52,10 +52,13 @@ const RENFO = ':renfo';
 const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`;
 
 // La famille d'une séance d'après son nom : celle de la barre du coach, sinon ses premiers mots. null : inconnue.
+// La mécanique : « Mécanique · 30 min — montée continue » (moteur v1, entrée 198 du coach : navettes, côtes et renfo, montée continue), « Navettes… »,
+// « Myocrossmax » et « Côtes et renfo » ; la montée continue d'une séance de Seuil 1 ou de Tempo reste de sa famille (ces motifs passent avant).
 const FAMILLE_DU_NOM: [RegExp, string][] = [
+  [/^m[ée]canique\b/i, 'mecanique'],
   [/^(sl|sortie longue)\b|week-end choc|back-to-back/i, 'sl'], [/^ef\b|^endurance\b/i, 'ef'], [/\bseuil\s*1\b/i, 'seuil1'],
   [/\bseuil\s*2\b/i, 'seuil2'], [/\bvo2/i, 'vo2max'], [/\btempo\b/i, 'tempo'], [/^allure\b/i, 'allure'],
-  [/navettes|myocrossmax/i, 'mecanique'], [/renfo/i, 'renfo'], [/sprint/i, 'sprint'], [/footing/i, 'ef'],
+  [/navettes?|myocrossmax|^côtes et renfo\b|\bmont[ée]e continue\b/i, 'mecanique'], [/renfo/i, 'renfo'], [/sprint/i, 'sprint'], [/footing/i, 'ef'],
 ];
 export function familleDuNom(nom: string | null | undefined): string | null {
   const n = String(nom ?? '').normalize('NFC').replace(/\s+/g, ' ').trim();

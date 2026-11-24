@@ -79,8 +79,8 @@ export type Champs = {
   coupure: string;
   // « oui » : un premier marathon (route, signalé au coach sous 20 semaines de préparation).
   premier_marathon: string;
-  // « oui » : un tapis de course qui monte (FT3-1, décision coach du 01/11/2026), facultatif ; le moteur s'en sert quand
-  // la côte manque (moins de 5 min) et que la course monte. Posé à tous (23/11/2026), plus seulement sous 5 min de côte.
+  // « oui » : un tapis de course qui monte (FT3-1, décision coach du 01/11/2026), facultatif ; posé à tous (23/11/2026), plus seulement sous 5 min
+  // de côte : le moteur 9.0 ne le lie plus à la longueur de la côte, il s'en sert quand la côte ne tient pas la montée de la séance (CONTRAT_API_CTS.md, `tapis`).
   tapis: string;
 };
 

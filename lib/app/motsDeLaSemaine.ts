@@ -10,7 +10,7 @@
 import { lireCode } from './codeSeance';
 import { nomAffiche } from './nomsSeances';
 
-type Cle = 'ef' | 'sl' | 'seuil1' | 'tempo' | 'seuil2' | 'vo2max' | 'allure' | 'navettes' | 'myo' | 'rpe' | 'tapis'
+type Cle = 'ef' | 'sl' | 'seuil1' | 'tempo' | 'seuil2' | 'vo2max' | 'allure' | 'navettes' | 'myo' | 'montee' | 'rpe' | 'tapis'
   | 'renfo' | 'wec';
 export type MotDeLaSemaine = { mot: string; sens: string };
 
@@ -26,6 +26,8 @@ const MOTS: [Cle, string, string][] = [
   ['allure', 'Allure de course', 'l’allure de ta course, calculée sur ton chrono visé.'],
   ['navettes', 'Navettes', 'des montées et des descentes répétées sur une même pente, pour habituer tes jambes au relief.'],
   ['myo', 'Côtes et renfo', 'de la force en côte : des montées enchaînées avec des exercices de renforcement.'],
+  // Texte validé par le coach le 24/11/2026 (entrée 198). Le moteur v1 l'écrit « Mécanique · 30 min — montée continue » ; le mot se reconnaît à ses mots, où qu'il soit dans le titre.
+  ['montee', 'Montée continue', 'une seule longue montée, d’un seul tenant, en endurance.'],
   // Texte validé par le coach le 24/11/2026 (entrée 197) : la pente vient du moteur, qui l'écrit dans la séance ; ni « une fois par semaine » ni « séance à plat »,
   // des règles internes, ne se disent à l'athlète. Le mot se reconnaît à tout titre qui contient « tapis ».
   ['tapis', 'Séance sur tapis', 'ta séance faite sur ton tapis, incliné. Tout le travail se fait en montée, à la pente indiquée dans la séance ; entre les blocs, tu remets le tapis à plat et tu trottines.'],
@@ -57,6 +59,7 @@ const PAR_LES_MOTS: [RegExp, Cle][] = [
   [/\bNavettes?\b/i, 'navettes'],
   // L'ancien nom « Myocrossmax » (avant le 12/11/2026), et le nouveau.
   [/\bMyocrossmax\b|^Côtes et renfo\b/i, 'myo'],
+  [/\bmont[ée]e continue\b/i, 'montee'],
   [/\btapis\b/i, 'tapis'],
   [/^Renfo\b/i, 'renfo'],
   [/^Week-end choc\b/i, 'wec'],

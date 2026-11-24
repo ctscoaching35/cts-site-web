@@ -13,7 +13,8 @@
  * transition : `coteMaxDe` la donne.
  *
  * LES BORNES de la tranche (celles du moteur : 1,5 / 5 / 10 min, « 10+ » vaut 10 min) : jusqu'à 1 min 30, `1m30` ; moins de 5 min,
- * `2-5` (le tapis sert sous 5 min) ; moins de 10 min, `5-10` ; 10 min et plus, `10+`.
+ * `2-5` ; moins de 10 min, `5-10` ; 10 min et plus, `10+`. Le tapis ne se lie plus à ces bornes : il se demande à tous, et le moteur 9.0 s'en sert quand la côte
+ * ne tient pas la montée de la séance (CONTRAT_API_CTS.md, `tapis`).
  */
 
 // Le plancher : la plus petite côte que lit le moteur, en minutes.
