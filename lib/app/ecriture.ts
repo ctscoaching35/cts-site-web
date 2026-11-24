@@ -663,11 +663,21 @@ export async function rattraperLaSemaine(planId: string, { depuis }: { depuis?: 
 // renvoient pas vers l'app, qu'il ne peut pas ouvrir ; il passe par son coach.
 const sansApp = (o: Objectif) => o.coache && !o.compteAthlete;
 
-async function garderNote(o: Objectif, cle: string, dateIso: string, titre: string, texte: string) {
+export async function garderNote(o: Objectif, cle: string, dateIso: string, titre: string, texte: string) {
   const d = await destinataire(o.nolioAthlete);
   const cree = await creer(d, cle, { name: titre, date_start: dateIso, color: COULEUR_NOTE, description: texte }, 'note');
   if (cree.erreur) throw new Error(cree.erreur);
   await garderEnvoi(o.coachId, o.planId, cle, [cree]);
+}
+
+// La note « Ta semaine » d'une semaine du moteur v1 (lib/app/passagesV9.ts) : posée, ou, si elle l'est déjà, la même mise à jour sur place (une
+// semaine réécrite le lundi), jamais en double.
+export async function noteDeLaSemaine(o: Objectif, numero: string, dateIso: string, texte: string): Promise<void> {
+  const cle = `${numero}:bilan`;
+  const posee = noteARemplacer(o.envois, numero, texte);
+  if (!posee) return garderNote(o, cle, dateIso, 'Ta semaine', texte);
+  const nouvelle = await remplacerLaNote(await destinataire(o.nolioAthlete), cle, posee, { name: 'Ta semaine', date_start: dateIso, color: COULEUR_NOTE, description: texte });
+  if (nouvelle) await garderEnvoi(o.coachId, o.planId, cle, [nouvelle]);
 }
 
 // Écrire une semaine et l'envoyer (la créer, ou la mettre à jour si elle est déjà partie : le coach a annulé, la fatigue).
@@ -802,9 +812,17 @@ async function corpsDeLaSemaine(o: Objectif, numero: string, retours: Retours | 
   };
 }
 
+// Sous le moteur v1 (9.x), la semaine s'écrit par la chaîne de lib/app/passagesV9.ts : celle de la 8.x (le corps de /v1/semaine d'avant, /v1/recuperation)
+// n'est plus appelée, et dit pourquoi au lieu d'échouer en 400. Ce qui passe par elle (un départ d'objectif, « Réessayer », « Annuler », l'aperçu,
+// le rattrapage) n'est pas porté sous le moteur v1 : voir la liste de la mise en ligne.
+async function refuserSousLeMoteurV1(quoi: string): Promise<void> {
+  if (await moteurEstV9()) throw new Error(`${quoi} : la chaîne d'écriture de la 8.x ne tourne pas sous le moteur v1 (la semaine s'écrit par le passage du dimanche).`);
+}
+
 async function semaineDuMoteur(o: Objectif, numero: string, retours: Retours | RetoursDeLaReponse | null, options: {
   sansAjustement?: boolean; reprise?: boolean;
 } = {}): Promise<SortieMoteur> {
+  await refuserSousLeMoteurV1(`La semaine ${numero}`);
   const corps = await corpsDeLaSemaine(o, numero, retours, options);
   const sortie = await moteur<SortieMoteur>('/v1/semaine', corps);
   corpsDe.set(sortie, { parametres: corps.parametres });
@@ -831,9 +849,12 @@ export function semaineDeRecuperation(o: Pick<Objectif, 'coache' | 'plan' | 'tem
   return { numero: `S${o.plan.semaines.length + Math.round(joursEntre(derniere.lundi, lundi) / 7)}`, jusqua };
 }
 
-const recuperationDuMoteur = (o: Objectif, numero: string, jusqua: string, retours: Retours | null) =>
+const recuperationDuMoteur = async (o: Objectif, numero: string, jusqua: string, retours: Retours | null) => {
+  // La récupération est une semaine `type: "recuperation"` de la trame du moteur v1 : le passage du dimanche l'écrit comme les autres.
+  await refuserSousLeMoteurV1(`La récupération ${numero}`);
   // « coache » (moteur 8.452, M-13) : un acheteur lit qu'il quitte l'équipe à la fin de sa récupération.
-  moteur<SortieMoteur>('/v1/recuperation', { parametres: o.parametres, numero, jusqua, etat: o.etat, retours, coache: o.coache });
+  return moteur<SortieMoteur>('/v1/recuperation', { parametres: o.parametres, numero, jusqua, etat: o.etat, retours, coache: o.coache });
+};
 
 async function ecrireLaRecuperation(o: Objectif, numero: string, jusqua: string, retours: Retours | null, options: { sansNote?: boolean } = {}): Promise<SortieMoteur> {
   return envoyerEtRanger(o, numero, await recuperationDuMoteur(o, numero, jusqua, retours), options);
@@ -969,7 +990,7 @@ export async function donnerAccordLecture(planId: string): Promise<void> {
   if (o.envois.some((e) => e.semaine === QUESTIONNAIRES)) await dimancheDeLAcheteur(o);
 }
 
-const aujourdhuiParis = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
+export const aujourdhuiParis = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
 
 // Le départ d'un objectif écrit semaine par semaine : la trame, les questionnaires, la semaine en cours (ou la
 // première), et pour un acheteur sa place dans le groupe « Plans CTS » et sa sortie programmée (P2, P3).
@@ -1545,7 +1566,7 @@ export async function plansActifs(): Promise<string[]> {
 // Les objectifs de coachés dont la course est passée depuis moins de 6 semaines, démarrés, en programmation automatique,
 // et ceux des acheteurs encore dans l'équipe (PL5, décision coach du 04/11/2026) : leurs semaines de récupération
 // s'écrivent le dimanche (semaineDeRecuperation, décision coach du 23/10/2026).
-async function plansEnRecuperation(): Promise<string[]> {
+export async function plansEnRecuperation(): Promise<string[]> {
   const service = clientService();
   const aujourdhui = aujourdhuiParis();
   const { data: tous } = await service.from('plans').select('id, parametres, nolio_statut').not('parametres', 'is', null).not('demarre_le', 'is', null)
@@ -1991,6 +2012,8 @@ async function relireLaSemaine(o: Objectif, l: LigneDuDimanche, revue: Revue, lu
 }
 
 export async function passageDuLundi(budgetMs = 240_000, jour = aujourdhuiParis(), filet = false): Promise<Compte[]> {
+  // Sous le moteur v1, les passages du lundi sont ceux de lib/app/passagesV9.ts (la route /v1/semaine/lundi n'existe plus).
+  if (await moteurEstV9()) return [];
   // Le lundi seulement (la tâche part le lundi ; un appel un autre jour ne fait rien).
   if ((new Date(`${jour}T12:00:00Z`).getUTCDay() + 6) % 7 !== 0) return [];
   const debut = Date.now();
@@ -2832,6 +2855,8 @@ export async function relireLEquipe(): Promise<Compte[]> {
 // cours ne bougent pas ; une semaine de récupération attend « Réessayer ». Le coach reçoit les noms : reprises, et celles
 // qui restent à faire. jour : aujourd'hui (Paris), simulable.
 export async function reprendreLesSemainesDues(budgetMs = 90_000, jour = aujourdhuiParis()): Promise<Compte[]> {
+  // Sous le moteur v1, une semaine due est reprise par les passages de lib/app/passagesV9.ts (le dimanche, puis le lundi).
+  if (await moteurEstV9()) return [];
   if (!semaineAReprendre({ jour, numero: 'S', ecrite: false, laissee: false })) return [];
   const debut = Date.now();
   const service = clientService();

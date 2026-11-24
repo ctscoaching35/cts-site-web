@@ -8,6 +8,8 @@
 import { CONTINUITE_ACTIVE } from './continuite';
 import { API_URL } from '@/lib/plan';
 import { enTetesMoteur } from './cleMoteur';
+import { corpsNolioSeances, lireSeancesNolio } from './moteurV9';
+import { moteurEstV9 } from './moteurEnLigne';
 import { actionsTrame, dateDe, empreinte, empreinteSeance, type Voulu } from './trameNolio';
 import { noteFicheCourse } from './ficheCourse';
 import { ajouterJours, jMoins, joursEntre, type Plan, type Semaine } from './plan';
@@ -255,8 +257,27 @@ export function reponsesDe(intake: unknown): Record<string, string | string[]> {
 type JourTraduit = { id: string; nolio: Record<string, unknown> | null; note: Record<string, unknown> | null };
 const SEMAINE = 'semaine';
 const RENFO = ':renfo';
+// SOUS LE MOTEUR v1 (9.x) : la semaine est celle que /v1/semaine a rendue, et /v1/nolio/seances rend ses séances et son bandeau déjà prêts pour
+// l'API de Nolio (étapes comprises) ; le renfo y est une séance de plus (« S2-lundi:renfo »), dont les exercices se montent comme avant. La fiche de
+// course et les fiches de la bibliothèque ne partent pas ici. Les envois et les mises à jour (envoyerSemaineCible, mettreAJourSemaineCible) n'y voient
+// que la même forme { jours, cycle, renfo } : leur reprise en cours de route, leurs retouches gardées et leurs séances en trop sont celles d'avant.
+async function seancesDuMoteurV9(semaine: Record<string, unknown>, profil: Record<string, number>, avecTrame: boolean) {
+  const r = await fetch(`${API_URL}/v1/nolio/seances`, {
+    method: 'POST', headers: enTetesMoteur({ 'Content-Type': 'application/json' }), cache: 'no-store',
+    body: JSON.stringify(corpsNolioSeances(semaine, { vc_ms: profil.vc_ms, fc_seuil1: profil.fc_seuil1, fc_seuil2: profil.fc_seuil2 })),
+  });
+  if (!r.ok) throw new Error(`Moteur /v1/nolio/seances : ${r.status}`);
+  const lu = lireSeancesNolio(await r.json());
+  if (!lu) throw new Error('Moteur /v1/nolio/seances : la réponse n’a pas la forme du contrat 9.0.');
+  const jours = lu.seances.filter((s) => !s.id.endsWith(RENFO)).map((s) => ({ id: s.id, nolio: s.nolio, note: null })) as JourTraduit[];
+  const brut = lu.seances.filter((s) => s.id.endsWith(RENFO) && s.nolio) as { id: string; nolio: Record<string, unknown> }[];
+  const renfo = brut.length ? await monterRenfo(brut) : [];
+  return { jours, cycle: avecTrame ? lu.cycle : null, renfo };
+}
+
 export async function seancesDuMoteur(plan: Plan, planId: string, semaine: Semaine, profil: Record<string, number>, niveau: string,
   avecTrame = true, coache = false, avecApp = true) {
+  if (await moteurEstV9()) return seancesDuMoteurV9(semaine as unknown as Record<string, unknown>, profil, avecTrame);
   // La place de la semaine dans son bloc : la dose du renfo monte à partir de la troisième. Et parmi ses semaines de
   // charge : les deux séances de renfo du bloc alternent sans se répéter après une assimilation (RF5).
   // UN PLAN REJOINT EN ROUTE (C8, audit de l'app plan du 03/11/2026) : les semaines passées avant sa semaine rejointe ne
