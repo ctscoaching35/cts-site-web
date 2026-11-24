@@ -88,21 +88,22 @@ export type QuestionnairePose = { version: VersionDimanche; cles: SeanceCle[]; q
 /**
  * La version du questionnaire de la semaine écrite, choisie par le moteur d'après ce que Nolio montre, et le questionnaire qui en sort.
  * lundiASuivre : le lundi de la semaine que le moteur écrira (« la semaine suivante ») ; derniere : la semaine écrite que le questionnaire
- * interroge (ses séances clés) ; null au dimanche d'avant la première semaine (seulement les jours, le nombre, la sortie longue).
+ * interroge (ses séances clés) ; null au dimanche d'avant la première semaine (seulement les jours, le nombre, la sortie longue). accord : son accord de lecture ; sans lui, la
+ * question de la cause d'un arrêt (donnée de santé, décision 209) n'est pas posée.
  */
-export async function preparerLeQuestionnaire(ports: Ports, { parametres, lundiASuivre, etat, nolio = null, derniere, coache = false, ligneEffet = null, trame }: {
+export async function preparerLeQuestionnaire(ports: Ports, { parametres, lundiASuivre, etat, nolio = null, derniere, coache = false, ligneEffet = null, accord = false, trame }: {
   parametres: Record<string, unknown>; lundiASuivre: string; etat: EtatDuPlan; nolio?: NolioVu | null;
-  derniere: SortieV9['semaine'] | null; coache?: boolean; ligneEffet?: string | null; trame?: TrameV9;
+  derniere: SortieV9['semaine'] | null; coache?: boolean; ligneEffet?: string | null; accord?: boolean; trame?: TrameV9;
 }): Promise<QuestionnairePose> {
   const numero = await numeroDe(ports, parametres, lundiASuivre, trame);
   if (!derniere) {
-    return { version: 'normale', cles: [], quiz: questionnaireDuDimanche({ version: 'normale', premiere: true, coache }) };
+    return { version: 'normale', cles: [], quiz: questionnaireDuDimanche({ version: 'normale', premiere: true, coache, accord }) };
   }
   const reponse = await ports.appeler('/v1/questionnaire', corpsDuQuestionnaire({ parametres, numero, etat: etat.courant, nolio }));
   const version = versionDuQuestionnaire(reponse);
   if (!version) throw new ReponseIllisible('/v1/questionnaire');
   const cles = seancesCles(derniere as Parameters<typeof seancesCles>[0]);
-  return { version, cles, quiz: questionnaireDuDimanche({ version, cles, coache, ligneEffet }) };
+  return { version, cles, quiz: questionnaireDuDimanche({ version, cles, coache, ligneEffet, accord }) };
 }
 
 // ─── Une réponse qui arrive après ───────────────────────────────────────────────────────────────────

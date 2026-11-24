@@ -107,8 +107,10 @@ const choixUnique = (question: string, choix: string[], obligatoire: boolean): Q
 // Le questionnaire d'une version. cles : les séances clés de la semaine écrite (rien : pas de question). premiere : le dimanche d'avant
 // la semaine 1 (sans semaine écoulée : ni arrêt, ni séance clé, ni fatigue). coache : la question ouverte du coaché au bout, comme
 // celle d'aujourd'hui. ligneEffet : la ligne d'effet de la version « fatigue » (les mots du coach), à la suite de son ouverture.
-export function questionnaireDuDimanche({ version, cles = [], premiere = false, coache = false, ligneEffet = null }: {
-  version: VersionDimanche; cles?: SeanceCle[]; premiere?: boolean; coache?: boolean; ligneEffet?: string | null;
+// accord : l'accord de lecture de l'athlète (le même que pour le RPE et le Hooper). La CAUSE d'un arrêt (blessure, maladie, autre) est une donnée de santé (décision 209 du coach,
+// 24/11/2026) : elle ne se pose qu'avec cet accord ; sans lui, l'arrêt et sa durée suffisent, et le moteur le traite « sans cause ».
+export function questionnaireDuDimanche({ version, cles = [], premiere = false, coache = false, ligneEffet = null, accord = false }: {
+  version: VersionDimanche; cles?: SeanceCle[]; premiere?: boolean; coache?: boolean; ligneEffet?: string | null; accord?: boolean;
 }): QuestionnaireDimanche {
   const ouverture = premiere ? null : OUVERTURES[version];
   const description = [PENSE_A_SYNCHRONISER, ouverture, ouverture && version === 'fatigue' ? ligneEffet : null, DESCRIPTION_DE_BASE].filter(Boolean).join('\n\n');
@@ -117,7 +119,7 @@ export function questionnaireDuDimanche({ version, cles = [], premiere = false, 
     if (version === 'fatigue') items.push(choixUnique(QUESTION_FATIGUE, CHOIX_OUI_NON, true));
     items.push(choixUnique(QUESTION_ARRET, CHOIX_ARRET, true));
     items.push(choixUnique(QUESTION_SEMAINES_ARRET, CHOIX_SEMAINES_ARRET, false));
-    items.push(choixUnique(QUESTION_CAUSE, CHOIX_CAUSE, false));
+    if (accord) items.push(choixUnique(QUESTION_CAUSE, CHOIX_CAUSE, false));
     if (cles.length) items.push({ question: QUESTION_CLES, type: 'multiple_choices', is_mandatory: false, choices: { choices: cles.map((c) => c.libelle) } });
   }
   items.push({ question: QUESTION_JOURS, type: 'multiple_choices', is_mandatory: true, choices: { choices: LIBELLES_JOURS } });
@@ -155,7 +157,8 @@ const choix = (v: unknown, libelles: string[]): number | null => (typeof v === '
 // Lit les réponses d'une version. Chaque question à part : une question illisible n'efface pas les autres, elle est dite (`illisibles`).
 // Une question facultative laissée vide n'est ni lue ni illisible. cles : la liste posée (même ordre) ; sans elle, aucune réponse de la
 // question des séances clés ne se retrouve.
-export function lireReponsesDimanche(items: ItemRepondu[], { version, cles = [] }: { version: VersionDimanche; cles?: SeanceCle[] }):
+// accord : sans l'accord de lecture, la cause d'un arrêt n'est jamais lue ni envoyée au moteur (décision 209), même si une réponse en porte une (un point posé avant le retrait de l'accord).
+export function lireReponsesDimanche(items: ItemRepondu[], { version, cles = [], accord = false }: { version: VersionDimanche; cles?: SeanceCle[]; accord?: boolean }):
   { reponses: ReponsesDimanche; illisibles: ChampDimanche[] } {
   const parTexte = new Map(items.map((i) => [normaliser(i.question), i]));
   const de = (...questions: string[]) => questions.map((q) => parTexte.get(normaliser(q))).find(Boolean);
@@ -180,7 +183,7 @@ export function lireReponsesDimanche(items: ItemRepondu[], { version, cles = [] 
     const i = choix(v, CHOIX_SEMAINES_ARRET);
     return i === null ? null : ((i + 1) as 1 | 2 | 3 | 4 | 5);
   }, (x) => { reponses.semaines_arret = x; });
-  lire('cause', QUESTION_CAUSE, (v) => { const i = choix(v, CHOIX_CAUSE); return i === null ? null : CAUSES[i]; }, (x) => { reponses.cause = x; });
+  if (accord) lire('cause', QUESTION_CAUSE, (v) => { const i = choix(v, CHOIX_CAUSE); return i === null ? null : CAUSES[i]; }, (x) => { reponses.cause = x; });
   if (!reponses.arret || reponses.arret === 'non') { delete reponses.semaines_arret; delete reponses.cause; }
   else if (reponses.arret === 'quelques_jours') delete reponses.semaines_arret;
 

@@ -24,6 +24,8 @@ export type SemaineEnMemoire = { numero: number; lundi: string | null; semaine: 
 
 export type ContextePlan = {
   planId: string; coache: boolean; parametres: Record<string, unknown>; ports: Ports; etat: EtatDuPlan;
+  // Son accord de lecture (celui du RPE et du Hooper) : sans lui, le point du dimanche ne pose ni ne lit la cause d'un arrêt (décision 209).
+  accordLecture: boolean;
   // La dernière semaine écrite par le moteur v1, ou null.
   derniere: SemaineEnMemoire | null;
   // Ce que Nolio montre des semaines avant `lundi` (avec la sienne si avecLaSemaine) ; null si la lecture a manqué ou qu'il n'y a rien à lire.
@@ -159,7 +161,7 @@ export async function poserLeQuestionnaireDuDimanche(c: ContextePlan, jour: stri
   const trame = await lireLaTrame(c.ports, c.parametres);
   if (numeroDeLaSemaine(trame, lundiASuivre) === null) return null;
   const nolio = derniere ? await c.lireNolio(lundiASuivre, false) : null;
-  const q = await preparerLeQuestionnaire(c.ports, { parametres: c.parametres, lundiASuivre, etat: c.etat, nolio, derniere: derniere?.semaine ?? null, coache: c.coache, trame });
+  const q = await preparerLeQuestionnaire(c.ports, { parametres: c.parametres, lundiASuivre, etat: c.etat, nolio, derniere: derniere?.semaine ?? null, coache: c.coache, accord: c.accordLecture, trame });
   const nolioId = await c.poserLeQuiz(q.quiz, jour);
   if (derniere) await c.garderLeQuestionnaire(derniere.numero, { version: q.version, cles: q.cles, nolio_id: nolioId, pose_le: new Date().toISOString() });
   return { quoi: `questionnaire ${q.version} posé${nolioId ? '' : ' (sans identifiant)'}` };

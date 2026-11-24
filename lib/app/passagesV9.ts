@@ -53,7 +53,7 @@ async function contextePlan(planId: string): Promise<{ c: ContextePlan; o: Objec
   };
 
   const c: ContextePlan = {
-    planId, coache: o.coache, parametres, etat,
+    planId, coache: o.coache, accordLecture: o.accordLecture, parametres, etat,
     ports: { appeler: <T>(chemin: string, corps: unknown) => moteur<T>(chemin, corps) },
     derniere: derniere && { ...derniere },
 
@@ -101,7 +101,7 @@ async function contextePlan(planId: string): Promise<{ c: ContextePlan; o: Objec
       try {
         const siens = (await resultatsDuPoint(numero, pose)).sort((a, b) => b.date_start.localeCompare(a.date_start));
         if (!siens[0]) return null;
-        const { reponses, illisibles } = lireReponsesDimanche(siens[0].items ?? [], { version: pose?.version ?? 'normale', cles: pose?.cles ?? [] });
+        const { reponses, illisibles } = lireReponsesDimanche(siens[0].items ?? [], { version: pose?.version ?? 'normale', cles: pose?.cles ?? [], accord: o.accordLecture });
         return { reponses, illisibles };
       } catch (e) {
         console.error(`Réponses de ${planId} non lues :`, e instanceof Error ? e.message : e);
