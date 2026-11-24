@@ -46,8 +46,8 @@ export type Resultat = { quoi: string } | null;
 const ajouterJours = (iso: string, n: number) => new Date(Date.parse(`${iso}T12:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
 
 // Des réponses où seule la version est lue valent « pas de réponse lue » : le moteur le dit alors à l'athlète, sans rien deviner.
-// QUESTION OUVERTE (posée à la session moteur-v1 le 24/11/2026) : `moteur/note.py` lit une clé `reponses.illisible`, absente du contrat. Tant qu'elle n'est pas
-// tranchée, une réponse illisible ne part PAS (« pas de réponse lue ») : le comportement garde ce choix, un seul endroit à changer.
+// Réponse du moteur v1 (24/11/2026) : le contrat a la clé `reponses.illisible` (`{ "illisible": true }`, facultative) ; seule la phrase de la note change, la semaine est la même qu'avec
+// `null`. Le site n'envoie rien : « Pas de réponse lue » est correct. Un seul endroit à changer si le coach veut que la note dise « illisible ».
 export function reponsesOuRien(r: { reponses: ReponsesDimanche } | null): ReponsesDimanche | null {
   if (!r) return null;
   return Object.keys(r.reponses).some((k) => k !== 'version') ? r.reponses : null;

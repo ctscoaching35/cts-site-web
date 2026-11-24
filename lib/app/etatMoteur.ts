@@ -23,9 +23,11 @@ export type ChoixDeLEtat = { etat: Etat | null; reecrite: boolean };
  * L'état à rendre au moteur pour écrire la semaine `numero`.
  *   - une semaine déjà écrite se réécrit avec l'état d'avant elle, et seulement si c'est la dernière (une plus ancienne ferait reculer la
  *     suite de la préparation, comme « Annuler » aujourd'hui) ;
- *   - sinon, l'état de la dernière écriture ; un plan qui n'a jamais été écrit par le moteur v1 part sans état (une 8.x n'est pas lue). QUESTION OUVERTE
- *     (session moteur-v1, 24/11/2026) : un plan en cours sous la 8.x repart sans état à la 9.x (son passé se lit alors dans `nolio`), avec `entree` au
- *     premier lundi de son plan ; à confirmer pour les coachés ;
+ *   - sinon, l'état de la dernière écriture ; un plan qui n'a jamais été écrit par le moteur v1 part sans état (une 8.x n'est pas lue). Confirmé par le
+ *     moteur v1 (24/11/2026, C8) : un plan en cours sous la 8.x repart sans état à la 9.x, `entree` = le premier lundi de la trame de ce plan 8.x (mêmes rangs
+ *     S1 à SN, mêmes lundis ; plus tôt, la v1 ajoute des semaines de fond et décale les rangs) ; la v1 ne relit PAS `nolio` sans état : les marches repartent du
+ *     plancher (elle redescend, puis remonte de 15 % au plus), la SL et le volume viennent de `parametres.lu` (`volume_min` : la moyenne hebdomadaire des 4
+ *     dernières semaines ; `sl_min` : la plus longue sortie de ces 4 semaines), que le site doit envoyer au premier appel (pas encore branché) ;
  *   - une semaine plus ancienne que la dernière écrite, jamais écrite, est refusée.
  */
 export function etatPourEcrire(e: EtatDuPlan, numero: number): ChoixDeLEtat {
