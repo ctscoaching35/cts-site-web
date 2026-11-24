@@ -70,9 +70,31 @@ test('une semaine du moteur v1 : son numéro, son lundi, son type et son bloc da
 });
 
 test('les types du moteur v1 prennent les noms que l’app donne aux types d’une semaine (couleur de la bannière comprise)', () => {
-  const type = (t) => lue.lireLaSemaine({ ...SEMAINE, type: t }).type;
+  // Sans `legere` (une semaine d'avant la correction du moteur du 24/11/2026) : le type d'avant, tel quel.
+  const type = (t) => lue.lireLaSemaine({ ...SEMAINE, type: t, legere: undefined }).type;
   assert.deepEqual(['charge', 'assimilation', 'affutage_debut', 'affutage', 'affutage_1', 'course', 'recuperation'].map(type),
     ['Charge', 'Assimilation', 'Affûtage actif', 'Affûtage actif', 'Affûtage actif', 'Course', 'Récupération']);
+});
+
+test('le nom d’une semaine suit `legere`, ce que la semaine écrite est, et non le type du squelette (correction du moteur, B4) ; l’affûtage, la course et la récupération gardent leur type', () => {
+  const type = (t, legere) => lue.lireLaSemaine({ ...SEMAINE, type: t, legere }).type;
+  // Une semaine de fatigue est « allégée » (le nom que les écrans donnent à « Assimilation »), même si le squelette dit « charge ».
+  assert.equal(type('charge', true), 'Assimilation');
+  assert.equal(type('assimilation', true), 'Assimilation');
+  // Une charge qui ne monte pas n'est pas « allégée » : son nom de charge, même si le squelette dit « assimilation ».
+  assert.equal(type('charge', false), 'Charge');
+  assert.equal(type('assimilation', false), 'Charge');
+  // Les autres types ne bougent pas, `legere` dit ou non.
+  for (const t of ['affutage_debut', 'affutage', 'affutage_1', 'course', 'recuperation']) {
+    assert.equal(type(t, true), type(t, undefined), t);
+    assert.equal(type(t, false), type(t, undefined), t);
+  }
+  // Seul un booléen compte : une valeur illisible laisse le type d'avant.
+  assert.equal(type('charge', 'oui'), 'Charge');
+  assert.equal(type('assimilation', null), 'Assimilation');
+  // La même règle pour la fonction seule, et le bloc se lit à côté.
+  assert.equal(lue.typeDeLaSemaineV9({ type: 'charge', legere: true }), 'Assimilation');
+  assert.equal(lue.lireLaSemaine({ ...SEMAINE, type: 'charge', legere: false, bloc: 'fondations' }).bloc, 'Bloc fondations');
 });
 
 test('un jour du moteur v1 : le même identifiant que sa séance, sa date, son nom, sa durée en clair, son RPE ; un repos est un repos', () => {
