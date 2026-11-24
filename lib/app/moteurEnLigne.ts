@@ -17,7 +17,8 @@ const VALIDITE_MS = 5 * 60_000;
 let gardee: { le: number; v9: boolean } | null = null;
 
 async function lireLaVersion(): Promise<unknown> {
-  const r = await fetch(`${API_URL}/v1/config`, { cache: 'no-store', headers: enTetesMoteur() });
+  // Un délai : le menu de l'espace coach lit la version à chaque page (décision 220) ; un moteur muet ne doit pas la bloquer. Sans réponse à temps : la dernière lecture, sinon une 8.x (ci-dessous).
+  const r = await fetch(`${API_URL}/v1/config`, { cache: 'no-store', headers: enTetesMoteur(), signal: AbortSignal.timeout(5_000) });
   return r.ok ? ((await r.json().catch(() => null)) as { version_moteur?: unknown } | null)?.version_moteur : null;
 }
 
