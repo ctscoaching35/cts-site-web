@@ -19,6 +19,7 @@ import { lienNolioAthlete } from './liensNolio';
 import { ajouterJours, dateAbregee, dateLongue, jourMois, joursEntre } from './plan';
 import { prevision, type Prevision } from './prevision';
 import { signauxGardes, SILENCE_JOURS, type SignauxGardes } from './signauxGardes';
+import { moteurEstV9 } from './moteurEnLigne';
 import { apresLePassage, HEURE_PASSAGE_UTC, lundiQuiVient, semainesDuDimanche, type SemainesDuDimanche } from './semainesDuDimanche';
 import { clientService } from './supabase';
 
@@ -47,9 +48,9 @@ export type EspaceCoach = {
 // LE BILAN DU DIMANCHE : le dernier passage fait. Le dimanche avant 18 h, c'est celui de la semaine d'avant. Parties : les
 // semaines écrites depuis le premier passage (17 h UTC, vercel.json) jusqu'au lundi midi ; pas parties : le soir même,
 // celles du dimanche pas encore parties ; ensuite, celles de « Semaine pas partie ».
-async function bilanDuDimanche(coachId: string, jour: string, d: SemainesDuDimanche, pasPartiesLaSemaine: number): Promise<BilanDimanche | null> {
+async function bilanDuDimanche(coachId: string, jour: string, d: SemainesDuDimanche, pasPartiesLaSemaine: number, v9 = false): Promise<BilanDimanche | null> {
   const rang = rangDuJour(jour);
-  const ceSoir = rang === 6 && apresLePassage();
+  const ceSoir = rang === 6 && apresLePassage(undefined, v9);
   const dimanche = ceSoir ? jour : rang === 6 ? ajouterJours(jour, -7) : ajouterJours(jour, -(rang + 1));
   const service = clientService();
   const { data: liens } = await service.from('coaching').select('plan_id').eq('coach_id', coachId);
@@ -151,7 +152,8 @@ export async function espaceDuCoach(coachId: string, membres: Set<string> | null
   const juge = ajouterJours(lundiQuiVient(jour), -7);
   // Le dimanche après le passage : les semaines du lundi qui vient pas encore parties attendent les reprises de 20 h et
   // 22 h (lundi, ce qui manque encore est le point « semaine » d'« À regarder », avec « Réessayer »).
-  const ceSoir = rangDuJour(jour) === 6 && apresLePassage();
+  const v9 = await moteurEstV9().catch(() => false);
+  const ceSoir = rangDuJour(jour) === 6 && apresLePassage(undefined, v9);
   const lignes = vue.athletes.map((a): EtatAthlete => {
     const g = a.usr && a.accord && a.coache ? gardes?.get(a.usr) ?? null : null;
     const p: Prevision = g ? prevision({ prevues: g.prevues, faites: g.faites, hooper: g.hooper, signaux: g.signaux.map((x) => ({ ...x, seance: '' })) }, juge)
@@ -179,7 +181,7 @@ export async function espaceDuCoach(coachId: string, membres: Set<string> | null
   const ordonnees = ordonner(lignes);
   const urgent = urgentDe(ordonnees);
   const urgents = athletesUrgents(urgent);
-  const bilan = bilanVisible(rangDuJour(jour), apresLePassage())
-    ? await bilanDuDimanche(coachId, jour, dimanche, vue.aRegarder.filter((r) => r.genre === 'semaine').length).catch(() => null) : null;
+  const bilan = bilanVisible(rangDuJour(jour), apresLePassage(undefined, v9))
+    ? await bilanDuDimanche(coachId, jour, dimanche, vue.aRegarder.filter((r) => r.genre === 'semaine').length, v9).catch(() => null) : null;
   return { jour, vue, lignes: ordonnees, urgent, urgents, bilan, dimanche, signaux: gardes !== null };
 }

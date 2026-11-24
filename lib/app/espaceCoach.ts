@@ -175,8 +175,9 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     : { data: [] };
   const aLaMain = await plansALaMain();
   const lundi = lundiDe(jour);
-  // Le dimanche après le passage, la semaine qui arrive (l'espace par athlète, 08/11/2026).
-  const ceSoir = apresLePassage();
+  // Le dimanche après le passage, la semaine qui arrive (l'espace par athlète, 08/11/2026) ; sous la v1, après la reprise de 22 h (décision 211).
+  const v9 = await moteurEstV9();
+  const ceSoir = apresLePassage(undefined, v9);
   const lundiCeSoir = ceSoir ? lundiQuiVient(jour) : null;
   // Les semaines que le passage a laissées au coach, ses séances posées avant lui (B-EC-5) : pas « pas parties ».
   const { data: laissees } = ids.length
@@ -197,12 +198,11 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
   // jusqu'à l'ouverture de la page du plan — « Entre deux semaines », ni séances ni charge tenue, la saison de fond pas
   // reconnue. Redemandée une fois, pour les seules trames effacées, puis gardée jusqu'à la prochaine écriture.
   // Une trame gardée par l'autre moteur (8.x ou v1) n'est pas la bonne : trameDuPlan la redemande.
-  const v9 = await moteurEstV9();
   const trames = new Map<string, TrameLue | null>(await Promise.all((plans ?? []).map(async (p) => [p.id as string,
     (((p.trame && trameDuBonMoteur(p.trame, v9)) ? p.trame : (p.parametres ? await trameDuPlan(p.id as string).catch(() => null) : null)) as TrameLue | null)] as const)));
   // La semaine passée du tableau de bord et celle d'avant (la tendance du Hooper) : le dimanche, dès le passage, celle
   // qui finit ce soir (décision A du coach, 06/11/2026).
-  const passee = lundiDeLaSemainePassee();
+  const passee = lundiDeLaSemainePassee(undefined, v9);
   // Les semaines que le moteur n'écrit pas (à la main, sans objectif), résumées chaque nuit (la semaine en cours et la
   // précédente) : ces deux-là, pour le tableau de bord.
   const { data: horsMoteur } = fiches.length

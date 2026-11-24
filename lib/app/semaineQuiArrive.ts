@@ -72,8 +72,8 @@ const numeroDe = (n: string) => Number(String(n).replace(/^S/, ''));
 
 // ecrites : ses semaines du dimanche (semainesDuDimanche, celles que le moteur écrit) ; apercu : l'objectif dont le coach a
 // demandé l'aperçu (?apercu=).
-export async function semainesQuiArrivent(ecrites: SemaineDuDimanche[], jour: string, apercu: string | null): Promise<SemaineQuiArrive[]> {
-  const lundi = lundiMontre(jour);
+export async function semainesQuiArrivent(ecrites: SemaineDuDimanche[], jour: string, apercu: string | null, v9 = false): Promise<SemaineQuiArrive[]> {
+  const lundi = lundiMontre(jour, apresLePassage(undefined, v9));
   const service = clientService();
   const ids = ecrites.map((e) => e.o.plan_id);
   const { data: laissees } = lundi && ids.length

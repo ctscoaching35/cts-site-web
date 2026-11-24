@@ -6,12 +6,17 @@
 import { estAncien } from './anciens';
 import { athletesCoaches, type FicheAthlete, type Objectif } from './coaching';
 import { heuresDuTemps, recuperationFinie } from './jonction';
+import { DERNIERE_HEURE_D_ECRITURE_V9, heureDeParis, jourDeParis } from './heuresDePassage';
 import { ajouterJours } from './plan';
 import { clientService } from './supabase';
 
 // Le premier passage du dimanche (vercel.json, 17 h UTC) ; les reprises suivent à 19 h et 21 h.
 export const HEURE_PASSAGE_UTC = 17;
-export const apresLePassage = (d = new Date()) => d.getUTCDay() === 0 && d.getUTCHours() >= HEURE_PASSAGE_UTC;
+// Sous la v1 (décision 211 du coach, 24/11/2026), la semaine s'écrit à 21 h et 22 h de Paris : une semaine n'est « pas partie » qu'après le passage de 22 h, la reprise
+// (lib/app/heuresDePassage.ts), et plus dès 18 h. Sous la 8.x, rien ne change : le dimanche dès 17 h UTC.
+export const apresLePassage = (d = new Date(), v9 = false): boolean =>
+  v9 ? new Date(`${jourDeParis(d)}T12:00:00Z`).getUTCDay() === 0 && heureDeParis(d) >= DERNIERE_HEURE_D_ECRITURE_V9
+    : d.getUTCDay() === 0 && d.getUTCHours() >= HEURE_PASSAGE_UTC;
 
 // Le lundi qui vient, d'après un jour « AAAA-MM-JJ » (le lendemain un dimanche).
 export const lundiQuiVient = (jour: string) => ajouterJours(jour, 7 - ((new Date(`${jour}T12:00:00Z`).getUTCDay() + 6) % 7));
@@ -20,11 +25,11 @@ export const lundiQuiVient = (jour: string) => ajouterJours(jour, 7 - ((new Date
 // coach, 06/11/2026) : son lundi. La dernière semaine finie, du lundi au dimanche ; le dimanche à Paris, dès le premier
 // passage (le moteur vient de juger celle qui se termine), celle qui finit ce soir. Le lundi à minuit, il est encore
 // dimanche en UTC : seul le jour de Paris dit qu'on est dimanche. Un seul calcul, pour la vue et la phrase.
-export function lundiDeLaSemainePassee(d = new Date()): string {
+export function lundiDeLaSemainePassee(d = new Date(), v9 = false): string {
   const jour = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(d);
   const rang = (new Date(`${jour}T12:00:00Z`).getUTCDay() + 6) % 7;
   const lundi = ajouterJours(jour, -rang);
-  return rang === 6 && apresLePassage(d) ? lundi : ajouterJours(lundi, -7);
+  return rang === 6 && apresLePassage(d, v9) ? lundi : ajouterJours(lundi, -7);
 }
 
 export type SemaineDuDimanche = { a: FicheAthlete; o: Objectif; plan: Record<string, unknown> };

@@ -25,6 +25,7 @@ import { coursesDansNolio, pasEncoreIci } from '@/lib/app/coursesNolio';
 import { espaceDuCoach } from '@/lib/app/mesAthletes';
 import { decimale, suiteDe, virgule, type Point } from '@/lib/app/espaceParAthlete';
 import { semainesQuiArrivent, lundiMontre } from '@/lib/app/semaineQuiArrive';
+import { apresLePassage } from '@/lib/app/semainesDuDimanche';
 import { athletesNolio, ErreurNolio, exigerCoach, nolioConfigure, type AthleteNolio } from '@/lib/app/nolio';
 import { ajouterJours, dateAbregee, dateLongue, jMoins, type Zones } from '@/lib/app/plan';
 import { allureDepuisVitesse } from '@/lib/app/allureCoach';
@@ -169,7 +170,7 @@ export default async function PageAthlete({ params, searchParams }: {
   const allegees = decisions.flatMap((l) => l.ajustements.flatMap((x) => x.allegees.map((j) => ({ planId: x.planId, j }))));
   // Sa semaine qui arrive (Q4) : celles que le moteur écrit dimanche pour lui.
   const ecrites = espace.dimanche.ecrites.filter((e) => e.a.id === a.id);
-  const semaines = await semainesQuiArrivent(ecrites, jour, apercu ?? null);
+  const semaines = await semainesQuiArrivent(ecrites, jour, apercu ?? null, v9);
   // Une saison de fond compte vers son prochain objectif (retour coach du 01/11/2026).
   const objectifApres = objectifs.find((o) => o.course_date >= jour) ?? null;
   // Ses zones (Q9) : celles du plan qu'il lit dans son app (son prochain objectif, sa saison en cours, sinon le dernier) ;
@@ -196,7 +197,7 @@ export default async function PageAthlete({ params, searchParams }: {
   ].filter(Boolean).join(' · ') : '';
   // SA REVUE DU DIMANCHE (Q3 « A ») : ses cinq questions, calculées sans rien saisir ; un ✓, ou un ! qui renvoie à la
   // section.
-  const fenetre = lundiMontre(jour) !== null;
+  const fenetre = lundiMontre(jour, apresLePassage(undefined, v9)) !== null;
   // « partie, retouchée par toi » (décision 11 du coach du 09/11/2026) : la semaine lue dans Nolio, une retouche marquée
   // (BROUILLON) ; plus de « partie, ajustée » (« Ce que le moteur change » n'est plus sur sa page).
   const retouchee = semaines.some((x) => x.etat === 'ecrite' && x.nolio !== null && 'comparee' in x.nolio && x.nolio.comparee.retouchee);
