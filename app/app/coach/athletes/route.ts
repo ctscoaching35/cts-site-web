@@ -4,6 +4,9 @@ import type { Plan } from '@/lib/app/plan';
 import { planAchete } from '@/lib/app/acheteurs';
 import { quitterLAttenteDuProfil } from '@/lib/app/coaching';
 import { reprogrammerSortie } from '@/lib/app/ecriture';
+import { avecLeGpx } from '@/lib/app/gpxV9';
+import { moteurEstV9 } from '@/lib/app/moteurEnLigne';
+import { lireLaTraceV9 } from '@/lib/app/traceV9';
 import { coachConnecte } from '@/lib/app/nolio';
 import { clientService } from '@/lib/app/supabase';
 import { enTetesMoteur } from '@/lib/app/cleMoteur';
@@ -78,6 +81,9 @@ export async function POST(request: NextRequest) {
     const { data: trace } = await service0.storage.from('plans-pdf').download(demande.gpx_chemin);
     if (trace) formulaire.set('gpx', new File([trace], 'trace.gpx', { type: 'application/gpx+xml' }));
   }
+  // Sous le moteur v1 (9.x) seulement : le profil de la trace, lu par POST /v1/trace, est gardé avec les paramètres du plan (lib/app/gpxV9.ts) ; sous la 8.x, rien n'est appelé ni gardé de plus.
+  const fichierGpx = formulaire.get('gpx');
+  const gpxV9 = fichierGpx instanceof File && fichierGpx.size > 0 && (await moteurEstV9()) ? await lireLaTraceV9(fichierGpx) : null;
   const r1 = await fetch(`${API_URL}/v1/checkout`, { method: 'POST', body: formulaire, headers: enTete, cache: 'no-store' });
   const c1 = await r1.json().catch(() => null);
   if (!r1.ok || !c1?.session_id) {
@@ -97,12 +103,12 @@ export async function POST(request: NextRequest) {
     // Gardés : ses courses de préparation, son profil de coureur ; sa trace sans nouvelle trace ; en route, sa semaine
     // rejointe. Avant le départ, un départ programmé s'annule : le coach redémarre l'objectif.
     const nouveaux = (c2.parametres ?? {}) as Record<string, unknown>;
-    const parametres = {
+    const parametres = avecLeGpx({
       ...anciensParametres, ...nouveaux,
       plage_dominante: nouveaux.plage_dominante ?? anciensParametres.plage_dominante ?? null,
       bande_majeure: nouveaux.bande_majeure ?? anciensParametres.bande_majeure ?? null,
       ...(ancien.demarre_le ? { declaree_le: anciensParametres.declaree_le } : {}),
-    };
+    }, gpxV9, anciensParametres);
     const r3 = await fetch(`${API_URL}/v1/trame`, {
       method: 'POST', headers: enTetesMoteur({ 'Content-Type': 'application/json' }), body: JSON.stringify({ parametres }), cache: 'no-store',
     });
@@ -127,11 +133,11 @@ export async function POST(request: NextRequest) {
     // s'annule et le passage quotidien le reprogramme sur la nouvelle date ; pas encore invité, son invitation suit la
     // nouvelle date (lib/app/invitation.ts) ; déjà dans l'équipe, sa sortie suit la nouvelle course.
     const nouveaux = (c2.parametres ?? {}) as Record<string, unknown>;
-    const parametres = {
+    const parametres = avecLeGpx({
       ...anciensParametres, ...nouveaux,
       plage_dominante: nouveaux.plage_dominante ?? anciensParametres.plage_dominante ?? null,
       bande_majeure: nouveaux.bande_majeure ?? anciensParametres.bande_majeure ?? null,
-    };
+    }, gpxV9, anciensParametres);
     const r3 = await fetch(`${API_URL}/v1/trame`, {
       method: 'POST', headers: enTetesMoteur({ 'Content-Type': 'application/json' }), body: JSON.stringify({ parametres }), cache: 'no-store',
     });
@@ -159,7 +165,7 @@ export async function POST(request: NextRequest) {
     debut_plan: donnees.course.date_debut_plan, schema: donnees.schema, version_moteur: donnees.version_moteur,
     donnees, intake: c2.intake ?? {},
     // L'écriture semaine par semaine (T3, 19/10/2026) : les paramètres du moteur ; le coach démarre l'objectif dans Nolio.
-    ...(c2.parametres ? { parametres: c2.parametres, coach_id: coach.compteId } : {}),
+    ...(c2.parametres ? { parametres: avecLeGpx(c2.parametres, gpxV9), coach_id: coach.compteId } : {}),
   }).select('id').single();
   if (error || !plan) {
     console.error('Plan coaché :', error?.message);

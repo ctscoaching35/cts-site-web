@@ -16,6 +16,7 @@
  */
 import { lireCote, TERRAIN_DE_COTE } from '../cote';
 import type { ReponsesDimanche, VersionDimanche } from './dimancheV9';
+import { lireGpx } from './gpxV9';
 import { estMoteurV9 } from './versionDuMoteur';
 
 export { estMoteurV9 };
@@ -41,6 +42,8 @@ export type EntreesAthlete = {
   // ses 4 plus grosses semaines des 8 dernières (semaines de course exclues). Remplace le déclaré ; sans activité lue, il n'y a pas de `lu`.
   lu?: { volume_min?: number | null; sl_min?: number | null } | null;
   aisance?: 'montee' | 'descente' | null; montees?: 'courtes' | 'moyennes' | 'longues' | null;
+  // Le profil de sa trace (POST /v1/trace, lib/app/gpxV9.ts) ; sans lui, ou d'une autre forme que celle du contrat, rien ne part et le moteur se replie sur la classe de la course.
+  gpx?: unknown;
   coaching?: boolean; entree?: string | null; course_precedente?: { date: string; duree_h: number } | null;
   // La cible du calculateur de l'app : une fourchette [bas, haut] ou un nombre, en g/h ; le moteur lit UN nombre (absent : 60).
   glucides?: [number, number] | number | null;
@@ -51,7 +54,7 @@ export type EntreesAthlete = {
 // l'intake d'avant la 9.1 (ils deviennent `criteres`).
 const RETIRES = ['niveau', 'habitude', 'terrain', 'critere_intensite', 'critere_denivele', 'strategie', 'glucides_cible'];
 // Ce que `parametresV9` écrit lui-même : la réponse du site, « 12 », ne passe pas telle quelle (le moteur lit un nombre).
-const REECRITS = [...RETIRES, 'cote_min'];
+const REECRITS = [...RETIRES, 'cote_min', 'gpx'];
 const CATEGORIES: Categorie[] = ['jamais', 'parfois', 'regulier'];
 const categorie = (v: unknown): Categorie | null => (CATEGORIES as unknown[]).includes(v) ? (v as Categorie) : null;
 
@@ -80,6 +83,8 @@ export function parametresV9(base: Record<string, unknown>, e: EntreesAthlete = 
   if (e.lu && (e.lu.volume_min || e.lu.sl_min)) sortie.lu = { ...(e.lu.volume_min ? { volume_min: e.lu.volume_min } : {}), ...(e.lu.sl_min ? { sl_min: e.lu.sl_min } : {}) };
   if (e.aisance) sortie.aisance = e.aisance;
   if (e.montees) sortie.montees = e.montees;
+  const gpx = lireGpx(e.gpx ?? base.gpx);
+  if (gpx) sortie.gpx = gpx;
   if (e.coaching) {
     sortie.coaching = 'oui';
     if (e.entree) sortie.entree = e.entree;
