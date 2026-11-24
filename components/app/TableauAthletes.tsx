@@ -10,6 +10,7 @@ import { ecartDeLaMontee, type Montee } from '@/lib/app/tableau';
 import { motsDuCoach } from '@/lib/app/motsDuCoach';
 import { manqueDeLaLigne } from '@/lib/app/espaceCoachSimple';
 import { objectifSansSaison } from '@/lib/app/cacherSousLaV1';
+import { colonnePasseeVisible, legendeSansLaColonnePassee } from '@/lib/app/semainePasseeSimple';
 
 // Les pastilles et les étiquettes de chaque ligne (maquette validée par le coach le 24/10/2026, puis l'espace par athlète,
 // maquette validée le 08/11/2026).
@@ -39,6 +40,8 @@ export const POINT: Record<Couleur, string> = { rouge: 'bg-[#B4513F]', orange: '
 // La légende des quatre couleurs est dans lib/app/motsDuCoach.ts (la 8.x : « le moteur changera sa semaine », « proche d'un seuil » ; la 9.x : les mots du coach, et sa phrase).
 const TENDANCE = { hausse: 'en hausse', baisse: 'en baisse', stable: 'stable' } as const;
 const COLONNES = 'grid-cols-[1.45fr_1.2fr_1.05fr_1.05fr_2.05fr_16px]';
+// Sous la 9.x, sans la colonne « Semaine passée » (aucun athlète affiché n'a de réalisé : lib/app/semainePasseeSimple.ts) : les cinq autres, dans les mêmes proportions.
+const COLONNES_SANS_PASSEE = 'grid-cols-[1.45fr_1.2fr_1.05fr_2.05fr_16px]';
 // Une date courte, « 6 déc. », l'année si ce n'est pas celle d'aujourd'hui.
 const dateCourte = (iso: string, jour: string) => new Intl.DateTimeFormat('fr-FR', {
   day: 'numeric', month: 'short', ...(iso.slice(0, 4) !== jour.slice(0, 4) ? { year: 'numeric' } : {}), timeZone: 'UTC',
@@ -60,6 +63,8 @@ function categorie(e: EtatAthlete, jour: string, v9: boolean): Exclude<Filtre, '
 // v9 : sous la 9.x (décision 220 du coach, 24/11/2026), ce qui attend le coach est dans « À faire », en haut de la page : sous le nom, la pastille
 // « Nolio à associer » ou « sans accord » n'est pas redite quand « À faire » la dit ; la colonne « Ce qui l'attend » (étiquettes déjà ôtées de ses
 // points par la page) dit un tiret quand il ne reste rien. Sous la 8.x, rien ne change.
+// SIXIÈME ÉTAPE (décision 220 du coach, 24/11/2026, suite ; lib/app/semainePasseeSimple.ts) : sous la 9.x, la colonne « Semaine passée » (son en-tête, la phrase de ses dates, les lignes de légende de ses chiffres)
+// disparaît quand aucun athlète affiché n'a de réalisé : le moteur v1 n'en écrit pas, le coach voit la semaine passée dans Nolio. Sous la 8.x, la colonne est toujours là.
 export default function TableauAthletes({ lignes: toutes, jour, passee, filtre, base = '/app/coach', v9 = false }: {
   lignes: EtatAthlete[]; jour: string; passee: string; filtre: Filtre; base?: string; v9?: boolean;
 }) {
@@ -67,6 +72,9 @@ export default function TableauAthletes({ lignes: toutes, jour, passee, filtre, 
   const mots = motsDuCoach(v9);
   const parCategorie = (f: Filtre) => f === 'tous' ? toutes.length : toutes.filter((e) => categorie(e, jour, v9) === f).length;
   const lignes = toutes.filter((e) => filtre === 'tous' || categorie(e, jour, v9) === filtre);
+  // Sous la 9.x, la colonne « Semaine passée » n'est là que si un athlète affiché a un réalisé ; sans elle, ni sa phrase de dates ni les lignes de légende de ses chiffres (sixième étape).
+  const avecPassee = colonnePasseeVisible(v9, lignes);
+  const legendeDesChiffres = legendeSansLaColonnePassee(mots.legendeDesChiffres, avecPassee);
   // La semaine des chiffres (décision 2A du coach, 05/11/2026) : la dernière finie, du lundi au dimanche ; le dimanche, dès
   // le passage, celle qui finit ce soir (décision A du coach, 06/11/2026). « 1er nov. » finit déjà par son point.
   const dimanche = dateAbregee(ajouterJours(passee, 6));
@@ -91,19 +99,21 @@ export default function TableauAthletes({ lignes: toutes, jour, passee, filtre, 
       ) : (
         <div className="mt-2 overflow-x-auto">
           <div className="min-w-[940px]">
-            <div className={clsx('grid gap-x-3.5 py-2.5 text-[0.656rem] font-bold tracking-[0.08em] uppercase text-[#5E5C78] border-b border-indigo/10', COLONNES)}>
-              <span>Athlète</span><span>Objectif</span><span>Sa semaine</span><span>Semaine passée</span><span>Ce qui l’attend</span><span />
+            <div className={clsx('grid gap-x-3.5 py-2.5 text-[0.656rem] font-bold tracking-[0.08em] uppercase text-[#5E5C78] border-b border-indigo/10', avecPassee ? COLONNES : COLONNES_SANS_PASSEE)}>
+              <span>Athlète</span><span>Objectif</span><span>Sa semaine</span>{avecPassee && <span>Semaine passée</span>}<span>Ce qui l’attend</span><span />
             </div>
             {/* Validé par le coach le 06/11/2026 (1A) */}
-            <p className="py-1.5 text-[0.72rem] text-[#5E5C78] border-b border-indigo/[0.06]">
-              {mots.entetePassee(dateAbregee(passee), dimanche)}
-            </p>
+            {avecPassee && (
+              <p className="py-1.5 text-[0.72rem] text-[#5E5C78] border-b border-indigo/[0.06]">
+                {mots.entetePassee(dateAbregee(passee), dimanche)}
+              </p>
+            )}
             {mots.legendeDesChiffres.length > 0 && (
               <ul className="py-1.5 space-y-0.5 text-[0.72rem] text-[#5E5C78] border-b border-indigo/[0.06]">
-                {mots.legendeDesChiffres.map((t) => <li key={t}>{t}</li>)}
+                {legendeDesChiffres.map((t) => <li key={t}>{t}</li>)}
               </ul>
             )}
-            {lignes.map((e) => <Ligne key={e.id} e={e} jour={jour} v9={v9} />)}
+            {lignes.map((e) => <Ligne key={e.id} e={{ ...e, avecPassee }} jour={jour} v9={v9} />)}
           </div>
         </div>
       )}
@@ -169,8 +179,9 @@ export function SaSemaine({ e, jour, v9 = false }: { e: EtatAthlete; jour: strin
   );
 }
 
-// Une ligne du tableau : toute la ligne ouvre sa page (le lien de son nom, étiré sur la ligne).
-function Ligne({ e, jour, v9 }: { e: EtatAthlete; jour: string; v9: boolean }) {
+// Une ligne du tableau : toute la ligne ouvre sa page (le lien de son nom, étiré sur la ligne). `avecPassee` : la colonne « Semaine passée » est là (le tableau le décide pour toutes ses lignes ;
+// sous la 8.x, toujours).
+function Ligne({ e, jour, v9 }: { e: EtatAthlete & { avecPassee: boolean }; jour: string; v9: boolean }) {
   const a = e.a;
   const o = objectifSansSaison(a.objectif, v9);
   const avenir = Boolean(o && o.course_date >= jour);
@@ -179,7 +190,7 @@ function Ligne({ e, jour, v9 }: { e: EtatAthlete; jour: string; v9: boolean }) {
   // Ce qui lui manque (« app à inviter » reste sur sa page, décision coach du 04/11/2026).
   const manque = manqueDeLaLigne(a, e.points, v9);
   return (
-    <div className={clsx('relative grid gap-x-3.5 items-start min-h-16 py-3 text-[0.84rem] border-b last:border-b-0 border-indigo/[0.06] hover:bg-sand/50', COLONNES)}>
+    <div className={clsx('relative grid gap-x-3.5 items-start min-h-16 py-3 text-[0.84rem] border-b last:border-b-0 border-indigo/[0.06] hover:bg-sand/50', e.avecPassee ? COLONNES : COLONNES_SANS_PASSEE)}>
       <span className="min-w-0 flex gap-2.5">
         <span aria-hidden className={clsx('mt-[5px] w-2.5 h-2.5 rounded-full shrink-0', POINT[e.prevision.niveau])} />
         <span className="min-w-0">
@@ -203,7 +214,7 @@ function Ligne({ e, jour, v9 }: { e: EtatAthlete; jour: string; v9: boolean }) {
         {o?.montee && avenir && !o.fond && <EcartAuPrevu montee={o.montee} v9={v9} />}
       </span>
       <SaSemaine e={e} jour={jour} v9={v9} />
-      <SemainePassee a={a} v9={v9} />
+      {e.avecPassee && <SemainePassee a={a} v9={v9} />}
       <span className="min-w-0 flex flex-col gap-2">
         {e.etiquettes.map((x) => <EtiquetteAthlete key={x.texte} e={x} />)}
         {e.etiquettes.length === 0 && <span className="text-[#5E5C78]">—</span>}

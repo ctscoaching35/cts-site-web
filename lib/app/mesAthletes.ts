@@ -22,6 +22,7 @@ import { signauxGardes, SILENCE_JOURS, type SignauxGardes } from './signauxGarde
 import { TEXTES_A_FAIRE } from './espaceCoachSimple';
 import { moteurEstV9 } from './moteurEnLigne';
 import { ajustementsSansAllegees, pointsSousLaV1 } from './cacherSousLaV1';
+import { estUneSaisonDeFond, reessayerPossible } from './reessayerDeSaison';
 import { motsDuCoach, pointEnMotsDuCoach } from './motsDuCoach';
 import { apresLePassage, HEURE_PASSAGE_UTC, lundiQuiVient, semainesDuDimanche, type SemainesDuDimanche } from './semainesDuDimanche';
 import { clientService } from './supabase';
@@ -167,8 +168,9 @@ export async function espaceDuCoach(coachId: string, membres: Set<string> | null
     const p: Prevision = g ? prevision({ prevues: g.prevues, faites: g.faites, hooper: g.hooper, signaux: g.signaux.map((x) => ({ ...x, seance: '' })) }, juge, motsDuCoach(v9).prevision)
       : { niveau: 'rien', pourquoi: '', prevoit: '' };
     const sante = g && a.usr ? santeDesSignaux(a.nom, a.usr, g, jour).filter((x) => !reglees.has(x.cle)) : [];
-    const pasParties: Point[] = ceSoir ? dimanche.ecrites.filter(({ a: f, o }) => f.id === a.id && !dimanche.partis.has(o.plan_id)
-        && a.objectif?.suivante?.partie !== true)
+    // Sous la 9.x, ni le point ni la promesse d'un « Réessayer » lundi pour une ancienne saison de fond de la 8.x : il ne pourrait pas réussir (lib/app/reessayerDeSaison.ts, décision 220 du coach, 24/11/2026, suite).
+    const pasParties: Point[] = ceSoir ? dimanche.ecrites.filter(({ a: f, o, plan }) => f.id === a.id && !dimanche.partis.has(o.plan_id)
+        && a.objectif?.suivante?.partie !== true && reessayerPossible(v9, estUneSaisonDeFond(plan.parametres)))
       .map(({ o }) => ({ niveau: 'bloque', genre: 'semaine', cle: `semaine:${o.plan_id}:${dimanche.lundi}`, athlete: a.nom, action: '', href: `/app/coach/athlete/${a.id}#semaine-qui-arrive`,
         planId: o.plan_id, sansGeste: true,
         // La maquette validée par le coach le 08/11/2026 : sa ligne dans « Mes athlètes », et dans « Urgent ». Sous la 9.x (décision 220 du coach,

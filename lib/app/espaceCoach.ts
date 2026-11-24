@@ -25,6 +25,7 @@ import { cleLaissee, compteDuCoach, debutApres, plansALaMain, trameDuPlan, type 
 import { lireTemps } from '@/lib/plan';
 import { ajouterJours, dateAbregee, dateLongue, jourMois, joursEntre, type Semaine } from './plan';
 import { moteurEstV9 } from './moteurEnLigne';
+import { estUneSaisonDeFond, reessayerPossible } from './reessayerDeSaison';
 import { lireLaSemaine, trameDuBonMoteur } from './semaineLue';
 import { lienNolioAthlete } from './liensNolio';
 import { athletesNolio, ErreurNolio, nolioConfigure, type AthleteNolio } from './nolio';
@@ -384,9 +385,13 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     // La semaine en cours pas partie dans Nolio (le passage du dimanche en échec, même après ses reprises). La première
     // d'une saison de fond aussi (25/10/2026 : sans semaine écrite avant, elle passait inaperçue).
     const premiereDeSaison = Boolean(infosFond && p?.demarre_le && String(p.demarre_le) <= lundi);
+    // Sous la 9.x (décision 220 du coach, 24/11/2026, suite ; lib/app/reessayerDeSaison.ts) : une ancienne saison de fond de la 8.x n'a pas de « Réessayer » (le moteur v1 ne l'écrit pas : il ne pourrait pas
+    // réussir). Reconnue par ses paramètres (`fond`) ou par la trame que le moteur lui rend (`infosFond`). Sous la 8.x, rien ne change.
+    const saisonDeFond = Boolean(infosFond) || estUneSaisonDeFond(p?.parametres);
     const pasPartie = Boolean(o && avenir && ecrit && demarre && !aLaMain.has(o.plan_id) && o.course_date >= lundi && !laisseesAuCoach.has(o.plan_id)
         && !semaines.some((l) => (l.donnees as Semaine | null)?.lundi === lundi)
-        && (premiereDeSaison || semaines.some((l) => String((l.donnees as Semaine | null)?.lundi ?? '') < lundi)));
+        && (premiereDeSaison || semaines.some((l) => String((l.donnees as Semaine | null)?.lundi ?? '') < lundi))
+        && reessayerPossible(v9, saisonDeFond));
     if (pasPartie && o) {
       aRegarder.push({ niveau: 'bloque', genre: 'semaine', cle: `semaine:${o.plan_id}:${lundi}`, athlete: a.nom, action: 'Réessayer ›', href: hrefPlan, planId: o.plan_id,
         texte: `sa semaine du ${jourMois(lundi)} n’est pas partie dans Nolio.` });

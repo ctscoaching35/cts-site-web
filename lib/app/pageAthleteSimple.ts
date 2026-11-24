@@ -66,8 +66,9 @@ export const TEXTES_PAGE_ATHLETE = {
   titreGpx: 'Trace GPX',
   traceDonnee: 'donnée',
   sansValeur: '—',
-  // « Réglages » : les rubriques qui s'y ajoutent sous la 9.x.
-  reglagesSous: 'sa semaine passée, ses courses, sa programmation, l’app, son compte Nolio, son accord',
+  // « Réglages » : les rubriques qui s'y ajoutent sous la 9.x. Sans « sa semaine passée » (décision 220 du coach, 24/11/2026, suite) : elle ne s'y trouve que s'il y a un réalisé à montrer, ce que le moteur v1 n'écrit
+  // pas (lib/app/semainePasseeSimple.ts) ; la phrase est la même pour tous, elle ne promet pas ce qui n'est presque jamais là (comme « ses courses », qui n'y sont que s'il y en a dans Nolio).
+  reglagesSous: 'ses courses, sa programmation, l’app, son compte Nolio, son accord',
   ouEnEstIl: 'Où il en est',
   aVenir: 'À venir pour lui',
   anciensObjectifs: 'Ses objectifs passés',

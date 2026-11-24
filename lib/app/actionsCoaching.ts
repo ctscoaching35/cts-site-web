@@ -13,6 +13,7 @@ import { athletesNolio, coachConnecte } from './nolio';
 import { usrAcheteurs } from './acheteurs';
 import { retirerFiche, supprimerPlans } from './retrait';
 import { lireAllure } from './allureCoach';
+import { messageAuCoach, soucisAuCoach } from './erreursDuCoach';
 import { clientService } from './supabase';
 
 // avertissement : une ligne sous le résultat, quand ce qui s'enregistre sort de l'habituel (le test de vitesse critique).
@@ -144,7 +145,8 @@ export async function enregistrerValeurs(athleteId: string, _e: EtatCoach, form:
   const dernier = fiche?.objectifs[fiche.objectifs.length - 1];
   const o = dernier ? await objectifEcrit(dernier.plan_id).catch(() => null) : null;
   // Sans objectif (décision coach du 20/10/2026, « tableau de bord complet ») : les zones de sa fiche.
-  const soucis = o ? await zonesVersNolio(o) : dernier ? [] : await zonesDeLaFicheVersNolio(athleteId);
+  // Sous la 9.x (décision 220 du coach, 24/11/2026, suite), un souci de Nolio qui est un message technique (la clé de l'API…) se lit en une phrase simple (lib/app/erreursDuCoach.ts) ; sous la 8.x, tel quel.
+  const soucis = await soucisAuCoach(o ? await zonesVersNolio(o) : dernier ? [] : await zonesDeLaFicheVersNolio(athleteId));
   return { ok: true, message: `C’est enregistré. Les prochaines semaines envoyées partiront avec ces valeurs.${soucis.length ? ` Zones Nolio : ${soucis.join(' ; ')}.` : ''}` };
 }
 
@@ -182,7 +184,7 @@ export async function envoyer(planId: string, numero: string, _e: EtatCoach): Pr
     return { ok: true, message: `Envoyé dans Nolio : ${envoye}.` };
   } catch (e) {
     console.error(`Envoi Nolio ${planId} ${numero} :`, e instanceof Error ? e.message : e);
-    return { ok: false, message: e instanceof Error ? e.message : 'L’envoi n’a pas abouti.' };
+    return { ok: false, message: await messageAuCoach(e instanceof Error ? e.message : 'L’envoi n’a pas abouti.') };
   }
 }
 
@@ -204,7 +206,7 @@ export async function mettreAJour(planId: string, numero: string, _e: EtatCoach)
     return { ok: true, message: `${fait ? `${fait.charAt(0).toUpperCase()}${fait.slice(1)} dans Nolio.` : 'Rien à changer dans Nolio.'}${garde}` };
   } catch (e) {
     console.error(`Mise à jour Nolio ${planId} ${numero} :`, e instanceof Error ? e.message : e);
-    return { ok: false, message: e instanceof Error ? e.message : 'La mise à jour n’a pas abouti.' };
+    return { ok: false, message: await messageAuCoach(e instanceof Error ? e.message : 'La mise à jour n’a pas abouti.') };
   }
 }
 
@@ -255,7 +257,7 @@ export async function enregistrerProfil(athleteId: string, _e: EtatCoach, form: 
   if ('erreur' in lu) return { ok: false, message: lu.erreur };
   const { error } = await clientService().from('athletes_coaches').update({ profil: lu.profil })
     .eq('id', athleteId).eq('coach_id', coach.compteId);
-  if (error) return { ok: false, message: 'L’enregistrement n’a pas abouti : la migration du 19/10/2026 est-elle passée ?' };
+  if (error) return { ok: false, message: await messageAuCoach('L’enregistrement n’a pas abouti : la migration du 19/10/2026 est-elle passée ?') };
   // Une fiche créée d'elle-même depuis l'équipe Nolio : son profil rempli, elle quitte la programmation à la main.
   await quitterLAttenteDuProfil(coach.compteId, athleteId);
   revalidatePath(`/app/coach/athlete/${athleteId}`);
@@ -299,14 +301,14 @@ export async function enregistrerTestVc(athleteId: string, _e: EtatCoach, form: 
   // Hors des bornes d'avant de la fiche (1,5 à 7,5 m/s, 20 à 600 m), la base refuse tant que la migration du 07/11 manque.
   const horsDesBornesDAvant = vc_ms < 1.5 || vc_ms > 7.5 || d_prime_m < 20 || d_prime_m > 600;
   if (error) return { ok: false, message: horsDesBornesDAvant
-    ? 'L’enregistrement n’a pas abouti : la migration du 07/11/2026 (test de vitesse critique du coach) est-elle passée ?'
+    ? await messageAuCoach('L’enregistrement n’a pas abouti : la migration du 07/11/2026 (test de vitesse critique du coach) est-elle passée ?')
     : 'L’enregistrement n’a pas abouti. Réessaie.' };
   // Les tests de vitesse critique écrits dans ses semaines, pas encore lus : lus, par le coach.
   await marquerTestsLus(fiche, 'vitesse_critique', { vc_ms, d_prime_m, le }, 'coach');
   revalidatePath(`/app/coach/athlete/${athleteId}`);
   const dernier = fiche.objectifs[fiche.objectifs.length - 1];
   const o = dernier ? await objectifEcrit(dernier.plan_id).catch(() => null) : null;
-  const soucis = o ? await zonesVersNolio(o, { vc_ms, d_prime_m }) : dernier ? [] : await zonesDeLaFicheVersNolio(athleteId);
+  const soucis = await soucisAuCoach(o ? await zonesVersNolio(o, { vc_ms, d_prime_m }) : dernier ? [] : await zonesDeLaFicheVersNolio(athleteId));
   const { allure } = await import('./zones');
   return { ok: true, message: `C’est enregistré : vitesse critique à ${allure(vc_ms)}/km. Ses prochaines semaines et ses zones la prennent en repère.${soucis.length ? ` Zones Nolio : ${soucis.join(' ; ')}.` : ''}`,
     ...(vc.avertissement ? { avertissement: vc.avertissement } : {}) };

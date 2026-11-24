@@ -29,11 +29,14 @@ import {
 } from '@/lib/app/pageAthleteSimple';
 import { coursesDansNolio, pasEncoreIci, type CourseNolio } from '@/lib/app/coursesNolio';
 import { coursesNolioVisibles, estUneCourseEnPreparation, TEXTES_CACHES, testsLusDisponibles } from '@/lib/app/cacherSousLaV1';
+import { semainesSansSaisonPasPartie } from '@/lib/app/reessayerDeSaison';
 import { espaceDuCoach } from '@/lib/app/mesAthletes';
 import { montrerLInfra, pointsDeSaPage, semainesDansSesPoints, TEXTES_A_FAIRE } from '@/lib/app/espaceCoachSimple';
 import { motsDuCoach } from '@/lib/app/motsDuCoach';
 import { decimale, suiteDe, virgule, type Point } from '@/lib/app/espaceParAthlete';
 import { semainesQuiArrivent, lundiMontre } from '@/lib/app/semaineQuiArrive';
+import { semainePasseeVisible } from '@/lib/app/semainePasseeSimple';
+import OuvrirLeReglage from '@/components/app/OuvrirLeReglage';
 import { apresLePassage } from '@/lib/app/semainesDuDimanche';
 import { athletesNolio, ErreurNolio, exigerCoach, nolioConfigure, type AthleteNolio } from '@/lib/app/nolio';
 import { ajouterJours, dateAbregee, dateLongue, jMoins, type Zones } from '@/lib/app/plan';
@@ -89,6 +92,9 @@ const TENDANCE = { hausse: 'en hausse', baisse: 'en baisse', stable: 'stable' } 
 // écrirait »), ni les courses de préparation (leur section de « Réglages », le lien « En préparation » d'une course de Nolio), ni la saison de fond (son lien, son nom sous le sien), ni
 // les tests lus (la phrase du test de vitesse critique ne parle plus de leur lecture), ni les séances allégées en EF et « Garder la séance d'origine » (lib/app/mesAthletes.ts les ôte
 // des données). Sous la 8.x, rien ne change.
+// SIXIÈME ÉTAPE (même décision 220, 24/11/2026, suite) : sous la 9.x, « Sa semaine passée » ne se montre que s'il y a un réalisé à montrer (lib/app/semainePasseeSimple.ts : le moteur v1 n'en écrit pas,
+// le coach voit la semaine passée dans Nolio) ; le point « Réessayer » d'une ancienne saison de fond de la 8.x ne s'affiche plus (il ne pourrait pas réussir, lib/app/reessayerDeSaison.ts) ; et
+// un lien vers un réglage (une ancre dans « Réglages », replié) ouvre « Réglages » (components/app/OuvrirLeReglage.tsx, lib/app/ancresDuReglage.ts).
 export default async function PageAthlete({ params, searchParams }: {
   params: Promise<{ id: string }>; searchParams: Promise<{ apercu?: string }>;
 }) {
@@ -201,7 +207,8 @@ export default async function PageAthlete({ params, searchParams }: {
   const allegees = decisions.flatMap((l) => l.ajustements.flatMap((x) => x.allegees.map((j) => ({ planId: x.planId, j }))));
   // Sa semaine qui arrive (Q4) : celles que le moteur écrit dimanche pour lui.
   const ecrites = espace.dimanche.ecrites.filter((e) => e.a.id === a.id);
-  const semaines = await semainesQuiArrivent(ecrites, jour, apercu ?? null, v9);
+  // Sous la 9.x, ni la semaine pas partie d'une ancienne saison de fond de la 8.x (son « Réessayer » ne pourrait pas réussir) ; sous la 8.x, toutes.
+  const semaines = semainesSansSaisonPasPartie(await semainesQuiArrivent(ecrites, jour, apercu ?? null, v9), v9);
   // Une saison de fond compte vers son prochain objectif (retour coach du 01/11/2026).
   const objectifApres = objectifs.find((o) => o.course_date >= jour) ?? null;
   // Ses zones (Q9) : celles du plan qu'il lit dans son app (son prochain objectif, sa saison en cours, sinon le dernier) ;
@@ -221,6 +228,8 @@ export default async function PageAthlete({ params, searchParams }: {
   const s = etat?.a.semaine ?? null;
   const hooper = etat?.a.hooper ?? null;
   const r = etat?.a.realise ?? null;
+  // Sous la 9.x, « Sa semaine passée » n'existe que s'il y a un réalisé à montrer (lib/app/semainePasseeSimple.ts) ; sous la 8.x, toujours (avec ses « — »).
+  const aUneSemaine = semainePasseeVisible(v9, { semaine: s, hooper });
   const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`;
   const sousLaSemaine = r ? [
     r.cles_prevues ? `${pluriel(r.cles_reussies, 'séance')} clé${r.cles_reussies > 1 ? 's' : ''} réussie${r.cles_reussies > 1 ? 's' : ''} au bon effort sur ${r.cles_prevues}` : null,
@@ -243,15 +252,19 @@ export default async function PageAthlete({ params, searchParams }: {
     { ok: messages === 0, ancre: '#a-faire', texte: `Ses messages : ${messages === 0 ? 'rien à lire' : `${messages} à lire`}` },
     { ok: !s || (!s.sansRpe && (s.tenue === null || s.tenue >= 80)), ancre: '#sa-semaine-passee',
       texte: `Sa semaine passée : ${!s ? 'rien de lu' : s.sansRpe ? mots.revue.sansEffort : s.tenue === null ? `${s.faites} séance${s.faites > 1 ? 's' : ''} sur ${s.prevues}` : mots.revue.tenue(s.tenue)}` },
-    { ok: Boolean(a.nolio_athlete_id) && coursesNolio.length === 0, ancre: '#courses-nolio',
+    // Sous la 9.x, sans compte Nolio associé il n'y a pas de section « Ses courses dans Nolio » : le lien va à « Son compte Nolio » (une ancre qui existe) ; sous la 8.x, l'ancre d'avant.
+    { ok: Boolean(a.nolio_athlete_id) && coursesNolio.length === 0, ancre: v9 && !a.nolio_athlete_id ? '#son-nolio' : '#courses-nolio',
       texte: `Ses courses Nolio : ${!a.nolio_athlete_id ? 'Nolio à associer' : coursesNolio.length === 0 ? 'toutes ici' : `${coursesNolio.length} pas encore ici`}` },
-  ];
+    // Sans « Sa semaine passée » (9.x, aucun réalisé), pas de ligne « Sa semaine passée : rien de lu » dans la revue, ni de lien vers une section qui n'existe pas.
+  ].filter((x) => aUneSemaine || x.ancre !== '#sa-semaine-passee');
   // Son prochain objectif, sous son nom ; sinon sa saison en cours.
   const sousLeNom = objectifApres ? `${objectifApres.course_nom} · ${dateLongue(objectifApres.course_date, true)} · ${jMoins(jour, objectifApres.course_date)}`
     : saisonEnCours && !v9 ? `${saisonEnCours.course_nom} · jusqu’au ${dateLongue(saisonEnCours.course_date, true)}` : null;
   const couleur = etat?.prevision.niveau ?? 'rien';
   // Sous la 9.x, « la migration du 04/11/2026 est à passer » n'est plus dite au coach : pas de « Ses 7 jours » vide, une ligne au journal.
   const septJoursVisibles = !(gardesManquent && !montrerLInfra(v9, 'Ses signaux ne sont pas encore gardés : la migration du 04/11/2026 est à passer dans Supabase.'));
+  // Sous la 9.x, la section « Sa semaine passée » de « Réglages » a deux colonnes, la semaine passée (quand il y a un réalisé) et ses 7 jours (déjà géré) : sans l'une ni l'autre, pas de section.
+  const septJoursAffiches = Boolean(accord && a.nolio_athlete_id && septJoursVisibles);
   const prenomDe = (nom: string) => nom.split(' ')[0];
   // SOUS LA 9.x (décision 220 du coach, 24/11/2026 : une page athlète courte ; lib/app/pageAthleteSimple.ts) : ce qui est à faire pour lui (ses points, puis les étapes de son entrée que le
   // coach fait lui-même), ce qui manque à sa carte de coureur, ce que chaque objectif à venir a de rempli, ce qui arrive. Rien n'est lu de plus : les mêmes données que la 8.x. Sous la 8.x, rien.
@@ -301,36 +314,39 @@ export default async function PageAthlete({ params, searchParams }: {
   );
   const contenuSemainePassee = (
     <div className="flex flex-wrap gap-x-8 gap-y-5">
-      <div className="flex-[1_1_300px] min-w-0 space-y-3">
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <Surtitre>Sa semaine passée</Surtitre>
-          <span className="text-xs text-[#5E5C78]">{periode}</span>
+      {/* Sous la 9.x, sans réalisé, ni ce bloc ni son titre : « Ses 7 jours » (déjà géré) reste seul, ou rien (lib/app/semainePasseeSimple.ts). */}
+      {aUneSemaine && (
+        <div className="flex-[1_1_300px] min-w-0 space-y-3">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <Surtitre>Sa semaine passée</Surtitre>
+            <span className="text-xs text-[#5E5C78]">{periode}</span>
+          </div>
+          {/* Sous la 9.x, un chiffre par ligne, avec sa ligne d'explication dessous : trois cases côte à côte n'ont pas la place d'une phrase. */}
+          <div className={v9 ? 'grid gap-2' : 'grid grid-cols-3 gap-2'}>
+            <div className="rounded-[12px] bg-sand p-3">
+              <div className="text-xl font-extrabold">{s ? `${s.faites} / ${s.prevues}` : '—'}</div>
+              <div className="text-[0.72rem] text-[#5E5C78]">séances</div>
+            </div>
+            <div className="rounded-[12px] bg-sand p-3">
+              <div className="text-xl font-extrabold">{s?.sansRpe ? mots.tuiles.sansEffort : s && s.tenue !== null ? `${s.tenue} %` : '—'}</div>
+              <div className="text-[0.72rem] text-[#5E5C78]">{mots.tuiles.tenue}</div>
+              {s && !s.sansRpe && s.tenue !== null && (
+                <span aria-hidden className="mt-1.5 block w-full h-1.5 rounded-full bg-indigo/10 overflow-hidden">
+                  <span className={clsx('block h-full rounded-full', s.tenue >= 85 ? 'bg-teal' : s.tenue >= 65 ? 'bg-[#C8952E]' : 'bg-[#B4513F]')}
+                    style={{ width: `${Math.min(100, s.tenue)}%` }} />
+                </span>
+              )}
+              {mots.tuiles.explicationTenue && <p className="mt-1.5 text-[0.72rem] leading-snug text-[#5E5C78]">{mots.tuiles.explicationTenue}</p>}
+            </div>
+            <div className="rounded-[12px] bg-sand p-3">
+              <div className="text-xl font-extrabold">{hooper ? hooper.valeur : '—'}</div>
+              <div className="text-[0.72rem] text-[#5E5C78]">{mots.tuiles.fatigue(hooper?.tendance ? TENDANCE[hooper.tendance] : null)}</div>
+              {mots.tuiles.explicationFatigue && <p className="mt-1.5 text-[0.72rem] leading-snug text-[#5E5C78]">{mots.tuiles.explicationFatigue}</p>}
+            </div>
+          </div>
+          {sousLaSemaine && <p className="text-sm text-[#3B3957]">{sousLaSemaine.charAt(0).toUpperCase()}{sousLaSemaine.slice(1)}.</p>}
         </div>
-        {/* Sous la 9.x, un chiffre par ligne, avec sa ligne d'explication dessous : trois cases côte à côte n'ont pas la place d'une phrase. */}
-        <div className={v9 ? 'grid gap-2' : 'grid grid-cols-3 gap-2'}>
-          <div className="rounded-[12px] bg-sand p-3">
-            <div className="text-xl font-extrabold">{s ? `${s.faites} / ${s.prevues}` : '—'}</div>
-            <div className="text-[0.72rem] text-[#5E5C78]">séances</div>
-          </div>
-          <div className="rounded-[12px] bg-sand p-3">
-            <div className="text-xl font-extrabold">{s?.sansRpe ? mots.tuiles.sansEffort : s && s.tenue !== null ? `${s.tenue} %` : '—'}</div>
-            <div className="text-[0.72rem] text-[#5E5C78]">{mots.tuiles.tenue}</div>
-            {s && !s.sansRpe && s.tenue !== null && (
-              <span aria-hidden className="mt-1.5 block w-full h-1.5 rounded-full bg-indigo/10 overflow-hidden">
-                <span className={clsx('block h-full rounded-full', s.tenue >= 85 ? 'bg-teal' : s.tenue >= 65 ? 'bg-[#C8952E]' : 'bg-[#B4513F]')}
-                  style={{ width: `${Math.min(100, s.tenue)}%` }} />
-              </span>
-            )}
-            {mots.tuiles.explicationTenue && <p className="mt-1.5 text-[0.72rem] leading-snug text-[#5E5C78]">{mots.tuiles.explicationTenue}</p>}
-          </div>
-          <div className="rounded-[12px] bg-sand p-3">
-            <div className="text-xl font-extrabold">{hooper ? hooper.valeur : '—'}</div>
-            <div className="text-[0.72rem] text-[#5E5C78]">{mots.tuiles.fatigue(hooper?.tendance ? TENDANCE[hooper.tendance] : null)}</div>
-            {mots.tuiles.explicationFatigue && <p className="mt-1.5 text-[0.72rem] leading-snug text-[#5E5C78]">{mots.tuiles.explicationFatigue}</p>}
-          </div>
-        </div>
-        {sousLaSemaine && <p className="text-sm text-[#3B3957]">{sousLaSemaine.charAt(0).toUpperCase()}{sousLaSemaine.slice(1)}.</p>}
-      </div>
+      )}
 
       {accord && a.nolio_athlete_id && septJoursVisibles && (
         <div className="flex-[1_1_300px] min-w-0 space-y-3">
@@ -443,7 +459,7 @@ export default async function PageAthlete({ params, searchParams }: {
     <>
       <PointsAVenir points={pointsAVenir(points)} />
       <section id="revue" className="py-4">{contenuRevue}</section>
-      <section id="sa-semaine-passee" className="py-4 scroll-mt-6">{contenuSemainePassee}</section>
+      {(aUneSemaine || septJoursAffiches) && <section id="sa-semaine-passee" className="py-4 scroll-mt-6">{contenuSemainePassee}</section>}
       {coursesNolio.length > 0 && <section id="courses-nolio" className="py-4 space-y-3 scroll-mt-6">{contenuCoursesNolio}</section>}
       {objectifsPasses.length > 0 && (
         <section className="py-4 space-y-2">
@@ -692,6 +708,8 @@ export default async function PageAthlete({ params, searchParams }: {
       )}
 
       {/* « Réglages », replié (décision coach du 04/11/2026) : ce qui se règle une fois. */}
+      {/* Sous la 9.x, un lien qui mène à un réglage (« Son compte Nolio », « Retirer cet athlète », sa semaine passée, ses courses…) ouvre « Réglages » : sixième étape, décision 220 du coach, 24/11/2026, suite. */}
+      {v9 && <OuvrirLeReglage />}
       <details id="reglages" open={reglagesOuverts} className="group bg-white rounded-2xl border border-indigo/[0.08] scroll-mt-6">
         <summary className="cursor-pointer list-none min-h-14 px-5 flex items-center justify-between gap-3">
           <span className="text-[0.6875rem] font-bold tracking-[0.14em] uppercase text-teal">Réglages</span>

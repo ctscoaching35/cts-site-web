@@ -19,6 +19,7 @@ import { texteProgrammeApres } from '@/lib/app/jonction';
 import { moteurEstV9 } from '@/lib/app/moteurEnLigne';
 import { motsDuCoach } from '@/lib/app/motsDuCoach';
 import { ajustementsAnnulesVisibles, apercuDisponible, preparationsDisponibles, testsLusDisponibles } from '@/lib/app/cacherSousLaV1';
+import { legendeDesSemainesLues } from '@/lib/app/semainePasseeSimple';
 import { typeCoteCoach } from '@/lib/app/nomsSeances';
 import { lienFicheCourse } from '@/lib/app/ficheCourse';
 import { exigerCoach } from '@/lib/app/nolio';
@@ -131,6 +132,7 @@ export default async function ObjectifCoache({ params, searchParams }: {
     o.athlete.vc_ms && mots.cibles.vc(allureDepuisVitesse(o.athlete.vc_ms)), o.athlete.fc_seuil2 && mots.cibles.fc2(String(o.athlete.fc_seuil2))].filter(Boolean).join(' · ');
   const { course } = o.plan;
   const ecritesTriees = (ecrites ?? []).slice().sort((a, b) => Number(String(b.numero).slice(1)) - Number(String(a.numero).slice(1)));
+  const legendeDesSemaines = legendeDesSemainesLues(mots.semaines.legende, ecritesTriees, v9);
   const statut = !ecriture?.parametres ? 'envoyé en entier' : ecriture.demarre_le ? 'en route dans Nolio'
     : ecriture.depart_prevu ? `démarre le ${dateLongue(String(ecriture.depart_prevu), true)}` : 'pas encore démarré';
   return (
@@ -238,11 +240,14 @@ export default async function ObjectifCoache({ params, searchParams }: {
                   {/* Une ligne par semaine écrite (décision coach du 04/11/2026) : son lundi, faite x/y, sa charge, sa sortie
                       longue, son Hooper, ses ajustements ; sa note « Ta semaine » s'ouvre au clic. Sa charge (décision coach
                       du 04/11/2026 au soir, « A ») : tenue en %, la mesure de « Mes athlètes » et de l'aperçu, puis faite. */}
-                  {/* Sous la 9.x, ce que disent les chiffres de chaque ligne, une fois, au-dessus (lib/app/motsDuCoach.ts). */}
+                  {/* Sous la 9.x, ce que disent les chiffres de chaque ligne, une fois, au-dessus (lib/app/motsDuCoach.ts) ; seulement si une semaine écrite a un réalisé à montrer : le moteur v1 n'en écrit
+                      pas, sa ligne dit « Écrite le … » (sixième étape, décision 220 du coach, 24/11/2026, suite ; lib/app/semainePasseeSimple.ts). */}
                   {mots.semaines.legende.length > 0 && (
-                    <ul className="space-y-0.5 text-[0.72rem] leading-snug text-[#5E5C78]">
-                      {mots.semaines.legende.map((t) => <li key={t}>{t}</li>)}
-                    </ul>
+                    legendeDesSemaines.length > 0 && (
+                      <ul className="space-y-0.5 text-[0.72rem] leading-snug text-[#5E5C78]">
+                        {legendeDesSemaines.map((t) => <li key={t}>{t}</li>)}
+                      </ul>
+                    )
                   )}
                   <ul className="space-y-1.5">
                     {ecritesTriees.map((w) => {

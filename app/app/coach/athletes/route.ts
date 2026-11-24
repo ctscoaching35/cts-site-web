@@ -6,6 +6,7 @@ import { quitterLAttenteDuProfil } from '@/lib/app/coaching';
 import { reprogrammerSortie } from '@/lib/app/ecriture';
 import { avecLeGpx } from '@/lib/app/gpxV9';
 import { moteurEstV9 } from '@/lib/app/moteurEnLigne';
+import { messageAuCoach } from '@/lib/app/erreursDuCoach';
 import { lireLaTraceV9 } from '@/lib/app/traceV9';
 import { coachConnecte } from '@/lib/app/nolio';
 import { clientService } from '@/lib/app/supabase';
@@ -19,7 +20,8 @@ export async function POST(request: NextRequest) {
   const coach = await coachConnecte();
   const cle = process.env.CTS_CLE_COACH;
   if (!coach) return NextResponse.json({ message: 'Réservé au coach.' }, { status: 403 });
-  if (!cle) return NextResponse.json({ message: 'Le code du coach (CTS_CLE_COACH) manque dans Vercel.' }, { status: 500 });
+  // Sous la 9.x, la phrase simple à la place du nom de la variable et de Vercel (lib/app/erreursDuCoach.ts, décision 220 du coach, 24/11/2026, suite) ; le détail reste au journal du serveur.
+  if (!cle) return NextResponse.json({ message: await messageAuCoach('Le code du coach (CTS_CLE_COACH) manque dans Vercel.') }, { status: 500 });
   const enTete: Record<string, string> = enTetesMoteur({ 'X-CTS-Coach': cle });
   const formulaire = await request.formData();
   const athleteDemande = String(formulaire.get('athlete_id') ?? '');

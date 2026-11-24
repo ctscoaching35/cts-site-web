@@ -12,6 +12,7 @@ import {
 } from './ecriture';
 import { enregistrerConfirmation } from './confirmation';
 import { coachConnecte } from './nolio';
+import { messageAuCoach, soucisAuCoach } from './erreursDuCoach';
 import { enTetesMoteur } from './cleMoteur';
 import { moteurEstV9 } from './moteurEnLigne';
 import { garderLeGpxDuPlan, lireLaTraceV9 } from './traceV9';
@@ -58,7 +59,8 @@ export async function demarrerDansNolio(planId: string, _e: EtatGeste, formulair
     return { ok: true, message: `C’est parti : la trame, les questionnaires du week-end et la semaine ${depart.numero.replace('S', '')} sont dans Nolio. La suite s’écrit chaque dimanche.` };
   } catch (e) {
     console.error(`Départ dans Nolio de ${planId} :`, e instanceof Error ? e.message : e);
-    return { ok: false, message: e instanceof Error ? e.message : 'Le départ n’a pas abouti.' };
+    // Geste du coach seul : sous la 9.x, un message technique se lit en une phrase simple (lib/app/erreursDuCoach.ts, décision 220 du coach, 24/11/2026, suite).
+    return { ok: false, message: await messageAuCoach(e instanceof Error ? e.message : 'Le départ n’a pas abouti.') };
   }
 }
 
@@ -73,7 +75,7 @@ export async function annulerSemaine(planId: string, numero: string, _e: EtatGes
     return { ok: true, message: `Semaine ${numero.replace('S', '')} réécrite sans ses ajustements, et mise à jour dans Nolio.` };
   } catch (e) {
     console.error(`Annulation ${planId} ${numero} :`, e instanceof Error ? e.message : e);
-    return { ok: false, message: e instanceof Error ? e.message : 'L’annulation n’a pas abouti.' };
+    return { ok: false, message: await messageAuCoach(e instanceof Error ? e.message : 'L’annulation n’a pas abouti.') };
   }
 }
 
@@ -353,7 +355,7 @@ export async function reessayerLaSemaine(planId: string, _e: EtatGeste): Promise
     return { ok: true, message: `C’est fait : sa semaine ${numero.replace('S', '')} est dans Nolio.` };
   } catch (e) {
     console.error(`Semaine de ${planId} :`, e instanceof Error ? e.message : e);
-    return { ok: false, message: e instanceof Error ? e.message : 'La semaine n’est pas partie : réessaie dans un moment.' };
+    return { ok: false, message: await messageAuCoach(e instanceof Error ? e.message : 'La semaine n’est pas partie : réessaie dans un moment.') };
   }
 }
 
@@ -370,7 +372,7 @@ export async function appliquerLaSemaineDuLundiGeste(planId: string, numero: str
     return { ok: true, message: `Semaine ${numero.replace('S', '')} réécrite comme la passe du lundi l’aurait écrite.` };
   } catch (e) {
     console.error(`Semaine du lundi de ${planId} ${numero} :`, e instanceof Error ? e.message : e);
-    return { ok: false, message: e instanceof Error ? e.message : 'La semaine n’a pas été réécrite : réessaie dans un moment.' };
+    return { ok: false, message: await messageAuCoach(e instanceof Error ? e.message : 'La semaine n’a pas été réécrite : réessaie dans un moment.') };
   }
 }
 
@@ -433,13 +435,13 @@ export async function arreterPreparationRemboursee(planId: string, _e: EtatGeste
   const { coachId } = await qui();
   if (!coachId) return { ok: false, message: 'Réservé au coach.' };
   try {
-    const soucis = await arreterLaPreparation(planId);
+    const soucis = await soucisAuCoach(await arreterLaPreparation(planId));
     revalidatePath('/app/coach/chiffres');
     return { ok: true, message: soucis.length
       ? `Arrêtée : plus d’invitation ni de séance écrite. Dans Nolio, à finir à la main : ${soucis.join(' ; ')}`
       : 'Arrêtée : plus d’invitation ni de séance écrite, ce qui était à venir a quitté son Nolio, et il a quitté ton équipe s’il n’y était que pour elle. Le remboursement se fait dans Stripe.' };
   } catch (e) {
     console.error(`Arrêt de la préparation ${planId} :`, e instanceof Error ? e.message : e);
-    return { ok: false, message: e instanceof Error ? e.message : 'L’arrêt n’a pas abouti : réessaie dans un moment.' };
+    return { ok: false, message: await messageAuCoach(e instanceof Error ? e.message : 'L’arrêt n’a pas abouti : réessaie dans un moment.') };
   }
 }
