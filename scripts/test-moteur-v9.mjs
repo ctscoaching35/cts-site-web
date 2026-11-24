@@ -188,6 +188,6 @@ test('branché seulement derrière la garde de version : seules les pièces de l
   }
   // Seules les pièces de la même chaîne (préparées aussi, lues par personne) le lisent.
   const CHAINE = ['lib/app/nolioV9.ts', 'lib/app/etatMoteur.ts', 'lib/app/ecritureV9.ts', 'lib/app/stockageV9.ts', 'lib/app/passeUnPlanV9.ts', 'lib/app/passagesV9.ts',
-    'lib/app/coaching.ts'];
+    'lib/app/coaching.ts', 'lib/app/ecriture.ts'];
   assert.deepEqual(lecteurs.filter((f) => !CHAINE.includes(f)), []);
 });
