@@ -22,7 +22,7 @@ import { estPlanDeDemonstration, REFUS_DEMONSTRATION } from './demonstrationPort
 export type EtatGeste = { ok: boolean; message: string } | null;
 
 // Sous le moteur v1, avant l'objectif mineur (C5) : la course de préparation ne s'ajoute pas (BROUILLON, à faire valider par le coach).
-const MESSAGE_COURSE_DE_PREPARATION_FERMEE = 'Les courses de préparation reviennent avec l’objectif mineur : cette version du moteur ne les ajoute pas encore.';
+const MESSAGE_COURSE_DE_PREPARATION_FERMEE = 'Les courses de préparation reviennent avec l’objectif mineur : cette version ne les ajoute pas encore.';
 
 // Après « Ajouter la trace », sous le moteur v1 (décision 208 du coach, 24/11/2026) : ses mots.
 const MESSAGE_TRACE_AJOUTEE_V9 = 'Trace ajoutée : tes prochaines semaines tiendront compte de ses montées.';
@@ -121,7 +121,7 @@ async function enregistrerCourse(planId: string, form: FormData, ancienne: strin
   const lundiProchain = new Date();
   lundiProchain.setUTCDate(lundiProchain.getUTCDate() + ((8 - lundiProchain.getUTCDay()) % 7 || 7));
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || (date < lundiProchain.toISOString().slice(0, 10) && date !== ancienne)) {
-    return { ok: false, message: 'Ta course doit tomber à partir de lundi prochain : la semaine en cours est déjà écrite.' };
+    return { ok: false, message: 'Ta course doit tomber à partir de lundi prochain : la semaine en cours est déjà préparée.' };
   }
   // PO3 : le chrono visé (« 2h15 », « 2:15 », « 135 min ») ; il règle les jours autour de la course et sa fiche.
   const temps_h = heuresDuChrono(String(form.get('chrono') ?? ''));
@@ -137,9 +137,9 @@ async function enregistrerCourse(planId: string, form: FormData, ancienne: strin
     ...(temps_h !== null ? { temps_h, chrono: `${Math.floor(temps_h)}h${String(Math.round((temps_h % 1) * 60)).padStart(2, '0')}` } : {}),
   };
   if (!(course.distance_km > 0 && course.distance_km <= 200) || course.dplus_m < 0 || course.dplus_m > 15000) {
-    return { ok: false, message: 'La distance ou le dénivelé ne se lisent pas.' };
+    return { ok: false, message: o.coache ? 'Je ne comprends pas la distance ou le dénivelé.' : 'La distance ou le dénivelé ne sont pas valides.' };
   }
-  if (temps_h === null || temps_h < 0.25 || temps_h > 48) return { ok: false, message: 'Le chrono visé ne se lit pas : par exemple 2h15.' };
+  if (temps_h === null || temps_h < 0.25 || temps_h > 48) return { ok: false, message: o.coache ? 'Je ne comprends pas le chrono visé : par exemple 2h15.' : 'Le chrono visé n’est pas valide : par exemple 2h15.' };
   // Modifiée, elle se vérifie sans elle-même (la règle d'une course toutes les 4 semaines).
   const autres = toutes.filter((c) => c.date !== ancienne);
   const parametres = { ...o.parametres, courses_secondaires: autres };
@@ -152,7 +152,7 @@ async function enregistrerCourse(planId: string, form: FormData, ancienne: strin
     body: JSON.stringify({ parametres, course, sl_30j_min: reelles.length ? Math.max(...reelles.slice(-4)) : null }),
   });
   const verdict = await r.json().catch(() => null) as { ok?: boolean; message?: string | null } | null;
-  if (!r.ok || !verdict) return { ok: false, message: verdict?.message ?? 'Le moteur ne répond pas : réessaie dans un moment.' };
+  if (!r.ok || !verdict) return { ok: false, message: verdict?.message ?? 'Le service ne répond pas : réessaie dans un moment.' };
   if (!verdict.ok) return { ok: false, message: verdict.message ?? 'Cette course ne peut pas s’ajouter au plan.' };
   // Modifiée : l'ancienne quitte Nolio (sa course et le rappel de sa fiche, encore à venir).
   const soucis = ancienne === null ? [] : await retirerCourseDeNolio(o, ancienne).catch((e) => [e instanceof Error ? e.message : String(e)]);
@@ -214,15 +214,16 @@ async function enregistrerCourse(planId: string, form: FormData, ancienne: strin
     return { ok: true, message: `Course ${ancienne !== null ? 'modifiée' : 'ajoutée'} : ton coach en est prévenu, il adapte tes semaines autour d’elle.` };
   }
   const surLaFiche = !ficheGardee ? '' : traceDonnee && !fiche?.trace
-    ? ' Sa fiche de course est prête, mais sa trace ne s’est pas lue : le profil reste schématique.'
+    ? (o.coache ? ' Sa fiche de course est prête, mais je n’ai pas pu utiliser sa trace : le profil reste schématique.'
+      : ' Sa fiche de course est prête, mais sa trace n’a pas pu être utilisée : le profil reste schématique.')
     : !trace && traceAvant
     ? ' Sa fiche de course est refaite, mais sa trace d’avant n’était pas gardée : redonne-la pour retrouver son profil.'
     : ancienne !== null ? ' Sa fiche de course est refaite, ici et une semaine avant dans Nolio.'
     : ' Sa fiche de course est prête, ici et une semaine avant dans Nolio.';
   const nolio = soucis.length ? ' Dans Nolio, l’ancienne n’a pas pu partir : retire-la à la main.' : '';
   return { ok: true, message: ancienne !== null
-    ? `Course modifiée : les jours autour d’elle s’ajustent dans tes prochaines semaines.${verdict.message ? ` ${verdict.message}` : ''}${surLaFiche}${nolio}`
-    : `Course ajoutée : les jours autour d’elle s’ajustent dans tes semaines.${verdict.message ? ` ${verdict.message}` : ''}${surLaFiche}` };
+    ? `${o.coache ? 'Course modifiée : j’ajuste les jours autour d’elle dans tes prochaines semaines.' : 'Course modifiée : les jours autour d’elle sont ajustés dans tes prochaines semaines.'}${verdict.message ? ` ${verdict.message}` : ''}${surLaFiche}${nolio}`
+    : `${o.coache ? 'Course ajoutée : j’ajuste les jours autour d’elle dans tes semaines.' : 'Course ajoutée : les jours autour d’elle sont ajustés dans tes semaines.'}${verdict.message ? ` ${verdict.message}` : ''}${surLaFiche}` };
 }
 
 // LA TRACE DE L'OBJECTIF, DONNÉE APRÈS L'ACHAT (Q11, décision coach du 05/11/2026 au soir, « A ») : facultative à
@@ -252,10 +253,10 @@ export async function ajouterTraceObjectif(planId: string, _e: EtatGeste, form: 
     determinants?: { mecanique?: unknown; secteurs_cles?: unknown } };
   const r = await fetch(`${API_URL}/v1/fiche-course`, { method: 'POST', body: envoi, cache: 'no-store', headers: enTetesMoteur() }).catch(() => null);
   const fiche = r?.ok ? await r.json().catch(() => null) as FicheLue | null : null;
-  if (!fiche) return { ok: false, message: 'Le moteur ne répond pas : réessaie dans un moment.' };
+  if (!fiche) return { ok: false, message: 'Le service ne répond pas : réessaie dans un moment.' };
   // Validé par le coach le 05/11/2026 (1A ; les deux messages).
   if (!fiche.trace || !fiche.profil) {
-    return { ok: false, message: 'Ta trace ne s’est pas lue : exporte-la de nouveau depuis le site de la course, avec son altitude.' };
+    return { ok: false, message: o.coache ? 'Je n’ai pas pu utiliser ta trace : exporte-la de nouveau depuis le site de la course, avec son altitude.' : 'Ta trace n’a pas pu être utilisée : exporte-la de nouveau depuis le site de la course, avec son altitude.' };
   }
   const service = clientService();
   const { data: ligne, error } = await service.from('plans').select('donnees').eq('id', planId).maybeSingle();
@@ -326,7 +327,7 @@ export async function retirerCourse(planId: string, date: string, _e: EtatGeste)
   }
   return { ok: true, message: soucis.length
     ? 'Course retirée de ta préparation. Dans Nolio, elle n’a pas pu partir : retire-la à la main.'
-    : 'Course retirée : tes prochaines semaines s’écrivent sans elle.' };
+    : o.coache ? 'Course retirée : je prépare tes prochaines semaines sans elle.' : 'Course retirée : tes prochaines semaines sont préparées sans elle.' };
 }
 
 // « 2h15 », « 2h », « 2:15 », « 135 min », « 2,5 » : des heures ; null illisible.

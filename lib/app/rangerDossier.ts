@@ -20,7 +20,7 @@ export type RangeDossier = { ok: true; id: string } | { ok: false; message: stri
 // brut : { entrees, reponse, strategie? }, venu du navigateur : relu, jamais cru sur parole.
 export async function rangerDossier(compteId: string, email: string | undefined, brut: unknown): Promise<RangeDossier> {
   const lu = dossierSur(brut);
-  if (!lu) return { ok: false, message: 'Ce dossier ne se lit pas : refais-le, puis garde-le.' };
+  if (!lu) return { ok: false, message: 'Ce dossier n’est pas valide : refais-le, puis garde-le.' };
   const reponse = allegerReponse(lu.reponse);
   const strategie = lireStrategie((brut as { strategie?: unknown }).strategie);
   const supabase = await clientServeur();

@@ -113,7 +113,7 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
             <p className="text-[1.0625rem] font-bold">{coach.prenom}</p>
             <p className="text-[0.8125rem] leading-relaxed text-[#D6D5E6]">
               {/* Le prénom du coach (§8, point 4, audit du 03/11/2026) : « Juliette relit… » pour ses coachés. */}
-              {coach.texte} {ctx.aLaMain ? `${coach.prenom} écrit tes séances dans Nolio.` : `${coach.prenom} relit ta préparation et peut reprendre la main sur une semaine à tout moment.`}
+              {coach.texte} {ctx.aLaMain ? `${coach.prenom} écrit tes séances dans Nolio.` : 'Je relis ta préparation et je peux changer une semaine à tout moment.'}
             </p>
             {/* Q5 et Q18 (décisions coach du 05/11/2026 au soir, « A ») : plus de bouton vers le site de Nolio, qui n'ouvrait
                 pas sa conversation ; ses mots restent dans Nolio, la carte le dit. Validé par le coach le 05/11/2026 (1A) ; « sur
@@ -138,7 +138,7 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
               <div>
                 <p className="text-sm font-bold text-indigo">Nolio</p>
                 <p className="mt-0.5 text-[0.8rem] text-[#4A4866] leading-relaxed">
-                  {ctx.aLaMain ? 'Ton coach y écrit tes séances.' : 'Tes séances s’y écrivent chaque dimanche soir, d’après ta semaine et ton questionnaire.'}
+                  {ctx.aLaMain ? 'Ton coach y écrit tes séances.' : (ctx.coache ? 'J’y prépare tes séances chaque dimanche soir, d’après ta semaine et ton questionnaire.' : 'Tes séances y arrivent chaque dimanche soir, d’après ta semaine et ton questionnaire.')}
                   {/* Nolio ne relie une activité à sa séance que le même jour (décision coach du 04/11/2026 au soir) : la
                       phrase de l'acheteur et du coaché, ici et dans l'e-mail de bienvenue. */}
                   {' Tu cours une séance un autre jour ? Déplace-la d’abord dans ton calendrier Nolio.'}
@@ -152,7 +152,7 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
                 <p className="text-[0.8rem] text-[#4A4866] leading-relaxed">
                   {ctx.coache
                     ? (d.accord
-                      ? 'Ton coach et l’app lisent dans Nolio tes séances faites, ton RPE, ton ressenti et ton Hooper, seulement pour ajuster ta préparation et afficher tes graphiques.'
+                      ? 'Je consulte dans Nolio tes séances faites, ton RPE, ton ressenti et ton Hooper, seulement pour ajuster ta préparation et afficher tes graphiques.'
                       : motsDuQuestionnaire('compteCoacheSansAccord', v9))
                     // L'accord de lecture de l'acheteur (PL7, décision coach du 04/11/2026) : facultatif, recommandé, et juste
                     // sur ce qui est lu (les séances faites et leur durée, dans tous les cas).

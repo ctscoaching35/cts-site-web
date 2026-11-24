@@ -72,8 +72,8 @@ export default async function NouvelObjectif({ searchParams }: { searchParams: P
           <p className="text-sm text-[#4A4866] leading-relaxed mt-2">
             {fiche
               ? court
-                ? `Ton profil d’entraînement part avec ta demande (ci-dessous) : seules ta charge du moment${depuisNolio ? ' (lue dans tes séances Nolio : relis-la)' : ''} et ta course sont demandées. Ton coach relit ta demande et lance ta préparation.`
-                : 'D’abord ton profil de coureur, une seule fois ; ta course ensuite. Ton coach relit ta demande et lance ta préparation.'
+                ? `Ton profil d’entraînement part avec ta demande (ci-dessous) : seules ta charge du moment${depuisNolio ? ' (reprise de tes séances Nolio : vérifie-la)' : ''} et ta course sont demandées. Je relis ta demande et je lance ta préparation.`
+                : 'D’abord ton profil de coureur, une seule fois ; ta course ensuite. Je relis ta demande et je lance ta préparation.'
               : 'Tes réponses du dernier plan sont reprises : mets à jour ce que tu cours en ce moment et saisis ta course.'}
           </p>
           {/* OM4 : un objectif majeur à la fois ; une course avant l'objectif en cours est une course de préparation. */}
@@ -165,7 +165,7 @@ function Aiguillage({ enCours, coache, liens = {} }: {
             </p>
           )}
         </div>
-        {coache && <p className="px-2 text-sm text-[#5E5C78]">Ton coach relit chaque objectif majeur avant de le lancer.</p>}
+        {coache && <p className="px-2 text-sm text-[#5E5C78]">Je relis chaque objectif majeur avant de le lancer.</p>}
       </main>
     </div>
   );

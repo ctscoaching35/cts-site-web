@@ -23,7 +23,7 @@ const trait = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLi
 
 const ATOUTS: { texte: string; icone: React.ReactNode }[] = [
   { texte: 'Il part de ce que tu cours vraiment, et monte d’un cran à la fois.', icone: <path d="M4 20h4v-4h4v-4h4V8h4" {...trait} /> },
-  { texte: 'Chaque dimanche, ta semaine suivante est réécrite selon ce que tu as fait.', icone: <><path d="M20 12a8 8 0 1 1-3-6.2" {...trait} /><path d="M20 4v5h-5" {...trait} /></> },
+  { texte: 'Chaque dimanche, ta semaine suivante est ajustée selon ce que tu as fait.', icone: <><path d="M20 12a8 8 0 1 1-3-6.2" {...trait} /><path d="M20 4v5h-5" {...trait} /></> },
   { texte: 'Construit sur ta course et sur tes zones.', icone: <path d="M3 20 9 9l4 6 3-4 5 9z" {...trait} /> },
   { texte: 'Tes séances dans Nolio, jusqu’à ta montre ; ta préparation dans l’app.', icone: <><rect x="7" y="6" width="10" height="12" rx="3" {...trait} /><path d="M9 6l1-3h4l1 3M9 18l1 3h4l1-3M12 10v2.5l1.5 1" {...trait} /></> },
 ];

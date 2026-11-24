@@ -126,7 +126,7 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
         </Link>}
 
         {r.demande === 'envoyee' && (
-          <Carte className="text-sm text-indigo"><p role="status">Ta demande est partie chez ton coach : il la relit et lance ta préparation.</p></Carte>
+          <Carte className="text-sm text-indigo"><p role="status">Ta demande m’est bien arrivée : je la relis et je lance ta préparation.</p></Carte>
         )}
 
         {plan.fond && <BlocsDeLaSaison trame={d.trame} jour={jour} />}
@@ -134,7 +134,7 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
         {/* Ta semaine, avant les blocs (maquette du 16/11/2026) ; S16 (décision coach du 05/11/2026) : la trame semaine par semaine que promettent les CGV ; pour les deux versions
             depuis le 07/11/2026. */}
         {semaines && <SemainesDuPlan trame={d.trame} jour={jour} course={course.date} realises={d.realises}
-          encours={semaines.encours} suivante={semaines.suivante} depuis={depuis} reprises={d.reprises} />}
+          encours={semaines.encours} suivante={semaines.suivante} depuis={depuis} reprises={d.reprises} coache={Boolean(ctx.coache)} />}
 
         {/* Programmé à la main (décision coach du 20/10/2026) : pas de blocs, qui suivent la trame du moteur. */}
         {!ctx.aLaMain && !plan.fond && <Carte className="!pb-1.5">
@@ -202,8 +202,9 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
             {courseAVenir && d.nolio !== 'arrete' && (
               <>
                 <p className="text-xs text-[#5E5C78] leading-relaxed">
-                  Une course avant ton objectif ? Ajoute-la : les jours autour d’elle s’ajustent (quelques jours plus légers avant,
-                  de la récupération après), sans toucher à la suite de ta préparation.
+                  {ctx.coache
+                    ? 'Une course avant ton objectif ? Ajoute-la : j’ajuste les jours autour d’elle (quelques jours plus légers avant, de la récupération après), sans toucher à la suite de ta préparation.'
+                    : 'Une course avant ton objectif ? Ajoute-la : les jours autour d’elle sont ajustés (quelques jours plus légers avant, de la récupération après), sans toucher à la suite de ta préparation.'}
                 </p>
                 <AjouterCourse planId={ctx.cle} />
               </>

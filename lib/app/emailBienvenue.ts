@@ -127,10 +127,11 @@ export function contenuBienvenue(plan: Plan, lienApp: string,
             + 'dans l’équipe. Ta première semaine s’installe dans ton calendrier Nolio la veille de son début.') +
         // Déjà dans l'équipe, sans invitation : le jour dit par sa date, la tournure de D6 (décision coach du 08/11/2026).
         (confirmer ? ` ${dansLEquipe && inviteLe ? `Le ${jourEtMois(inviteLe)}` : 'Le jour de ton invitation'}, ton app CTS te demandera aussi si ce que tu cours a changé depuis ton achat ` +
-          '(ton volume par semaine, ta plus longue sortie) : ta première semaine s’écrira sur ta réponse.' : '') +
-        ' Chaque semaine, Nolio te pose quelques questions sur ta semaine à venir, et la semaine suivante s’écrit le dimanche ' +
-        'soir d’après tes réponses et ta semaine écoulée. Tu cours une séance un autre jour ? Déplace-la d’abord dans ton ' +
-        'calendrier Nolio.',
+          '(ton volume par semaine, ta plus longue sortie) : ' +
+          (nolio.coache ? 'je prépare ta première semaine d’après ta réponse.' : 'ta première semaine sera préparée d’après ta réponse.') : '') +
+        ' Chaque semaine, Nolio te pose quelques questions sur ta semaine à venir, et ' +
+        (nolio.coache ? 'je prépare la semaine suivante' : 'la semaine suivante est préparée') + ' le dimanche soir d’après tes réponses et ta semaine écoulée. ' +
+        'Tu cours une séance un autre jour ? Déplace-la d’abord dans ton calendrier Nolio.',
       'L’app CTS est ton tableau de bord : ta course et le compte à rebours, la vue d’ensemble de ta préparation, ta fiche ' +
         'de course et les fiches de la bibliothèque. Pour y revenir facilement, ajoute-la à l’écran d’accueil de ton ' +
         `téléphone : elle te montre comment à la première ouverture. ${connexion}`,

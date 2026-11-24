@@ -129,7 +129,7 @@ export default async function Confidentialite() {
             </li>
             <li>
               <strong>Quand tu passes au paiement.</strong> Ton nom, ton e-mail, ta course, ton niveau, ton volume et ta plus longue sortie
-              actuels, ton terrain, tes jours disponibles et ta trace GPX partent vers notre moteur, qui construit ton plan. Ce
+              actuels, ton terrain, tes jours disponibles et ta trace GPX partent vers notre service, qui construit ton plan. Ce
               dossier est effacé 30 jours après, que tu aies payé ou non (le contrat).
             </li>
           </Liste>
@@ -182,12 +182,12 @@ export default async function Confidentialite() {
             <li>
               <strong>Si ton achat date de plus de 3 semaines</strong> au moment de ton invitation, ton app CTS te demande
               si ce que tu cours a changé (ton volume par semaine, ta plus longue sortie) : ta réponse rejoint celles de ton
-              achat, et ta première semaine s’écrit dessus (le contrat).
+              achat, et ta première semaine est construite dessus (le contrat).
             </li>
             <li>
-              <strong>Chaque dimanche</strong>, ta semaine suivante s’écrit d’après {motsDuQuestionnaire('confidentialite', v9)},
+              <strong>Chaque dimanche</strong>, ta semaine suivante est construite d’après {motsDuQuestionnaire('confidentialite', v9)},
               et tes séances faites ou manquées et leur durée,
-              que nous lisons dans Nolio (le contrat : c’est le service que tu as acheté).
+              que nous consultons dans Nolio (le contrat : c’est le service que tu as acheté).
             </li>
             {/* Décision 209 du coach (24/11/2026), sous le moteur 9.0 : la cause d'un arrêt est une donnée de santé, lue avec l'accord de lecture seulement. Ses mots, tels quels. */}
             {v9 && (
@@ -196,26 +196,25 @@ export default async function Confidentialite() {
               </li>
             )}
             <li>
-              <strong>Avec ton accord de lecture</strong> (une case facultative, recommandée), nous lisons aussi ton effort
+              <strong>Avec ton accord de lecture</strong> (une case facultative, recommandée), nous consultons aussi ton effort
               ressenti (RPE), ton ressenti, ton Hooper (fatigue, sommeil, stress, courbatures) et la trace de tes séances
               test (distance, fréquence cardiaque), pour ajuster ta semaine à ta fatigue et en tirer tes repères. Ce sont des
-              données liées à ta santé : nous ne les lisons qu’avec cet accord exprès (ton consentement explicite), que tu
+              données liées à ta santé : nous ne les consultons qu’avec cet accord exprès (ton consentement explicite), que tu
               retires quand tu veux.
             </li>
             <li>
-              <strong>Tes badges</strong>, avec ce même accord : nous lisons toutes tes séances de course et de trail
+              <strong>Tes badges</strong>, avec ce même accord : nous consultons toutes tes séances de course et de trail
               réalisées dans Nolio, depuis le début de ton historique (date, distance, durée, dénivelé), et ne gardons que
               tes badges débloqués, avec leur date, et tes totaux de kilomètres et de dénivelé par mois.
             </li>
             <li>
-              <strong>Nous gardons</strong>, pour chaque semaine écrite, ce qui a été décidé et un résumé chiffré (charge
+              <strong>Nous gardons</strong>, pour chaque semaine préparée, ce qui a été prévu et un résumé chiffré (charge
               faite, séances faites, plus longue sortie, Hooper), pour ta jauge et tes graphiques.
             </li>
           </Liste>
           <p>
-            <strong>Une semaine décidée par des règles.</strong> Ta semaine suivante est décidée automatiquement, par les
-            règles de la méthode CTS, à partir de ces données ; personne ne la relit avant qu’elle parte. Tu peux demander
-            qu’un coach la revoie, donner ton point de vue et contester une décision : écris-nous à{' '}
+            <strong>Une semaine décidée par des règles.</strong> Ta semaine suivante est préparée par les règles de la méthode CTS.
+            Tu peux demander qu’un coach la revoie, donner ton point de vue et contester une décision : écris-nous à{' '}
             <a href={`mailto:${vendeur.email}`}>{vendeur.email}</a>.
           </p>
           <p>
@@ -249,28 +248,28 @@ export default async function Confidentialite() {
         <p>Avec ton accord, donné par écrit dans la messagerie Nolio et que tu peux retirer à tout moment :</p>
         <Liste>
           <li>
-            l’espace de ton coach garde ton profil de coureur (tes réponses au questionnaire), tes repères
+            l’espace coach garde ton profil de coureur (tes réponses au questionnaire), tes repères
             d’entraînement (fréquence cardiaque aux seuils, vitesse critique, allures) avec la date et l’origine de chaque
-            test, tes objectifs, tes courses de préparation et leur fiche de course, et ta préparation, pour écrire tes
+            test, tes objectifs, tes courses de préparation et leur fiche de course, et ta préparation, pour préparer tes
             séances dans ton calendrier Nolio ;
           </li>
           <li>
-            le suivi de ton coach lit dans Nolio tes séances prévues et réalisées, avec ton effort ressenti, tes sensations,
-            tes commentaires et ton questionnaire Hooper ; chaque soir, nous en gardons seulement des signaux pour ton coach
+            notre suivi consulte dans Nolio tes séances prévues et réalisées, avec ton effort ressenti, tes sensations,
+            tes commentaires et ton questionnaire Hooper ; chaque soir, nous en gardons seulement des signaux pour ton suivi
             (une séance manquée, un effort plus dur que prévu, de mauvaises sensations ou une fatigue qui monte, un
             commentaire à lire, le jour de ta dernière activité), jamais le contenu d’une séance ni le texte d’un
             commentaire, remplacés le soir suivant ;
           </li>
-          <li>ton espace CTS t’affiche ta semaine telle qu’elle est dans Nolio, lue au moment où tu l’ouvres, sans en garder de copie ;</li>
+          <li>ton espace CTS t’affiche ta semaine telle qu’elle est dans Nolio, relevée au moment où tu l’ouvres, sans en garder de copie ;</li>
           <li>
-            pour tes badges, nous lisons toutes tes séances de course et de trail réalisées dans Nolio (date, distance, durée,
+            pour tes badges, nous consultons toutes tes séances de course et de trail réalisées dans Nolio (date, distance, durée,
             dénivelé) et ne gardons que tes badges débloqués, avec leur date, et tes totaux de kilomètres et de dénivelé par
             mois ;
           </li>
           <li>
-            chaque dimanche, sauf si ton coach les écrit lui-même, tes séances de la semaine suivante s’écrivent d’après ta
-            semaine écoulée, avec les mêmes lectures ; nous gardons un résumé chiffré de chaque semaine (charge, séances
-            faites, plus longue sortie, dénivelé, Hooper), celles que ton coach écrit à la main comprises, lues chaque nuit
+            chaque dimanche, sauf séances préparées à la main, tes séances de la semaine suivante sont préparées d’après ta
+            semaine écoulée, avec les mêmes lectures. Romain la suit et la corrige dans Nolio. Nous gardons un résumé chiffré de chaque semaine (charge, séances
+            faites, plus longue sortie, dénivelé, Hooper), celles que ton coach écrit à la main comprises, relevées chaque nuit
             dans Nolio, pour ajuster tes séances et afficher tes graphiques dans ton espace CTS ;
           </li>
           <li>
@@ -283,7 +282,7 @@ export default async function Confidentialite() {
         <p>
           Retirer ton accord efface tes repères, ces résumés, ces signaux et tes badges, et arrête la lecture. Personne d’autre que ton coach et toi
           ne voit ces données.
-          Les séances écrites dans ton calendrier restent dans Nolio, qui applique sa propre politique de
+          Les séances placées dans ton calendrier restent dans Nolio, qui applique sa propre politique de
           confidentialité. Ta fiche de course est une page à lien privé, que seuls ceux qui ont le lien peuvent ouvrir.
         </p>
       </Section>
@@ -296,7 +295,7 @@ export default async function Confidentialite() {
         <Liste>
           <li>Vercel : hébergement du site et de l’app (États-Unis) ;</li>
           <li>Supabase : comptes et fichiers (serveurs en Irlande) ;</li>
-          <li>Render : le moteur qui construit les séances (serveurs en Allemagne) ;</li>
+          <li>Render : le service qui construit les séances (serveurs en Allemagne) ;</li>
           {plans && <li>Stripe : le paiement (Irlande) ;</li>}
           <li>Brevo : l’envoi des e-mails (France) ;</li>
           <li>Formspree : le formulaire de contact (États-Unis) ;</li>

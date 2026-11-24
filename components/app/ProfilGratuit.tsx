@@ -22,7 +22,7 @@ import { BOUTON, BOUTON_SECONDAIRE, CHAMP, Carte, CarteSombre, Surtitre, TITRE }
 const etiquette = 'block text-xs font-semibold text-indigo mb-1.5';
 const COCHE = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
 
-export const CONSENTEMENT_FC = 'J’accepte que City to Summit garde ces valeurs dans mon compte, seulement pour calculer mes zones et mes repères. Je peux les effacer à tout moment.';
+export const CONSENTEMENT_FC = 'J’accepte que City to Summit garde ces valeurs dans mon compte, seulement pour établir mes zones et mes repères. Je peux les effacer à tout moment.';
 
 export default function ProfilGratuit({ compte, gardee, consentementDonne, ouvrirTest }: {
   compte: boolean; gardee: { tests: TestsGratuits } | null; consentementDonne: boolean; ouvrirTest: boolean;
@@ -98,7 +98,7 @@ export default function ProfilGratuit({ compte, gardee, consentementDonne, ouvri
             <Champ id="e2t" titre="Effort 2 · min" valeur={saisie.e2t} onChange={champ('e2t')} placeholder="12" />
             <Champ id="e2d" titre="Distance · m" valeur={saisie.e2d} onChange={champ('e2d')} placeholder="3480" />
           </div>
-          <p className="text-[0.72rem] text-[#5E5C78] leading-relaxed">Ton style de coureur se lit dans ce test, ramené à un test de référence.</p>
+          <p className="text-[0.72rem] text-[#5E5C78] leading-relaxed">Ce test montre ton style de coureur, ramené à un test de référence.</p>
         </Carte>
 
         <Carte className="space-y-3">

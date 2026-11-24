@@ -207,7 +207,7 @@ export function lireDemande(
   if (nom.length < 2) return manque('ton prénom et ton nom');
   const naissance = nombre(o.naissance);
   if (naissance === null || !Number.isInteger(naissance) || naissance < 1930 || naissance > options.anneeCourante - 15)
-    return { ok: false, message: 'Ton année de naissance ne se lit pas : quatre chiffres, par exemple 1988.' };
+    return { ok: false, message: 'Ton année de naissance n’est pas valide : quatre chiffres, par exemple 1988.' };
   const ville = texte(o.ville, 80);
   if (!ville) return manque('ta ville');
   if (!dans(Q.vecu.depuisChoix, o.course_depuis)) return manque('depuis combien de temps tu cours');
@@ -218,7 +218,7 @@ export function lireDemande(
   }
   if (!dans(Q.semaine.seancesChoix, o.seances)) return manque('ton nombre de séances par semaine');
   const heures = nombre(o.heures);
-  if (heures === null || heures < 0 || heures > 40) return { ok: false, message: 'Tes heures par semaine ne se lisent pas : un nombre, par exemple 5 ou 5,5.' };
+  if (heures === null || heures < 0 || heures > 40) return { ok: false, message: 'Tes heures par semaine ne sont pas valides : un nombre, par exemple 5 ou 5,5.' };
   const terrain = (Array.isArray(o.terrain) ? o.terrain : []).filter((x: unknown): x is string => dans(Q.terrain.presChoix, x));
   if (!dans(Q.terrain.montagneChoix, o.montagne)) return manque('ta fréquence en montagne');
   // La côte : facultative, mais lue ou refusée (« douze » n'est pas deviné).
@@ -237,11 +237,11 @@ export function lireDemande(
     const nomCourse = texte(ob.nom, 120);
     if (!nomCourse) return manque('le nom de ta course');
     const date = ob.date ? dateIso(ob.date) : null;
-    if (ob.date && !date) return { ok: false, message: 'La date de ta course ne se lit pas.' };
+    if (ob.date && !date) return { ok: false, message: 'La date de ta course n’est pas valide.' };
     const km = ob.distance_km === '' || ob.distance_km == null ? null : nombre(ob.distance_km);
     const dp = ob.dplus_m === '' || ob.dplus_m == null ? null : nombre(ob.dplus_m);
     if ((km !== null && (km <= 0 || km > 1000)) || (dp !== null && (dp < 0 || dp > 50000)))
-      return { ok: false, message: 'La distance ou le D+ de ta course ne se lit pas : des nombres, en km et en mètres.' };
+      return { ok: false, message: 'La distance ou le D+ de ta course n’est pas valide : des nombres, en km et en mètres.' };
     objectif = { kind: 'libre', nom: nomCourse, date, distance_km: km, dplus_m: dp === null ? null : Math.round(dp) };
   } else if (ob.kind === 'aucune') objectif = { kind: 'aucune' };
   else return manque('ton objectif (ou « pas encore de course »)');
@@ -256,7 +256,7 @@ export function lireDemande(
   if (!dans(Q.montre.nolioChoix, o.nolio)) return manque('ta réponse sur Nolio');
 
   const telephone = lireTelephone(o.telephone);
-  if (!telephone) return { ok: false, message: 'Ton téléphone ne se lit pas : un numéro avec ses 10 chiffres, par exemple 06 12 34 56 78.' };
+  if (!telephone) return { ok: false, message: 'Ton téléphone n’est pas valide : un numéro avec ses 10 chiffres, par exemple 06 12 34 56 78.' };
   const moments = CLES_MOMENTS.filter((m) => Array.isArray(o.moments) && o.moments.includes(m));
   if (!moments.length) return manque('au moins un moment où t’appeler');
 

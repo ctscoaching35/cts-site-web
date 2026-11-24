@@ -10,7 +10,7 @@ import { contexte, lien, type Recherche } from '@/lib/app/contexte';
 import { dateLongue, type CleTest } from '@/lib/app/plan';
 import { ecartObjectifVc, texteEcartObjectifVc } from '@/lib/app/objectifVc';
 import {
-  allure, fcSeuil2HorsPlan, kmh, QUAND_FC_SEUIL2_HORS_PLAN, remplir, testFait, testOuvert, testsProposes, texteRecoupement,
+  allure, fcSeuil2HorsPlan, kmh, QUAND_FC_SEUIL2_HORS_PLAN, QUAND_FC_SEUIL2_HORS_PLAN_COACHE, remplir, testFait, testOuvert, testsProposes, texteRecoupement,
   valeursChange, type Profil,
 } from '@/lib/app/zones';
 
@@ -113,7 +113,7 @@ export default async function TesZones({ searchParams }: { searchParams: Recherc
                 <div className="pb-1 text-sm text-[#4A4866] leading-relaxed space-y-2">
                   <p><strong className="text-indigo">Ce qu’il mesure.</strong> {t.mesure}</p>
                   <p><strong className="text-indigo">Pour qui.</strong> {t.pour_qui}</p>
-                  <p><strong className="text-indigo">Quand.</strong> {t.cle === 'fc_seuil2' && fcSeuil2HorsPlan(zones) ? QUAND_FC_SEUIL2_HORS_PLAN : t.quand}</p>
+                  <p><strong className="text-indigo">Quand.</strong> {t.cle === 'fc_seuil2' && fcSeuil2HorsPlan(zones) ? (ctx.coache ? QUAND_FC_SEUIL2_HORS_PLAN_COACHE : QUAND_FC_SEUIL2_HORS_PLAN) : t.quand}</p>
                   {t.materiel.length > 0 && (
                     <div>
                       <strong className="text-indigo">Ce qu’il te faut.</strong>

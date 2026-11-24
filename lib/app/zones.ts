@@ -129,7 +129,10 @@ export const testsProposes = (zones: Zones): CleTest[] =>
     ? [...zones.tests_disponibles, 'fc_seuil2'] : zones.tests_disponibles;
 // La FC au seuil 2 proposée hors du plan : il n'écrit pas sa séance de mesure.
 export const fcSeuil2HorsPlan = (zones: Zones) => !zones.tests_disponibles.includes('fc_seuil2') && testsProposes(zones).includes('fc_seuil2');
-export const QUAND_FC_SEUIL2_HORS_PLAN = 'Ta préparation n’a pas de séance sur le plat où l’écrire : fais-le de toi-même, sur du plat, '
+// Deux voix (24/11/2026) : la voix neutre pour un acheteur, la voix du coach (« je ») pour un coaché.
+export const QUAND_FC_SEUIL2_HORS_PLAN = 'Ta préparation n’a pas de séance sur le plat où le placer : fais-le toi-même, sur du plat, '
+  + 'à la place d’une séance de seuil 2, hors des deux dernières semaines avant ta course.';
+export const QUAND_FC_SEUIL2_HORS_PLAN_COACHE = 'Je n’ai pas de séance sur le plat où le placer : fais-le toi-même, sur du plat, '
   + 'à la place d’une séance de seuil 2, hors des deux dernières semaines avant ta course.';
 
 // Les tests que l'athlète peut faire maintenant : la FC au seuil 2 attend la vitesse critique (Z5).

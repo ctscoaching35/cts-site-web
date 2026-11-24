@@ -53,7 +53,7 @@ export function CarteNolio({ etat, inviteLe = null, confirmer = false, avantCour
     arrete: { titre: 'Ta préparation est arrêtée',
       texte: 'Elle a été arrêtée après ton remboursement : plus rien ne s’écrit dans ton Nolio. Ton compte Nolio et les séances déjà passées restent à toi.' },
     // Un plan acheté, l'athlète en coaching (décision coach du 23/10/2026).
-    coaching: { titre: 'Ce plan ne s’écrit pas dans Nolio',
+    coaching: { titre: 'Ce plan n’arrive pas dans ton Nolio',
       texte: 'Tu es en coaching : ton coach écrit ta préparation. Ce plan reste lisible ici ; s’il doit reprendre, ton coach le relance.' },
   };
   const t = textes[etat];

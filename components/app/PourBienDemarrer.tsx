@@ -99,7 +99,7 @@ export default function PourBienDemarrer({ acheteur, nolio, accord, questionnair
           <Link href={lienProfil} className="font-bold text-teal whitespace-nowrap">Le remplir ›</Link></>
       ) },
     accord
-      ? { fait: true, titre: 'Ton accord de lecture est donné' }
+      ? { fait: true, titre: 'Tu m’as donné ton accord pour suivre tes séances dans Nolio' }
       : { fait: false, titre: 'Donne ton accord à ton coach',
         texte: 'Réponds « oui » à son message dans Nolio : tes séances faites, ton RPE et ton Hooper remontent alors dans l’app.' },
   ];
@@ -124,7 +124,7 @@ export default function PourBienDemarrer({ acheteur, nolio, accord, questionnair
       {/* Validé par le coach le 08/11/2026, dans les deux versions (coaché et acheteur). */}
       {adapte && (
         <p className="text-[0.8125rem] text-[#4A4866] leading-relaxed">
-          {motsDuQuestionnaire('sAdapte', pointDuDimanche)}
+          {motsDuQuestionnaire('sAdapte', pointDuDimanche, !acheteur)}
         </p>
       )}
       <ol>
@@ -148,7 +148,7 @@ export default function PourBienDemarrer({ acheteur, nolio, accord, questionnair
       </ol>
       {questionnaire && (
         <p className="p-3 rounded-xl bg-sand text-xs text-[#4A4866] leading-relaxed">
-          {motsDuQuestionnaire('pourBienDemarrer', pointDuDimanche)}
+          {motsDuQuestionnaire('pourBienDemarrer', pointDuDimanche, !acheteur)}
         </p>
       )}
       <div className="flex justify-end">

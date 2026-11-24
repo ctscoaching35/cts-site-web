@@ -2544,8 +2544,9 @@ export async function lireLesTests(planId: string): Promise<TestLu[]> {
         sortie.push({ plan: planId, coache: o.coache, texte });
       } else if (r || abandon) {
         if (r) await garderNote(o, `${j.id}:resultat`, aujourdhui, 'Ton test de la parole', sansApp(o)
-          ? 'Ta réponse ne se lit pas : envoie ta FC au seuil 1 à ton coach dans Nolio.'
-          : `Ta réponse ne se lit pas : donne ta FC au seuil 1 dans ton app, ${lienZones}`);
+          ? 'Je ne comprends pas ta réponse : envoie-moi ta FC au seuil 1 dans Nolio.'
+          : o.coache ? `Je ne comprends pas ta réponse : donne ta FC au seuil 1 dans ton app, ${lienZones}`
+            : `Ta réponse n’est pas valide : donne ta FC au seuil 1 dans ton app, ${lienZones}`);
         await garder(r ? 'illisible' : 'sans_reponse', {});
       }
       continue;
@@ -2559,8 +2560,8 @@ export async function lireLesTests(planId: string): Promise<TestLu[]> {
       const r = vcDuTest(faite.tours, faite.flux);
       if ('erreur' in r) {
         await garderNote(o, `${j.id}:resultat`, aujourdhui, 'Ton test de vitesse critique',
-          `Ton test n’a pas pu se lire tout seul (${r.erreur.toLowerCase().replace(/\.$/, '')}) : ${sansApp(o)
-            ? 'envoie tes deux distances à ton coach dans Nolio.' : `donne tes deux distances dans ton app, ${lienZones}`}`);
+          `${o.coache ? 'Je n’ai pas pu exploiter ton test' : 'Ton test n’a pas pu être exploité'} (${r.erreur.toLowerCase().replace(/\.$/, '')}) : ${sansApp(o)
+            ? 'envoie-moi tes deux distances dans Nolio.' : `donne tes deux distances dans ton app, ${lienZones}`}`);
         await garder('illisible', { erreur: r.erreur });
         continue;
       }
@@ -2573,8 +2574,9 @@ export async function lireLesTests(planId: string): Promise<TestLu[]> {
       const fc = fcSeuil2DuTest(faite.tours, faite.flux);
       if (fc === null) {
         await garderNote(o, `${j.id}:resultat`, aujourdhui, 'Ta FC au seuil 2', sansApp(o)
-          ? 'Ta FC au seuil 2 n’a pas pu se lire toute seule : envoie-la à ton coach dans Nolio.'
-          : `Ta FC au seuil 2 n’a pas pu se lire toute seule : donne-la dans ton app, ${lienZones}`);
+          ? 'Je n’ai pas pu relever ta FC au seuil 2 : envoie-la-moi dans Nolio.'
+          : o.coache ? `Je n’ai pas pu relever ta FC au seuil 2 : donne-la dans ton app, ${lienZones}`
+            : `Ta FC au seuil 2 n’a pas pu être relevée : donne-la dans ton app, ${lienZones}`);
         await garder('illisible', {});
         continue;
       }

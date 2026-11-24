@@ -82,7 +82,7 @@ export function BlocsDeLaSaison({ trame, jour }: { trame: LigneTrame[]; jour: st
     <Carte className="!pb-1.5">
       <Surtitre>Ta saison, bloc par bloc</Surtitre>
       <p className="mt-1 mb-1 text-xs text-[#5E5C78] leading-relaxed">
-        Trois blocs de quatre semaines, la dernière allégée, ton terrain chaque semaine ; tes séances s’écrivent chaque
+        Trois blocs de quatre semaines, la dernière allégée, ton terrain chaque semaine ; je prépare tes séances chaque
         dimanche dans Nolio.
       </p>
       <ol>

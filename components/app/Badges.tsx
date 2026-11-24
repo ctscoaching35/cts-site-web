@@ -40,13 +40,13 @@ export function TesBadges({ etat, accord, aujourdhui, donnerAccord = null, coach
         <div className="space-y-1">
           <p className="text-[0.8125rem] text-[#4A4866] leading-relaxed">
             {/* Validé par le coach le 05/11/2026 (1A ; la phrase du coaché). */}
-            {coache ? 'Tes badges se débloquent tout seuls, d’après tes séances, avec ton accord : réponds « oui » au message de ton coach dans Nolio.'
+            {coache ? 'Je débloque tes badges d’après tes séances, avec ton accord : réponds « oui » à mon message dans Nolio.'
               : 'Avec ton accord de lecture de Nolio, tes badges se débloquent tout seuls, d’après tes séances.'}
           </p>
           {donnerAccord && <Link href={donnerAccord} className="inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">Donner mon accord ›</Link>}
         </div>
       ) : !etat && (
-        <p className="text-xs text-[#5E5C78] leading-relaxed">Tes badges se calculent la nuit, d’après toutes tes séances de course et de trail dans Nolio.</p>
+        <p className="text-xs text-[#5E5C78] leading-relaxed">{coache ? 'Je mets tes badges à jour chaque nuit, d’après toutes tes séances de course et de trail dans Nolio.' : 'Tes badges sont mis à jour chaque nuit, d’après toutes tes séances de course et de trail dans Nolio.'}</p>
       )}
       {accord && FAMILLES.map(([famille, titre]) => (
         <section key={famille} className="pt-2.5">

@@ -95,7 +95,7 @@ async function enregistrerSurLaFiche(compteId: string, planId: string, valeurs: 
   const aLaMain = !planId || (await plansALaMain().catch(() => new Set<string>())).has(planId);
   return { ok: true, message: aLaMain
     ? 'C’est enregistré, ton coach le voit : tes zones changent dès maintenant, et ton coach en tient compte pour ta semaine suivante.'
-    : 'C’est enregistré, ton coach le voit : tes zones changent dès maintenant, tes séances à partir de la semaine écrite dimanche.' };
+    : 'C’est enregistré, je le vois : tes zones changent dès maintenant, tes séances à partir de la semaine que je prépare dimanche.' };
 }
 
 const lireFc = (brut: FormDataEntryValue | null) => {

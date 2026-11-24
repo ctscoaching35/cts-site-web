@@ -272,7 +272,7 @@ export default async function AccueilAthlete({ ctx, demarrage, montre = false, d
             elle tant que la liste n'était pas masquée). */}
         {etape !== 'apres' && (!demarrage || d.nolio === 'sorti' || d.nolio === 'coaching') && <CarteNolio etat={d.nolio} inviteLe={inviteLe} confirmer={confirmer} avantCourse={plan.course.date >= jour} />}
         {/* Décision du coach du 16/11/2026 : la seule rigueur demandée, sur l'accueil de l'athlète (acheteur ou coaché) dont la semaine est écrite par le moteur. */}
-        {etape !== 'apres' && !ctx.aLaMain && <CarteUneSeuleChose pointDuDimanche={v9} />}
+        {etape !== 'apres' && !ctx.aLaMain && <CarteUneSeuleChose pointDuDimanche={v9} coache={Boolean(ctx.coache)} />}
         {vcNonRepropose && <CarteTestVitesseCritique saisie={plan.zones ? `${lien('/app/plan/zones', ctx)}#vitesse_critique` : null} />}
 
         {/* Q10 (décision coach du 05/11/2026 au soir, « A ») : la carte ouvre la fiche de course à « Ton jour J » ; la page
@@ -306,12 +306,12 @@ function LienDossiers({ dossiers }: { dossiers: number }) {
 }
 
 // La seule rigueur demandée (texte validé par le coach le 16/11/2026) ; aucune invitation à échanger avec le coach.
-function CarteUneSeuleChose({ pointDuDimanche }: { pointDuDimanche: boolean }) {
+function CarteUneSeuleChose({ pointDuDimanche, coache }: { pointDuDimanche: boolean; coache: boolean }) {
   return (
     <Carte className="space-y-1">
       <p className="text-[0.9375rem] font-bold text-indigo">Une seule chose à faire chaque semaine.</p>
       <p className="text-[0.875rem] text-[#4A4866] leading-relaxed">
-        {motsDuQuestionnaire('uneSeuleChose', pointDuDimanche)}
+        {motsDuQuestionnaire('uneSeuleChose', pointDuDimanche, coache)}
       </p>
     </Carte>
   );

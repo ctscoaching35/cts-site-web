@@ -161,7 +161,7 @@ export default function Questionnaire({
     fetch(`${API_URL}/v1/config`)
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then(setConfig)
-      .catch(() => setErreurConfig('Le service de génération ne répond pas. Réessaie dans quelques minutes.'));
+      .catch(() => setErreurConfig('Le service ne répond pas. Réessaie dans quelques minutes.'));
     // Un questionnaire prérempli (« Nouvel objectif » dans l'app) ne reprend pas de brouillon.
     if (coach || initial) return;
     try {
@@ -369,7 +369,7 @@ export default function Questionnaire({
         return;
       }
     } catch {
-      setRefus('Le service de génération ne répond pas. Vérifie ta connexion et réessaie.');
+      setRefus('Le service ne répond pas. Vérifie ta connexion et réessaie.');
       setEnvoi(false);
       return;
     }
@@ -496,7 +496,7 @@ export default function Questionnaire({
         }
         setRefus(corps?.message || 'Une erreur est survenue. Réessaie dans quelques minutes.');
       } catch {
-        setRefus('Le service de génération ne répond pas. Vérifie ta connexion et réessaie.');
+        setRefus('Le service ne répond pas. Vérifie ta connexion et réessaie.');
       }
       setEnvoi(false);
       return;
@@ -512,7 +512,7 @@ export default function Questionnaire({
       setRefus(corps?.raison === 'course_trop_proche' ? MESSAGE_COURSE_TROP_PROCHE
         : corps?.message || 'Une erreur est survenue. Réessaie dans quelques minutes.');
     } catch {
-      setRefus('Le service de génération ne répond pas. Vérifie ta connexion et réessaie.');
+      setRefus('Le service ne répond pas. Vérifie ta connexion et réessaie.');
     }
     setEnvoi(false);
   }
@@ -601,7 +601,7 @@ export default function Questionnaire({
         <section className="bg-white rounded-2xl border border-indigo/[0.08] p-5 sm:p-6">
           {alertes.length > 0 && (
             <>
-              <h2 className="text-lg text-indigo mb-4">Avant de générer ton plan, lis ces points</h2>
+              <h2 className="text-lg text-indigo mb-4">{demande ? 'Avant que je construise ta préparation, lis ces points' : 'Avant de construire ton plan, lis ces points'}</h2>
               <ul className="space-y-3 text-indigo/80 leading-relaxed list-disc pl-5 mb-6">
                 {alertes.map((a) => <li key={a}>{a}</li>)}
               </ul>
@@ -611,7 +611,7 @@ export default function Questionnaire({
             <div className="space-y-3 text-indigo/80 leading-relaxed">
               <div className="eyebrow text-teal">À lire avant d’envoyer</div>
               <p>
-                Ton coach relit tes réponses avant de lancer ta préparation. Si une douleur ou une blessure t’empêche de
+                Je relis tes réponses avant de lancer ta préparation. Si une douleur ou une blessure t’empêche de
                 courir normalement, dis-le-lui : vous adapterez ensemble. Ce plan ne remplace pas un avis médical.
               </p>
             </div>
@@ -1110,7 +1110,7 @@ export default function Questionnaire({
         {c.blessure === 'oui' && (
           <div role="alert" className="rounded-r-xl border-l-4 border-teal bg-sand p-4 space-y-3 text-[0.875rem] text-indigo leading-relaxed">
             <p>
-              Avec une douleur ou une blessure en cours, une préparation automatique n’est pas adaptée. Fais d’abord le point
+              Avec une douleur ou une blessure en cours, une préparation standard n’est pas adaptée. Fais d’abord le point
               avec un professionnel de santé (médecin, kinésithérapeute).
             </p>
             <p>Si tu veux être accompagné pour reprendre, nos coachs sont kinés du sport :</p>

@@ -65,7 +65,7 @@ export default function ProfilAthlete({ athleteId, profil, pourMoi = false, rafr
           <p className="text-[0.8125rem] text-indigo" role="status">
             {profil.niveau_coach
               ? <>Ton niveau, choisi par ton coach : <b>{titre(String(profil.niveau_coach))}</b>.</>
-              : desFaits ? <>Ton niveau : <b>{desFaits}</b>. Ton coach le relit.</> : 'Tes deux réponses donnent ton niveau.'}
+              : desFaits ? <>Ton niveau : <b>{desFaits}</b>. Je le relis.</> : 'Tes deux réponses donnent ton niveau.'}
           </p>
         ) : (
           <label className="block text-xs font-semibold text-indigo">Son niveau

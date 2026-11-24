@@ -108,7 +108,7 @@ export default function FormulaireCourse({ compte, profil }: { compte: boolean; 
             {fichier ? fichier.name : 'Choisir la trace GPX'}
           </label>
           <p className="mt-1.5 text-[0.72rem] text-[#5E5C78] leading-relaxed">
-            Le fichier .gpx de l’organisateur, ou exporté de ta montre. Il est analysé, puis seul le résultat est gardé, jamais le fichier.
+            Le fichier .gpx de l’organisateur, ou exporté de ta montre. Il sert à établir le profil de la course, puis seul le résultat est gardé, jamais le fichier.
           </p>
         </div>
         <div className="grid grid-cols-2 gap-3">

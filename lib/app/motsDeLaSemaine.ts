@@ -23,7 +23,7 @@ const MOTS: [Cle, string, string][] = [
   ['tempo', 'Tempo', 'RPE 6 : entre tes deux seuils, quelques mots seulement.'],
   ['seuil2', 'Seuil 2', 'RPE 7 : un effort dur, quelques mots seulement, difficilement.'],
   ['vo2max', 'VO2max', 'RPE 8-9 : très dur, un ou deux mots, sur des répétitions de quelques minutes au plus.'],
-  ['allure', 'Allure de course', 'l’allure de ta course, calculée sur ton chrono visé.'],
+  ['allure', 'Allure de course', 'l’allure de ta course, d’après ton chrono visé.'],
   ['navettes', 'Navettes', 'des montées et des descentes répétées sur une même pente, pour habituer tes jambes au relief.'],
   ['myo', 'Côtes et renfo', 'de la force en côte : des montées enchaînées avec des exercices de renforcement.'],
   // Texte validé par le coach le 24/11/2026 (entrée 198). Le moteur v1 l'écrit « Mécanique · 30 min — montée continue » ; le mot se reconnaît à ses mots, où qu'il soit dans le titre.

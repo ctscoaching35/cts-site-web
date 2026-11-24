@@ -38,7 +38,10 @@ export const repondAuDimanche = (r: { name?: string | null; quiz_planned?: strin
 // L'heure d'envoi, à Paris (décision du coach du 23/11/2026) : le moteur lit la semaine le matin, choisit la version, puis le site
 // l'envoie, visible à midi ; la semaine s'écrit le dimanche soir vers 21 h (décision 211, lib/app/heuresDePassage.ts).
 export const HEURE_D_ENVOI = '12:00';
-export const DESCRIPTION_DE_BASE = 'Une minute, d’ici dimanche 18 h : tes séances de la semaine prochaine s’écrivent dimanche soir à partir de tes réponses.';
+// Sa deuxième ligne, en deux voix (« Deux voix », 24/11/2026) : celle de l'acheteur, neutre (`DESCRIPTION_DE_BASE`), et celle du coaché, la voix du coach (« je »).
+export const DESCRIPTION_DE_BASE = 'Une minute, d’ici dimanche 18 h : tes séances de la semaine prochaine sont préparées dimanche soir à partir de tes réponses.';
+export const DESCRIPTION_DE_BASE_COACHE = 'Une minute, d’ici dimanche 18 h : je prépare tes séances de la semaine prochaine dimanche soir à partir de tes réponses.';
+export const descriptionDeBase = (coache: boolean): string => (coache ? DESCRIPTION_DE_BASE_COACHE : DESCRIPTION_DE_BASE);
 // La première ligne de la description, quelle que soit la version (décision 211 du coach, 24/11/2026 : les athlètes répondent après leur dernière sortie, souvent le dimanche soir) ;
 // elle remplace « Pense à synchroniser ta montre avant de répondre. » (décision 206). Deux voix : le coaché lit celle du coach (« je »), l'acheteur une voix neutre.
 export const ACCUEIL_COACHE = 'Réponds après ta dernière sortie de la semaine, une fois ta montre synchronisée : je vois ainsi toute ta semaine.';
@@ -47,17 +50,24 @@ export const accueilDuPoint = (coache: boolean): string => (coache ? ACCUEIL_COA
 // Le nombre de séances (décision 207 du coach, 24/11/2026) : « peux-tu faire par semaine », un maximum. Les questionnaires déjà posés disent encore « veux-tu faire » : les deux se lisent.
 export const QUESTION_SEANCES = 'Combien de séances peux-tu faire par semaine ?';
 
-// Le mot d'ouverture de chaque version, en tête de la description.
+// Le mot d'ouverture de chaque version, en tête de la description. « Aucune séance vue » invite à dire l'arrêt : « dis-le-moi » pour un coaché (`OUVERTURES_COACHE`), « indique-le »
+// pour un acheteur (`OUVERTURES`, une forme sans invitation à échanger ; « Deux voix », 24/11/2026). Le reste de ces phrases ne change pas.
 export const OUVERTURES: Record<VersionDimanche, string | null> = {
   normale: null,
-  aucune_seance_vue: 'On n’a vu aucune séance cette semaine. Si tu as couru sans montre, réponds « Non ». Si tu as arrêté de courir, dis-le-nous : depuis combien de temps et pourquoi.',
+  aucune_seance_vue: 'On n’a vu aucune séance cette semaine. Si tu as couru sans montre, réponds « Non ». Si tu as arrêté de courir, indique-le : depuis combien de temps et pourquoi.',
   fatigue: 'Cette semaine, ton ressenti, ton RPE ou ton Hooper sortent de tes habitudes. Ça peut traduire de la fatigue. Pour que tu récupères et repartes bien, on peut alléger ta semaine prochaine.',
+};
+export const OUVERTURES_COACHE: Record<VersionDimanche, string | null> = {
+  ...OUVERTURES,
+  aucune_seance_vue: 'On n’a vu aucune séance cette semaine. Si tu as couru sans montre, réponds « Non ». Si tu as arrêté de courir, dis-le-moi : depuis combien de temps et pourquoi.',
 };
 
 // L'ouverture d'une version. « Aucune séance vue » invite à dire depuis combien de temps on s'est arrêté et pourquoi ; sans l'accord de lecture, la cause (donnée de santé, décision 209)
-// n'est plus demandée : « et pourquoi » part, « depuis combien de temps » reste (le « dis-le-nous » n'est pas touché, il est revu avec le lot des deux voix).
-export const ouvertureDe = (version: VersionDimanche, accord: boolean): string | null =>
-  accord || version !== 'aucune_seance_vue' ? OUVERTURES[version] : (OUVERTURES[version] as string).replace(' et pourquoi.', '.');
+// n'est plus demandée : « et pourquoi » part, « depuis combien de temps » reste. coache : la voix du coaché (« dis-le-moi »), sinon celle de l'acheteur (« indique-le »).
+export const ouvertureDe = (version: VersionDimanche, accord: boolean, coache = false): string | null => {
+  const texte = (coache ? OUVERTURES_COACHE : OUVERTURES)[version];
+  return accord || version !== 'aucune_seance_vue' ? texte : (texte as string).replace(' et pourquoi.', '.');
+};
 
 const PREFIXE_ARRET_SEMAINE = 'Si tu as arrêté toute la semaine : ';
 export const QUESTION_ARRET = 'As-tu arrêté de courir cette semaine ?';
@@ -66,7 +76,9 @@ export const QUESTION_SEMAINES_ARRET = `${PREFIXE_ARRET_SEMAINE}depuis combien d
 export const CHOIX_SEMAINES_ARRET = ['1', '2', '3', '4', 'Plus de 4'];
 export const QUESTION_CAUSE = `${PREFIXE_ARRET_SEMAINE}pourquoi ?`;
 export const CHOIX_CAUSE = ['Blessure', 'Maladie', 'Autre'];
-export const QUESTION_CLES = 'Une séance clé pas faite comme écrite ?';
+export const QUESTION_CLES = 'Une séance clé pas faite comme prévu ?';
+// Les questionnaires déjà posés disent encore « comme écrite » (avant les deux voix, 24/11/2026) : les deux textes se lisent, comme QUESTION_SEANCES et QUESTION_NB.
+export const QUESTION_CLES_AVANT = 'Une séance clé pas faite comme écrite ?';
 export const QUESTION_FATIGUE = 'Veux-tu une semaine plus légère ?';
 export const CHOIX_OUI_NON = ['Oui', 'Non'];
 
@@ -120,8 +132,8 @@ const choixUnique = (question: string, choix: string[], obligatoire: boolean): Q
 export function questionnaireDuDimanche({ version, cles = [], premiere = false, coache = false, ligneEffet = null, accord = false }: {
   version: VersionDimanche; cles?: SeanceCle[]; premiere?: boolean; coache?: boolean; ligneEffet?: string | null; accord?: boolean;
 }): QuestionnaireDimanche {
-  const ouverture = premiere ? null : ouvertureDe(version, accord);
-  const description = [accueilDuPoint(coache), ouverture, ouverture && version === 'fatigue' ? ligneEffet : null, DESCRIPTION_DE_BASE].filter(Boolean).join('\n\n');
+  const ouverture = premiere ? null : ouvertureDe(version, accord, coache);
+  const description = [accueilDuPoint(coache), ouverture, ouverture && version === 'fatigue' ? ligneEffet : null, descriptionDeBase(coache)].filter(Boolean).join('\n\n');
   const items: Question[] = [];
   if (!premiere) {
     if (version === 'fatigue') items.push(choixUnique(QUESTION_FATIGUE, CHOIX_OUI_NON, true));
@@ -195,7 +207,7 @@ export function lireReponsesDimanche(items: ItemRepondu[], { version, cles = [],
   if (!reponses.arret || reponses.arret === 'non') { delete reponses.semaines_arret; delete reponses.cause; }
   else if (reponses.arret === 'quelques_jours') delete reponses.semaines_arret;
 
-  lire('cles_pas_faites', QUESTION_CLES, (v) => {
+  lire('cles_pas_faites', [QUESTION_CLES, QUESTION_CLES_AVANT], (v) => {
     const liste = Array.isArray(v) ? v : [v];
     const ids = liste.map((e) => { const i = choix(e, cles.map((c) => c.libelle)); return i === null ? null : cles[i].id; });
     return ids.every((id) => id !== null) ? [...new Set(ids as string[])] : null;

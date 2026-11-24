@@ -2,6 +2,8 @@
  * LES MOTS DU QUESTIONNAIRE DE LA SEMAINE, DITS À L'ATHLÈTE (entrées 198 et 199 du coach, 24/11/2026) : sous la 8.x, c'est « Ta semaine prochaine », le samedi à 8 h ;
  * sous le moteur 9.0, c'est « Ton point du dimanche », le dimanche vers midi (heure de Paris), à répondre d'ici dimanche 18 h, la semaine s'écrivant dimanche soir.
  * Chaque texte existe dans les deux versions ; l'écran prend la bonne par `moteurEstV9()` (lib/app/moteurEnLigne.ts), côté serveur : sous la 8.x rien ne change.
+ * Sous le moteur 9.0, trois textes (`pourBienDemarrer`, `sAdapte`, `uneSeuleChose`) existent en deux voix (« Deux voix », 24/11/2026) : `v9` est celle de l'acheteur
+ * (neutre, sans « je ») et `v9Coache` celle du coaché (la voix du coach, « je ») ; l'écran qui connaît le coaché passe `coache`. Sous la 8.x, une seule voix.
  * Les textes « avant » sont ceux d'avant, mot pour mot. Les textes « v9 » sont NOUVEAUX : le coach les valide en regardant l'écran avant l'OK de mise en ligne.
  * Fonctions pures, sans réseau ni base.
  */
@@ -9,7 +11,7 @@ export type Cle =
   | 'profilSemaineMoi' | 'profilSemaineSon' | 'profilAcheteur' | 'compteCoacheSansAccord' | 'compteAcheteurSansAccord'
   | 'pourBienDemarrer' | 'sAdapte' | 'uneSeuleChose' | 'confidentialite';
 
-const TEXTES: Record<Cle, { avant: string; v9: string }> = {
+const TEXTES: Record<Cle, { avant: string; v9: string; v9Coache?: string }> = {
   // components/app/ProfilAthlete.tsx : la semaine habituelle, vue par l'athlète (« ta ») ou par le coach (« sa »).
   profilSemaineMoi: {
     avant: 'Ta semaine de tous les jours : ta préparation se construit dessus. Chaque samedi, le questionnaire « Ta semaine prochaine » change la semaine qui vient.',
@@ -36,17 +38,20 @@ const TEXTES: Record<Cle, { avant: string; v9: string }> = {
   // components/app/PourBienDemarrer.tsx : la phrase au bas de « Pour bien démarrer ».
   pourBienDemarrer: {
     avant: 'Chaque samedi à 8 h, le questionnaire « Ta semaine prochaine » t’attend dans Nolio : réponds d’ici dimanche 18 h, ta semaine suivante s’écrit dimanche soir d’après tes réponses.',
-    v9: 'Chaque dimanche vers midi, « Ton point du dimanche » t’attend dans Nolio : réponds d’ici dimanche 18 h, ta semaine suivante s’écrit dimanche soir d’après tes réponses.',
+    v9: 'Chaque dimanche vers midi, « Ton point du dimanche » t’attend dans Nolio : réponds d’ici dimanche 18 h, ta semaine suivante est préparée dimanche soir d’après tes réponses.',
+    v9Coache: 'Chaque dimanche vers midi, « Ton point du dimanche » t’attend dans Nolio : réponds d’ici dimanche 18 h, je prépare ta semaine suivante dimanche soir d’après tes réponses.',
   },
   // components/app/PourBienDemarrer.tsx : pour un acheteur dont la préparation s'adapte.
   sAdapte: {
     avant: 'Ta préparation s’adapte chaque semaine : le samedi, un court questionnaire dans Nolio te demande tes jours et ton nombre de séances ; le dimanche soir, ta semaine s’écrit d’après tes réponses et ce que tu as couru.',
-    v9: 'Ta préparation s’adapte chaque semaine : le dimanche vers midi, « Ton point du dimanche », un court questionnaire dans Nolio, te demande tes jours et ton nombre de séances ; le dimanche soir, ta semaine s’écrit d’après tes réponses et ce que tu as couru.',
+    v9: 'Ta préparation s’adapte chaque semaine : le dimanche vers midi, « Ton point du dimanche », un court questionnaire dans Nolio, te demande tes jours et ton nombre de séances ; le dimanche soir, ta semaine est préparée d’après tes réponses et ce que tu as couru.',
+    v9Coache: 'J’adapte ta préparation chaque semaine : le dimanche vers midi, « Ton point du dimanche », un court questionnaire dans Nolio, te demande tes jours et ton nombre de séances ; le dimanche soir, je prépare ta semaine d’après tes réponses et ce que tu as couru.',
   },
   // components/app/AccueilAthlete.tsx : « Une seule chose à faire chaque semaine ».
   uneSeuleChose: {
     avant: 'Le dimanche, ton appli à jour (tes séances remontées dans Nolio) et le questionnaire du samedi rempli. C’est ce qui permet d’adapter ta semaine suivante. Sans ça, elle reste au même niveau, puis se recale dès que tu actualises.',
-    v9: 'Le dimanche, ton appli à jour (tes séances remontées dans Nolio) et ton point du dimanche rempli. C’est ce qui permet d’adapter ta semaine suivante. Sans ça, elle reste au même niveau, puis se recale dès que tu actualises.',
+    v9: 'Le dimanche, ton appli à jour (tes séances remontées dans Nolio) et ton point du dimanche rempli. C’est ce qui permet d’adapter ta semaine suivante. Sans ça, elle reste au même niveau, puis est remise à jour dès que tu actualises.',
+    v9Coache: 'Le dimanche, ton appli à jour (tes séances remontées dans Nolio) et ton point du dimanche rempli. C’est ce qui permet d’adapter ta semaine suivante. Sans ça, je garde ta semaine au même niveau, puis je la remets à jour dès que tu actualises.',
   },
   // app/confidentialite/page.tsx : ce que la semaine suivante lit chaque dimanche. Sous la 9.0, l'arrêt et sa durée, sa cause (blessure, maladie, autre) seulement avec l'accord de lecture (décision 209), et les séances clés pas faites s'y ajoutent.
   confidentialite: {
@@ -55,6 +60,9 @@ const TEXTES: Record<Cle, { avant: string; v9: string }> = {
   },
 };
 
-// Le texte pour la version du moteur en ligne : v9 vrai sous une 9.x.
-export const motsDuQuestionnaire = (cle: Cle, v9: boolean): string => TEXTES[cle][v9 ? 'v9' : 'avant'];
+// Le texte pour la version du moteur en ligne : v9 vrai sous une 9.x ; `coache` vrai pour un coaché (sa voix, sous la 9.x seulement).
+export const motsDuQuestionnaire = (cle: Cle, v9: boolean, coache = false): string => {
+  const t = TEXTES[cle];
+  return v9 ? (coache && t.v9Coache) || t.v9 : t.avant;
+};
 export const TOUS_LES_TEXTES = TEXTES;

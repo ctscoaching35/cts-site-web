@@ -154,8 +154,9 @@ export default async function MonProfil({ searchParams }: { searchParams: Recher
           <p className="text-[0.8125rem] text-[#4A4866] leading-relaxed">
             {d.ecrit && !ctx.aLaMain
               ? (d.accord || !saisie
-                ? 'Quand un repère manque, ta préparation écrit le test à la place d’une séance ; son résultat se lit dans Nolio.'
-                : <>Quand un repère manque, ta préparation écrit le test à la place d’une séance ;{' '}
+                ? (ctx.coache ? 'Quand un repère manque, je mets le test à la place d’une séance ; tu retrouves son résultat dans Nolio.'
+                  : 'Quand un repère manque, un test remplace une séance ; son résultat est dans Nolio.')
+                : <>{ctx.coache ? 'Quand un repère manque, je mets le test à la place d’une séance ;' : 'Quand un repère manque, un test remplace une séance ;'}{' '}
                   <Link href={saisie} className="font-bold text-teal whitespace-nowrap">entre ton résultat ici ›</Link></>)
               : 'Trois tests de terrain donnent tes repères : leur protocole, ce qu’ils changent et leurs limites.'}
           </p>

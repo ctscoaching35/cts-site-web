@@ -36,7 +36,7 @@ export default async function MentionsLegales() {
       <Section titre="Hébergement">
         <p>
           Le site et l’app sont hébergés par Vercel Inc., 440 N Barranca Avenue #4133, Covina, CA 91723, États-Unis
-          (vercel.com, privacy@vercel.com). Les données des comptes sont hébergées en Irlande par Supabase, et le moteur
+          (vercel.com, privacy@vercel.com). Les données des comptes sont hébergées en Irlande par Supabase, et le service
           qui construit les séances en Allemagne par Render : voir la{' '}
           <a href="/confidentialite">politique de confidentialité</a>.
         </p>

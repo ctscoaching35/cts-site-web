@@ -55,7 +55,8 @@ export default async function MesDonnees({ searchParams }: { searchParams: Reche
           <h1 className={TITRE}>Tes données</h1>
           {/* C40 : une seule phrase de mise à jour, et juste. Validé par le coach le 05/11/2026 (1A). */}
           <p className="mt-1.5 text-[0.8125rem] text-[#5E5C78] leading-relaxed">
-            {d.accord ? 'Lues dans Nolio avec ton accord : rangées chaque dimanche soir, complétées chaque nuit.'
+            {d.accord ? (ctx.coache ? 'Je les prends dans Nolio avec ton accord : rangées chaque dimanche soir, complétées chaque nuit.'
+                : 'Reprises de Nolio avec ton accord : rangées chaque dimanche soir, complétées chaque nuit.')
               : 'Tes séances faites ou manquées et leur durée : rangées chaque dimanche soir, complétées chaque nuit.'}
           </p>
         </div>
@@ -70,15 +71,15 @@ export default async function MesDonnees({ searchParams }: { searchParams: Reche
         {/* Une semaine se dit par son lundi, pas par son numéro (décision coach du 19/10/2026). */}
         {d.accord && (chargePrete ? <GraphiqueCharge realises={saison.realises} courses={saison.courses} axe={axe} />
           // C40 : sans « le dimanche soir », qui contredisait la phrase de mise à jour. Validé par le coach le 05/11/2026 (1A).
-          : <EnAttente titre="Ta charge d’entraînement" texte="Elle s’affiche après deux semaines faites : ton effort ressenti (RPE) multiplié par la durée de chaque séance, lus dans Nolio." />)}
+          : <EnAttente titre="Ta charge d’entraînement" texte="Elle s’affiche après deux semaines faites : ton effort ressenti (RPE) multiplié par la durée de chaque séance, repris dans Nolio." />)}
         {barres.length > 0 ? <GraphiqueVolume barres={barres} />
           // C41 : la carte du volume dit quand elle arrive, comme les deux autres. Validé par le coach le 05/11/2026 (1A).
-          : !(rien && !d.accord) && <EnAttente titre="Ton volume de course" texte="Il s’affiche après ta première semaine faite : tes heures de course, semaine après semaine, lues dans Nolio." />}
+          : !(rien && !d.accord) && <EnAttente titre="Ton volume de course" texte="Il s’affiche après ta première semaine faite : tes heures de course, semaine après semaine, reprises dans Nolio." />}
         {d.accord && (hooperPret ? <GraphiqueHooper points={points} axe={axe} aLaMain={ctx.aLaMain} />
           : <EnAttente titre="Ta forme du dimanche (Hooper)" texte="Elle s’affiche après deux dimanches : ta fatigue, ton sommeil, ton stress et tes courbatures, à remplir le dimanche à 8 h dans Nolio." />)}
         {!d.accord && !rien && (
           <Carte className="space-y-1 text-[0.8125rem] text-[#4A4866] leading-relaxed">
-            <p>Ta charge et ton Hooper s’affichent avec ton accord de lecture : l’app lit alors dans Nolio ton effort ressenti et ton Hooper.</p>
+            <p>{ctx.coache ? 'Ta charge et ton Hooper s’affichent avec ton accord : je regarde alors dans Nolio ton effort ressenti et ton Hooper.' : 'Ta charge et ton Hooper s’affichent avec ton accord : l’app reprend alors dans Nolio ton effort ressenti et ton Hooper.'}</p>
             {!ctx.coache && <Link href={accord} className={LIEN}>Donner mon accord ›</Link>}
           </Carte>
         )}

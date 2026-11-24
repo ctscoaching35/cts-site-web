@@ -34,9 +34,11 @@ const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`;
 
 // reprises : les lundis des semaines écrites de reprise après une course (« Semaine de reprise », décision coach du
 // 08/11/2026 ; lib/app/tableauDuPlan.ts, donneesTableau).
-export default function SemainesDuPlan({ trame, jour, course, realises = [], encours = null, suivante = null, depuis = null, reprises = [] }: {
+// coache : la voix du coach (« je prépare ») pour un coaché, la voix neutre (« est préparée ») pour un acheteur (« Deux voix »,
+// 24/11/2026).
+export default function SemainesDuPlan({ trame, jour, course, realises = [], encours = null, suivante = null, depuis = null, reprises = [], coache = false }: {
   trame: LigneTrame[]; jour: string; course: string; realises?: Realise[]; encours?: SemaineDetaillee; suivante?: SemaineDetaillee;
-  depuis?: string | null; reprises?: string[];
+  depuis?: string | null; reprises?: string[]; coache?: boolean;
 }) {
   const semaines = trame.filter((l) => l.lundi && (!depuis || l.lundi >= depuis));
   if (!semaines.length) return null;
@@ -116,7 +118,7 @@ export default function SemainesDuPlan({ trame, jour, course, realises = [], enc
         <>
           {detail === 'suivante' && !lue && (
             // La mention de la semaine suivante, mot pour mot celle de la décision coach du 07/11/2026 (à valider).
-            <p className="text-xs font-semibold text-[#8A5E10]">Prévue : elle s’écrit dimanche d’après ton questionnaire.</p>
+            <p className="text-xs font-semibold text-[#8A5E10]">{coache ? 'Prévue : je la prépare dimanche d’après ton questionnaire.' : 'Prévue : elle est préparée dimanche d’après ton questionnaire.'}</p>
           )}
           <p className="text-xs text-[#5E5C78]">{l.bloc}</p>
           {lue ? seances(lue) : prevue(l)}
@@ -193,7 +195,8 @@ export default function SemainesDuPlan({ trame, jour, course, realises = [], enc
       {/* La phrase sous la liste, mot pour mot celle de la décision coach du 07/11/2026 (à valider). */}
       {suite.some((l) => detailDeLaSemaine(l.lundi, jour) !== 'encours') && (
         <p className="mt-1 mb-1 text-xs text-[#5E5C78] leading-relaxed">
-          Les semaines à venir s’écrivent chaque dimanche d’après tes réponses : leur contenu peut changer.
+          {coache ? 'Je prépare les semaines à venir chaque dimanche d’après tes réponses : leur contenu peut changer.'
+            : 'Les semaines à venir sont préparées chaque dimanche d’après tes réponses : leur contenu peut changer.'}
         </p>
       )}
     </Carte>
