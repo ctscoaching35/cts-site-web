@@ -246,3 +246,37 @@ test('paramètres d’un coaché : ce que son coach a rempli sur sa fiche (crit�
   assert.ok(!('entree' in sansCritere), 'sans premier lundi, pas d’entrée devinée');
   assert.equal(sansCritere.accord_lecture, false);
 });
+
+// ─── Le départ d'un objectif et « Réessayer » ───────────────────────────────────────────────────────
+
+test('le départ garde pour le moteur son entrée, la course d’avant et ce que Nolio montre de ses 4 dernières semaines ; ce qui ne se lit pas n’est pas gardé', () => {
+  const heures = (t) => { const m = /^(\d+)h(\d*)$/.exec(String(t ?? '')); return m ? Number(m[1]) + Number(m[2] || 0) / 60 : 0; };
+  assert.deepEqual(passes.entreesDuDepart({ premiere: LUNDI_2, apres: { course_date: '2026-11-22', temps_h: 4.5 }, charge: { volume: '5h30', sl: '2h' }, heures }),
+    { entree: LUNDI_2, course_precedente: { date: '2026-11-22', duree_h: 4.5 }, lu: { volume_min: 330, sl_min: 120 } });
+  assert.deepEqual(passes.entreesDuDepart({ premiere: LUNDI_1, apres: null, charge: null, heures }), { entree: LUNDI_1 });
+  assert.deepEqual(passes.entreesDuDepart({ premiere: LUNDI_1, apres: { course_date: '2026-11-22', temps_h: 0 }, charge: { volume: 'beaucoup', sl: '1h30' }, heures }),
+    { entree: LUNDI_1, lu: { sl_min: 90 } });
+});
+
+test('un coaché qui entre : son entrée et sa course d’avant passent dans les paramètres du moteur ; sans elles, rien d’inventé', () => {
+  const champs = { ...CHAMPS, entree: LUNDI_2, course_precedente: { date: '2026-11-22', duree_h: 4.5 }, lu: { volume_min: 330 } };
+  const p = passes.parametresDuPlanV9({ parametres: { champs }, profil: {}, coache: true, accordLecture: true, premierLundi: LUNDI_1 }, FICHE);
+  assert.equal(p.coaching, 'oui');
+  assert.equal(p.entree, LUNDI_2, 'l’entrée gardée au départ l’emporte sur le premier lundi du plan d’achat');
+  assert.deepEqual(p.course_precedente, { date: '2026-11-22', duree_h: 4.5 });
+  assert.deepEqual(p.lu, { volume_min: 330 });
+});
+
+test('la semaine demandée (départ, « Réessayer ») : écrite avec ses jours à partir de `depuis`, déjà écrite = reprise sans doublon, hors de la trame = une erreur dite', async () => {
+  const { c, j } = contexte({ echanges: [F.trame, F['semaine-1']] });
+  const envoyer = c.envoyer;
+  const vus = [];
+  c.envoyer = async (e, options) => { vus.push(options); await envoyer(e, options); };
+  assert.deepEqual(await passes.ecrireOuReprendre(c, LUNDI_1, { depuis: '2026-11-25' }), { statut: 'ecrite', numero: 1 });
+  assert.deepEqual(vus, [{ depuis: '2026-11-25' }]);
+  assert.deepEqual(j.envoyees, [1]);
+  const deja = contexte({ echanges: [F.trame], etat: apres1(), derniere: SEMAINE_UNE });
+  assert.deepEqual(await passes.ecrireOuReprendre(deja.c, LUNDI_1), { statut: 'deja', numero: 1 });
+  assert.deepEqual(deja.j.envoyees, []);
+  assert.deepEqual(await passes.ecrireOuReprendre(contexte({ echanges: [F.trame] }).c, '2030-01-07'), { statut: 'hors_trame' });
+});

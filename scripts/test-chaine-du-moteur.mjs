@@ -121,8 +121,11 @@ test('rien ne peut appeler les passages du moteur v1 sans l’aiguillage : chaqu
   const { execFileSync } = await import('node:child_process');
   const lecteurs = execFileSync('grep', ['-rlE', `from ['"][^'"]*passagesV9['"]|import\\([^)]*passagesV9`, 'app', 'components', 'lib'], { cwd: RACINE, encoding: 'utf8' })
     .split('\n').filter(Boolean).sort();
-  assert.deepEqual(lecteurs, ['app/api/ecriture/dimanche/route.ts', 'app/api/ecriture/lundi/route.ts', 'app/api/ecriture/questionnaire/route.ts']);
-  for (const f of lecteurs) {
+  // Les routes passent par selonLeMoteur ; ecriture.ts (« Réessayer ») et departV9.ts (le départ d'un objectif) ne s'importent qu'APRÈS un `if (await moteurEstV9())`.
+  assert.deepEqual(lecteurs, ['app/api/ecriture/dimanche/route.ts', 'app/api/ecriture/lundi/route.ts', 'app/api/ecriture/questionnaire/route.ts', 'lib/app/departV9.ts', 'lib/app/ecriture.ts']);
+  const e = readFileSync(`${RACINE}lib/app/ecriture.ts`, 'utf8');
+  assert.match(e, /if \(await moteurEstV9\(\)\) \{\n(?:[^\n]*\n)*?\s+const \{ ecrireLaSemaineDemandee \} = await import\('\.\/passagesV9'\);/, '« Réessayer » : derrière la garde');
+  for (const f of lecteurs.filter((x) => x.startsWith('app/'))) {
     const source = readFileSync(`${RACINE}${f}`, 'utf8');
     assert.match(source, /selonLeMoteur\(\{[\s\S]*v1: /, f);
     assert.ok(!/passage\w*V9\(/.test(source.replace(/v1: \(\) => \w+V9\(\d+_?\d*\)/, '')), `${f} : la chaîne v1 n'est appelée que par la branche « v1 »`);
@@ -135,4 +138,28 @@ test('sous le moteur v1, ce que la chaîne d’avant ferait ne part plus en 400 
   assert.match(e, /await refuserSousLeMoteurV1\(`La récupération \$\{numero\}`\);/);
   assert.match(e, /export async function passageDuLundi\([^\n]*\n[^\n]*\n\s+if \(await moteurEstV9\(\)\) return \[\];/);
   assert.match(e, /export async function reprendreLesSemainesDues\([^\n]*\n[^\n]*\n\s+if \(await moteurEstV9\(\)\) return \[\];/);
+});
+
+test('le départ d’un objectif et « Réessayer » sous le moteur v1 : derrière la garde, après les règles de départ d’avant ; sous la 8.x, le départ et le rattrapage d’avant restent', () => {
+  const e = readFileSync(`${RACINE}lib/app/ecriture.ts`, 'utf8');
+  const depart = e.slice(e.indexOf('export async function demarrerObjectif'), e.indexOf('// OM4 (décision coach du 21/10/2026) : un objectif qui démarre juste après'));
+  // Les règles du calendrier (à la main, Nolio relié, course passée, objectif en route, doublons, départ programmé) passent avant la branche du moteur v1.
+  const iBranche = depart.indexOf('if (await moteurEstV9()) {\n      const { demarrerSousLeMoteurV1 }');
+  assert.ok(iBranche > 0, 'la branche du moteur v1 est là');
+  for (const avant of ['Tu programmes cet athlète à la main', 'La course est passée.', 'objectifQuiCouvre(premiere.lundi, autres)', "update({ demarre_le: new Date().toISOString() })", 'arreterLaSaison(']) {
+    assert.ok(depart.indexOf(avant) > 0 && depart.indexOf(avant) < iBranche, `« ${avant} » passe avant la branche du moteur v1`);
+  }
+  // Et la 8.x garde tout après : le recalage, le départ individualisé, le rythme, et la première semaine de la 8.x.
+  for (const apres of ['recalerSurLePrecedent(', 'deciderLeDepart(', 'poserLeRythme(', 'await ecrireEtEnvoyer(o, premiere.numero, retoursDepart']) {
+    assert.ok(depart.indexOf(apres) > iBranche, `« ${apres} » reste pour la 8.x`);
+  }
+  const rattrapage = e.slice(e.indexOf('export async function rattraperLaSemaine'), e.indexOf('// Une séance d\'une semaine écrite, sous la forme de l\'app'));
+  assert.match(rattrapage, /if \(await moteurEstV9\(\)\) \{[\s\S]*ecrireLaSemaineDemandee[\s\S]*\}\n\s+const s = semaineDu\(o\.plan, lundi\);/);
+  assert.ok(rattrapage.includes('await ecrireEtEnvoyer(o, s.numero, retours,'), 'le rattrapage de la 8.x reste');
+});
+
+test('« Annuler » et l’aperçu du dimanche, que le contrat du moteur v1 ne permet pas, le disent au lieu d’échouer en 400', () => {
+  const e = readFileSync(`${RACINE}lib/app/ecriture.ts`, 'utf8');
+  assert.match(e, /export async function annulerAjustements\([^\n]*\n[^\n]*\n\s+if \(await moteurEstV9\(\)\) throw new Error\('« Annuler » n’existe pas encore sous le moteur v1/);
+  assert.match(e, /export async function apercuDuDimanche\([^\n]*\n[^\n]*\n\s+if \(await moteurEstV9\(\)\) throw new Error\('L’aperçu du dimanche n’est pas encore porté sous le moteur v1/);
 });

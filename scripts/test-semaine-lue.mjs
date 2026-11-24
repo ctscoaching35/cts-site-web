@@ -211,3 +211,36 @@ test('sous le moteur v1, une semaine pas encore écrite n’a pas de repli : cel
   const t = readFileSync(`${RACINE}lib/app/tableauDuPlan.ts`, 'utf8');
   assert.match(t, /return lireLaSemaine\(data\?\.donnees\) \?\? \(\(await moteurEstV9\(\)\) \? null : duPlan\);/);
 });
+
+// ─── Les mêmes lecteurs sur une semaine de la 8.x : comme avant ─────────────────────────────────────
+
+const SPORT = 'spt_kNYHjuEzDJRiYCX';
+const seancesAncienne = () => ANCIENNE.jours.filter((j) => j.famille !== 'repos' && j.famille !== 'course' && j.date_iso);
+const envoyeesAncienne = () => seancesAncienne().map((j) => ({ jour_id: j.id, nolio_id: `n-${j.id}`, genre: 'seance', revision: 'r1' }));
+const nolioAncienne = (modifier = (x) => x) => seancesAncienne().map((j) => modifier({
+  id: `n-${j.id}`, name: j.nom ?? j.seance, date_start: `${j.date_iso}T08:00:00`, sport: SPORT, duration: { value: tableau.minutesDe(j.duree) * 60, unit: 's' }, rpe: Number(j.rpe), revision: 'r1' }));
+
+test('une semaine de la 8.x : la comparaison avec Nolio rend ses séances sans aucune marque, une séance déplacée ou retirée se voit', () => {
+  const semaine = lue.lireLaSemaine(ANCIENNE);
+  assert.strictEqual(semaine, ANCIENNE);
+  const pareil = compare.comparerLaSemaine({ semaine, envoyees: envoyeesAncienne(), nolio: nolioAncienne(), sports: [SPORT] });
+  assert.equal(pareil.lignes.length, seancesAncienne().length);
+  assert.deepEqual(pareil.lignes.flatMap((l) => l.marques), []);
+  const retiree = compare.comparerLaSemaine({ semaine, envoyees: envoyeesAncienne(), nolio: nolioAncienne().slice(1), sports: [SPORT] });
+  assert.deepEqual(retiree.lignes.filter((l) => l.barree).map((l) => l.marques.map((m) => m.quoi)), [['retiree']]);
+});
+
+test('une semaine de la 8.x : le compte des retouches donne une famille par séance posée, comme avant', () => {
+  const nolio = new Map(nolioAncienne().map((x) => [x.id, { ...x, minutes: Math.round(x.duration.value / 60), date: x.date_start.slice(0, 10) }]));
+  const familles = retouches.compterLaSemaine(ANCIENNE, envoyeesAncienne(), nolio);
+  assert.equal(Object.values(familles).reduce((n, f) => n + f.envoyees, 0), envoyeesAncienne().length);
+});
+
+test('les noms des séances du journal et la bannière lisent les deux formes', async () => {
+  const { nomsDesSeances } = await charge('journalEnClair');
+  const ancienne = nomsDesSeances([lue.lireLaSemaine(ANCIENNE)]);
+  assert.equal(ancienne(ANCIENNE.jours[0].id), ANCIENNE.jours[0].seance);
+  const v9 = nomsDesSeances([lue.lireLaSemaine(SEMAINE)]);
+  assert.match(v9('S2-mardi'), /^Seuil 1 route/);
+  assert.equal(v9('S2-mercredi'), 'Repos');
+});
