@@ -24,6 +24,8 @@ import { pointsDeLaReponse } from './passeDuLundi';
 import { cleLaissee, compteDuCoach, debutApres, plansALaMain, trameDuPlan, type Realise, type Trame } from './ecriture';
 import { lireTemps } from '@/lib/plan';
 import { ajouterJours, dateAbregee, dateLongue, jourMois, joursEntre, type Semaine } from './plan';
+import { moteurEstV9 } from './moteurEnLigne';
+import { lireLaSemaine, trameDuBonMoteur } from './semaineLue';
 import { lienNolioAthlete } from './liensNolio';
 import { athletesNolio, ErreurNolio, nolioConfigure, type AthleteNolio } from './nolio';
 import { faiteSansRpe } from './resumeSemaine';
@@ -194,8 +196,10 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
   // (la semaine du dimanche, une reprise, le moteur d'une nouvelle version la nuit) : lue telle quelle, elle manquait
   // jusqu'à l'ouverture de la page du plan — « Entre deux semaines », ni séances ni charge tenue, la saison de fond pas
   // reconnue. Redemandée une fois, pour les seules trames effacées, puis gardée jusqu'à la prochaine écriture.
+  // Une trame gardée par l'autre moteur (8.x ou v1) n'est pas la bonne : trameDuPlan la redemande.
+  const v9 = await moteurEstV9();
   const trames = new Map<string, TrameLue | null>(await Promise.all((plans ?? []).map(async (p) => [p.id as string,
-    ((p.trame ?? (p.parametres ? await trameDuPlan(p.id as string).catch(() => null) : null)) as TrameLue | null)] as const)));
+    (((p.trame && trameDuBonMoteur(p.trame, v9)) ? p.trame : (p.parametres ? await trameDuPlan(p.id as string).catch(() => null) : null)) as TrameLue | null)] as const)));
   // La semaine passée du tableau de bord et celle d'avant (la tendance du Hooper) : le dimanche, dès le passage, celle
   // qui finit ce soir (décision A du coach, 06/11/2026).
   const passee = lundiDeLaSemainePassee();
@@ -247,7 +251,7 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     // Une semaine écrite au-delà de la trame (sa récupération) : celle écrite pour ce lundi.
     const horsTrame = (le: string) => {
       const l = ecriteDu(le);
-      const d = l?.donnees as Semaine | null | undefined;
+      const d = lireLaSemaine(l?.donnees);
       return d && !trame?.some((x) => x.lundi === le) ? { numero: String(l?.numero), lundi: le, type: String(d.type ?? ''), bloc: String(d.bloc ?? '') } : null;
     };
     const enCours = trame?.find((l) => l.lundi && l.lundi <= jour && ajouterJours(l.lundi, 6) >= jour) ?? horsTrame(lundi);

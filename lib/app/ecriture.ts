@@ -16,6 +16,9 @@ import { cache } from 'react';
 import { site } from '@/lib/content';
 import { API_URL, dureeConseillee, dureesPossibles, lireTemps, type Champs, type ConfigPlan } from '@/lib/plan';
 import { moteurEstV9 } from './moteurEnLigne';
+import { lireTrame } from './moteurV9';
+import { parametresDuObjectifV9 } from './parametresPlanV9';
+import { trameDuBonMoteur, trameLue } from './semaineLue';
 import {
   chargeDepuisNolio, creer, destinataire, envoyerSemaineCible, ficheAthlete, garderEnvoi, mettreAJourSemaineCible, profilDe, remplacerLaNote, seancesDuMoteur,
   volumeDuMoment,
@@ -300,9 +303,16 @@ export type LigneTrame = {
   // La saison de fond (moteur 8.353) : le thème du bloc (« Vitesse », « Seuil ») et la semaine de tests.
   theme?: string; tests?: boolean;
 };
-export type Trame = { course: { date: string }; semaines: LigneTrame[]; fiches?: Fiche[] };
+export type Trame = { course: { date: string }; semaines: LigneTrame[]; fiches?: Fiche[]; moteur?: string };
 export const trameDu = (parametres: Record<string, unknown>, fichesDuPlan?: string[]) =>
   moteur<Trame>('/v1/trame', { parametres, ...(fichesDuPlan ? { fiches_du_plan: fichesDuPlan } : {}) });
+
+async function trameDuMoteurV1(planId: string): Promise<Trame | null> {
+  const o = await objectifEcrit(planId);
+  if (!o) return null;
+  const r = lireTrame(await moteur('/v1/trame', { parametres: await parametresDuObjectifV9(o) }));
+  return r ? trameLue(r.semaines, { date: o.plan.course.date }, aujourdhuiParis()) : null;
+}
 
 // La trame d'un plan et ses fiches à leur moment, demandées une fois au moteur puis gardées avec lui (« Mon plan »,
 // le tableau de bord) : elle ne change qu'avec ses paramètres (une reprise reconstruite, une séance de plus tenue),
@@ -311,9 +321,12 @@ export async function trameDuPlan(planId: string): Promise<Trame | null> {
   const service = clientService();
   const { data: p } = await service.from('plans').select('parametres, trame, donnees').eq('id', planId).maybeSingle();
   if (!p?.parametres) return null;
-  if (p.trame) return p.trame as Trame;
+  // Sous le moteur v1 (9.x), la trame se demande avec les paramètres du moteur v1 et se lit dans la forme de l'app (lib/app/semaineLue.ts, trameLue) ; une trame
+  // gardée par l'autre moteur n'est pas la bonne, elle se redemande (et se remplace) : un retour à la 8.x en fait autant.
+  const v9 = await moteurEstV9();
+  if (p.trame && trameDuBonMoteur(p.trame, v9)) return p.trame as Trame;
   const cles = ((p.donnees as Plan | null)?.pour_aller_plus_loin?.fiches ?? []).map((f) => f.cle);
-  const trame = await trameDu(p.parametres as Record<string, unknown>, cles).catch(() => null);
+  const trame = await (v9 ? trameDuMoteurV1(planId) : trameDu(p.parametres as Record<string, unknown>, cles)).catch(() => null);
   if (trame) await service.from('plans').update({ trame }).eq('id', planId);
   return trame;
 }

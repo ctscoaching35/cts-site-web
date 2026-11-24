@@ -16,11 +16,9 @@ import { HEURE_D_ENVOI, lireReponsesDimanche, NOM_DU_QUESTIONNAIRE, type Reponse
 import { lireEtatDuPlan, garderLEtat, garderLeQuestionnairePose, garderLesReponsesLues, garderUneEcriture, lireLaDerniereSemaine, lireLeQuestionnairePose } from './stockageV9';
 import { noteEnTexte } from './moteurV9';
 import { lundisALire, nolioDepuisNolio, type HooperLu, type PlanifieeLue, type ReelleLue } from './nolioV9';
-import { profilDeLaFiche } from './profilEntrainement';
-import { strategieDeLaCourse } from './strategie';
-import { parametresAvecLaStrategie } from './strategieMoteur';
+import { parametresDuObjectifV9 } from './parametresPlanV9';
 import {
-  ecrireLaSemaineDuLundi, parametresDuPlanV9, passeDuLundiSurUnPlan, poserLeQuestionnaireDuDimanche, type ContextePlan, type Resultat,
+  ecrireLaSemaineDuLundi, passeDuLundiSurUnPlan, poserLeQuestionnaireDuDimanche, type ContextePlan, type Resultat,
 } from './passeUnPlanV9';
 import type { Semaine } from './plan';
 
@@ -33,17 +31,8 @@ async function contextePlan(planId: string): Promise<{ c: ContextePlan; o: Objec
   if (!o?.nolioAthlete) return null;
   const service = clientService();
   const [etat, derniere] = await Promise.all([lireEtatDuPlan(service, planId), lireLaDerniereSemaine(service, planId)]);
-  // La fiche d'un coaché : ses deux critères, sa côte en minutes, son tapis, remplis par son coach (profilEntrainement.ts).
-  let fiche: Record<string, string | string[]> | null = null;
-  if (o.coache) {
-    const { data } = await service.from('coaching').select('athlete_id').eq('plan_id', planId).maybeSingle();
-    if (data?.athlete_id) fiche = await profilDeLaFiche(String(data.athlete_id)).catch(() => null);
-  }
-  const strategie = await strategieDeLaCourse(planId).catch(() => null);
-  const glucides = (parametresAvecLaStrategie(o.parametres, strategie) as { glucides_cible?: unknown }).glucides_cible;
   const premierLundi = o.plan.semaines.find((s) => s.lundi)?.lundi ?? null;
-  const parametres = parametresDuPlanV9({ parametres: o.parametres, profil: o.profil as Record<string, number>, coache: o.coache, accordLecture: o.accordLecture, premierLundi,
-    glucides: typeof glucides === 'number' ? glucides : null }, fiche);
+  const parametres = await parametresDuObjectifV9(o);
   const qui = async () => {
     const d = await destinataire(o.nolioAthlete);
     return d.moi ? '' : `&athlete=${d.usr}`;
