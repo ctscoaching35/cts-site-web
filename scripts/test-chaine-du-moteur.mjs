@@ -24,7 +24,8 @@ export const nomsDesPlans = async () => new Map(); export const REMIS = 'remis';
   '/lib/app/passagesV9.ts': fonctions('passagesV9', { passageDuDimancheV9: [{ plan: 'b', quoi: 'v1' }], passageDuLundiV9: [{ plan: 'b', quoi: 'v1' }],
     questionnaireDuMatinV9: [{ plan: 'b', quoi: 'v1' }] }),
   '/lib/app/fond.ts': fonctions('fond', { saisonsDuJour: [{ plan: 's', quoi: 'saison' }] }),
-  '/lib/app/dimanchesCoaches.ts': fonctions('dimanchesCoaches', { programmerLesDimanches: [{ plan: 'd', quoi: 'dimanches' }] }),
+  // Les dimanches notent aussi leurs options (le Hooper seul sous la 9.x) : globalThis.__options, le deuxième argument.
+  '/lib/app/dimanchesCoaches.ts': `export const programmerLesDimanches = async (...a) => { globalThis.__appels.push(['dimanchesCoaches.programmerLesDimanches', a[0]]); globalThis.__options = a[1] ?? null; return [{ plan: 'd', quoi: 'dimanches' }]; };`,
   '/lib/app/comptesInactifs.ts': fonctions('comptesInactifs', { passerComptesInactifs: [] }),
   '/lib/app/demandesCoaching.ts': fonctions('demandesCoaching', { effacerLesDemandesEchues: 0 }),
   '/lib/app/relance.ts': fonctions('relance', { envoyerRelancesDues: 0 }),
@@ -50,9 +51,10 @@ process.env.CRON_SECRET = 'secret-d-essai';
 const route = async (chemin) => (await import(pathToFileURL(`${RACINE}app/api/${chemin}/route.ts`).href)).GET;
 const appeler = async (chemin, { v9, secret = 'secret-d-essai' }) => {
   globalThis.__appels = [];
+  globalThis.__options = null;
   globalThis.__v9 = v9;
   const reponse = await (await route(chemin))(new Request('https://exemple.test/api', { headers: secret ? { authorization: `Bearer ${secret}` } : {} }));
-  return { reponse, corps: reponse.status === 200 ? await reponse.json() : null, appels: globalThis.__appels.map(([nom]) => nom), brut: globalThis.__appels };
+  return { reponse, corps: reponse.status === 200 ? await reponse.json() : null, appels: globalThis.__appels.map(([nom]) => nom), brut: globalThis.__appels, options: globalThis.__options };
 };
 
 test('le passage du dimanche soir : sous la 8.x, les saisons de fond puis le passage d’avant, jamais la chaîne du moteur v1 ; sous la 9.x, seulement la chaîne v1', async () => {
@@ -81,12 +83,16 @@ test('le questionnaire du dimanche matin : sous la 8.x, RIEN (le questionnaire d
   assert.deepEqual(v1.appels, ['passagesV9.questionnaireDuMatinV9']);
 });
 
-test('le passage quotidien : sous la 8.x, les saisons de fond et les dimanches du samedi comme avant ; sous la 9.x, ni l’un ni l’autre, le reste inchangé', async () => {
+test('le passage quotidien : sous la 8.x, les saisons de fond et les dimanches du samedi comme avant ; sous la 9.x, ni saison de fond ni questionnaire du samedi, mais le Hooper du dimanche (décision 52), le reste inchangé', async () => {
   const avant = await appeler('relance/envoyer', { v9: false });
   for (const nom of ['relance.envoyerRelancesDues', 'ecriture.passageQuotidienLeger', 'fond.saisonsDuJour', 'dimanchesCoaches.programmerLesDimanches', 'ecriture.retirerLaTrameAuDela', 'ecriture.passageQuotidienLong'])
     assert.ok(avant.appels.includes(nom), nom);
+  assert.deepEqual(avant.brut.find(([n]) => n === 'dimanchesCoaches.programmerLesDimanches'), ['dimanchesCoaches.programmerLesDimanches', undefined], 'sous la 8.x, appelé comme avant : sans argument');
+  assert.equal(avant.options, null, 'sous la 8.x, aucune option : le questionnaire du samedi et le Hooper, comme avant');
   const v1 = await appeler('relance/envoyer', { v9: true });
-  assert.ok(!v1.appels.includes('fond.saisonsDuJour') && !v1.appels.includes('dimanchesCoaches.programmerLesDimanches'));
+  assert.ok(!v1.appels.includes('fond.saisonsDuJour'));
+  assert.ok(v1.appels.includes('dimanchesCoaches.programmerLesDimanches'), 'le Hooper du dimanche reste posé sous la 9.x');
+  assert.deepEqual(v1.options, { seulementLeHooper: true }, 'le Hooper seul : le questionnaire du samedi n’est ni posé ni retiré');
   for (const nom of ['relance.envoyerRelancesDues', 'ecriture.passageQuotidienLeger', 'ecriture.retirerLaTrameAuDela', 'ecriture.passageQuotidienLong', 'comptesInactifs.passerComptesInactifs'])
     assert.ok(v1.appels.includes(nom), nom);
   assert.deepEqual(v1.appels.filter((n) => n.startsWith('passagesV9')), [], 'le passage quotidien n’écrit rien par la chaîne du moteur v1');
@@ -156,6 +162,17 @@ test('le départ d’un objectif et « Réessayer » sous le moteur v1 : derriè
   const rattrapage = e.slice(e.indexOf('export async function rattraperLaSemaine'), e.indexOf('// Une séance d\'une semaine écrite, sous la forme de l\'app'));
   assert.match(rattrapage, /if \(await moteurEstV9\(\)\) \{[\s\S]*ecrireLaSemaineDemandee[\s\S]*\}\n\s+const s = semaineDu\(o\.plan, lundi\);/);
   assert.ok(rattrapage.includes('await ecrireEtEnvoyer(o, s.numero, retours,'), 'le rattrapage de la 8.x reste');
+});
+
+test('le Hooper d’un acheteur : le départ sous la 9.x et l’accord de lecture ne posent que lui ; sous la 8.x, le dimanche posé comme avant', () => {
+  const e = readFileSync(`${RACINE}lib/app/ecriture.ts`, 'utf8');
+  // La seule différence est l'option, lue sur la version du moteur en ligne : sans 9.x, `seulementLeHooper` est faux et dimancheDuPlan fait ce qu'il faisait.
+  assert.match(e, /accord_lecture_le: \(p\?\.accord_lecture_le as string \| null\) \?\? null \}, \{ seulementLeHooper: await moteurEstV9\(\) \}\);/);
+  // Le départ sous la 9.x pose le Hooper du dimanche qui vient (décision 52), comme celui de la 8.x, après la première semaine et avant le rangement de l'acheteur.
+  assert.match(e, /const ecrite = await demarrerSousLeMoteurV1\([^\n]*\n\s+await dimancheDeLAcheteur\(o\);[^\n]*\n\s+if \(!o\.coache\) await rangerAcheteur\(o\);/);
+  // Et la route du passage quotidien ne passe l'option qu'à la chaîne v1.
+  const r = readFileSync(`${RACINE}app/api/relance/envoyer/route.ts`, 'utf8');
+  assert.match(r, /selonLeMoteur\(\{ avant: \(\) => programmerLesDimanches\(\), v1: \(\) => programmerLesDimanches\(120_000, \{ seulementLeHooper: true \}\) \}\)/);
 });
 
 test('« Annuler » et l’aperçu du dimanche, que le contrat du moteur v1 ne permet pas, le disent au lieu d’échouer en 400', () => {
