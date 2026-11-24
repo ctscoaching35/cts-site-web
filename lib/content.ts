@@ -227,7 +227,7 @@ export const plansOffre = {
       {
         titre: 'Ta semaine s’écrit chaque dimanche',
         texte:
-          'Chaque samedi, Nolio te demande tes jours disponibles de la semaine qui vient ; le dimanche soir, elle s’écrit d’après tes réponses et ta semaine écoulée. Ton app CTS te montre ta course, ta préparation, tes données et tes fiches.',
+          'Chaque semaine, Nolio te demande tes jours disponibles de la semaine qui vient ; le dimanche soir, elle s’écrit d’après tes réponses et ta semaine écoulée. Ton app CTS te montre ta course, ta préparation, tes données et tes fiches.',
       },
     ],
   },
@@ -296,7 +296,7 @@ export const plansOffre = {
       },
       {
         q: 'Je ne peux pas courir le jour prévu.',
-        r: 'Chaque samedi, le questionnaire de Nolio te demande tes jours disponibles de la semaine qui vient : elle s’écrit dessus. Tu cours une séance un autre jour ? Déplace-la d’abord dans ton calendrier Nolio.',
+        r: 'Chaque semaine, le questionnaire de Nolio te demande tes jours disponibles de la semaine qui vient : elle s’écrit dessus. Tu cours une séance un autre jour ? Déplace-la d’abord dans ton calendrier Nolio.',
       },
       {
         q: 'Ma course change de date.',

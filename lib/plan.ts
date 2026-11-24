@@ -144,9 +144,10 @@ export const textes = {
   // La section « Ta semaine » (« Ta disponibilité » jusqu'au 07/11/2026, P2).
   disponibilite: {
     aide:
-      // Le point de départ (décision coach du 20/10/2026) : le questionnaire du samedi dans Nolio les change ensuite.
+      // Le point de départ (décision coach du 20/10/2026) : le questionnaire de la semaine dans Nolio les change ensuite. « Chaque semaine » : vrai sous la 8.x (le samedi) comme sous
+      // le moteur 9.0 (« Ton point du dimanche ») ; ce texte est fixe, il ne dit ni le jour ni le nom.
       // P3-e (07/11/2026).
-      'Tes séances se placent sur ces jours, jamais deux séances dures d’affilée. Chaque samedi, un court questionnaire dans Nolio te permet de changer tes jours de la semaine suivante.',
+      'Tes séances se placent sur ces jours, jamais deux séances dures d’affilée. Chaque semaine, un court questionnaire dans Nolio te permet de changer tes jours de la semaine suivante.',
   },
   sante: {
     blessure: 'Une blessure ou une douleur t’empêche-t-elle de courir normalement en ce moment ?',
