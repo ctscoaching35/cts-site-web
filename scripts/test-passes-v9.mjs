@@ -60,7 +60,7 @@ const SEMAINE_DEUX = (extra = {}) => ({ numero: 2, lundi: LUNDI_2, semaine: SEMA
 // `lu` et `gpx` ne sont pas dans les échanges enregistrés : ils sont écartés pour chercher l'échange. `lu` : ce que le lecteur du départ rend (null : rien lu, le déclaré) ; `panne` : le lecteur échoue. Les corps envoyés au moteur sont notés (j.corps) ; l'échange enregistré est
 // cherché sans `lu` (le moteur réel a été enregistré sans lui) : ce qu'on prouve ici, c'est que `lu` part avec la semaine, pas ce que le moteur en fait.
 function contexte({ echanges = [], etat = etatMod.ETAT_VIDE, derniere = null, nolio = null, reponses = null, pose = null, retouchee = false, coache = true, lu = null, panne = false,
-  parametres = PARAMETRES } = {}) {
+  parametres = PARAMETRES, accordLecture = true } = {}) {
   const j = { nolio: [], lectures: [], envoyees: [], ecritures: [], etats: [], reponsesGardees: [], notes: [], quiz: [], questionnaires: [], depart: [], lusGardes: [], corps: [] };
   const rejoue = moteurRejoue(...echanges);
   const ports = { appelsChemins: rejoue.appelsChemins, appeler: async (chemin, corps) => {
@@ -69,7 +69,7 @@ function contexte({ echanges = [], etat = etatMod.ETAT_VIDE, derniere = null, no
     return rejoue.appeler(chemin, corps?.parametres ? { ...corps, parametres: sansLu } : corps);
   } };
   const c = {
-    planId: 'p1', coache, parametres, ports, etat, derniere,
+    planId: 'p1', coache, accordLecture, parametres, ports, etat, derniere,
     lireLeDepart: async (lundi) => { j.depart.push(lundi); if (panne) throw new Error('Nolio ne répond pas'); return lu; },
     garderLu: async (x) => { j.lusGardes.push(x); },
     lireNolio: async (lundi, avec) => { j.nolio.push([lundi, avec]); return nolio; },
@@ -197,6 +197,31 @@ test('dimanche matin : la version vient du moteur, le questionnaire se pose pour
   assert.equal(q.version, 'normale');
   assert.equal(q.nolio_id, 'pqz_1');
   assert.ok(q.cles.length >= 1 && q.cles.every((x) => /^S2-/.test(x.id)), 'les séances clés de la semaine 2, par leur identifiant');
+});
+
+test('209 : le point du dimanche pose la cause d’un arrêt avec l’accord de lecture, jamais sans lui ; la lecture de ses réponses suit le même accord', async () => {
+  const { nolio } = F.questionnaire.requete.corps;
+  const CAUSE = 'Si tu as arrêté toute la semaine : pourquoi ?';
+  for (const accordLecture of [true, false]) {
+    const { c, j } = contexte({ echanges: [F.trame, F.questionnaire], etat: apres2(), derniere: SEMAINE_DEUX(), nolio, accordLecture });
+    await passes.poserLeQuestionnaireDuDimanche(c, DIMANCHE);
+    assert.equal(j.quiz[0][0].items.some((i) => i.question === CAUSE), accordLecture, `accord ${accordLecture}`);
+    // Le coaché a de plus sa question ouverte au bout : 8 avec l'accord, 7 sans (7 et 6 pour un acheteur) ; la cause est la seule question de différence.
+    assert.equal(j.quiz[0][0].items.length, accordLecture ? 8 : 7);
+    for (const coache of [true, false]) {
+      const x = contexte({ echanges: [F.trame, F.questionnaire], etat: apres2(), derniere: SEMAINE_DEUX(), nolio, accordLecture, coache });
+      await passes.poserLeQuestionnaireDuDimanche(x.c, DIMANCHE);
+      assert.equal(x.j.quiz[0][0].items.some((i) => i.question === CAUSE), accordLecture, `coaché ${coache}, accord ${accordLecture}`);
+    }
+  }
+  // Le dimanche d'avant la première semaine n'a jamais de question d'arrêt : rien à retirer.
+  const avant = contexte({ echanges: [F.trame], accordLecture: false });
+  await passes.poserLeQuestionnaireDuDimanche(avant.c, new Date(Date.parse(`${LUNDI_1}T12:00:00Z`) - 86_400_000).toISOString().slice(0, 10));
+  assert.ok(!avant.j.quiz[0][0].items.some((i) => i.question === CAUSE));
+  // La colle : l'accord du plan est celui de l'objectif (le même que pour le RPE et le Hooper), pour poser comme pour lire.
+  const passages = readFileSync(`${RACINE}lib/app/passagesV9.ts`, 'utf8');
+  assert.match(passages, /planId, coache: o\.coache, accordLecture: o\.accordLecture, parametres, etat,/);
+  assert.match(passages, /lireReponsesDimanche\(siens\[0\]\.items \?\? \[\], \{ version: pose\?\.version \?\? 'normale', cles: pose\?\.cles \?\? \[\], accord: o\.accordLecture \}\)/);
 });
 
 test('dimanche matin : posé une seule fois ; ni une semaine d’avant, ni un plan qui n’a pas encore de semaine : rien', async () => {

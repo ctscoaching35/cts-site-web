@@ -55,12 +55,12 @@ test('séances clés : les familles du moteur, dans l’ordre des jours, avec le
 });
 
 test('versions : sept questions en normale et en aucune séance vue, huit en fatigue (rapport Nolio du 23/11)', () => {
-  assert.equal(d.questionnaireDuDimanche({ version: 'normale', cles: CLES }).items.length, 7);
-  assert.equal(d.questionnaireDuDimanche({ version: 'aucune_seance_vue', cles: CLES }).items.length, 7);
-  assert.equal(d.questionnaireDuDimanche({ version: 'fatigue', cles: CLES }).items.length, 8);
+  assert.equal(d.questionnaireDuDimanche({ version: 'normale', cles: CLES, accord: true }).items.length, 7);
+  assert.equal(d.questionnaireDuDimanche({ version: 'aucune_seance_vue', cles: CLES, accord: true }).items.length, 7);
+  assert.equal(d.questionnaireDuDimanche({ version: 'fatigue', cles: CLES, accord: true }).items.length, 8);
   // Sans séance clé écrite, la question est omise.
   assert.ok(!questions(d.questionnaireDuDimanche({ version: 'normale', cles: [] })).includes(d.QUESTION_CLES));
-  assert.equal(d.questionnaireDuDimanche({ version: 'normale' }).items.length, 6);
+  assert.equal(d.questionnaireDuDimanche({ version: 'normale', accord: true }).items.length, 6);
 });
 
 test('versions : le mot d’ouverture de chacune, en tête de la description, et la phrase de la fatigue validée par le coach', () => {
@@ -85,7 +85,7 @@ test('versions : le mot d’ouverture de chacune, en tête de la description, et
 });
 
 test('questions : l’arrêt, les deux facultatives préfixées, la liste réelle sans « Aucune », les trois d’aujourd’hui', () => {
-  const q = d.questionnaireDuDimanche({ version: 'normale', cles: CLES });
+  const q = d.questionnaireDuDimanche({ version: 'normale', cles: CLES, accord: true });
   const par = Object.fromEntries(q.items.map((i) => [i.question, i]));
   assert.deepEqual(questions(q), [
     'As-tu arrêté de courir cette semaine ?',
@@ -152,7 +152,7 @@ const Q = { arret: 'As-tu arrêté de courir cette semaine ?', sem: 'Si tu as ar
 test('lecture : un arrêt de la semaine entière, ses semaines et sa cause, les séances clés retrouvées par leur identifiant', () => {
   const { reponses, illisibles } = d.lireReponsesDimanche([
     item(Q.arret, 2), item(Q.sem, 4), item(Q.cause, 0), item(Q.cles, [0, 2]), item(Q.jours, [1, 3, 5, 6]), item(Q.nb, 4), item(Q.sl, 6),
-  ], { version: 'normale', cles: CLES });
+  ], { version: 'normale', cles: CLES, accord: true });
   assert.deepEqual(reponses, {
     version: 'normale', arret: 'semaine', semaines_arret: 5, cause: 'blessure', cles_pas_faites: ['S9-mardi', 'S9-samedi'],
     jours: ['mardi', 'jeudi', 'samedi', 'dimanche'], nb_seances: 4, jour_sl: 'dimanche',
@@ -161,22 +161,22 @@ test('lecture : un arrêt de la semaine entière, ses semaines et sa cause, les 
 });
 
 test('lecture : sans arrêt, ni semaines ni cause ne partent ; quelques jours garde la cause seule', () => {
-  const sans = d.lireReponsesDimanche([item(Q.arret, 0), item(Q.sem, 1), item(Q.cause, 1), item(Q.jours, [0, 2]), item(Q.nb, 3), item(Q.sl, 2)], { version: 'normale' });
+  const sans = d.lireReponsesDimanche([item(Q.arret, 0), item(Q.sem, 1), item(Q.cause, 1), item(Q.jours, [0, 2]), item(Q.nb, 3), item(Q.sl, 2)], { version: 'normale', accord: true });
   assert.equal(sans.reponses.arret, 'non');
   assert.ok(!('semaines_arret' in sans.reponses) && !('cause' in sans.reponses));
-  const quelques = d.lireReponsesDimanche([item(Q.arret, 1), item(Q.sem, 1), item(Q.cause, 1)], { version: 'normale' });
+  const quelques = d.lireReponsesDimanche([item(Q.arret, 1), item(Q.sem, 1), item(Q.cause, 1)], { version: 'normale', accord: true });
   assert.equal(quelques.reponses.arret, 'quelques_jours');
   assert.equal(quelques.reponses.cause, 'maladie');
   assert.ok(!('semaines_arret' in quelques.reponses));
   // Une cause sans arrêt répondu ne part pas non plus.
-  assert.ok(!('cause' in d.lireReponsesDimanche([item(Q.cause, 0)], { version: 'normale' }).reponses));
+  assert.ok(!('cause' in d.lireReponsesDimanche([item(Q.cause, 0)], { version: 'normale', accord: true }).reponses));
 });
 
 test('lecture : une question facultative vide n’est ni lue ni illisible ; « aucune » séance clé se lit comme une liste vide ou rien', () => {
-  const { reponses, illisibles } = d.lireReponsesDimanche([item(Q.arret, 0), item(Q.sem, null), item(Q.cause, null), item(Q.cles, null), item(Q.jours, [0]), item(Q.nb, 3), item(Q.sl, 0)], { version: 'normale', cles: CLES });
+  const { reponses, illisibles } = d.lireReponsesDimanche([item(Q.arret, 0), item(Q.sem, null), item(Q.cause, null), item(Q.cles, null), item(Q.jours, [0]), item(Q.nb, 3), item(Q.sl, 0)], { version: 'normale', cles: CLES, accord: true });
   assert.deepEqual(illisibles, []);
   assert.ok(!('cles_pas_faites' in reponses));
-  assert.ok(!('cles_pas_faites' in d.lireReponsesDimanche([item(Q.cles, [])], { version: 'normale', cles: CLES }).reponses));
+  assert.ok(!('cles_pas_faites' in d.lireReponsesDimanche([item(Q.cles, [])], { version: 'normale', cles: CLES, accord: true }).reponses));
 });
 
 test('lecture : un champ illisible ne fait pas perdre les autres, et il est dit', () => {
@@ -194,7 +194,7 @@ test('lecture : la fatigue, oui ou non, seulement dans sa version ; le libellé 
   assert.equal(d.lireReponsesDimanche([item(Q.fatigue, 1)], { version: 'fatigue' }).reponses.fatigue_oui, false);
   assert.equal(d.lireReponsesDimanche([item(Q.fatigue, 'Oui')], { version: 'fatigue' }).reponses.fatigue_oui, true);
   assert.ok(!('fatigue_oui' in d.lireReponsesDimanche([item(Q.fatigue, 0)], { version: 'normale' }).reponses), 'une version sans la question l’ignore');
-  const ecrit = d.lireReponsesDimanche([item(Q.arret, 'Oui, toute la semaine'), item(Q.sem, 'Plus de 4'), item(Q.cause, 'Autre'), item(Q.cles, ['Samedi · Sortie longue'])], { version: 'aucune_seance_vue', cles: CLES });
+  const ecrit = d.lireReponsesDimanche([item(Q.arret, 'Oui, toute la semaine'), item(Q.sem, 'Plus de 4'), item(Q.cause, 'Autre'), item(Q.cles, ['Samedi · Sortie longue'])], { version: 'aucune_seance_vue', cles: CLES, accord: true });
   assert.deepEqual(ecrit.reponses, { version: 'aucune_seance_vue', arret: 'semaine', semaines_arret: 5, cause: 'autre', cles_pas_faites: ['S9-samedi'] });
 });
 
@@ -238,4 +238,43 @@ test('le nombre de séances (décision 207) : la nouvelle question est lue, l’
   assert.equal(lire(item(Q.nbAvant, 3), item(Q.nb, 5)), 5);
   assert.equal(lire(item(Q.jours, [0])), undefined, 'sans réponse, rien');
   assert.equal(d.lireReponsesDimanche([item(Q.nb, 'beaucoup')], { version: 'normale' }).illisibles.join(), 'nb_seances');
+});
+
+// ─── La cause d'un arrêt : une donnée de santé, avec l'accord de lecture seulement (décision 209, 24/11/2026) ───────────────────────
+
+test('209 : sans accord de lecture, la question de la cause n’est pas posée ; l’arrêt et sa durée le sont toujours', () => {
+  const sans = d.questionnaireDuDimanche({ version: 'normale', cles: CLES });
+  assert.ok(!questions(sans).includes(d.QUESTION_CAUSE), 'pas de « pourquoi »');
+  assert.deepEqual(questions(sans), [
+    'As-tu arrêté de courir cette semaine ?',
+    'Si tu as arrêté toute la semaine : depuis combien de semaines as-tu arrêté, en tout ?',
+    'Une séance clé pas faite comme écrite ?',
+    'Quels jours peux-tu courir la semaine prochaine ?',
+    'Combien de séances peux-tu faire par semaine ?',
+    'Quel jour pour ta sortie longue ?',
+  ]);
+  for (const version of d.VERSIONS_DIMANCHE) {
+    assert.ok(!questions(d.questionnaireDuDimanche({ version, cles: CLES, coache: true })).includes(d.QUESTION_CAUSE), version);
+    assert.ok(!questions(d.questionnaireDuDimanche({ version, cles: CLES, accord: false })).includes(d.QUESTION_CAUSE), version);
+  }
+  // Avec l'accord : la question est là, facultative, juste après la durée.
+  const avec = d.questionnaireDuDimanche({ version: 'normale', cles: CLES, accord: true });
+  assert.equal(questions(avec).indexOf(d.QUESTION_CAUSE), questions(avec).indexOf('Si tu as arrêté toute la semaine : depuis combien de semaines as-tu arrêté, en tout ?') + 1);
+  assert.equal(avec.items.length, sans.items.length + 1, 'une seule question de plus : la cause');
+  assert.equal(avec.items.find((i) => i.question === d.QUESTION_CAUSE).is_mandatory, false);
+});
+
+test('209 : sans accord, aucune cause n’est lue ni envoyée, même si la réponse en porte une ; le reste se lit comme avant, sans rien d’illisible', () => {
+  const items = [item(Q.arret, 2), item(Q.sem, 4), item(Q.cause, 0), item(Q.cles, [0]), item(Q.jours, [1, 3]), item(Q.nb, 4), item(Q.sl, 6)];
+  const sans = d.lireReponsesDimanche(items, { version: 'normale', cles: CLES });
+  assert.deepEqual(sans.reponses, { version: 'normale', arret: 'semaine', semaines_arret: 5, cles_pas_faites: ['S9-mardi'], jours: ['mardi', 'jeudi'], nb_seances: 4, jour_sl: 'dimanche' });
+  assert.ok(!('cause' in sans.reponses));
+  assert.deepEqual(sans.illisibles, []);
+  assert.ok(!('cause' in d.lireReponsesDimanche(items, { version: 'normale', cles: CLES, accord: false }).reponses));
+  // Une cause illisible sans accord n'est pas même dite : la question n'existe pas pour lui.
+  assert.deepEqual(d.lireReponsesDimanche([item(Q.arret, 1), item(Q.cause, 'plein de choses')], { version: 'normale' }).illisibles, []);
+  // Avec l'accord : lue, comme avant.
+  const avec = d.lireReponsesDimanche(items, { version: 'normale', cles: CLES, accord: true });
+  assert.equal(avec.reponses.cause, 'blessure');
+  assert.deepEqual(d.lireReponsesDimanche([item(Q.arret, 1), item(Q.cause, 1)], { version: 'normale', accord: true }).reponses, { version: 'normale', arret: 'quelques_jours', cause: 'maladie' });
 });

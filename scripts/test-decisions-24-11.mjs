@@ -58,3 +58,17 @@ test('208 : après « Ajouter la trace », sous la 9.x le message dit les monté
   // Le message est celui du coach : à la première personne du coaché, sans mot d'automatisation.
   assert.ok(!/moteur|automat|calcul|lue?\b|écrit/i.test('Trace ajoutée : tes prochaines semaines tiendront compte de ses montées.'));
 });
+
+test('209 : la page de confidentialité dit, sous la 9.x seulement, ce que le point du dimanche demande et que la cause n’est lue qu’avec l’accord de lecture', () => {
+  const page = source('app/confidentialite/page.tsx');
+  const phrase = 'Ton point du dimanche te demande si tu t’es arrêté, combien de temps et pourquoi. La cause est une donnée de santé : nous ne la lisons qu’avec ton accord de lecture, seulement pour adapter ta reprise.';
+  assert.equal(page.split(phrase).length - 1, 1, 'une fois, mot pour mot');
+  // Dans la section Nolio, à la suite du dimanche, derrière la garde du moteur v1 ; sous la 8.x la page est celle d'avant.
+  assert.match(page, /\{v9 && \(\n\s+<li>\n\s+Ton point du dimanche te demande/);
+  assert.ok(page.indexOf(phrase) > page.indexOf('<strong>Chaque dimanche</strong>') && page.indexOf(phrase) < page.indexOf('<strong>Avec ton accord de lecture</strong>'));
+  // Aucune mention visible « plus de question d'arrêt » : seul un commentaire d'historique la garde.
+  const visible = page.replace(/\{\/\*[\s\S]*?\*\/\}/g, '').split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
+  assert.ok(!/plus de question d(’|')arrêt/i.test(visible));
+  // La phrase « personne ne la relit avant qu'elle parte » n'est pas touchée (revue avec le lot des deux voix).
+  assert.ok(page.includes('personne ne la relit avant qu’elle parte'));
+});

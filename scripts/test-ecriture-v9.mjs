@@ -191,10 +191,16 @@ const NOLIO_2 = F.questionnaire.requete.corps.nolio;
 test('le dimanche matin : le moteur choisit la version d’après ce que Nolio montre, le questionnaire sort avec les séances clés de la semaine écrite', async () => {
   const ports = moteurRejoue(TRAME, F.questionnaire);
   const q = await chaine.preparerLeQuestionnaire(ports, { parametres: PARAMETRES, lundiASuivre: LUNDI_3, etat: apresSemaine2(), nolio: NOLIO_2,
-    derniere: F['semaine-2'].reponse.semaine });
+    derniere: F['semaine-2'].reponse.semaine, accord: true });
   assert.equal(q.version, 'normale');
   assert.ok(q.cles.length >= 1 && q.cles.every((c) => /^S2-/.test(c.id)), 'les séances clés de la semaine 2, par leur identifiant');
-  assert.equal(q.quiz.items.length, 7, 'arrêt, semaines d’arrêt, cause, séance clé, jours, nombre, sortie longue');
+  assert.equal(q.quiz.items.length, 7, 'avec l’accord de lecture : arrêt, semaines d’arrêt, cause, séance clé, jours, nombre, sortie longue');
+  // Décision 209 : sans l'accord, la cause (donnée de santé) n'est pas posée ; le reste du questionnaire est le même.
+  const sans = await chaine.preparerLeQuestionnaire(moteurRejoue(TRAME, F.questionnaire), { parametres: PARAMETRES, lundiASuivre: LUNDI_3, etat: apresSemaine2(), nolio: NOLIO_2,
+    derniere: F['semaine-2'].reponse.semaine });
+  assert.equal(sans.quiz.items.length, 6);
+  assert.ok(!sans.quiz.items.some((i) => i.question === 'Si tu as arrêté toute la semaine : pourquoi ?'));
+  assert.deepEqual(sans.quiz.items.filter((i) => i.question !== 'Si tu as arrêté toute la semaine : pourquoi ?'), q.quiz.items.filter((i) => i.question !== 'Si tu as arrêté toute la semaine : pourquoi ?'));
   assert.equal(q.quiz.name, 'Ton point du dimanche');
   assert.ok(q.quiz.items.some((i) => i.question.startsWith('Une séance clé pas faite')));
 });
