@@ -195,7 +195,7 @@ test('le dimanche matin : le moteur choisit la version d’après ce que Nolio m
   assert.equal(q.version, 'normale');
   assert.ok(q.cles.length >= 1 && q.cles.every((c) => /^S2-/.test(c.id)), 'les séances clés de la semaine 2, par leur identifiant');
   assert.equal(q.quiz.items.length, 7, 'arrêt, semaines d’arrêt, cause, séance clé, jours, nombre, sortie longue');
-  assert.equal(q.quiz.name, 'Ta semaine prochaine');
+  assert.equal(q.quiz.name, 'Ton point du dimanche');
   assert.ok(q.quiz.items.some((i) => i.question.startsWith('Une séance clé pas faite')));
 });
 

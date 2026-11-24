@@ -76,7 +76,7 @@ test('versions : le mot d’ouverture de chacune, en tête de la description, et
   // La ligne d'effet, quand le coach l'a donnée, suit l'ouverture de la fatigue et d'elle seule.
   assert.equal(d.questionnaireDuDimanche({ version: 'fatigue', cles: CLES, ligneEffet: 'Ligne d’effet.' }).description.split('\n\n')[1], 'Ligne d’effet.');
   assert.ok(!d.questionnaireDuDimanche({ version: 'normale', cles: CLES, ligneEffet: 'Ligne d’effet.' }).description.includes('Ligne d’effet.'));
-  assert.equal(d.NOM_DU_QUESTIONNAIRE, 'Ta semaine prochaine');
+  assert.equal(d.NOM_DU_QUESTIONNAIRE, 'Ton point du dimanche');
   assert.equal(d.HEURE_D_ENVOI, '12:00', 'vers midi, heure de Paris');
 });
 
@@ -125,8 +125,10 @@ test('un coaché garde sa question ouverte, facultative, au bout ; un acheteur n
   assert.ok(!questions(d.questionnaireDuDimanche({ version: 'normale', cles: CLES })).includes(derniere.question));
 });
 
-test('le lecteur du samedi reconnaît encore ce questionnaire (même nom), et lit ses jours, son nombre et sa sortie longue', () => {
-  assert.equal(samedi.estLeQuestionnaire({ name: d.NOM_DU_QUESTIONNAIRE, date_start: '2026-11-29' }), true);
+test('« Ton point du dimanche » n’a plus le nom du samedi (entrée 198) : le lecteur du samedi ne le prend pas par son nom, mais lit les mêmes questions (jours, nombre, sortie longue)', () => {
+  assert.notEqual(d.NOM_DU_QUESTIONNAIRE, 'Ta semaine prochaine');
+  assert.equal(samedi.estLeQuestionnaire({ name: d.NOM_DU_QUESTIONNAIRE, date_start: '2026-11-29' }), false);
+  assert.equal(samedi.estLeQuestionnaire({ name: 'Ta semaine prochaine', date_start: '2026-11-29' }), true);
   const lu = samedi.lireQuestionnaire([
     { question: 'Quels jours peux-tu courir la semaine prochaine ?', value: [1, 3, 6] },
     { question: 'Combien de séances veux-tu faire ?', value: 4 },
@@ -209,4 +211,17 @@ test('préparé, pas branché : aucun fichier du site ne lit encore le questionn
   }
   // lib/app/moteurV9.ts n'en prend que les types (il est préparé, pas branché non plus : scripts/test-moteur-v9.mjs).
   assert.deepEqual(lecteurs.filter((f) => !['lib/app/moteurV9.ts', 'lib/app/ecritureV9.ts', 'lib/app/stockageV9.ts', 'lib/app/passeUnPlanV9.ts', 'lib/app/passagesV9.ts'].includes(f)), []);
+});
+
+test('les réponses du dimanche se prennent par l’identifiant posé ; avant la semaine 1, par le nom « Ton point du dimanche », jamais par une série du samedi encore dans Nolio', () => {
+  const dimanche = { name: 'Ton point du dimanche', quiz_planned: 'pqz_9' };
+  const samediRestant = { name: 'Ta semaine prochaine', quiz_planned: 'pqz_8' };
+  // Posé : l'identifiant seul décide (le nom ne compte pas).
+  assert.equal(d.repondAuDimanche(dimanche, 2, { nolio_id: 'pqz_9' }), true);
+  assert.equal(d.repondAuDimanche(samediRestant, 2, { nolio_id: 'pqz_9' }), false);
+  assert.equal(d.repondAuDimanche({ name: 'Ton point du dimanche', quiz_planned: 'pqz_7' }, 2, { nolio_id: 'pqz_9' }), false);
+  // Avant la semaine 1, rien n'est posé : le nom, sans casse ni espace autour ; ni le nom du samedi, ni une autre semaine.
+  assert.equal(d.repondAuDimanche({ name: '  ton point du DIMANCHE ' }, 0, null), true);
+  assert.equal(d.repondAuDimanche(samediRestant, 0, null), false, 'une série « Ta semaine prochaine » du samedi n’est pas lue comme le point du dimanche');
+  assert.equal(d.repondAuDimanche({ name: 'Ton point du dimanche' }, 2, null), false, 'passé la semaine 0, seul l’identifiant posé compte');
 });

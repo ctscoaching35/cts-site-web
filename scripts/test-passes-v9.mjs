@@ -181,7 +181,7 @@ test('dimanche matin : la version vient du moteur, le questionnaire se pose pour
   assert.equal(r.quoi, 'questionnaire normale posé');
   assert.deepEqual(j.nolio, [[LUNDI_3, false]]);
   assert.equal(j.quiz[0][1], DIMANCHE);
-  assert.equal(j.quiz[0][0].name, 'Ta semaine prochaine');
+  assert.equal(j.quiz[0][0].name, 'Ton point du dimanche');
   const [numero, q] = j.questionnaires[0];
   assert.equal(numero, 2);
   assert.equal(q.version, 'normale');
