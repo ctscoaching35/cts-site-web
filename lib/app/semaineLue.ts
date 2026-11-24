@@ -35,6 +35,15 @@ export const FAMILLE: Record<string, Jour['famille']> = {
 // Les types du moteur v1 (charge, assimilation, affutage_debut, affutage, affutage_1, course, recuperation) dans les noms que l'app donne aux types d'une semaine.
 export const TYPE: Record<string, string> = { charge: 'Charge', assimilation: 'Assimilation', affutage: 'Affûtage actif', affutage_debut: 'Affûtage actif', affutage_1: 'Affûtage actif',
   course: 'Course', recuperation: 'Récupération' };
+// LE NOM D'UNE SEMAINE DU MOTEUR v1 (correction du moteur du 24/11/2026, B4 de la revue Fable, eed2d74) : il suit `legere`, ce que la semaine écrite est, et non plus le `type` du
+// squelette. Une semaine de fatigue est « allégée » (type « Assimilation », que les écrans disent « Semaine allégée ») ; une semaine de charge qui ne monte pas ne l'est pas : elle
+// garde son nom de charge, et son bloc se lit à côté. Seuls « charge » et « assimilation » changent de nom, et seulement si `legere` est dit ; l'affûtage, la course et la
+// récupération gardent leur type. Sans `legere` (une semaine d'avant la correction), le type d'avant.
+export function typeDeLaSemaineV9(d: { type?: unknown; legere?: unknown }): string {
+  const brut = String(d.type ?? '');
+  if ((brut === 'charge' || brut === 'assimilation') && typeof d.legere === 'boolean') return TYPE[d.legere ? 'assimilation' : 'charge'];
+  return TYPE[brut] ?? brut;
+}
 const JOURS_COURTS: Record<string, string> = { lundi: 'Lun.', mardi: 'Mar.', mercredi: 'Mer.', jeudi: 'Jeu.', vendredi: 'Ven.', samedi: 'Sam.', dimanche: 'Dim.' };
 const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 const jjmm = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
@@ -61,13 +70,13 @@ function jourLuV9(numero: number, j: JourV9): JourLu {
 export function lireLaSemaine(donnees: unknown, { pourquoi }: { pourquoi?: unknown } = {}): SemaineLue | null {
   if (!donnees || typeof donnees !== 'object') return null;
   if (!estSemaineV9(donnees)) return donnees as Semaine;
-  const d = donnees as { numero?: number; lundi?: string; type?: string; bloc?: string; nombre?: number; volume_min?: number; jours: JourV9[] };
+  const d = donnees as { numero?: number; lundi?: string; type?: string; legere?: boolean; bloc?: string; nombre?: number; volume_min?: number; jours: JourV9[] };
   const numero = Number(d.numero) || 0;
   const lundi = typeof d.lundi === 'string' ? d.lundi : null;
   const avecCourse = d.jours.some((j) => j.seance?.famille === 'course');
   const seances = typeof d.nombre === 'number' ? `${d.nombre} séance${d.nombre > 1 ? 's' : ''}${avecCourse ? ' + la course' : ''}` : '';
   return {
-    numero: `S${numero}`, numero_int: numero, type: TYPE[String(d.type)] ?? String(d.type ?? ''), bloc: d.bloc ? `Bloc ${d.bloc}` : '',
+    numero: `S${numero}`, numero_int: numero, type: typeDeLaSemaineV9(d), bloc: d.bloc ? `Bloc ${d.bloc}` : '',
     volume: typeof d.volume_min === 'number' ? enHeures(Math.round(d.volume_min)) : '', seances,
     dates: lundi ? `${jourLong(lundi)} — ${jourLong(ajouterJours(lundi, 6))}` : '', progression: '', passee: false, lundi,
     jours: d.jours.map((j) => jourLuV9(numero, j)), moteur: '9.0',
