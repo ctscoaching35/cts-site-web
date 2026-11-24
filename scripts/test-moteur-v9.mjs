@@ -186,8 +186,9 @@ test('branché seulement derrière la garde de version : seules les pièces de l
   } catch (e) {
     if (e.status !== 1) throw e;
   }
-  // Seules les pièces de la même chaîne (préparées aussi, lues par personne) le lisent.
+  // Seules les pièces de la même chaîne (préparées aussi, lues par personne) le lisent ; et la route des prérequis de l'achat (entrée 234, app/plan/prerequis/route.ts), qui ne l'appelle que sous une 9.x
+  // (`moteurEstV9()` avant tout appel : scripts/test-prerequis-achat.mjs, « sous la 8.x, la route du moteur n'est pas appelée »).
   const CHAINE = ['lib/app/nolioV9.ts', 'lib/app/etatMoteur.ts', 'lib/app/ecritureV9.ts', 'lib/app/stockageV9.ts', 'lib/app/passeUnPlanV9.ts', 'lib/app/passagesV9.ts',
-    'lib/app/coaching.ts', 'lib/app/ecriture.ts'];
+    'lib/app/coaching.ts', 'lib/app/ecriture.ts', 'app/plan/prerequis/route.ts'];
   assert.deepEqual(lecteurs.filter((f) => !CHAINE.includes(f)), []);
 });
