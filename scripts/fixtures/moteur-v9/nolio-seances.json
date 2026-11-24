@@ -283,6 +283,7 @@
        "forme_libelle": "dégressif, 22 + 15 + 8 min",
        "dose_min": 45,
        "dose_demandee": 45,
+       "tapis": false,
        "ideale": 45.358663105321085,
        "etapes": [
         {
@@ -489,10 +490,11 @@
         }
        ],
        "duree_min": 38,
+       "tapis": false,
        "rpe": 6,
        "excentrique": false,
        "titre": "Mécanique · 23 min — navette à montées actives, 1 × 5 min",
-       "texte": "Consignes : Pourquoi : Monter à l'effort de ta course : le geste et l'endurance des montées que tu vas courir. Comment : Après l'échauffement, enchaîne la navette dans ta plus longue côte : un temps tranquille, puis les blocs de montées actives indiqués sur les étapes, la navette tranquille après chacun, puis le retour au calme. Aujourd'hui : échauffement 10 min, navette 9 min, montées actives 5 min, navette 9 min, retour au calme 5 min. Repères : Montées actives : RPE 6, soutenues, tu tiens des phrases courtes, sans repère de seuil. Descentes et navette tranquille : RPE 3. Pas de côte assez longue : un tapis incliné. Trop dur : marche en haut.",
+       "texte": "Consignes : Pourquoi : Monter à l'effort de ta course : le geste et l'endurance des montées que tu vas courir. Comment : Après l'échauffement, enchaîne la navette dans ta plus longue côte : un temps tranquille, puis les blocs de montées actives indiqués sur les étapes, la navette tranquille après chacun, puis le retour au calme. Aujourd'hui : échauffement 10 min, navette 9 min, montées actives 5 min, navette 9 min, retour au calme 5 min. Repères : Montées actives : RPE 6, soutenues, tu tiens des phrases courtes, sans repère de seuil. Descentes et navette tranquille : RPE 3. Pas de côte assez longue : sur ton tapis, incliné, tout le travail se fait en montée, aux efforts indiqués sur les étapes. Trop dur : marche en haut.",
        "jour": "jeudi",
        "id": "S2-jeudi"
       },
@@ -554,7 +556,7 @@
             "rpe": 2,
             "table": null
            },
-           "commentaire": "redescente en marchant, récupération complète",
+           "commentaire": "Redescente en marchant\nLe temps de redescendre, durée indicative ; appuie sur Tour (lap) quand tu repars.",
            "lap": "redescente"
           }
          ]
@@ -698,6 +700,7 @@
       "forme_libelle": "dégressif, 22 + 15 + 8 min",
       "dose_min": 45,
       "dose_demandee": 45,
+      "tapis": false,
       "ideale": 45.358663105321085,
       "etapes": [
        {
@@ -893,10 +896,11 @@
        }
       ],
       "duree_min": 38,
+      "tapis": false,
       "rpe": 6,
       "excentrique": false,
       "titre": "Mécanique · 23 min — navette à montées actives, 1 × 5 min",
-      "texte": "Consignes : Pourquoi : Monter à l'effort de ta course : le geste et l'endurance des montées que tu vas courir. Comment : Après l'échauffement, enchaîne la navette dans ta plus longue côte : un temps tranquille, puis les blocs de montées actives indiqués sur les étapes, la navette tranquille après chacun, puis le retour au calme. Aujourd'hui : échauffement 10 min, navette 9 min, montées actives 5 min, navette 9 min, retour au calme 5 min. Repères : Montées actives : RPE 6, soutenues, tu tiens des phrases courtes, sans repère de seuil. Descentes et navette tranquille : RPE 3. Pas de côte assez longue : un tapis incliné. Trop dur : marche en haut.",
+      "texte": "Consignes : Pourquoi : Monter à l'effort de ta course : le geste et l'endurance des montées que tu vas courir. Comment : Après l'échauffement, enchaîne la navette dans ta plus longue côte : un temps tranquille, puis les blocs de montées actives indiqués sur les étapes, la navette tranquille après chacun, puis le retour au calme. Aujourd'hui : échauffement 10 min, navette 9 min, montées actives 5 min, navette 9 min, retour au calme 5 min. Repères : Montées actives : RPE 6, soutenues, tu tiens des phrases courtes, sans repère de seuil. Descentes et navette tranquille : RPE 3. Pas de côte assez longue : sur ton tapis, incliné, tout le travail se fait en montée, aux efforts indiqués sur les étapes. Trop dur : marche en haut.",
       "jour": "jeudi",
       "id": "S2-jeudi"
      },
@@ -947,7 +951,7 @@
            "rpe": 2,
            "table": null
           },
-          "commentaire": "redescente en marchant, récupération complète",
+          "commentaire": "Redescente en marchant\nLe temps de redescendre, durée indicative ; appuie sur Tour (lap) quand tu repars.",
           "lap": "redescente"
          }
         ]
@@ -1210,7 +1214,10 @@
      "raccourci": false,
      "non_tenu": false,
      "reference": 305,
-     "avant": 318
+     "avant": 318,
+     "cle_raccourcie": [],
+     "cle_raccourcie_min": 0,
+     "cles_au_choix": 0
     },
     "placement": [],
     "raison_nombre": "habituel",
@@ -1716,7 +1723,7 @@
       }
      ],
      "rpe": 6,
-     "description": "Consignes : Pourquoi : Monter à l'effort de ta course : le geste et l'endurance des montées que tu vas courir. Comment : Après l'échauffement, enchaîne la navette dans ta plus longue côte : un temps tranquille, puis les blocs de montées actives indiqués sur les étapes, la navette tranquille après chacun, puis le retour au calme. Aujourd'hui : échauffement 10 min, navette 9 min, montées actives 5 min, navette 9 min, retour au calme 5 min. Repères : Montées actives : RPE 6, soutenues, tu tiens des phrases courtes, sans repère de seuil. Descentes et navette tranquille : RPE 3. Pas de côte assez longue : un tapis incliné. Trop dur : marche en haut."
+     "description": "Consignes : Pourquoi : Monter à l'effort de ta course : le geste et l'endurance des montées que tu vas courir. Comment : Après l'échauffement, enchaîne la navette dans ta plus longue côte : un temps tranquille, puis les blocs de montées actives indiqués sur les étapes, la navette tranquille après chacun, puis le retour au calme. Aujourd'hui : échauffement 10 min, navette 9 min, montées actives 5 min, navette 9 min, retour au calme 5 min. Repères : Montées actives : RPE 6, soutenues, tu tiens des phrases courtes, sans repère de seuil. Descentes et navette tranquille : RPE 3. Pas de côte assez longue : sur ton tapis, incliné, tout le travail se fait en montée, aux efforts indiqués sur les étapes. Trop dur : marche en haut."
     },
     "famille": "mecanique"
    },
@@ -1780,7 +1787,7 @@
            "rpe": 2
           }
          ],
-         "comment": "redescente en marchant, récupération complète\nLe temps de redescendre, durée indicative ; appuie sur Tour (lap) quand tu repars.",
+         "comment": "Redescente en marchant\nLe temps de redescendre, durée indicative ; appuie sur Tour (lap) quand tu repars.",
          "lap_advance": true
         }
        ]
