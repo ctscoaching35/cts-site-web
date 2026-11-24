@@ -15,14 +15,24 @@ import { pathToFileURL } from 'node:url';
 import test from 'node:test';
 
 const RACINE = new URL('..', import.meta.url).pathname;
+// La base est une fausse pièce qui note ce qu'on lui demande : le plan lu (globalThis.__ligne), ses lectures et ses écritures (globalThis.__bd).
+const FAUX = {
+  '/lib/app/supabase.ts': `
+export const clientService = () => ({ from: (table) => { const f = { table }; const ch = { select: () => ch, update: (v) => { f.update = v; return ch; }, eq: (k, x) => { f[k] = x; return ch; },
+  single: async () => { globalThis.__bd.push(['lecture', f]); return globalThis.__ligne === undefined ? { data: null, error: { message: 'absent' } } : { data: structuredClone(globalThis.__ligne), error: null }; },
+  then: (ok) => { globalThis.__bd.push(['ecriture', f]); ok({ error: globalThis.__refus ? { message: 'refusé' } : null }); } }; return ch; } });`,
+};
 registerHooks({
   resolve(specifier, context, nextResolve) {
+    let r;
     try {
-      return nextResolve(specifier.startsWith('@/') ? pathToFileURL(`${RACINE}${specifier.slice(2)}.ts`).href : specifier, context);
+      r = nextResolve(specifier.startsWith('@/') ? pathToFileURL(`${RACINE}${specifier.slice(2)}.ts`).href : specifier, context);
     } catch (e) {
-      if (specifier.startsWith('.') && !specifier.endsWith('.ts')) return nextResolve(`${specifier}.ts`, context);
-      throw e;
+      if (specifier.startsWith('.') && !specifier.endsWith('.ts')) r = nextResolve(`${specifier}.ts`, context);
+      else throw e;
     }
+    const cle = Object.keys(FAUX).find((f) => r.url.endsWith(f));
+    return cle ? { url: `data:text/javascript,${encodeURIComponent(FAUX[cle])}`, shortCircuit: true } : r;
   },
 });
 const charge = (f) => import(pathToFileURL(`${RACINE}lib/app/${f}.ts`).href);
@@ -102,7 +112,7 @@ test('garder la trace avec le plan : la nouvelle l’emporte, un objectif refait
   assert.deepEqual(gpxMod.avecLeGpx({ champs: {} }, autre, { champs: { gpx: GPX } }).champs.gpx, autre);
 });
 
-test('seule la création de l’objectif d’un coaché lit la trace, derrière la garde du moteur ; sous la 8.x, la route ne fait rien de plus', () => {
+test('la création ou la refonte de l’objectif d’un coaché lit la trace, derrière la garde du moteur ; sous la 8.x, la route ne fait rien de plus', () => {
   const route = readFileSync(`${RACINE}app/app/coach/athletes/route.ts`, 'utf8');
   assert.match(route, /fichierGpx instanceof File && fichierGpx\.size > 0 && \(await moteurEstV9\(\)\) \? await lireLaTraceV9\(fichierGpx\) : null/);
   assert.ok(route.indexOf('lireLaTraceV9(fichierGpx)') < route.indexOf('/v1/checkout'), 'lue avant le moteur de l’achat, une fois');
@@ -110,10 +120,46 @@ test('seule la création de l’objectif d’un coaché lit la trace, derrière 
   assert.match(route, /const parametres = avecLeGpx\(\{\n\s+\.\.\.anciensParametres, \.\.\.nouveaux,\n[^]*?\n\s+\.\.\.\(ancien\.demarre_le \? \{ declaree_le: anciensParametres\.declaree_le \} : \{\}\),\n\s+\}, gpxV9, anciensParametres\);/);
   assert.equal((route.match(/\}, gpxV9, anciensParametres\);/g) ?? []).length, 2, 'un objectif modifié, un plan acheté repris');
   assert.match(route, /parametres: avecLeGpx\(c2\.parametres, gpxV9\), coach_id/);
-  // « Ajouter la trace » d'un objectif déjà écrit : « la préparation déjà écrite ne change pas, ni les paramètres » (actionsEcriture.ts) ; elle ne touche donc pas au `gpx`.
-  const ajout = readFileSync(`${RACINE}lib/app/actionsEcriture.ts`, 'utf8');
-  assert.ok(!/gpxV9|traceV9|avecLeGpx/.test(ajout));
-  // Personne d'autre que cette route ne lit la trace du moteur v1.
+  // Personne d'autre que cette route et « Ajouter la trace » ne lit la trace du moteur v1.
   const lecteurs = execFileSync('grep', ['-rlE', `traceV9'|traceV9"`, 'app', 'components', 'lib'], { cwd: RACINE, encoding: 'utf8' }).split('\n').filter(Boolean).sort();
-  assert.deepEqual(lecteurs, ['app/app/coach/athletes/route.ts']);
+  assert.deepEqual(lecteurs, ['app/app/coach/athletes/route.ts', 'lib/app/actionsEcriture.ts']);
+});
+
+test('« Ajouter la trace » d’un objectif déjà écrit : sous la 9.x la trace passe aussi par /v1/trace et son profil s’ajoute aux paramètres ; sous la 8.x, rien de plus', () => {
+  const e = readFileSync(`${RACINE}lib/app/actionsEcriture.ts`, 'utf8');
+  const geste = e.slice(e.indexOf('export async function ajouterTraceObjectif'), e.indexOf('// Retirer une course de préparation à venir'));
+  const bloc = /if \(await moteurEstV9\(\)\) \{\n\s+const profil = await lireLaTraceV9\(gpx\);\n\s+if \(!profil \|\| !\(await garderLeGpxDuPlan\(planId, profil\)\)\) console\.error\([^\n]*\);\n\s+\}\n\s+revalidatePath\('\/app\/plan\/course'\);/;
+  assert.match(geste, bloc, 'derrière la garde du moteur, une fois la fiche refaite et la trace rangée');
+  assert.equal((geste.match(/lireLaTraceV9\(/g) ?? []).length, 1);
+  // Ce que la 8.x faisait reste, dans le même ordre, avant le bloc : la fiche du moteur, les données du plan, la trace rangée.
+  const iBloc = geste.search(bloc);
+  for (const avant of ['/v1/fiche-course', 'update({ donnees: maj })', "upload(`objectifs/${planId}.gpx`"]) assert.ok(geste.indexOf(avant) > 0 && geste.indexOf(avant) < iBloc, avant);
+  // Les paramètres du plan ne sont écrits nulle part ailleurs dans ce geste : seul le profil s'ajoute, par garderLeGpxDuPlan.
+  assert.ok(!/update\(\{ parametres|parametres:/.test(geste.replace(/\/\/[^\n]*/g, '').replace(/JSON\.stringify\(\{ parametres: o\.parametres,/, '')), 'ni paramètres ni trame réécrits ici');
+});
+
+test('le profil s’ajoute aux paramètres d’un plan écrit : relu avant, rien d’autre ne change, la trame gardée repart de zéro', async () => {
+  const parametres = { schema: 1, champs: { format: 'TM', date_course: '2027-03-14', lu: { volume_min: 300 }, entree: '2026-11-23' }, declaree_le: '2026-11-02', courses_secondaires: [{ date: '2027-01-10' }] };
+  globalThis.__bd = []; globalThis.__refus = false; globalThis.__ligne = { parametres };
+  assert.equal(await trace.garderLeGpxDuPlan('plan_1', GPX), true);
+  const [lecture, ecriture] = globalThis.__bd;
+  assert.deepEqual([lecture[0], lecture[1].table, lecture[1].id], ['lecture', 'plans', 'plan_1']);
+  assert.deepEqual([ecriture[0], ecriture[1].table, ecriture[1].id], ['ecriture', 'plans', 'plan_1']);
+  const { parametres: garde, trame, ...reste } = ecriture[1].update;
+  assert.deepEqual(reste, {}, 'seuls les paramètres et la trame s’écrivent');
+  assert.equal(trame, null);
+  assert.deepEqual(garde, { ...parametres, champs: { ...parametres.champs, gpx: GPX } }, 'tout le reste est comme avant, le profil de plus');
+  // Une trace refaite remplace le profil d'avant.
+  const autre = { montees: [{ dplus_m: 90 }], dplus_par_pente: { vallonne: 1, cote_moderee: 2, cote_raide: 3 } };
+  globalThis.__bd = []; globalThis.__ligne = { parametres: garde };
+  assert.equal(await trace.garderLeGpxDuPlan('plan_1', autre), true);
+  assert.deepEqual(globalThis.__bd[1][1].update.parametres.champs.gpx, autre);
+  // Un plan sans paramètres, ou une base qui refuse : rien n'est dit gardé.
+  globalThis.__bd = []; globalThis.__ligne = { parametres: null };
+  assert.equal(await trace.garderLeGpxDuPlan('plan_1', GPX), false);
+  globalThis.__ligne = undefined;
+  assert.equal(await trace.garderLeGpxDuPlan('plan_1', GPX), false);
+  assert.deepEqual(globalThis.__bd.map(([quoi]) => quoi), ['lecture', 'lecture'], 'aucune écriture');
+  globalThis.__bd = []; globalThis.__ligne = { parametres }; globalThis.__refus = true;
+  assert.equal(await trace.garderLeGpxDuPlan('plan_1', GPX), false);
 });
