@@ -1,4 +1,6 @@
 import { nomsDesPlans, passageDuLundi } from '@/lib/app/ecriture';
+import { selonLeMoteur } from '@/lib/app/chaineDuMoteur';
+import { passageDuLundiV9 } from '@/lib/app/passagesV9';
 import { supabaseConfigure } from '@/lib/app/supabase';
 
 // La passe du lundi (vercel.json, crons ; lot 0 du 16/11/2026, D5 du moteur 8.466) : chaque lundi vers 5 h UTC (6 h à Paris
@@ -15,7 +17,9 @@ export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET?.trim();
   if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`) return new Response('Refusé', { status: 401 });
   if (!supabaseConfigure()) return Response.json({ semaines: [] });
-  const comptes = await passageDuLundi(240_000);
+  // Sous le moteur v1 (9.x) : la semaine pas écrite, puis la réponse arrivée tard (réécrite avant la première séance, sinon réponse tardive). Sous la 8.x,
+  // la passe d'avant, inchangée.
+  const comptes = await selonLeMoteur({ avant: () => passageDuLundi(240_000), v1: () => passageDuLundiV9(240_000) });
   // Sans le nom de l'athlète : un journal n'a pas à le garder (le plan suffit à le retrouver).
   const echecs = comptes.filter((c) => c.erreur);
   if (echecs.length) {

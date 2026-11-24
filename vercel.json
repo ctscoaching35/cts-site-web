@@ -72,6 +72,10 @@
       "schedule": "0 21 * * 1"
     },
     {
+      "path": "/api/ecriture/questionnaire",
+      "schedule": "0 8 * * 0"
+    },
+    {
       "path": "/api/ecriture/rappel",
       "schedule": "0 14 * * 0"
     }

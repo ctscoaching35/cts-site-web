@@ -1,6 +1,7 @@
 import { passerComptesInactifs } from '@/lib/app/comptesInactifs';
 import { effacerLesDemandesEchues } from '@/lib/app/demandesCoaching';
 import { programmerLesDimanches } from '@/lib/app/dimanchesCoaches';
+import { selonLeMoteur } from '@/lib/app/chaineDuMoteur';
 import { saisonsDuJour } from '@/lib/app/fond';
 import { passageQuotidienLeger, passageQuotidienLong, retirerLaTrameAuDela } from '@/lib/app/ecriture';
 import { envoyerRelancesDues } from '@/lib/app/relance';
@@ -38,9 +39,12 @@ export async function GET(request: Request) {
   const demandesEchues = await effacerLesDemandesEchues().catch(() => 0);
   // La saison de fond (décisions coach du 24/10/2026) : celle de chaque coaché sans objectif à préparer, pour le lundi qui
   // vient ; le passage du dimanche l'écrit. D'abord : le dimanche soir, ses reprises de 21 h et 23 h l'attendent.
-  const saisons = await saisonsDuJour().catch((e) => [{ plan: '', quoi: 'saisons de fond en échec', erreur: e instanceof Error ? e.message : String(e) }]);
+  // Sous le moteur v1 (9.x), ni la saison de fond de la 8.x (pas portée) ni les questionnaires du samedi d'avant : le questionnaire du dimanche se pose par
+  // app/api/ecriture/questionnaire. Sous la 8.x, rien ne change.
+  const sansLaChaineV1 = async <T>(f: () => Promise<T[]>) => selonLeMoteur<T[]>({ avant: f, v1: async () => [] });
+  const saisons = await sansLaChaineV1(() => saisonsDuJour()).catch((e) => [{ plan: '', quoi: 'saisons de fond en échec', erreur: e instanceof Error ? e.message : String(e) }]);
   // Le week-end de chaque coaché (décision coach du 21/10/2026), en temps compté : le reste, le soir suivant.
-  const dimanches = await programmerLesDimanches().catch((e) => [{ plan: '', quoi: 'dimanches en échec', erreur: e instanceof Error ? e.message : String(e) }]);
+  const dimanches = await sansLaChaineV1(() => programmerLesDimanches()).catch((e) => [{ plan: '', quoi: 'dimanches en échec', erreur: e instanceof Error ? e.message : String(e) }]);
   // Une semaine à la fois (décision coach du 23/10/2026) : les bandeaux posés d'avance, au-delà de la semaine qui vient.
   const trames = await retirerLaTrameAuDela().catch((e) => [{ plan: '', quoi: 'trames en échec', erreur: e instanceof Error ? e.message : String(e) }]);
   // La fatigue du jour et les tests, dans le temps qui reste ; le résumé au coach.

@@ -1,4 +1,6 @@
 import { nomsDesPlans, passageDuDimanche, prevenirCoach, REMIS } from '@/lib/app/ecriture';
+import { selonLeMoteur } from '@/lib/app/chaineDuMoteur';
+import { passageDuDimancheV9 } from '@/lib/app/passagesV9';
 import { saisonsDuJour } from '@/lib/app/fond';
 import { site } from '@/lib/content';
 import { supabaseConfigure } from '@/lib/app/supabase';
@@ -21,10 +23,16 @@ export async function GET(request: Request) {
   // Les saisons de fond du lundi qui vient d'abord (25/10/2026 : créées par le passage du soir, lancé à 21 h 16, elles
   // n'avaient que la dernière reprise) : elles s'écrivent avec les départs, les reprises en secours. Rien en double : une
   // saison déjà là couvre son lundi.
-  const debut = Date.now();
-  const saisons = await saisonsDuJour(60_000).catch((e) => [{ plan: '', quoi: 'saisons de fond en échec', erreur: e instanceof Error ? e.message : String(e) }]);
-  // Le temps qui reste aux semaines, dans les 5 minutes de la tâche.
-  const comptes = [...saisons.filter((c) => c.erreur), ...await passageDuDimanche(Math.max(60_000, 240_000 - (Date.now() - debut)))];
+  // Sous le moteur v1 (9.x), la semaine s'écrit par lib/app/passagesV9.ts (la saison de fond de la 8.x n'est pas portée) ; sous la 8.x, rien ne change.
+  const comptes = await selonLeMoteur({
+    v1: () => passageDuDimancheV9(240_000),
+    avant: async () => {
+      const debut = Date.now();
+      const saisons = await saisonsDuJour(60_000).catch((e) => [{ plan: '', quoi: 'saisons de fond en échec', erreur: e instanceof Error ? e.message : String(e) }]);
+      // Le temps qui reste aux semaines, dans les 5 minutes de la tâche.
+      return [...saisons.filter((c) => c.erreur), ...await passageDuDimanche(Math.max(60_000, 240_000 - (Date.now() - debut)))];
+    },
+  });
   // Sans l'athlète : un journal ou un e-mail n'a pas à garder ses données (le plan suffit à le retrouver).
   const echecs = comptes.filter((c) => c.erreur || c.quoi === REMIS);
   if (echecs.length) console.error('Passage du dimanche :', echecs.map((c) => `${c.plan} — ${c.erreur ?? c.quoi}`).join(' ; '));
