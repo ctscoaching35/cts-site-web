@@ -6,7 +6,10 @@ import { BOUTON, BOUTON_DANGER, BOUTON_SECONDAIRE, Carte } from './Ui';
 
 // « Accepter » et « Sans suite » d'une demande de coaching (app gratuite, lot A2), chacun derrière une confirmation qui dit ce
 // qui va se passer. Textes en brouillon, à valider par le coach.
-export default function ActionsDemande({ demandeId, nom }: { demandeId: string; nom: string }) {
+// ficheCree : la première ligne de « Accepter » ; sous la 9.x, « son allure de référence » (lib/app/motsDuCoach.ts, décision 220 du coach, 24/11/2026), donnée par la page ; absente, celle d'avant.
+export default function ActionsDemande({ demandeId, nom, ficheCree = 'Une fiche de coaché est créée à ce nom, avec sa vitesse critique du profil gratuit ; ses FC n’y sont reprises que si son consentement FC est donné.' }: {
+  demandeId: string; nom: string; ficheCree?: string;
+}) {
   const [etape, setEtape] = useState<'vue' | 'accepter' | 'sans_suite'>('vue');
   const [message, setMessage] = useState('');
   const [enCours, setEnCours] = useState(false);
@@ -27,7 +30,7 @@ export default function ActionsDemande({ demandeId, nom }: { demandeId: string; 
       <Carte className="space-y-3 border-teal/40">
         <p className="text-sm font-bold text-indigo">Accepter la demande de {nom} ?</p>
         <ul className="list-disc pl-5 space-y-1 text-[0.8125rem] text-[#4A4866] leading-relaxed">
-          <li>Une fiche de coaché est créée à ce nom, avec sa vitesse critique du profil gratuit ; ses FC n’y sont reprises que si son consentement FC est donné.</li>
+          <li>{ficheCree}</li>
           <li>Son espace s’ouvre : la personne reçoit l’e-mail d’invitation à l’app, et s’y connecte avec le même e-mail.</li>
           <li>La demande passe en « acceptée » et reste lisible sur la fiche.</li>
           <li>Rien n’est écrit dans Nolio. Tu arrives sur sa page, où « Son entrée » montre la suite (Nolio, objectif).</li>

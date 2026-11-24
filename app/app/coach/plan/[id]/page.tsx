@@ -17,6 +17,7 @@ import { demandesDuCoach } from '@/lib/app/demandes';
 import { annonceDepart, continuiteDe, PAS_UN_AJUSTEMENT, trameDuPlan, type Realise } from '@/lib/app/ecriture';
 import { texteProgrammeApres } from '@/lib/app/jonction';
 import { moteurEstV9 } from '@/lib/app/moteurEnLigne';
+import { motsDuCoach } from '@/lib/app/motsDuCoach';
 import { ajustementsAnnulesVisibles, apercuDisponible, preparationsDisponibles, testsLusDisponibles } from '@/lib/app/cacherSousLaV1';
 import { typeCoteCoach } from '@/lib/app/nomsSeances';
 import { lienFicheCourse } from '@/lib/app/ficheCourse';
@@ -27,7 +28,7 @@ import { allureDepuisVitesse } from '@/lib/app/allureCoach';
 import { lienNolioAthlete } from '@/lib/app/liensNolio';
 import { faiteSansRpe } from '@/lib/app/resumeSemaine';
 import { clientService, espaceCoachOuvert } from '@/lib/app/supabase';
-import { blocsDuPlan, debutDeLObjectif, enHeures, jaugeDuPlan, libelleDeLaMontee, momentDe } from '@/lib/app/tableau';
+import { blocsDuPlan, debutDeLObjectif, enHeures, jaugeDuPlan, momentDe } from '@/lib/app/tableau';
 import { fichesDePreparation, type CourseSecondaire } from '@/lib/app/tableauDuPlan';
 
 // Toujours calculée à la visite : la page lit la session du coach.
@@ -65,6 +66,9 @@ export default async function ObjectifCoache({ params, searchParams }: {
   // Sous le moteur v1 : la semaine part vers 21 h (décision 211), « Annuler » n'est plus affiché (décision 213) : le coach corrige la semaine dans Nolio, le moteur repart de sa correction ;
   // et ce que la v1 ne porte pas encore est caché (décision 220, lib/app/cacherSousLaV1.ts).
   const v9 = await moteurEstV9().catch(() => false);
+  // Les mots du coach (lib/app/motsDuCoach.ts, décision 220 du coach, 24/11/2026) : sous la 9.x, « semaine tenue à 87 % du prévu », « fatigue déclarée », « dénivelé », « seuil aérobie »… et une ligne
+  // d'explication sous les chiffres ; sous la 8.x, les mots d'avant.
+  const mots = motsDuCoach(v9);
   const { data: ecriture } = await service.from('plans').select('parametres, demarre_le, depart_prevu').eq('id', id).single();
   const { data: ecrites } = ecriture?.parametres
     ? await service.from('semaines_ecrites').select('numero, journal, bilan, sans_ajustement, ecrite_le, realise, lundi:donnees->>lundi').eq('plan_id', id)
@@ -107,7 +111,7 @@ export default async function ObjectifCoache({ params, searchParams }: {
   const debutObjectif = debutDeLObjectif({ depart_prevu: (ecriture?.depart_prevu ?? null) as string | null,
     demarre_le: (ecriture?.demarre_le ?? null) as string | null, lundis: (ecrites ?? []).map((w) => (w.lundi ? String(w.lundi) : null)),
     rejoint: o.plan.course.rejoint?.lundi ?? null });
-  const jauge = trame ? jaugeDuPlan(trame.semaines, realises, jour, debutObjectif) : null;
+  const jauge = trame ? jaugeDuPlan(trame.semaines, realises, jour, debutObjectif, mots.piliers) : null;
   // Son bloc en cours, sous le chiffre de sa montée, comme dans son app (13/11/2026).
   const blocEnCours = trame
     ? blocsDuPlan(trame.semaines, o.plan, jour, debutObjectif).find((b) => b.moment === 'encours')?.nom ?? null : null;
@@ -123,8 +127,8 @@ export default async function ObjectifCoache({ params, searchParams }: {
   const preps = (((ecriture?.parametres as Record<string, unknown> | null)?.courses_secondaires ?? []) as CourseSecondaire[])
     .slice().sort((a, b) => a.date.localeCompare(b.date));
   const fichesPrepa = ecriture?.parametres && preparationsDisponibles(v9) ? await fichesDePreparation(id) : new Set<string>();
-  const valeurs = [o.athlete.fc_seuil1 && `FC seuil 1 ${o.athlete.fc_seuil1}`, o.athlete.v_seuil1_ms && `allure seuil 1 ${allureDepuisVitesse(o.athlete.v_seuil1_ms)}/km`,
-    o.athlete.vc_ms && `VC ${allureDepuisVitesse(o.athlete.vc_ms)}/km`, o.athlete.fc_seuil2 && `FC seuil 2 ${o.athlete.fc_seuil2}`].filter(Boolean).join(' · ');
+  const valeurs = [o.athlete.fc_seuil1 && mots.cibles.fc1(String(o.athlete.fc_seuil1)), o.athlete.v_seuil1_ms && mots.cibles.vs1(allureDepuisVitesse(o.athlete.v_seuil1_ms)),
+    o.athlete.vc_ms && mots.cibles.vc(allureDepuisVitesse(o.athlete.vc_ms)), o.athlete.fc_seuil2 && mots.cibles.fc2(String(o.athlete.fc_seuil2))].filter(Boolean).join(' · ');
   const { course } = o.plan;
   const ecritesTriees = (ecrites ?? []).slice().sort((a, b) => Number(String(b.numero).slice(1)) - Number(String(a.numero).slice(1)));
   const statut = !ecriture?.parametres ? 'envoyé en entier' : ecriture.demarre_le ? 'en route dans Nolio'
@@ -153,11 +157,11 @@ export default async function ObjectifCoache({ params, searchParams }: {
           <Surtitre as="div">Objectif · {statut}</Surtitre>
           <h1 className="mt-1.5 text-[1.75rem] font-extrabold tracking-tight">{course.nom}</h1>
           <p className="mt-1.5 text-sm text-[#5E5C78]">
-            {dateLongue(course.date, true)} · {Math.round(course.distance_km)} km{course.dplus_m ? ` · ${course.dplus_m.toLocaleString('fr-FR')} m D+` : ' sur route'}
+            {dateLongue(course.date, true)} · {Math.round(course.distance_km)} km{course.dplus_m ? ` · ${mots.dplus(course.dplus_m.toLocaleString('fr-FR'))}` : ' sur route'}
             {course.temps_cible ? ` · chrono visé ${course.temps_cible}` : ''}{course.date >= jour ? ` · ${jMoins(jour, course.date)}` : ''}
           </p>
           <p className="mt-1 text-[0.8125rem] text-[#5E5C78]">
-            {nolio ? '' : 'Pas encore associé à Nolio : choisis son nom sur sa fiche. '}{valeurs ? `Cibles : ${valeurs}.` : 'Sans valeurs : cibles au RPE.'}
+            {nolio ? '' : 'Pas encore associé à Nolio : choisis son nom sur sa fiche. '}{valeurs ? mots.cibles.liste(valeurs) : mots.cibles.sans}
           </p>
         </div>
         <div className="flex flex-wrap gap-2.5">
@@ -234,6 +238,12 @@ export default async function ObjectifCoache({ params, searchParams }: {
                   {/* Une ligne par semaine écrite (décision coach du 04/11/2026) : son lundi, faite x/y, sa charge, sa sortie
                       longue, son Hooper, ses ajustements ; sa note « Ta semaine » s'ouvre au clic. Sa charge (décision coach
                       du 04/11/2026 au soir, « A ») : tenue en %, la mesure de « Mes athlètes » et de l'aperçu, puis faite. */}
+                  {/* Sous la 9.x, ce que disent les chiffres de chaque ligne, une fois, au-dessus (lib/app/motsDuCoach.ts). */}
+                  {mots.semaines.legende.length > 0 && (
+                    <ul className="space-y-0.5 text-[0.72rem] leading-snug text-[#5E5C78]">
+                      {mots.semaines.legende.map((t) => <li key={t}>{t}</li>)}
+                    </ul>
+                  )}
                   <ul className="space-y-1.5">
                     {ecritesTriees.map((w) => {
                       // Ni les corrections du coach, ni C1 et D6, qui suivent ses retouches (décision coach du 06/11/2026).
@@ -250,9 +260,9 @@ export default async function ObjectifCoache({ params, searchParams }: {
                           {r && (
                             <span className="text-[#4A4866]">
                               {/* Des s\u00e9ances faites, aucun RPE not\u00e9 : \u00ab sans RPE \u00bb \u00e0 la place de sa charge tenue. Valid\u00e9 par le coach le 06/11/2026 */}
-                              {[faiteSansRpe(r) ? 'sans RPE' : r.charge_prevue > 0 ? `charge tenue ${Math.round((r.charge_tenue / r.charge_prevue) * 100)}\u00a0%` : null,
-                                r.rpe_lu && r.charge_faite ? `charge ${Math.round(r.charge_faite).toLocaleString('fr-FR')}` : null,
-                                r.sl_faite_min ? `sortie longue ${enHeures(r.sl_faite_min)}` : null, r.hooper !== null ? `Hooper ${r.hooper}` : null].filter(Boolean).join(' · ')}
+                              {[faiteSansRpe(r) ? mots.semaines.sansEffort : r.charge_prevue > 0 ? mots.semaines.tenue(Math.round((r.charge_tenue / r.charge_prevue) * 100)) : null,
+                                r.rpe_lu && r.charge_faite ? mots.semaines.charge(Math.round(r.charge_faite).toLocaleString('fr-FR')) : null,
+                                r.sl_faite_min ? `sortie longue ${enHeures(r.sl_faite_min)}` : null, r.hooper !== null ? mots.semaines.fatigue(r.hooper) : null].filter(Boolean).join(' · ')}
                             </span>
                           )}
                           {ajuste && <span className="text-[0.72rem] font-bold px-2 py-0.5 rounded-xl bg-[#F6E3E8] text-[#8A2E4A]">{journal.length} ajustement{journal.length > 1 ? 's' : ''}</span>}
@@ -300,14 +310,14 @@ export default async function ObjectifCoache({ params, searchParams }: {
                 const e = envois.find((x) => x.semaine === s.numero);
                 return (
                   <section key={s.numero} className="space-y-2">
-                    <BanniereSemaine semaine={s} course={o.plan.course.date} />
+                    <BanniereSemaine semaine={s} course={o.plan.course.date} bloc={mots.bloc} />
                     <ul className="bg-white divide-y divide-indigo/10 text-sm">
                       {s.jours.map((j) => (
                         <li key={j.id} className="flex gap-3 px-3 py-2">
                           <span className="w-[4.6rem] shrink-0 text-xs text-indigo/55 pt-0.5">{j.date}</span>
                           <span className={j.famille === 'repos' ? 'text-indigo/40' : 'text-indigo font-semibold'}>
                             {j.nom ?? j.seance}
-                            {j.famille !== 'repos' && j.duree !== '—' && <span className="font-normal text-indigo/55"> · {j.duree}{j.rpe !== '—' ? ` · RPE ${j.rpe}` : ''}</span>}
+                            {j.famille !== 'repos' && j.duree !== '—' && <span className="font-normal text-indigo/55"> · {j.duree}{j.rpe !== '—' ? ` · ${mots.effortVise(j.rpe)}` : ''}</span>}
                           </span>
                         </li>
                       ))}
@@ -343,14 +353,16 @@ export default async function ObjectifCoache({ params, searchParams }: {
                   piliers ; version sobre du 13/11/2026), puis, pour le coach seul, l'écart au prévu ; avant deux semaines
                   lues, ni chiffre ni écart. */}
               <Montagne part={jauge.montee?.fait ?? null} neutre={!jauge.montee} route={estRoute(o.plan.course.format)}
-                libelle={jauge.montee ? libelleDeLaMontee(jauge.montee, true) : undefined} />
-              {jauge.montee && <ChiffreDeLaMontee montee={jauge.montee} coache bloc={blocEnCours} />}
-              {jauge.montee && <EcartAuPrevu montee={jauge.montee} sombre />}
+                libelle={jauge.montee ? mots.montee.libelle(jauge.montee) : undefined} />
+              {jauge.montee && <ChiffreDeLaMontee montee={jauge.montee} coache bloc={blocEnCours ? mots.bloc(blocEnCours) : blocEnCours} mots={v9 ? mots.montee : undefined} />}
+              {jauge.montee && <EcartAuPrevu montee={jauge.montee} sombre v9={v9} aide />}
               {jauge.piliers.length > 0 && <p className="text-[0.8rem] text-[#D6D5E6] leading-relaxed">{jauge.piliers.map((p) => p.detail).join(' · ')}</p>}
             </CarteSombre>
           )}
 
-          {depart && (
+          {/* Sous la 9.x (décision 220 du coach, 24/11/2026) : pas de carte « Son départ ». Ses quatre phrases (échelons, fondations sautées, rythme repris) sont celles du départ de la 8.x, la seule qui
+              écrive `depart_lu` (lib/app/ecriture.ts, deciderLeDepart) ; le départ de la 9.x (lib/app/departV9.ts) ne l'écrit pas, et ces mots n'y existent plus. */}
+          {depart && mots.carteDepart && (
             <Carte className="!p-5 space-y-2">
               <Surtitre>Son départ</Surtitre>
               {/* Le départ individualisé (décisions coach du 26/10/2026) : ce que le site a lu dans Nolio au départ, et ce que

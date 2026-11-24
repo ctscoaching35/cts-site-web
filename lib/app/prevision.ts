@@ -19,8 +19,16 @@ export type Prevision = { niveau: Niveau; pourquoi: string; prevoit: string };
 const SEMAINE_FAITE_MIN = 0.6;
 const FATIGUE_JOURS = 3;
 
+// Les deux phrases de « ce que le moteur prévoit » qui parlent de la marche : celles d'avant par défaut ; le coach lit les siennes sous la 9.x
+// (lib/app/motsDuCoach.ts, décision 220 du coach, 24/11/2026).
+export type TextesPrevision = { sousSoixante: string; plusDur: string };
+export const TEXTES_PREVISION_D_AVANT: TextesPrevision = {
+  sousSoixante: 'Si sa charge reste sous 60 % : ses séances clés refont la même marche',
+  plusDur: 'Si c’est une séance clé : la suivante refait la même marche',
+};
+
 // depuis : le lundi de la semaine que le passage du dimanche jugera.
-export function prevision(suivi: Suivi, depuis: string): Prevision {
+export function prevision(suivi: Suivi, depuis: string, textes: TextesPrevision = TEXTES_PREVISION_D_AVANT): Prevision {
   const signaux = suivi.signaux.filter((s) => s.jour.slice(0, 10) >= depuis);
   const fatigue = signaux.filter((s) => s.genre === 'hooper' || s.genre === 'sensations' || s.genre === 'plus_dur');
   const jours = new Set(fatigue.map((s) => s.jour.slice(0, 10))).size;
@@ -37,10 +45,10 @@ export function prevision(suivi: Suivi, depuis: string): Prevision {
   }
   if (suivi.prevues > 0 && suivi.faites / suivi.prevues < SEMAINE_FAITE_MIN) {
     return { niveau: 'orange', pourquoi: `${suivi.faites} séance${suivi.faites > 1 ? 's' : ''} sur ${suivi.prevues}`,
-      prevoit: 'Si sa charge reste sous 60 % : ses séances clés refont la même marche' };
+      prevoit: textes.sousSoixante };
   }
   if (signaux.some((s) => s.genre === 'plus_dur')) {
-    return { niveau: 'orange', pourquoi: 'plus dur que prévu', prevoit: 'Si c’est une séance clé : la suivante refait la même marche' };
+    return { niveau: 'orange', pourquoi: 'plus dur que prévu', prevoit: textes.plusDur };
   }
   return { niveau: 'vert', pourquoi: '', prevoit: 'Semaine normale' };
 }

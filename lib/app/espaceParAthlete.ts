@@ -58,7 +58,8 @@ export function texteRemontee(sortieLongue: boolean, jourDeLaSemaine: string): s
 // (« mardi 10/11 », « sensations 2/5 »), pour dire deux jours en une étiquette. sous : la ligne de dessous dans « Urgent »
 // (la semaine pas partie du dimanche soir, qui attend ses reprises) ; sansGeste : ni bouton ni « Réglé » (elle se refait
 // seule aux reprises ; « Réessayer » réécrit la semaine en cours, pas celle qui vient).
-export type Point = ARegarder & { jour?: string; mesure?: string; sous?: string; sansGeste?: boolean };
+// etiquette : son nom court dans « Ce qui l'attend » quand la 9.x le dit autrement (lib/app/motsDuCoach.ts, décision 220 du coach, 24/11/2026) ; sans lui, SIGNAL : les noms d'avant.
+export type Point = ARegarder & { jour?: string; mesure?: string; sous?: string; sansGeste?: boolean; etiquette?: string };
 // Ce que le moteur a réglé seul (Q6) : « Semaine ajustée », « Fatigue franche », « Arrêt de course », et sa ligne.
 export type DecisionMoteur = { texte: string; detail?: string };
 export type Ton = 'ok' | 'warn' | 'ko' | 'neutre';
@@ -139,7 +140,7 @@ export function etiquettes(points: Point[], moteur: DecisionMoteur | null): Etiq
     return genres.map((g): Etiquette => {
       const lot = points.filter((p) => p.niveau === niveau && p.genre === g);
       const detail = ligneDuGenre(g, lot);
-      return { texte: SIGNAL[g] ?? ligneCourte(lot[0].texte), ton: TON[niveau], ...(detail ? { detail } : {}) };
+      return { texte: lot[0].etiquette ?? SIGNAL[g] ?? ligneCourte(lot[0].texte), ton: TON[niveau], ...(detail ? { detail } : {}) };
     });
   };
   const liste = [...parGenre('bloque'), ...parGenre('sante'),

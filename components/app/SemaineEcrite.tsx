@@ -5,7 +5,8 @@ import { Surtitre } from './Ui';
 // (SemaineQuiArrive) et dans l'aperçu avant paiement (components/plan/ApercuPlan.tsx), pour qu'ils se lisent pareil.
 
 // La semaine telle que le moteur l'a écrite (l'aperçu, ou Nolio pas lu).
-export function JoursEcrits({ semaine }: { semaine: Pick<SemaineLue, 'jours'> }) {
+// effortVise : le mot de l'effort d'une séance sous la 9.x (lib/app/motsDuCoach.ts), donné par l'espace coach seul ; absent, « RPE 6 », comme chez l'acheteur.
+export function JoursEcrits({ semaine, effortVise }: { semaine: Pick<SemaineLue, 'jours'>; effortVise?: (rpe: string) => string }) {
   return (
     <ul className="divide-y divide-indigo/10 text-sm">
       {semaine.jours.map((j) => (
@@ -13,7 +14,7 @@ export function JoursEcrits({ semaine }: { semaine: Pick<SemaineLue, 'jours'> })
           <span className="w-[4.6rem] shrink-0 text-xs text-indigo/55 pt-0.5">{j.date}</span>
           <span className={j.famille === 'repos' ? 'text-indigo/40' : 'text-indigo font-semibold'}>
             {j.nom ?? j.seance}
-            {j.famille !== 'repos' && j.duree !== '—' && <span className="font-normal text-indigo/55"> · {j.duree}{j.rpe !== '—' ? ` · RPE ${j.rpe}` : ''}</span>}
+            {j.famille !== 'repos' && j.duree !== '—' && <span className="font-normal text-indigo/55"> · {j.duree}{j.rpe !== '—' ? ` · ${effortVise ? effortVise(j.rpe) : `RPE ${j.rpe}`}` : ''}</span>}
           </span>
         </li>
       ))}

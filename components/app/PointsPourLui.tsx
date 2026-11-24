@@ -4,14 +4,17 @@ import { Carte } from './Ui';
 import { BOUTON_POINT, Geste, Regle } from './PointsCoach';
 import type { Point } from '@/lib/app/espaceParAthlete';
 import { TEXTES_PAGE_ATHLETE, type LigneAFaire } from '@/lib/app/pageAthleteSimple';
+import { motsDuCoach } from '@/lib/app/motsDuCoach';
 
 // « À FAIRE POUR LUI » (les points d'un athlète), EN HAUT DE LA PAGE D'UN ATHLÈTE, SOUS LA 9.x SEULEMENT (décision 220 du coach, 24/11/2026 : la page de l'athlète est courte, ses alertes et ce qui est à
 // faire pour lui d'abord ; lib/app/pageAthleteSimple.ts, aFairePourLui). Les mêmes points que « À faire » de « Mes athlètes » (components/app/AFaire.tsx : le même geste, le même
 // « Réglé » de PointsCoach.tsx, une ligne par point), puis les étapes de « Son entrée » que le coach fait lui-même (son compte Nolio à associer, son accord à cocher, son objectif
 // à démarrer) : elles n'ont pas de « Réglé », elles se cochent d'elles-mêmes. Pas de pastille de couleur par ligne : tout ce qui est ici est à faire. Sous la 8.x, la page garde son bloc
 // d'avant. accordRecu : « Accord reçu », le geste de l'accord de lecture, quand son compte Nolio est associé.
+// Les phrases des étapes de l'entrée (le rappel du départ) se lisent en mots du coach, sans « Hooper » (lib/app/motsDuCoach.ts, décision 220 du coach, 24/11/2026) : ce composant est celui de la 9.x.
 export default function PointsPourLui({ lignes, accordRecu }: { lignes: LigneAFaire[]; accordRecu?: () => Promise<void> }) {
   const t = TEXTES_PAGE_ATHLETE;
+  const enMots = motsDuCoach(true).enMots;
   const n = lignes.length;
   const ligne = 'flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 py-3 border-t first:border-t-0 border-indigo/[0.07] scroll-mt-6';
   const geste = `${BOUTON_POINT} bg-white text-indigo border border-indigo/20 hover:bg-sand`;
@@ -38,7 +41,7 @@ export default function PointsPourLui({ lignes, accordRecu }: { lignes: LigneAFa
             <li key={`entree:${l.ligne.cle}`} id={l.ligne.cle === 'accord' ? 'son-entree' : undefined} className={ligne}>
               <p className="min-w-0 flex-[1_1_300px] text-sm text-[#4A4866] leading-snug">
                 <span className="font-semibold text-indigo">{l.ligne.texte}</span>
-                {l.ligne.sous && <span className="block mt-0.5 text-xs text-[#5E5C78]">{l.ligne.sous}</span>}
+                {l.ligne.sous && <span className="block mt-0.5 text-xs text-[#5E5C78]">{enMots(l.ligne.sous)}</span>}
               </p>
               {l.ligne.bouton === 'accord' && accordRecu && (
                 <form action={accordRecu}>

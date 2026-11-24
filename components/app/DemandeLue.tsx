@@ -3,6 +3,7 @@ import { enClair, momentsEnClair, objectifEnClair, telephoneEnClair } from '@/li
 import type { Jointes, LigneDemande } from '@/lib/app/demandesCoaching';
 import { titreExperience } from '@/lib/app/profilGratuit';
 import { allure, profilCoureur } from '@/lib/app/zones';
+import { motsDuCoach } from '@/lib/app/motsDuCoach';
 
 // Une demande de coaching, lue en entier par le coach (app gratuite, lot A2) : ses réponses, ce que l'app sait déjà de la personne
 // (expérience, tests, style, courses : joints sans qu'elle les redonne), sa santé SEULEMENT si le consentement est donné, le
@@ -24,7 +25,9 @@ function Bloc({ titre, children }: { titre: string; children: React.ReactNode })
   return <Carte className="!p-5 space-y-1"><Surtitre>{titre}</Surtitre><dl>{children}</dl></Carte>;
 }
 
-export default function DemandeLue({ d, jointes }: { d: LigneDemande; jointes: Jointes }) {
+// v9 : sous la 9.x, « dénivelé », « allure de référence », « seuil aérobie » (lib/app/motsDuCoach.ts, décision 220 du coach, 24/11/2026) ; faux, les mots d'avant.
+export default function DemandeLue({ d, jointes, v9 = false }: { d: LigneDemande; jointes: Jointes; v9?: boolean }) {
+  const mots = motsDuCoach(v9);
   const r = d.reponses;
   const t = jointes.tests;
   const profil = t.vc ? { vc_ms: t.vc.vc_ms, d_prime_m: t.vc.d_prime_m } : null;
@@ -59,7 +62,7 @@ export default function DemandeLue({ d, jointes }: { d: LigneDemande; jointes: J
       <Bloc titre="Son terrain">
         <Ligne titre="Près de chez la personne" valeur={r.terrain?.length ? r.terrain.map(enClair.terrain).join(', ') : null} />
         <Ligne titre="Plus longue côte" valeur={enClair.cote(r.cote_min)} />
-        <Ligne titre="D+ possible" valeur={r.dplus_pres} />
+        <Ligne titre={mots.demandes.dplusPossible} valeur={r.dplus_pres} />
         <Ligne titre="Montagne" valeur={r.montagne ? enClair.montagne(r.montagne) : null} />
       </Bloc>
 
@@ -83,10 +86,10 @@ export default function DemandeLue({ d, jointes }: { d: LigneDemande; jointes: J
 
       <Bloc titre="Ce que l’app sait déjà de la personne">
         <Ligne titre="Expérience du profil" valeur={titreExperience(jointes.experience)} />
-        <Ligne titre="Vitesse critique" valeur={t.vc ? `${allure(t.vc.vc_ms)} /km · D′ ${Math.round(t.vc.d_prime_m)} m · test du ${mois(t.vc.le)}` : null} />
+        <Ligne titre={mots.demandes.vitesseCritique} valeur={t.vc ? `${allure(t.vc.vc_ms)} /km · D′ ${Math.round(t.vc.d_prime_m)} m · test du ${mois(t.vc.le)}` : null} />
         <Ligne titre="Style de coureur" valeur={style ? style.nom : null} />
-        {jointes.consentementFc && <Ligne titre="FC au seuil 1" valeur={t.parole ? `${t.parole.fc_seuil1} bpm${t.parole.v_seuil1_ms ? ` · à ${allure(t.parole.v_seuil1_ms)} /km` : ''}` : null} />}
-        {jointes.consentementFc && <Ligne titre="FC au seuil 2" valeur={t.fc2 ? `${t.fc2.fc_seuil2} bpm` : null} />}
+        {jointes.consentementFc && <Ligne titre={mots.demandes.fc1} valeur={t.parole ? `${t.parole.fc_seuil1} bpm${t.parole.v_seuil1_ms ? ` · à ${allure(t.parole.v_seuil1_ms)} /km` : ''}` : null} />}
+        {jointes.consentementFc && <Ligne titre={mots.demandes.fc2} valeur={t.fc2 ? `${t.fc2.fc_seuil2} bpm` : null} />}
         {!jointes.consentementFc && (t.parole || t.fc2) && <Ligne titre="FC" valeur="Pas de consentement : non montrée" />}
         {!t.vc && !t.parole && !t.fc2 && !jointes.experience && <Ligne titre="Tests" valeur="Aucun test dans son profil." />}
       </Bloc>
@@ -94,7 +97,7 @@ export default function DemandeLue({ d, jointes }: { d: LigneDemande; jointes: J
       <Bloc titre="Ses courses dans l’app">
         {jointes.courses.length === 0 ? <Ligne titre="Courses" valeur="Aucune course dans l’app." /> : jointes.courses.map((c) => (
           <Ligne key={c.id} titre={c.course_date ? mois(c.course_date) : 'Sans date'}
-            valeur={[c.nom, c.distance_km != null ? `${c.distance_km.toLocaleString('fr-FR')} km` : null, c.dplus_m != null ? `${c.dplus_m.toLocaleString('fr-FR')} m D+` : null,
+            valeur={[c.nom, c.distance_km != null ? `${c.distance_km.toLocaleString('fr-FR')} km` : null, c.dplus_m != null ? (v9 ? mots.dplus(c.dplus_m.toLocaleString('fr-FR')) : `${c.dplus_m.toLocaleString('fr-FR')} m D+`) : null,
               c.temps_vise_s ? `visée ${Math.floor(c.temps_vise_s / 3600)} h ${String(Math.round((c.temps_vise_s % 3600) / 60)).padStart(2, '0')}` : null].filter(Boolean).join(' · ')} />
         ))}
       </Bloc>

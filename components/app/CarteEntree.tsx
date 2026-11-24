@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { NOTE_AVANT_DE_DEMARRER, type Entree } from '@/lib/app/entree';
+import { NOTE_AVANT_DE_DEMARRER as NOTE_D_AVANT, type Entree } from '@/lib/app/entree';
+import { motsDuCoach } from '@/lib/app/motsDuCoach';
 import { Carte, Surtitre } from './Ui';
 
 // Une section de « Réglages » (9.x) : le même contenu, sans la carte.
@@ -13,8 +14,12 @@ function Section({ children, className, id }: { children: React.ReactNode; class
 // 04/11/2026) ; sans compte Nolio associé, pas encore.
 // plat : sous la 9.x, la carte, une fois les étapes du coach faites, est une section de « Réglages » (sans cadre à elle, et sans le rappel du départ quand l'entrée est complète) ; sans lui, la carte d'avant
 // (la 8.x ne montre jamais une entrée complète : rien n'y change).
+// Sous la 9.x (`plat`), les phrases de l'entrée se lisent en mots du coach (« son effort ressenti et sa fatigue déclarée » : lib/app/motsDuCoach.ts, décision 220 du coach, 24/11/2026) ; sous la 8.x, telles qu'avant.
 export default function CarteEntree({ entree, accordRecu, plat = false }: { entree: Entree; accordRecu?: () => Promise<void>; plat?: boolean }) {
   const Cadre = plat ? Section : Carte;
+  const enMots = motsDuCoach(plat).enMots;
+  // Le rappel du départ, en mots du coach sous la 9.x (sans « Hooper »), tel qu'avant sous la 8.x.
+  const NOTE_AVANT_DE_DEMARRER = enMots(NOTE_D_AVANT);
   return (
     <Cadre id="son-entree" className={plat ? 'py-4 space-y-3 scroll-mt-6' : '!p-5 space-y-3 scroll-mt-6'}>
       <div className="flex justify-between items-baseline gap-3">
@@ -35,7 +40,7 @@ export default function CarteEntree({ entree, accordRecu, plat = false }: { entr
               <span className={e.fait ? 'block text-sm text-[#5E5C78]' : 'block text-sm font-bold text-indigo'}>
                 {e.titre}<span className="sr-only">{e.fait ? ', fait' : ', à faire'}</span>
               </span>
-              {e.detail && <span className="block mt-0.5 text-[0.8125rem] text-[#4A4866] leading-relaxed">{e.detail}</span>}
+              {e.detail && <span className="block mt-0.5 text-[0.8125rem] text-[#4A4866] leading-relaxed">{enMots(e.detail)}</span>}
             </span>
             {e.cle === 'accord' && !e.fait && accordRecu ? (
               <form action={accordRecu}>

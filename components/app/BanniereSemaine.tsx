@@ -11,8 +11,9 @@ import { typeCoteCoach } from '@/lib/app/nomsSeances';
 // compte vers le prochain objectif : retour coach du 01/11/2026).
 // volume, seances : ceux de la semaine telle qu'elle est dans Nolio (décision 11 du coach du 09/11/2026, « Sa semaine qui
 // arrive »), à la place de ceux que le moteur a écrits.
-export default function BanniereSemaine({ semaine, course, vers, volume, seances: seancesNolio }: {
-  semaine: SemaineLue; course?: string; vers?: string; volume?: string; seances?: string;
+// bloc : sous la 9.x, le nom du bloc en mots du coach (« Fondations » et non « Bloc fondations » : lib/app/motsDuCoach.ts, décision 220 du coach, 24/11/2026), donné par l'espace coach seul ; absent, tel que le moteur l'écrit.
+export default function BanniereSemaine({ semaine, course, vers, volume, seances: seancesNolio, bloc }: {
+  semaine: SemaineLue; course?: string; vers?: string; volume?: string; seances?: string; bloc?: (nom: string) => string;
 }) {
   // « semaine 15 / 24 » et « 5 séances », tels que le moteur les écrit : l'app ne fait que les ranger.
   const rang = /(\d+)\s*\/\s*(\d+)/.exec(semaine.progression);
@@ -28,7 +29,7 @@ export default function BanniereSemaine({ semaine, course, vers, volume, seances
         {/* Le type en mots (décisions coach du 08/11/2026) : « Semaine allégée », « Semaine de reprise » (la semaine écrite). */}
         <span className="text-xl font-extrabold text-indigo">{typeCoteCoach(semaine.type, Boolean(semaine.reprise_apres_course))}</span>
         <span className="text-xs font-semibold text-indigo bg-[#E4E3EE] px-2.5 py-1 rounded-full">
-          {semaine.theme ? `Saison de fond · Bloc ${semaine.theme}` : semaine.bloc}
+          {semaine.theme ? `Saison de fond · Bloc ${semaine.theme}` : bloc ? bloc(semaine.bloc) : semaine.bloc}
         </span>
       </div>
       <div className="flex gap-6 mt-2">

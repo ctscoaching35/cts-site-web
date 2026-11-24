@@ -9,6 +9,9 @@ import { coachingsParMois } from '@/lib/app/stripeLecture';
 import { CIBLE_RETOUCHEES, chiffresDuCoaching, cibleTenue, type ChiffresCoaching } from '@/lib/app/chiffresCoaching';
 import type { FamilleRetouche } from '@/lib/app/retouches';
 import { exigerCoach } from '@/lib/app/nolio';
+import { montrerLInfra } from '@/lib/app/espaceCoachSimple';
+import { moteurEstV9 } from '@/lib/app/moteurEnLigne';
+import { motsDuCoach } from '@/lib/app/motsDuCoach';
 import { ArreterPreparation } from '@/components/app/GestesEcriture';
 import { ajouterJours } from '@/lib/app/plan';
 import { espaceCoachOuvert } from '@/lib/app/supabase';
@@ -22,6 +25,8 @@ export const dynamic = 'force-dynamic';
 // « Les coachings », qui se brancheront sur son Stripe (lib/app/stripeLecture.ts, Q11, Q12) ; en bas, replié, le compte de
 // ses retouches dans Nolio (la boussole du moteur, maquette validée le 24/10/2026, décisions coach du 04/11/2026). Les
 // visites du site et leur provenance : Vercel › Analytics.
+// SOUS LA 9.x (décision 220 du coach, 24/11/2026 ; lib/app/motsDuCoach.ts) : les mots du coach (« endurance », « seuil aérobie »), et plus rien de l'infrastructure : ni la clé Stripe à créer, ni
+// Vercel › Analytics ; la phrase simple « Cette partie n'est pas disponible pour l'instant. », et le détail au journal du serveur. Sous la 8.x, rien ne change.
 const COLONNES: [string, string][] = [
   ['offre', 'Page des plans'], ['questionnaire', 'Questionnaires'], ['recap', 'Récapitulatifs'],
   ['paiement', 'Paiements lancés'], ['achats', 'Achats'], ['euros', 'Encaissé'], ['rappels', 'Rappels demandés'],
@@ -53,10 +58,14 @@ const pourcent = (x: number) => `${Math.round(100 * x)} %`;
 export default async function Chiffres({ searchParams }: { searchParams: Promise<{ periode?: string }> }) {
   if (!espaceCoachOuvert()) notFound();
   const coach = await exigerCoach();
+  const v9 = await moteurEstV9().catch(() => false);
+  const mots = motsDuCoach(v9);
   const jour = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
   const moisEnCours = jour.slice(0, 7);
   const periode = periodeDe((await searchParams).periode, moisEnCours);
   const [ventes, coachings] = await Promise.all([ventesDesPlans().catch(() => [] as Vente[]), coachingsParMois()]);
+  // Sous la 9.x, la clé Stripe en lecture seule qui manque dans Vercel n'est plus dite au coach : une ligne au journal.
+  montrerLInfra(v9, `Chiffres : les coachings ne se lisent pas (${coachings.etat === 'a_brancher' ? 'la clé Stripe en lecture seule n’est pas posée dans Vercel' : 'la lecture des coachings n’est pas encore branchée'}).`);
   const choisies = ventesDe(ventes, periode);
   const t = total(choisies);
   const annee = periode.length === 4;
@@ -97,7 +106,7 @@ export default async function Chiffres({ searchParams }: { searchParams: Promise
         </div>
         <div className="bg-white rounded-[14px] border border-indigo/[0.08] p-4">
           <div className="text-[1.75rem] font-extrabold text-[#5E5C78]">—</div>
-          <div className="text-[0.78rem] text-[#5E5C78]">coachings · à brancher sur ton Stripe</div>
+          <div className="text-[0.78rem] text-[#5E5C78]">{mots.chiffres.coachingsSous}</div>
         </div>
       </div>
 
@@ -138,9 +147,7 @@ export default async function Chiffres({ searchParams }: { searchParams: Promise
           <span className="text-xs text-[#5E5C78]">payés par tes coachés par Stripe, via Nolio</span>
         </div>
         <p className="text-sm text-[#4A4866] leading-relaxed">
-          {coachings.etat === 'a_brancher'
-            ? 'Ils se liront dans ton Stripe, en totaux par mois, avec une clé restreinte en lecture seule que tu crées dans Stripe et colles dans Vercel. Aujourd’hui, le site ne lit rien des coachings.'
-            : 'Ta clé Stripe en lecture seule est posée : la lecture des coachings arrive à la prochaine étape. Aujourd’hui, le site ne lit rien des coachings.'}
+          {mots.chiffres.coachingsDetail(coachings.etat)}
         </p>
       </section>
 
@@ -216,7 +223,9 @@ function SansRetouche({ c }: { c: ChiffresCoaching['sansRetouche'] }) {
 
 // Tes retouches dans Nolio (décision coach du 26/10/2026) : la part de ce que le moteur envoie que tu corriges, et
 // où.
-function Retouches({ r, enCours }: { r: ChiffresCoaching['retouches']; enCours: string }) {
+async function Retouches({ r, enCours }: { r: ChiffresCoaching['retouches']; enCours: string }) {
+  const mots = motsDuCoach(await moteurEstV9().catch(() => false));
+  const familles: Record<string, string> = { ...FAMILLE, ...mots.chiffres.famille };
   const th = 'py-2.5 px-3 text-right font-bold';
   const td = 'py-3 px-3 text-right tabular-nums';
   return (
@@ -259,7 +268,7 @@ function Retouches({ r, enCours }: { r: ChiffresCoaching['retouches']; enCours: 
               <tbody className="divide-y divide-indigo/[0.06]">
                 {r.familles.map((f) => (
                   <tr key={f.famille}>
-                    <td className="py-3 pr-3 font-semibold">{FAMILLE[f.famille]}</td>
+                    <td className="py-3 pr-3 font-semibold">{familles[f.famille]}</td>
                     <td className={td}>{f.envoyees}</td><td className={td}>{f.modifiees}</td><td className={td}>{f.deplacees}</td><td className={td}>{f.supprimees}</td>
                     <td className={clsx(td, 'font-bold')}>{part(f.modifiees + f.supprimees, f.envoyees)}</td>
                     <td className={clsx(td, 'pr-0')}>{ecart(f.ecart)}</td>
@@ -270,13 +279,7 @@ function Retouches({ r, enCours }: { r: ChiffresCoaching['retouches']; enCours: 
           </div>
         </>
       )}
-      <p className="text-[0.8125rem] text-[#5E5C78]">
-        Comptées chaque nuit sur la semaine en cours et la précédente. Semaines sans retouche : les semaines envoyées où
-        rien n’a été modifié, déplacé, supprimé ni ajouté. Modifiée : sa révision a changé dans Nolio, son contenu ou son
-        jour (Nolio change la révision d’une séance seulement déplacée). Dont déplacées : celles qui ont aussi changé de jour
-        (comptées depuis le 16/11). Ajoutées : les séances de course que tu as posées dans une semaine écrite par
-        le moteur. Durée des modifiées : leur durée dans Nolio par rapport à la durée prévue (−15 % : tu les raccourcis).
-      </p>
+      <p className="text-[0.8125rem] text-[#5E5C78]">{mots.chiffres.retouches}</p>
     </section>
   );
 }
@@ -304,6 +307,7 @@ function Replie({ titre, children }: { titre: string; children: React.ReactNode 
 }
 
 async function PartiePlans({ ventes, autres, jour }: { ventes: Vente[]; autres: (readonly [string, Vente[]])[]; jour: string }) {
+  const mots = motsDuCoach(await moteurEstV9().catch(() => false));
   const semaines = await chiffresParSemaine();
   const acheteurs = await acheteursDesPlans().catch(() => []);
   return (
@@ -322,11 +326,7 @@ async function PartiePlans({ ventes, autres, jour }: { ventes: Vente[]; autres: 
       ))}
 
       <Replie titre="Le tunnel de la vente, 12 semaines">
-        <p className="text-sm text-indigo/70 leading-relaxed">
-          Combien de personnes passent chaque étape, semaine par semaine. Les étapes sont comptées sans aucune
-          donnée personnelle, une fois par visite. Les visites du site et leur provenance (Instagram, recherche…)
-          sont dans Vercel, onglet Analytics.
-        </p>
+        <p className="text-sm text-indigo/70 leading-relaxed">{mots.chiffres.tunnel}</p>
         {semaines.length === 0 ? (
           <p className="text-sm text-indigo/70">Rien encore : les chiffres arrivent avec les premières visites.</p>
         ) : (

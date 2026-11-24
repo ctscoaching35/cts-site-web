@@ -192,12 +192,15 @@ function Route({ part: brute, neutre = false, libelle }: { part: number | null; 
 // part réalisée, qui ne fait que monter) et sa suite ; sous un trait fin, le bloc en cours s'il est connu et, à droite,
 // « Comment c'est calculé ? », replié. Ni prévu ni écart : l'athlète voit la comparaison en taux, dans « Assiduité ».
 // coache : « de ta préparation » (sa montée part de son objectif en cours), sinon « de ton plan ».
-export function ChiffreDeLaMontee({ montee, coache = false, bloc = null }: { montee: Montee; coache?: boolean; bloc?: string | null }) {
+// mots : les mots du coach sous la 9.x (lib/app/motsDuCoach.ts, décision 220 du coach, 24/11/2026), donnés par l'espace coach seul ; absents, les mots d'avant, ceux de l'app de l'athlète.
+export function ChiffreDeLaMontee({ montee, coache = false, bloc = null, mots }: {
+  montee: Montee; coache?: boolean; bloc?: string | null; mots?: { suite: (m: Montee) => string; calcul: (m: Montee) => string };
+}) {
   return (
     <div className="space-y-2.5">
       <p className="flex items-baseline gap-2.5">
         <span className="shrink-0 text-[2.125rem] font-extrabold leading-none tabular-nums text-[#8FD1C3]">{pourcentDeLaMontee(montee)}</span>
-        <span className="text-[0.875rem] font-semibold leading-snug">{texteDeLaMontee(montee, coache)}</span>
+        <span className="text-[0.875rem] font-semibold leading-snug">{mots ? mots.suite(montee) : texteDeLaMontee(montee, coache)}</span>
       </p>
       {/* Le bloc et la question sur la même ligne (la même case de la grille) ; ouverte, son texte passe dessous, sur toute
           la largeur. La place de la question est gardée à droite du bloc. */}
@@ -208,7 +211,7 @@ export function ChiffreDeLaMontee({ montee, coache = false, bloc = null }: { mon
             + 'rounded text-[0.75rem] text-[#D6D5E6] underline underline-offset-[3px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#8FD1C3]'}>
             Comment c’est calculé&nbsp;?
           </summary>
-          <p className="pointer-events-auto pb-1 text-[0.75rem] leading-relaxed text-[#D6D5E6]">{calculDeLaMontee(montee)}</p>
+          <p className="pointer-events-auto pb-1 text-[0.75rem] leading-relaxed text-[#D6D5E6]">{mots ? mots.calcul(montee) : calculDeLaMontee(montee)}</p>
         </details>
       </div>
     </div>

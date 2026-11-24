@@ -31,6 +31,7 @@ import { coursesDansNolio, pasEncoreIci, type CourseNolio } from '@/lib/app/cour
 import { coursesNolioVisibles, estUneCourseEnPreparation, TEXTES_CACHES, testsLusDisponibles } from '@/lib/app/cacherSousLaV1';
 import { espaceDuCoach } from '@/lib/app/mesAthletes';
 import { montrerLInfra, pointsDeSaPage, semainesDansSesPoints, TEXTES_A_FAIRE } from '@/lib/app/espaceCoachSimple';
+import { motsDuCoach } from '@/lib/app/motsDuCoach';
 import { decimale, suiteDe, virgule, type Point } from '@/lib/app/espaceParAthlete';
 import { semainesQuiArrivent, lundiMontre } from '@/lib/app/semaineQuiArrive';
 import { apresLePassage } from '@/lib/app/semainesDuDimanche';
@@ -95,6 +96,9 @@ export default async function PageAthlete({ params, searchParams }: {
   const coach = await exigerCoach();
   // Les mots du questionnaire de la semaine (lib/app/motsDuQuestionnaire.ts) : « Ta semaine prochaine » sous la 8.x, « Ton point du dimanche » sous le moteur 9.0.
   const v9 = await moteurEstV9().catch(() => false);
+  // Les mots du coach (lib/app/motsDuCoach.ts, décision 220 du coach, 24/11/2026) : sous la 9.x, « fatigue déclarée », « du prévu tenu », « effort ressenti », « seuil aérobie »… à la place du jargon,
+  // et une ligne d'explication sous les chiffres qui n'en disent pas assez. Sous la 8.x, les mots d'avant.
+  const mots = motsDuCoach(v9);
   const { id } = await params;
   const { apercu } = await searchParams;
   const a = await ficheAthlete(coach.compteId, id);
@@ -147,9 +151,9 @@ export default async function PageAthlete({ params, searchParams }: {
       : x.source === 'nolio' ? `repris de Nolio, valeur du ${dateLongue(x.le, true)}` : `saisi par toi le ${dateLongue(x.le, true)}`;
   };
   const reperes: [string, string | null, string | null][] = [
-    ['FC au seuil 1', a.fc_seuil1 ? `${a.fc_seuil1} bpm` : null, source('fc_seuil1')],
-    ['Vitesse critique', a.vc_ms ? `${allureDepuisVitesse(a.vc_ms)} /km` : null, source('vc_ms')],
-    ['FC au seuil 2', a.fc_seuil2 ? `${a.fc_seuil2} bpm` : null, source('fc_seuil2')],
+    [mots.reperes.fc1, a.fc_seuil1 ? `${a.fc_seuil1} bpm` : null, source('fc_seuil1')],
+    [mots.reperes.vc, a.vc_ms ? `${allureDepuisVitesse(a.vc_ms)} /km` : null, source('vc_ms')],
+    [mots.reperes.fc2, a.fc_seuil2 ? `${a.fc_seuil2} bpm` : null, source('fc_seuil2')],
   ];
   const jour = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
   const prochain = objectifs.find((o) => o.course_date >= jour)?.plan_id ?? null;
@@ -238,7 +242,7 @@ export default async function PageAthlete({ params, searchParams }: {
     { ok: profilRempli, ancre: '#son-profil', texte: `Son profil : ${profilRempli ? 'complet' : 'à remplir'}` },
     { ok: messages === 0, ancre: '#a-faire', texte: `Ses messages : ${messages === 0 ? 'rien à lire' : `${messages} à lire`}` },
     { ok: !s || (!s.sansRpe && (s.tenue === null || s.tenue >= 80)), ancre: '#sa-semaine-passee',
-      texte: `Sa semaine passée : ${!s ? 'rien de lu' : s.sansRpe ? 'sans RPE' : s.tenue === null ? `${s.faites} séance${s.faites > 1 ? 's' : ''} sur ${s.prevues}` : `tenue (${s.tenue} %)`}` },
+      texte: `Sa semaine passée : ${!s ? 'rien de lu' : s.sansRpe ? mots.revue.sansEffort : s.tenue === null ? `${s.faites} séance${s.faites > 1 ? 's' : ''} sur ${s.prevues}` : mots.revue.tenue(s.tenue)}` },
     { ok: Boolean(a.nolio_athlete_id) && coursesNolio.length === 0, ancre: '#courses-nolio',
       texte: `Ses courses Nolio : ${!a.nolio_athlete_id ? 'Nolio à associer' : coursesNolio.length === 0 ? 'toutes ici' : `${coursesNolio.length} pas encore ici`}` },
   ];
@@ -302,24 +306,27 @@ export default async function PageAthlete({ params, searchParams }: {
           <Surtitre>Sa semaine passée</Surtitre>
           <span className="text-xs text-[#5E5C78]">{periode}</span>
         </div>
-        <div className="grid grid-cols-3 gap-2">
+        {/* Sous la 9.x, un chiffre par ligne, avec sa ligne d'explication dessous : trois cases côte à côte n'ont pas la place d'une phrase. */}
+        <div className={v9 ? 'grid gap-2' : 'grid grid-cols-3 gap-2'}>
           <div className="rounded-[12px] bg-sand p-3">
             <div className="text-xl font-extrabold">{s ? `${s.faites} / ${s.prevues}` : '—'}</div>
             <div className="text-[0.72rem] text-[#5E5C78]">séances</div>
           </div>
           <div className="rounded-[12px] bg-sand p-3">
-            <div className="text-xl font-extrabold">{s?.sansRpe ? 'sans RPE' : s && s.tenue !== null ? `${s.tenue} %` : '—'}</div>
-            <div className="text-[0.72rem] text-[#5E5C78]">charge tenue</div>
+            <div className="text-xl font-extrabold">{s?.sansRpe ? mots.tuiles.sansEffort : s && s.tenue !== null ? `${s.tenue} %` : '—'}</div>
+            <div className="text-[0.72rem] text-[#5E5C78]">{mots.tuiles.tenue}</div>
             {s && !s.sansRpe && s.tenue !== null && (
               <span aria-hidden className="mt-1.5 block w-full h-1.5 rounded-full bg-indigo/10 overflow-hidden">
                 <span className={clsx('block h-full rounded-full', s.tenue >= 85 ? 'bg-teal' : s.tenue >= 65 ? 'bg-[#C8952E]' : 'bg-[#B4513F]')}
                   style={{ width: `${Math.min(100, s.tenue)}%` }} />
               </span>
             )}
+            {mots.tuiles.explicationTenue && <p className="mt-1.5 text-[0.72rem] leading-snug text-[#5E5C78]">{mots.tuiles.explicationTenue}</p>}
           </div>
           <div className="rounded-[12px] bg-sand p-3">
             <div className="text-xl font-extrabold">{hooper ? hooper.valeur : '—'}</div>
-            <div className="text-[0.72rem] text-[#5E5C78]">Hooper{hooper?.tendance ? ` · ${TENDANCE[hooper.tendance]}` : ''}</div>
+            <div className="text-[0.72rem] text-[#5E5C78]">{mots.tuiles.fatigue(hooper?.tendance ? TENDANCE[hooper.tendance] : null)}</div>
+            {mots.tuiles.explicationFatigue && <p className="mt-1.5 text-[0.72rem] leading-snug text-[#5E5C78]">{mots.tuiles.explicationFatigue}</p>}
           </div>
         </div>
         {sousLaSemaine && <p className="text-sm text-[#3B3957]">{sousLaSemaine.charAt(0).toUpperCase()}{sousLaSemaine.slice(1)}.</p>}
@@ -345,15 +352,16 @@ export default async function PageAthlete({ params, searchParams }: {
               <p className="text-sm text-[#3B3957]">
                 {septJours.faites} séance{septJours.faites > 1 ? 's' : ''} faite{septJours.faites > 1 ? 's' : ''} sur {septJours.prevues}
                 {/* La moyenne à la française, « 8,8 » (défaut relevé sur la maquette du 08/11/2026). */}
-                {septJours.hooper ? ` · Hooper ${septJours.hooper.valeur}${septJours.hooper.moyenne !== null ? ` (moyenne ${decimale(septJours.hooper.moyenne)})` : ''}` : ''}
+                {septJours.hooper ? mots.septJours.fatigue(septJours.hooper.valeur, septJours.hooper.moyenne !== null ? decimale(septJours.hooper.moyenne) : null) : ''}
                 {septJours.derniere_activite ? ` · dernière activité le ${dateLongue(septJours.derniere_activite, true)}` : ''}
               </p>
+              {septJours.hooper && mots.septJours.explication && <p className="text-xs text-[#5E5C78]">{mots.septJours.explication}</p>}
               {septJours.signaux.length === 0 ? <p className="text-sm text-teal font-semibold">Aucun signal.</p> : (
                 <ul className="space-y-1.5 text-sm">
                   {septJours.signaux.map((x, i) => (
                     <li key={i} className="flex flex-wrap gap-x-2">
                       <span className="font-semibold">{SIGNAL_EN_CLAIR[x.genre] ?? x.genre}</span>
-                      <span className="text-[#4A4866]">{dateLongue(x.jour.slice(0, 10), true)} · {virgule(x.detail)}</span>
+                      <span className="text-[#4A4866]">{dateLongue(x.jour.slice(0, 10), true)} · {mots.enMots(virgule(x.detail))}</span>
                     </li>
                   ))}
                 </ul>
@@ -389,7 +397,7 @@ export default async function PageAthlete({ params, searchParams }: {
               <span className="block text-sm font-bold">{c.nom}</span>
               <span className="block text-xs text-[#5E5C78]">
                 {[c.type === 'a' ? 'objectif A' : c.type === 'b' ? 'course B' : null,
-                  c.distance_km ? `${c.distance_km} km` : 'distance à saisir', c.dplus_m ? `${c.dplus_m} m D+` : null].filter(Boolean).join(' · ')}
+                  c.distance_km ? `${c.distance_km} km` : 'distance à saisir', c.dplus_m ? mots.dplus(String(c.dplus_m)) : null].filter(Boolean).join(' · ')}
               </span>
             </span>
             <Link href={preparation ? `/app/coach/plan/${prochain}?course=${c.id}#ajouter-course` : `/app/coach/nouveau?athlete=${a.id}&course=${c.id}${formatRouteDe(c.distance_km, c.dplus_m) ? '&discipline=route' : ''}`}
@@ -417,11 +425,10 @@ export default async function PageAthlete({ params, searchParams }: {
   const contenuReperes = (
     <>
       <p className="mb-3 text-[0.8125rem] leading-relaxed text-[#4A4866]">
-        Avec eux, les séances partent avec une allure sur le plat ou une FC, puis le RPE ; sans eux, au RPE, et le test
-        s’écrit à la place d’une séance. Gardés seulement avec son accord de lecture.
+        {v9 ? mots.reperesAide : 'Avec eux, les séances partent avec une allure sur le plat ou une FC, puis le RPE ; sans eux, au RPE, et le test s’écrit à la place d’une séance. Gardés seulement avec son accord de lecture.'}
       </p>
       <FormulaireValeurs athleteId={a.id} fc1={a.fc_seuil1} vs1Allure={a.v_seuil1_ms ? allureDepuisVitesse(a.v_seuil1_ms) : null}
-        vcAllure={a.vc_ms ? allureDepuisVitesse(a.vc_ms) : null} fc2={a.fc_seuil2} />
+        vcAllure={a.vc_ms ? allureDepuisVitesse(a.vc_ms) : null} fc2={a.fc_seuil2} titres={mots.reperes} />
     </>
   );
   const contenuProfil = <div className="pt-2"><ProfilAthlete athleteId={a.id} profil={profil} pointDuDimanche={v9} /></div>;
@@ -764,8 +771,7 @@ export default async function PageAthlete({ params, searchParams }: {
             <section id="accord" className="py-4 space-y-2 scroll-mt-6">
               <h3 className="text-sm font-bold">Son accord de lecture</h3>
               <p className="text-sm text-[#4A4866]">
-                Reçu{accord.accord_le ? ` le ${new Date(String(accord.accord_le)).toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' })}` : ''} : ses
-                séances, son RPE et son Hooper sont lus dans Nolio, et ses repères gardés sur sa fiche.
+                Reçu{accord.accord_le ? ` le ${new Date(String(accord.accord_le)).toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' })}` : ''} : {mots.accordLu}
               </p>
               {/* B-EC-3 (audit du 03/11/2026) : une confirmation d'abord, qui dit ce qui s'efface. */}
               <details className="text-[0.8125rem]">

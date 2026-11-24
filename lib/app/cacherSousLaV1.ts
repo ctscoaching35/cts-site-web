@@ -25,10 +25,11 @@
 // ─── Les textes (pour le coach seul) ──────────────────────────────────────────────────────────────────────────────
 
 export const TEXTES_CACHES = {
-  // Sous « Saisir son test de vitesse critique » (d) : la phrase d'avant parlait de la lecture du test dans Nolio et d'un test « marqué lu » ; sous la 9.x, rien de cela.
+  // Sous « Saisir son test de vitesse critique » (d) : la phrase d'avant parlait de la lecture du test dans Nolio et d'un test « marqué lu » ; sous la 9.x, rien de cela, et sans « vitesse critique »
+  // (décision 220, 24/11/2026, les mots du coach : lib/app/motsDuCoach.ts).
   testSaisi: 'S’il ne l’a pas fait dans l’app : ses deux efforts donnent sa vitesse critique et son profil de coureur.',
-  // « Ses 7 jours », quand rien n'est encore lu (c) : sans « ou une saison ».
-  septJoursVide: 'Rien de lu pour l’instant. Ses séances et son Hooper des 7 derniers jours se lisent dans Nolio chaque soir, dès qu’un objectif a démarré. « Relire maintenant » les lit tout de suite.',
+  // « Ses 7 jours », quand rien n'est encore lu (c) : sans « ou une saison » ni « Hooper ».
+  septJoursVide: 'Rien de lu pour l’instant. Ses séances et sa fatigue déclarée des 7 derniers jours se lisent dans Nolio chaque soir, dès qu’un objectif a démarré. « Relire maintenant » les lit tout de suite.',
 } as const;
 
 // ─── (a) L'aperçu du dimanche ─────────────────────────────────────────────────────────────────────────────────────────

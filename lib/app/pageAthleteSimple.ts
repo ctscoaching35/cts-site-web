@@ -21,6 +21,7 @@ import { FORMATS_ROUTE } from '@/lib/plan';
 import { NOTE_AVANT_DE_DEMARRER, type Entree } from './entree';
 import { GROUPES_URGENT, groupeUrgent, type Point } from './espaceParAthlete';
 import { lireGpx } from './gpxV9';
+import { MOTS_DU_COACH } from './motsDuCoach';
 
 // ─── Les textes (pour le coach seul) ──────────────────────────────────────────────────────────────────────────────
 
@@ -37,12 +38,13 @@ export const TEXTES_PAGE_ATHLETE = {
   carte: 'Sa carte de coureur',
   ilManque: (liste: string[]) => `Il manque : ${liste.join(', ')}`,
   manqueProfil: 'son profil de coureur',
-  manqueTest: 'son test de vitesse critique',
+  // Les mots du test, ceux du coach (décision 220, 24/11/2026 : pas de « vitesse critique » : lib/app/motsDuCoach.ts).
+  manqueTest: MOTS_DU_COACH.simple.test.manque,
   manqueReperes: 'ses repères',
   // Les gestes sont ceux de la page d'avant, mot pour mot.
   remplirProfil: 'Remplir son profil',
   modifierProfil: 'Modifier son profil',
-  saisirTest: 'Saisir son test de vitesse critique',
+  saisirTest: MOTS_DU_COACH.simple.test.geste,
   modifierReperes: 'Modifier ses repères',
   ceQuIlLit: 'Ce qu’il lit dans son app',
   // (c)

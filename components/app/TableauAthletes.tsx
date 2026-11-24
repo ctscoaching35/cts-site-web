@@ -6,7 +6,8 @@ import type { Etiquette } from '@/lib/app/espaceParAthlete';
 import type { Niveau as Couleur } from '@/lib/app/prevision';
 import { SEMAINE_DE_REPRISE, typeCoteCoach } from '@/lib/app/nomsSeances';
 import { ajouterJours, dateAbregee, jMoins } from '@/lib/app/plan';
-import { ecartDeLaMontee, texteCourtDeLaMontee, type Montee } from '@/lib/app/tableau';
+import { ecartDeLaMontee, type Montee } from '@/lib/app/tableau';
+import { motsDuCoach } from '@/lib/app/motsDuCoach';
 import { manqueDeLaLigne } from '@/lib/app/espaceCoachSimple';
 import { objectifSansSaison } from '@/lib/app/cacherSousLaV1';
 
@@ -19,20 +20,23 @@ export const PASTILLE = {
 // L'écart au prévu, pour le coach seul (décision coach du 13/11/2026, « tout A ») : la charge réalisée et la prévue à ce
 // jour, en mots neutres, et sa pastille, « conforme au plan » ou « en dessous du prévu ». L'athlète ne voit que sa part
 // réalisée. sombre : sous la montagne de sa page d'objectif (une carte sombre).
-export function EcartAuPrevu({ montee, sombre = false }: { montee: Montee; sombre?: boolean }) {
+// v9 : sous la 9.x (décision 220 du coach, 24/11/2026 : les mots du coach remplacent le jargon ; lib/app/motsDuCoach.ts), « 62 % de la charge prévue faite · 70 % attendue à ce jour » à la place de
+// « Charge réalisée 62 % · prévue à ce jour 70 % » ; aide : la ligne qui dit ce que sont ces deux chiffres (sur la page de l'objectif ; dans « Mes athlètes », la légende du tableau la dit une fois).
+export function EcartAuPrevu({ montee, sombre = false, v9 = false, aide = false }: { montee: Montee; sombre?: boolean; v9?: boolean; aide?: boolean }) {
+  const mots = motsDuCoach(v9).montee;
   return (
     <span className="mt-0.5 flex flex-col items-start gap-1">
-      <span className={clsx('text-[0.72rem] leading-snug tabular-nums', sombre ? 'text-[#D6D5E6]' : 'text-[#5E5C78]')}>{texteCourtDeLaMontee(montee)}</span>
+      <span className={clsx('text-[0.72rem] leading-snug tabular-nums', sombre ? 'text-[#D6D5E6]' : 'text-[#5E5C78]')}>{mots.court(montee)}</span>
       <span className={clsx('inline-block text-[0.66rem] font-bold px-2 py-0.5 rounded-full whitespace-nowrap',
         montee.dansLesTemps ? PASTILLE.ok : PASTILLE.warn)}>{ecartDeLaMontee(montee)}</span>
+      {aide && mots.sous && <span className={clsx('text-[0.72rem] leading-snug', sombre ? 'text-[#D6D5E6]' : 'text-[#5E5C78]')}>{mots.sous}</span>}
     </span>
   );
 }
 // Le point de couleur de « Dimanche » (Q1) : rouge, le moteur changera sa semaine ; orange, proche d'un seuil ; vert, elle
 // suit le plan ; gris, rien de lu.
 export const POINT: Record<Couleur, string> = { rouge: 'bg-[#B4513F]', orange: 'bg-[#C8952E]', vert: 'bg-[#0C6E5F]', rien: 'bg-[#A9A8BC]' };
-const LEGENDE: [Couleur, string][] = [['rouge', 'le moteur changera sa semaine'], ['orange', 'proche d’un seuil'],
-  ['vert', 'elle suit le plan'], ['rien', 'rien de lu']];
+// La légende des quatre couleurs est dans lib/app/motsDuCoach.ts (la 8.x : « le moteur changera sa semaine », « proche d'un seuil » ; la 9.x : les mots du coach, et sa phrase).
 const TENDANCE = { hausse: 'en hausse', baisse: 'en baisse', stable: 'stable' } as const;
 const COLONNES = 'grid-cols-[1.45fr_1.2fr_1.05fr_1.05fr_2.05fr_16px]';
 // Une date courte, « 6 déc. », l'année si ce n'est pas celle d'aujourd'hui.
@@ -59,6 +63,8 @@ function categorie(e: EtatAthlete, jour: string, v9: boolean): Exclude<Filtre, '
 export default function TableauAthletes({ lignes: toutes, jour, passee, filtre, base = '/app/coach', v9 = false }: {
   lignes: EtatAthlete[]; jour: string; passee: string; filtre: Filtre; base?: string; v9?: boolean;
 }) {
+  // Sous la 9.x (décision 220, 24/11/2026) : la légende des couleurs, l'en-tête de la semaine passée et une ligne sous chaque chiffre, en mots du coach (lib/app/motsDuCoach.ts).
+  const mots = motsDuCoach(v9);
   const parCategorie = (f: Filtre) => f === 'tous' ? toutes.length : toutes.filter((e) => categorie(e, jour, v9) === f).length;
   const lignes = toutes.filter((e) => filtre === 'tous' || categorie(e, jour, v9) === filtre);
   // La semaine des chiffres (décision 2A du coach, 05/11/2026) : la dernière finie, du lundi au dimanche ; le dimanche, dès
@@ -90,17 +96,23 @@ export default function TableauAthletes({ lignes: toutes, jour, passee, filtre, 
             </div>
             {/* Validé par le coach le 06/11/2026 (1A) */}
             <p className="py-1.5 text-[0.72rem] text-[#5E5C78] border-b border-indigo/[0.06]">
-              Séances, charge tenue et Hooper : semaine du {dateAbregee(passee)} au {dimanche}{dimanche.endsWith('.') ? '' : '.'}
+              {mots.entetePassee(dateAbregee(passee), dimanche)}
             </p>
+            {mots.legendeDesChiffres.length > 0 && (
+              <ul className="py-1.5 space-y-0.5 text-[0.72rem] text-[#5E5C78] border-b border-indigo/[0.06]">
+                {mots.legendeDesChiffres.map((t) => <li key={t}>{t}</li>)}
+              </ul>
+            )}
             {lignes.map((e) => <Ligne key={e.id} e={e} jour={jour} v9={v9} />)}
           </div>
         </div>
       )}
       {toutes.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-[0.72rem] text-[#5E5C78]">
-          {LEGENDE.map(([c, texte]) => (
+          {mots.legende.map(([c, texte]) => (
             <span key={c} className="inline-flex items-center gap-1.5"><span aria-hidden className={clsx('w-2.5 h-2.5 rounded-full', POINT[c])} />{texte}</span>
           ))}
+          {mots.legendeSous && <span className="basis-full">{mots.legendeSous}</span>}
         </div>
       )}
     </Carte>
@@ -188,10 +200,10 @@ function Ligne({ e, jour, v9 }: { e: EtatAthlete; jour: string; v9: boolean }) {
           : `${dateCourte(o.course_date, jour)}${avenir ? ` · ${jMoins(jour, o.course_date)}` : ' · couru'}`}</span>}
         {/* Sa montée, en forme courte (lot 2, réponse du coach du 12/11/2026, « B »), tant que sa course est à venir : le
             réalisé, le prévu à ce jour et la pastille de l'écart (13/11/2026). */}
-        {o?.montee && avenir && !o.fond && <EcartAuPrevu montee={o.montee} />}
+        {o?.montee && avenir && !o.fond && <EcartAuPrevu montee={o.montee} v9={v9} />}
       </span>
       <SaSemaine e={e} jour={jour} v9={v9} />
-      <SemainePassee a={a} />
+      <SemainePassee a={a} v9={v9} />
       <span className="min-w-0 flex flex-col gap-2">
         {e.etiquettes.map((x) => <EtiquetteAthlete key={x.texte} e={x} />)}
         {e.etiquettes.length === 0 && <span className="text-[#5E5C78]">—</span>}
@@ -202,25 +214,27 @@ function Ligne({ e, jour, v9 }: { e: EtatAthlete; jour: string; v9: boolean }) {
 }
 
 // « Semaine passée » : séances, charge tenue et Hooper, en une colonne (maquette du 08/11/2026). Des séances faites, aucun
-// RPE noté : « sans RPE » à la place de sa charge (validé par le coach le 06/11/2026).
-function SemainePassee({ a }: { a: EtatAthlete['a'] }) {
+// RPE noté : « sans RPE » à la place de sa charge (validé par le coach le 06/11/2026). Sous la 9.x (décision 220, 24/11/2026) : « effort non noté », « du prévu » sous le pourcentage
+// et « fatigue 8 » à la place de « 8 » (lib/app/motsDuCoach.ts).
+function SemainePassee({ a, v9 }: { a: EtatAthlete['a']; v9: boolean }) {
+  const mots = motsDuCoach(v9).passee;
   const s = a.semaine;
   if (!s && !a.hooper) return <span className="text-[#5E5C78]">—</span>;
   return (
     <span className="flex flex-col gap-0.5">
       <span>{s ? `${s.faites} / ${s.prevues}` : '—'}</span>
       <span className="inline-flex items-center gap-2 text-[0.78rem]">
-        {s?.sansRpe ? <span className="text-[#5E5C78]">sans RPE</span> : s && s.tenue !== null ? (
+        {s?.sansRpe ? <span className="text-[#5E5C78]">{mots.sansEffort}</span> : s && s.tenue !== null ? (
           <>
             <span aria-hidden className="w-12 h-1.5 rounded-full bg-indigo/10 overflow-hidden">
               <span className={clsx('block h-full rounded-full', s.tenue >= 85 ? 'bg-teal' : s.tenue >= 65 ? 'bg-[#C8952E]' : 'bg-[#B4513F]')}
                 style={{ width: `${Math.min(100, s.tenue)}%` }} />
             </span>
-            {s.tenue} %
+            {s.tenue} %{mots.tenueSous && <span className="text-[#5E5C78]"> {mots.tenueSous}</span>}
           </>
         ) : null}
       </span>
-      {a.hooper && <span className="text-[0.78rem] text-[#4A4866]">{a.hooper.valeur}{a.hooper.tendance ? ` · ${TENDANCE[a.hooper.tendance]}` : ''}</span>}
+      {a.hooper && <span className="text-[0.78rem] text-[#4A4866]">{mots.fatigue(a.hooper.valeur, a.hooper.tendance ? TENDANCE[a.hooper.tendance] : null)}</span>}
     </span>
   );
 }

@@ -22,6 +22,7 @@ import { signauxGardes, SILENCE_JOURS, type SignauxGardes } from './signauxGarde
 import { TEXTES_A_FAIRE } from './espaceCoachSimple';
 import { moteurEstV9 } from './moteurEnLigne';
 import { ajustementsSansAllegees, pointsSousLaV1 } from './cacherSousLaV1';
+import { motsDuCoach, pointEnMotsDuCoach } from './motsDuCoach';
 import { apresLePassage, HEURE_PASSAGE_UTC, lundiQuiVient, semainesDuDimanche, type SemainesDuDimanche } from './semainesDuDimanche';
 import { clientService } from './supabase';
 
@@ -162,7 +163,8 @@ export async function espaceDuCoach(coachId: string, membres: Set<string> | null
   const ceSoir = rangDuJour(jour) === 6 && apresLePassage(undefined, v9);
   const lignes = vue.athletes.map((a): EtatAthlete => {
     const g = a.usr && a.accord && a.coache ? gardes?.get(a.usr) ?? null : null;
-    const p: Prevision = g ? prevision({ prevues: g.prevues, faites: g.faites, hooper: g.hooper, signaux: g.signaux.map((x) => ({ ...x, seance: '' })) }, juge)
+    // Sous la 9.x (décision 220 du coach, 24/11/2026 : les mots du coach remplacent le jargon ; lib/app/motsDuCoach.ts), la phrase de ce que le moteur prévoit n'a plus « la même marche ».
+    const p: Prevision = g ? prevision({ prevues: g.prevues, faites: g.faites, hooper: g.hooper, signaux: g.signaux.map((x) => ({ ...x, seance: '' })) }, juge, motsDuCoach(v9).prevision)
       : { niveau: 'rien', pourquoi: '', prevoit: '' };
     const sante = g && a.usr ? santeDesSignaux(a.nom, a.usr, g, jour).filter((x) => !reglees.has(x.cle)) : [];
     const pasParties: Point[] = ceSoir ? dimanche.ecrites.filter(({ a: f, o }) => f.id === a.id && !dimanche.partis.has(o.plan_id)
@@ -176,9 +178,11 @@ export async function espaceDuCoach(coachId: string, membres: Set<string> | null
         texte: `sa semaine du ${jourMois(dimanche.lundi)} n’est pas partie dans Nolio.` })) : [];
     // Le dimanche après le passage, « Semaine pas partie » parle de la semaine qui arrive : celle qui finit ce soir ne se
     // rattrape plus (« Réessayer » l'écrirait à partir d'aujourd'hui).
-    const points: Point[] = [...dits.filter((r) => r.athlete === a.nom && r.niveau === 'bloque' && !(ceSoir && r.genre === 'semaine')), ...pasParties,
+    // Sous la 9.x, la phrase de chaque point est dite en mots du coach (« effort ressenti », « fatigue déclarée », « du prévu tenu » : lib/app/motsDuCoach.ts) ; la donnée ne change pas.
+    const enMotsDuCoach = (liste: Point[]) => (v9 ? liste.map(pointEnMotsDuCoach) : liste);
+    const points: Point[] = enMotsDuCoach([...dits.filter((r) => r.athlete === a.nom && r.niveau === 'bloque' && !(ceSoir && r.genre === 'semaine')), ...pasParties,
       ...dits.filter((r) => r.athlete === a.nom && r.niveau === 'sante'), ...sante,
-      ...dits.filter((r) => r.athlete === a.nom && r.niveau === 'arrive')];
+      ...dits.filter((r) => r.athlete === a.nom && r.niveau === 'arrive')]);
     const decisions = moteur.filter((l) => l.athlete === a.nom).sort((x, y) => String(y.lundi ?? '').localeCompare(String(x.lundi ?? '')));
     const decision = decisions[0] ? decisionDuMoteur(decisions[0]) : null;
     return {

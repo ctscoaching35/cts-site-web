@@ -9,6 +9,8 @@ import { modeAppGratuite } from '@/lib/app/gratuitRegles';
 import { exigerCoach } from '@/lib/app/nolio';
 import { dateLongue } from '@/lib/app/plan';
 import { espaceCoachOuvert } from '@/lib/app/supabase';
+import { moteurEstV9 } from '@/lib/app/moteurEnLigne';
+import { motsDuCoach } from '@/lib/app/motsDuCoach';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,6 +25,9 @@ export default async function Demande({ params }: { params: Promise<{ id: string
   const d = await demandeParId(id);
   if (!d) notFound();
   const jointes = await jointesDuCompte(d.compte_id);
+  // Les mots du coach sous la 9.x (lib/app/motsDuCoach.ts, décision 220 du coach, 24/11/2026) : « dénivelé », « allure de référence », « seuil aérobie ». Sous la 8.x, ceux d'avant.
+  const v9 = await moteurEstV9().catch(() => false);
+  const mots = motsDuCoach(v9);
   const nom = String(d.reponses.nom ?? '').trim() || 'cette personne';
   return (
     <CadreCoach actif="demandes">
@@ -41,10 +46,10 @@ export default async function Demande({ params }: { params: Promise<{ id: string
           {d.athlete_id && <Link href={`/app/coach/athlete/${d.athlete_id}`} className="inline-flex items-center min-h-11 text-sm font-bold text-teal">Ouvrir sa fiche ›</Link>}
         </Carte>
       ) : (
-        <ActionsDemande demandeId={d.id} nom={nom} />
+        <ActionsDemande demandeId={d.id} nom={nom} ficheCree={mots.demandes.ficheCree} />
       )}
 
-      <DemandeLue d={d} jointes={jointes} />
+      <DemandeLue d={d} jointes={jointes} v9={v9} />
     </CadreCoach>
   );
 }

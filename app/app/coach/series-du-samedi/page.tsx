@@ -7,6 +7,7 @@ import { moteurEstV9 } from '@/lib/app/moteurEnLigne';
 import { exigerCoach } from '@/lib/app/nolio';
 import { dateLongue } from '@/lib/app/plan';
 import { lireLesSeriesDuSamedi, TEXTES_SERIES as T } from '@/lib/app/seriesDuSamedi';
+import { motsDuCoach } from '@/lib/app/motsDuCoach';
 import { espaceCoachOuvert } from '@/lib/app/supabase';
 
 // Toujours calculée à la visite : la page lit la session du coach et la base du site.
@@ -38,7 +39,8 @@ export default async function SeriesDuSamedi() {
       <Carte className="!p-5">
         <h2 className="text-[0.8125rem] font-extrabold tracking-[0.1em] uppercase text-teal">Dans Nolio</h2>
         <ol className="mt-2 list-decimal pl-5 space-y-1 text-sm text-[#4A4866]">
-          {T.marche.map((m) => <li key={m}>{m}</li>)}
+          {/* Sous la 9.x (décision 220 du coach, 24/11/2026) : « la question de fatigue du dimanche » et non « le Hooper » (lib/app/motsDuCoach.ts). */}
+          {motsDuCoach(enLigne).series.marche.map((m) => <li key={m}>{m}</li>)}
         </ol>
       </Carte>
 

@@ -179,7 +179,26 @@ export function debutDeLObjectif(x: { depart_prevu?: string | null; demarre_le?:
   return (x.depart_prevu ? String(x.depart_prevu).slice(0, 10) : null) ?? (x.demarre_le ? premiere : null) ?? x.rejoint ?? null;
 }
 
-export function jaugeDuPlan(trame: LigneTrame[], realises: Realise[], aujourdhui: string, depuis: string | null = null): Jauge {
+// Les lignes de détail des piliers, telles qu'elles se lisent (celles de l'athlète : « ta plus longue », « ta forme »). Le coach lit les mêmes chiffres en ses mots sous la 9.x
+// (lib/app/motsDuCoach.ts, décision 220 du coach, 24/11/2026) : `jaugeDuPlan` prend ces mots en dernier argument, ceux d'avant par défaut.
+export type MotsDesPiliers = {
+  assiduite: (pourcent: string, faites: number, prevues: number) => string;
+  sortiesLongues: (tenues: number, demandees: number, plusLongue: string) => string;
+  cles: (reussies: number, prevues: number, auBonEffort: boolean) => string;
+  fraicheur: (frais: boolean) => string;
+};
+// C22 (audits du 05/11/2026) : « charge tenue », le mot décidé le 04/11/2026 pour la semaine passée.
+export const PILIERS_D_AVANT: MotsDesPiliers = {
+  assiduite: (pourcent, faites, prevues) => `charge tenue : ${pourcent} de la prévue · ${faites} séances faites sur ${prevues}`,
+  sortiesLongues: (tenues, demandees, plusLongue) => `${tenues} tenue${tenues > 1 ? 's' : ''} sur ${demandees} · ta plus longue : ${plusLongue}`,
+  cles: (reussies, prevues, auBonEffort) => `${reussies} réussie${reussies > 1 ? 's' : ''} sur ${prevues}${auBonEffort ? ', au bon effort' : ''}`,
+  // C22 : sans le chiffre du Hooper, qui ne dit rien seul. Validé par le coach le 05/11/2026 (1A ; la seconde phrase).
+  fraicheur: (frais) => (frais ? 'Ta forme du dimanche est revenue dans ta zone habituelle.'
+    : 'Ta forme du dimanche reste au-dessus de ta zone habituelle : dors, mange, garde l’affûtage tel quel.'),
+};
+
+export function jaugeDuPlan(trame: LigneTrame[], realises: Realise[], aujourdhui: string, depuis: string | null = null,
+  mots: MotsDesPiliers = PILIERS_D_AVANT): Jauge {
   const rang = trame.findIndex((l) => l.lundi && momentDe(l.lundi, aujourdhui) === 'encours');
   const faits = realises.filter((r) => r.seances_prevues > 0);
   const piliers: Pilier[] = [];
@@ -187,8 +206,7 @@ export function jaugeDuPlan(trame: LigneTrame[], realises: Realise[], aujourdhui
   if (faits.length && prevue > 0) {
     const tenue = somme(faits.map((r) => r.charge_tenue));
     piliers.push({ cle: 'assiduite', titre: 'Assiduité', valeur: Math.min(1, tenue / prevue),
-      // C22 (audits du 05/11/2026) : « charge tenue », le mot décidé le 04/11/2026 pour la semaine passée.
-      detail: `charge tenue : ${pct(tenue / prevue)} de la prévue · ${somme(faits.map((r) => r.seances_faites))} séances faites sur ${somme(faits.map((r) => r.seances_prevues))}` });
+      detail: mots.assiduite(pct(tenue / prevue), somme(faits.map((r) => r.seances_faites)), somme(faits.map((r) => r.seances_prevues))) });
   }
   // Les sorties longues tenues, comme les autres piliers (décision coach du 19/10/2026 : rien de l'avenir, plus de « la
   // plus longue du plan ») : celles demandées les semaines écoulées, faites à 90 % au moins de leur durée.
@@ -197,13 +215,13 @@ export function jaugeDuPlan(trame: LigneTrame[], realises: Realise[], aujourdhui
     const tenues = slDemandees.filter((r) => (r.sl_faite_min ?? 0) >= 0.9 * (r.sl_prevue_min as number)).length;
     const faite = Math.max(0, ...faits.map((r) => r.sl_faite_min ?? 0));
     piliers.push({ cle: 'sorties_longues', titre: 'Sorties longues', valeur: tenues / slDemandees.length,
-      detail: `${tenues} tenue${tenues > 1 ? 's' : ''} sur ${slDemandees.length} · ta plus longue : ${faite ? enHeures(faite) : 'pas encore'}` });
+      detail: mots.sortiesLongues(tenues, slDemandees.length, faite ? enHeures(faite) : 'pas encore') });
   }
   const clesPrevues = somme(faits.map((r) => r.cles_prevues));
   if (clesPrevues > 0) {
     const reussies = somme(faits.map((r) => r.cles_reussies));
     piliers.push({ cle: 'cles', titre: 'Séances clés', valeur: reussies / clesPrevues,
-      detail: `${reussies} réussie${reussies > 1 ? 's' : ''} sur ${clesPrevues}${faits.some((r) => r.rpe_lu) ? ', au bon effort' : ''}` });
+      detail: mots.cles(reussies, clesPrevues, faits.some((r) => r.rpe_lu)) });
   }
   // La fraîcheur, en affûtage : le Hooper revenu dans sa zone habituelle d'avant l'affûtage.
   const debutAffutage = trame.findIndex(enAffutage);
@@ -214,10 +232,7 @@ export function jaugeDuPlan(trame: LigneTrame[], realises: Realise[], aujourdhui
     const dernier = [...valeurs.slice(0, rang + 1)].reverse().find((v) => v !== null) ?? null;
     if (zone !== null && dernier !== null) {
       const frais = dernier <= zone + ECART_HOOPER;
-      piliers.push({ cle: 'fraicheur', titre: 'Fraîcheur', valeur: frais ? 1 : 0.5,
-        // C22 : sans le chiffre du Hooper, qui ne dit rien seul. Validé par le coach le 05/11/2026 (1A ; la seconde phrase).
-        detail: frais ? 'Ta forme du dimanche est revenue dans ta zone habituelle.'
-          : 'Ta forme du dimanche reste au-dessus de ta zone habituelle : dors, mange, garde l’affûtage tel quel.' });
+      piliers.push({ cle: 'fraicheur', titre: 'Fraîcheur', valeur: frais ? 1 : 0.5, detail: mots.fraicheur(frais) });
     }
   }
   const comptes = piliers.filter((p) => p.cle !== 'fraicheur');

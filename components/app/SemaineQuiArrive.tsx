@@ -21,6 +21,7 @@ import { heureDe, heureDuPassage, jourDeLInstant, reponseAncienne, type SemaineQ
 import { enHeures } from '@/lib/app/tableau';
 import { montrerLInfra, TEXTES_A_FAIRE } from '@/lib/app/espaceCoachSimple';
 import { apercuDisponible, carteAvantVisible, passeDuLundiVisible } from '@/lib/app/cacherSousLaV1';
+import { motsDuCoach, type MotsDuCoach } from '@/lib/app/motsDuCoach';
 
 // « Sa semaine qui arrive » (maquette validée par le coach le 08/11/2026, Q4 « A » ; les écrans de la doctrine, décision 11
 // du coach du 09/11/2026) : la semaine à gauche, TELLE QU'ELLE EST DANS NOLIO une fois partie, chaque retouche marquée
@@ -47,8 +48,8 @@ function etiquetteDuJour(semaine: SemaineLue, iso: string) {
   return `${j.charAt(0).toUpperCase()}${j.slice(1)}. ${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
 }
 
-// Une séance telle qu'elle est dans Nolio, ses marques et ce que le moteur avait écrit.
-function LigneDeNolio({ l }: { l: LigneNolio }) {
+// Une séance telle qu'elle est dans Nolio, ses marques et ce que le moteur avait écrit. mots : l'effort visé se dit « RPE 6 » sous la 8.x, « effort visé 6 » sous la 9.x (lib/app/motsDuCoach.ts).
+function LigneDeNolio({ l, mots }: { l: LigneNolio; mots: MotsDuCoach }) {
   return (
     <span className="block">
       <span className="flex flex-wrap items-baseline gap-x-1.5 gap-y-1">
@@ -58,7 +59,7 @@ function LigneDeNolio({ l }: { l: LigneNolio }) {
           <span className="font-semibold text-indigo">
             {l.nom}
             {(l.minutes || l.rpe !== null) && (
-              <span className="font-normal text-indigo/55">{l.minutes ? ` · ${enHeures(l.minutes)}` : ''}{l.rpe !== null ? ` · RPE ${l.rpe}` : ''}</span>
+              <span className="font-normal text-indigo/55">{l.minutes ? ` · ${enHeures(l.minutes)}` : ''}{l.rpe !== null ? ` · ${mots.effortVise(l.rpe)}` : ''}</span>
             )}
           </span>
         )}
@@ -74,7 +75,7 @@ function LigneDeNolio({ l }: { l: LigneNolio }) {
 }
 
 // La semaine telle qu'elle est dans Nolio, du lundi au dimanche ; un jour sans séance, « Repos ».
-function JoursNolio({ semaine, comparee }: { semaine: SemaineLue; comparee: SemaineComparee }) {
+function JoursNolio({ semaine, comparee, mots }: { semaine: SemaineLue; comparee: SemaineComparee; mots: MotsDuCoach }) {
   const lundi = semaine.lundi ?? comparee.lignes[0]?.date ?? '';
   const jours = Array.from({ length: 7 }, (_, i) => ajouterJours(lundi, i));
   return (
@@ -86,7 +87,7 @@ function JoursNolio({ semaine, comparee }: { semaine: SemaineLue; comparee: Sema
           <li key={iso} className={clsx('flex gap-3 px-1 py-2 border-t first:border-t-0 border-indigo/10', touche && 'bg-[#FFFBF2]')}>
             <span className="w-[4.6rem] shrink-0 text-xs text-indigo/55 pt-0.5">{etiquetteDuJour(semaine, iso)}</span>
             <span className="min-w-0 flex-1 space-y-1">
-              {du.length ? du.map((l) => <LigneDeNolio key={l.cle} l={l} />) : <span className="text-indigo/40">Repos</span>}
+              {du.length ? du.map((l) => <LigneDeNolio key={l.cle} l={l} mots={mots} />) : <span className="text-indigo/40">Repos</span>}
             </span>
           </li>
         );
@@ -98,7 +99,7 @@ function JoursNolio({ semaine, comparee }: { semaine: SemaineLue; comparee: Sema
 // « Pourquoi cette semaine » en sept réponses, une ligne chacune (doctrine de la semaine : « Ce que voit le coach ») ; la
 // conclusion (« Dose » depuis 8.471, l'ancien « Donc » avant) mise en avant en vert ; « Contrôle » en couleur d'alerte quand il
 // annonce un repli ou un refus (tonsDesReponses) ; une donnée manquante, sous sa réponse.
-function SeptReponses({ reponses, sousTitre }: { reponses: Reponse[]; sousTitre: string | null }) {
+function SeptReponses({ reponses, sousTitre, mots }: { reponses: Reponse[]; sousTitre: string | null; mots: MotsDuCoach }) {
   const tons = tonsDesReponses(reponses);
   return (
     <div className="space-y-1.5">
@@ -115,13 +116,13 @@ function SeptReponses({ reponses, sousTitre }: { reponses: Reponse[]; sousTitre:
               donc ? 'my-1 rounded-xl bg-[#E1EFEA] p-2.5 pl-2' : alerte ? 'my-1 rounded-xl bg-[#FFF6E5] p-2.5 pl-2' : 'py-2 border-t first:border-t-0 border-indigo/10')}>
               <span aria-hidden className={clsx('w-[22px] h-[22px] rounded-full flex items-center justify-center text-[0.6875rem] font-extrabold',
                 donc ? 'bg-teal text-white' : alerte ? 'bg-[#C8952E] text-white' : 'bg-[#E4E3EE] text-indigo')}>{r.n}</span>
-              <span className="font-bold text-indigo"><span className="sr-only">{r.n}. </span>{r.libelle}</span>
+              <span className="font-bold text-indigo"><span className="sr-only">{r.n}. </span>{mots.reponse.libelle(r.libelle)}</span>
               <span className={clsx('col-start-2 xl:col-start-3 xl:row-start-1', donc && 'text-[#0B4A40] font-semibold', alerte && 'text-[#7A520D] font-semibold')}>
-                {r.texte}
+                {mots.reponse.texte(r.texte)}
                 {r.manque.map((m) => (
                   <span key={m} className="mt-1.5 flex gap-2 items-start rounded-[10px] bg-[#FFF6E5] px-2.5 py-1.5 text-[0.8rem] font-semibold leading-snug text-[#7A520D]">
                     <span aria-hidden className="mt-px w-[18px] h-[18px] shrink-0 rounded-full bg-[#C8952E] text-white text-[0.6875rem] font-extrabold flex items-center justify-center">!</span>
-                    <span>{m}</span>
+                    <span>{mots.reponse.texte(m)}</span>
                   </span>
                 ))}
               </span>
@@ -136,9 +137,9 @@ function SeptReponses({ reponses, sousTitre }: { reponses: Reponse[]; sousTitre:
 // fond : une saison de fond n'a pas de course (sa date est une sentinelle) : son J- compte vers son prochain objectif, s'il
 // en a un (vers) ; une course passée (sa récupération) n'a pas de J-. lue : la semaine lue dans Nolio (une fois partie) ;
 // erreur : Nolio n'a pas répondu ; ecriteLe : l'heure du passage ; reponses : les sept réponses, à droite.
-function LaSemaine({ semaine, course, fond, vers, lue = null, erreur = null, ecriteLe = null, reponses, sousTitre = null }: {
+function LaSemaine({ semaine, course, fond, vers, lue = null, erreur = null, ecriteLe = null, reponses, sousTitre = null, mots }: {
   semaine: SemaineLue; course: string; fond: boolean; vers: Vers; lue?: { comparee: SemaineComparee; lue_le: string } | null;
-  erreur?: string | null; ecriteLe?: string | null; reponses: Reponse[] | null; sousTitre?: string | null;
+  erreur?: string | null; ecriteLe?: string | null; reponses: Reponse[] | null; sousTitre?: string | null; mots: MotsDuCoach;
 }) {
   const versLa = fond ? vers?.date : course;
   const jMoinsVers = versLa && semaine.lundi && versLa >= semaine.lundi ? versLa : undefined;
@@ -148,13 +149,13 @@ function LaSemaine({ semaine, course, fond, vers, lue = null, erreur = null, ecr
     <div className="flex flex-wrap gap-5 items-start">
       <div className={clsx('flex-[1_1_340px] min-w-0 space-y-2', !reponses && 'max-w-2xl')}>
         <BanniereSemaine semaine={semaine} course={jMoinsVers} vers={fond && jMoinsVers ? vers?.nom : undefined}
-          volume={c ? enHeures(c.volume_min) : undefined} seances={c ? c.seances_texte : undefined} />
+          volume={c ? enHeures(c.volume_min) : undefined} seances={c ? c.seances_texte : undefined} bloc={mots.bloc} />
         {c && marquee && ecriteLe && (
           <p className="text-xs text-[#5E5C78]">
             {c.retouchee ? 'Dans Nolio, tes retouches comprises' : 'Dans Nolio'} · écrite {jourDeLInstant(ecriteLe)} : {semaine.volume}, {semaine.seances}
           </p>
         )}
-        {c ? <JoursNolio semaine={semaine} comparee={c} /> : <JoursEcrits semaine={semaine} />}
+        {c ? <JoursNolio semaine={semaine} comparee={c} mots={mots} /> : <JoursEcrits semaine={semaine} effortVise={mots.effortVise} />}
         {lue && (
           <p className="rounded-xl bg-sand px-3 py-2.5 text-[0.78rem] leading-relaxed text-[#4A4866]">
             Lue dans Nolio à {heureDe(lue.lue_le)}. Dimanche, tes retouches comptent comme les séances du moteur : chaque séance
@@ -165,7 +166,7 @@ function LaSemaine({ semaine, course, fond, vers, lue = null, erreur = null, ecr
       </div>
       {reponses && (
         <div className="flex-[1_1_300px] min-w-0">
-          <SeptReponses reponses={reponses} sousTitre={sousTitre} />
+          <SeptReponses reponses={reponses} sousTitre={sousTitre} mots={mots} />
         </div>
       )}
     </div>
@@ -218,11 +219,11 @@ function DemandeEcrit({ planId, numero, revue, sesJours, v9 = false }: { planId:
 }
 
 // Le pourquoi d'avant (sans les sept réponses) et ce qu'il a lu, repliés.
-function Replies({ pourquoi, lu, realise, ancienne }: { pourquoi: Pourquoi | null; lu: Lu | null; realise: Realise | null; ancienne: boolean }) {
+function Replies({ pourquoi, lu, realise, ancienne, mots }: { pourquoi: Pourquoi | null; lu: Lu | null; realise: Realise | null; ancienne: boolean; mots: MotsDuCoach }) {
   return (
     <>
       {pourquoi && <PourquoiSemaine pourquoi={pourquoi} />}
-      {lu && <CeQuIlALu lu={lu} realise={realise} ancienne={ancienne} />}
+      {lu && <CeQuIlALu lu={lu} realise={realise} ancienne={ancienne} mots={mots.lu} />}
     </>
   );
 }
@@ -235,6 +236,8 @@ function Replies({ pourquoi, lu, realise, ancienne }: { pourquoi: Pourquoi | nul
 export default function SemainesQuiArrivent({ semaines, prevision, vers, aLaMain, v9 = false, dansSesPoints = [] }: {
   semaines: SemaineQuiArrive[]; prevision: Prevision; vers: Vers; aLaMain: boolean; v9?: boolean; dansSesPoints?: string[];
 }) {
+  // Les mots du coach (lib/app/motsDuCoach.ts, décision 220 du coach, 24/11/2026) : « effort visé », « En résumé » à la place de « Dose », « Ce qu'il a lu » sans la marche ; ceux d'avant sous la 8.x.
+  const mots = motsDuCoach(v9);
   if (!semaines.length) {
     return aLaMain ? (
       <Carte id="semaine-qui-arrive" className="!p-5 space-y-2 scroll-mt-6">
@@ -270,7 +273,7 @@ export default function SemainesQuiArrivent({ semaines, prevision, vers, aLaMain
                   {retouchee && <span className={`${pastille} ${PAR_TOI}`}>Retouchée par toi</span>}
                 </div>
                 <LaSemaine semaine={l.donnees} course={s.course} fond={s.fond} vers={versDe} lue={lue}
-                  erreur={s.nolio && 'erreur' in s.nolio ? s.nolio.erreur : null} ecriteLe={l.ecrite_le} reponses={reponses}
+                  erreur={s.nolio && 'erreur' in s.nolio ? s.nolio.erreur : null} ecriteLe={l.ecrite_le} reponses={reponses} mots={mots}
                   sousTitre={retouchee ? `écrit ${jourDeLInstant(l.ecrite_le)}, avant tes retouches` : `écrit ${heureDuPassage(l.ecrite_le)}`} />
               </Carte>
               <NoteDeLaSemaine titre="La note « Ta semaine » qu’il a lue" textes={textes} />
@@ -278,7 +281,7 @@ export default function SemainesQuiArrivent({ semaines, prevision, vers, aLaMain
                 <>
                   <Replies pourquoi={reponses ? null : r.pourquoi ?? null} realise={r.realise ?? null}
                     lu={r.lu ? { ...r.lu, ...(r.lundi?.reponse_tardive ? { tardive: true } : {}) } : null}
-                    ancienne={reponseAncienne(r.lu?.questionnaire_du, l.ecrite_le)} />
+                    ancienne={reponseAncienne(r.lu?.questionnaire_du, l.ecrite_le)} mots={mots} />
                   <DemandeEcrit planId={s.planId} numero={l.numero} revue={r} sesJours={s.sesJours} v9={v9} />
                 </>
               ) : (
@@ -343,14 +346,14 @@ export default function SemainesQuiArrivent({ semaines, prevision, vers, aLaMain
               {a && sortie && (
                 <>
                   <p className="text-sm text-[#5E5C78]">Calculée maintenant comme dimanche soir, avec ce qui est remonté dans Nolio. Rien n’est envoyé.</p>
-                  <LaSemaine semaine={sortie.semaine} course={s.course} fond={s.fond} vers={versDe} reponses={reponses} />
+                  <LaSemaine semaine={sortie.semaine} course={s.course} fond={s.fond} vers={versDe} reponses={reponses} mots={mots} />
                 </>
               )}
             </Carte>
             {a && sortie && (
               <>
                 <NoteDeLaSemaine titre="La note « Ta semaine » qu’il lira" textes={sortie.bilan ? [sortie.bilan] : sortie.notes.map((n) => n.texte)} />
-                <Replies pourquoi={reponses ? null : sortie.pourquoi ?? null} realise={sortie.realise}
+                <Replies pourquoi={reponses ? null : sortie.pourquoi ?? null} realise={sortie.realise} mots={mots}
                   ancienne={reponseAncienne(a.retours?.questionnaire_du, aujourdhuiIso())}
                   lu={a.revue?.lu ?? (rienDeLu(a.retours) ? { sansRetours: true } : { questionnaire: a.retours?.questionnaire, questionnaire_du: a.retours?.questionnaire_du,
                     lues: a.retours?.lues, ...(a.premiere ? { premiere: true } : {}) })} />
