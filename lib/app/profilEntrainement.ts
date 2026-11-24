@@ -5,7 +5,7 @@
  * de son dernier objectif. Il ne sert qu'à ses prochains objectifs ; sa semaine s'ajuste chaque dimanche par son
  * questionnaire. Une seule règle de lecture et de vérification, pour le coach et pour l'athlète. Côté serveur seulement.
  */
-import { coteEnClair, lireCote, SANS_COTE, terrainDeLaCote, TEXTES_COTE } from '@/lib/cote';
+import { coteEnClair, lireCote, terrainDeLaCote, TEXTES_COTE } from '@/lib/cote';
 import { CRITERES, estReponseCritere, titreReponse } from '@/lib/criteres';
 import { API_URL, textes } from '@/lib/plan';
 import { enTetesMoteur } from './cleMoteur';
@@ -136,8 +136,8 @@ export function lireProfil(form: FormData, pour: 'son' | 'ton', ancien?: ProfilE
   const niveauCoach = textes.niveau.options.some((o) => o.valeur === choix) ? choix : '';
   const faits = niveauDesFaits(anciennete, entrainement);
   const niveau = niveauCoach || faits || '';
-  // La plus longue côte, en minutes, ou « pas de côte » (23/11/2026) ; l'ancien terrain, que lit le moteur en ligne, s'en déduit.
-  const cote = form.get('sans_cote') === 'oui' ? SANS_COTE : lireCote(form.get('cote_min'));
+  // La plus longue côte, en minutes (23/11/2026), d'au moins 1 (24/11/2026) ; l'ancien terrain, que lit le moteur en ligne, s'en déduit.
+  const cote = lireCote(form.get('cote_min'));
   const terrain = terrainDeLaCote(cote);
   // Le tapis qui monte (FT3-1) : facultatif, « oui » ou rien.
   const tapis = form.get('tapis') === 'oui';

@@ -39,13 +39,13 @@ export const QUESTIONS_COACHING = {
   terrain: {
     titre: 'Ton terrain',
     pres: 'Ce que tu as près de chez toi',
-    // « Montées de plus de 10 minutes » n'est plus une case : la côte se dit en minutes (décision du coach du 23/11/2026, entrée
-    // 188), juste au-dessous. Les anciennes demandes la gardent (TITRES_D_AVANT).
+    // « Montées de plus de 10 minutes » (23/11/2026) et « Côtes courtes » (24/11/2026, entrée 191) ne sont plus des cases : la côte se
+    // dit en minutes, juste au-dessous (décision du coach, entrée 188). Les anciennes demandes les gardent (TITRES_D_AVANT).
     presChoix: [
-      { cle: 'route', titre: 'Route ou plat' }, { cle: 'chemins', titre: 'Chemins' }, { cle: 'cotes_courtes', titre: 'Côtes courtes' },
+      { cle: 'route', titre: 'Route ou plat' }, { cle: 'chemins', titre: 'Chemins' },
       { cle: 'escaliers', titre: 'Escaliers' }, { cle: 'tapis', titre: 'Tapis de course' },
     ] as Choix[],
-    // La plus longue côte, en minutes, ou « Je n'ai pas de côte » : la même question qu'à l'achat (lib/cote.ts). Facultative ici : la
+    // La plus longue côte, en minutes : la même question qu'à l'achat, sans « pas de côte » (lib/cote.ts). Facultative ici : la
     // demande n'est pas un achat, le coach la relit à l'appel.
     cote: TEXTES_COTE,
     dplus: 'Le D+ possible sur une sortie près de chez toi',
@@ -148,7 +148,7 @@ export type ReponsesCoaching = {
   course_depuis: string; experience_trail: Experience | null; courses_marquantes: string;
   seances: string; heures: number; longue: string;
   terrain: string[]; dplus_pres: string; montagne: string;
-  // La plus longue côte, en minutes (un nombre) ou « aucune » ; vide si elle n'est pas donnée (une demande d'avant le 23/11/2026).
+  // La plus longue côte, en minutes (un nombre d'au moins 1) ; vide si elle n'est pas donnée (une demande d'avant le 23/11/2026).
   cote_min: string;
   objectif: ObjectifDemande; vise: string; vise_autre: string;
   jours: string[]; temps_seance: string; jour_sl: string;
@@ -282,14 +282,14 @@ export function lireDemande(
 
 // ─── Le titre d'une réponse, pour le coach ────────────────────────────────────────────────────────────────────────────
 // Les choix d'avant le 23/11/2026, qu'une demande déjà envoyée garde : lus, plus posés.
-const TITRES_D_AVANT: Record<string, string> = { montees_longues: 'Montées de plus de 10 minutes' };
+const TITRES_D_AVANT: Record<string, string> = { montees_longues: 'Montées de plus de 10 minutes', cotes_courtes: 'Côtes courtes' };
 const titreDe = (choix: Choix[], cle: string) => choix.find((c) => c.cle === cle)?.titre ?? TITRES_D_AVANT[cle] ?? cle;
 export const enClair = {
   depuis: (c: string) => titreDe(Q.vecu.depuisChoix, c),
   seances: (c: string) => titreDe(Q.semaine.seancesChoix, c),
   terrain: (c: string) => titreDe(Q.terrain.presChoix, c),
   montagne: (c: string) => titreDe(Q.terrain.montagneChoix, c),
-  // « 12 min », « Pas de côte » ; null si la demande ne la donne pas.
+  // « 12 min » ; null si la demande ne la donne pas.
   cote: (c: unknown) => coteEnClair(c),
   vise: (c: string) => titreDe(Q.objectif.viseChoix, c),
   tempsSeance: (c: string) => titreDe(Q.dispos.tempsChoix, c),

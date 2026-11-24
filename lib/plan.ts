@@ -63,7 +63,7 @@ export type Champs = {
   // Le terrain à quatre valeurs que lit le moteur en ligne : plus demandé (la côte se dit en minutes, ci-dessous) ; il se déduit
   // des minutes à l'envoi (intakeSelon) et se garde pour relire un profil ou un plan d'avant.
   terrain: string;
-  // La plus longue côte, en minutes (décision du coach du 23/11/2026, entrée 188) : un nombre, ou « aucune » (lib/cote.ts).
+  // La plus longue côte, en minutes (décision du coach du 23/11/2026, entrée 188) : un nombre d'au moins 1 (lib/cote.ts).
   cote_min: string;
   jours_disponibles: string[];
   jour_sl: string;

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import clsx from 'clsx';
 import { envoyerDemandeCoaching } from '@/lib/app/actionsDemandesCoaching';
-import { COTE_MAX_MIN, SANS_COTE } from '@/lib/cote';
+import { COTE_MAX_MIN } from '@/lib/cote';
 import { JOURS, PLAGES, QUESTIONS_COACHING as Q, type ReponsesCoaching } from '@/lib/app/coachingRegles';
 import { EXPERIENCES, PHRASE_SOUS_LA_GRILLE, type Experience } from '@/lib/app/profilGratuit';
 import { BOUTON, BOUTON_SECONDAIRE, CHAMP, Carte, Surtitre } from './Ui';
@@ -38,8 +38,8 @@ function depart(d: Partial<ReponsesCoaching> | null, extra: { sante: string | nu
     nom: d?.nom ?? '', naissance: d?.naissance ? String(d.naissance) : '', ville: d?.ville ?? '',
     course_depuis: d?.course_depuis ?? '', experience_trail: d?.experience_trail ?? '', courses_marquantes: d?.courses_marquantes ?? '',
     seances: d?.seances ?? '', heures: d?.heures != null ? String(d.heures) : '', longue: d?.longue ?? '',
-    // Une demande d'avant garde « Montées de plus de 10 minutes » : plus une case, mais la case cochée ne gêne pas (le serveur la
-    // retire), et la côte se redit en minutes.
+    // Une demande d'avant garde « Montées de plus de 10 minutes » ou « Côtes courtes » : plus des cases, mais la case gardée ne gêne
+    // pas (le serveur la retire), et la côte se redit en minutes.
     terrain: d?.terrain ?? [], dplus_pres: d?.dplus_pres ?? '', montagne: d?.montagne ?? '', cote_min: d?.cote_min ?? '',
     objectif_kind: ob?.kind ?? '', course_id: ob?.kind === 'app' ? ob.course_id : '',
     autre_nom: ob?.kind === 'libre' ? ob.nom : '', autre_date: ob?.kind === 'libre' ? ob.date ?? '' : '',
@@ -109,22 +109,17 @@ function Un({ nom, titre, choix, valeur, onChange, large, sous }: { nom: string;
   );
 }
 
-// La plus longue côte, en minutes (décision du coach du 23/11/2026, entrée 188) : un nombre, ou « Je n'ai pas de côte ».
+// La plus longue côte, en minutes (décision du coach du 23/11/2026, entrée 188) : toujours un nombre, sans « pas de côte » (24/11/2026).
 function Cote({ valeur, onChange }: { valeur: string; onChange: (v: string) => void }) {
-  const sans = valeur === SANS_COTE;
   return (
     <fieldset>
       <legend className={`${etiquette} leading-relaxed`}>{Q.terrain.cote.question}</legend>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <input type="number" inputMode="decimal" step="any" min="0.5" max={COTE_MAX_MIN} aria-label={Q.terrain.cote.unite} disabled={sans}
-          value={sans ? '' : valeur} onChange={(e) => onChange(e.target.value)} className={`${CHAMP} !w-24`} />
+      <div className="flex items-center gap-2">
+        <input type="number" inputMode="decimal" step="any" min="0" max={COTE_MAX_MIN} aria-label={Q.terrain.cote.unite}
+          value={valeur} onChange={(e) => onChange(e.target.value)} className={`${CHAMP} !w-24`} />
         <span className="text-sm text-indigo">{Q.terrain.cote.unite}</span>
-        <label className={clsx('inline-flex items-center min-h-11 px-3.5 rounded-xl border text-sm font-semibold cursor-pointer focus-within:ring-2 focus-within:ring-teal/50',
-          sans ? 'border-teal bg-[#E1EFEA] text-teal-dark' : 'border-indigo/20 bg-white text-indigo')}>
-          <input type="checkbox" checked={sans} onChange={(e) => onChange(e.target.checked ? SANS_COTE : '')} className="sr-only" />
-          {Q.terrain.cote.aucune}
-        </label>
       </div>
+      <p className={aide}>{Q.terrain.cote.aide}</p>
     </fieldset>
   );
 }
