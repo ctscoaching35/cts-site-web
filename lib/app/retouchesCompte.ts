@@ -4,7 +4,7 @@
  * Next, ni Nolio, ni base : sondé à part (scripts/test-retouches.mjs).
  */
 import type { SeanceEnvoyee } from './coaching';
-import type { Jour, Semaine } from './plan';
+import type { JourLu, SemaineLue } from './semaineLue';
 import { minutesDe } from './tableau';
 
 export const FAMILLES_RETOUCHE = ['ef', 'seuil1', 'seuil2', 'vo2max', 'allure', 'sl', 'mecanique', 'renfo'] as const;
@@ -18,7 +18,7 @@ const RENFO = ':renfo';
 
 // La famille d'une séance envoyée, d'après le jour écrit par le moteur ; null pour ce qui ne se compte pas (repos,
 // course, notes).
-export function familleRetouche(jourId: string, j: Pick<Jour, 'famille' | 'seance'> | undefined): FamilleRetouche | null {
+export function familleRetouche(jourId: string, j: Pick<JourLu, 'famille' | 'seance'> | undefined): FamilleRetouche | null {
   if (jourId.endsWith(RENFO)) return 'renfo';
   if (!j) return null;
   if (j.famille === 'ef' || j.famille === 'sl' || j.famille === 'mecanique') return j.famille;
@@ -33,7 +33,7 @@ export function familleRetouche(jourId: string, j: Pick<Jour, 'famille' | 'seanc
 export type DansNolio = { id: string; date_start: string; sport?: string | null; revision?: string | null; duration?: { value?: number } | null };
 
 // Les comptes d'une semaine envoyée, d'après ce qui est dans Nolio.
-export function compterLaSemaine(semaine: Pick<Semaine, 'jours'>, envoyees: SeanceEnvoyee[], nolio: Map<string, DansNolio>): Familles {
+export function compterLaSemaine(semaine: Pick<SemaineLue, 'jours'>, envoyees: SeanceEnvoyee[], nolio: Map<string, DansNolio>): Familles {
   const familles: Familles = {};
   for (const s of envoyees) {
     if ((s.genre ?? 'seance') !== 'seance' || s.nolio_id === null || s.jour_id.startsWith('fiche:')) continue;

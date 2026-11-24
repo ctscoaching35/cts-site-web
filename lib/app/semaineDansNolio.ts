@@ -16,7 +16,8 @@
  */
 import { lireCode } from './codeSeance';
 import type { SeanceEnvoyee } from './coaching';
-import { ajouterJours, type Jour, type Semaine } from './plan';
+import { ajouterJours } from './plan';
+import type { JourLu, SemaineLue } from './semaineLue';
 import { FAMILLES_DE_LA_BARRE } from './barreFamilles';
 import { nomComparable } from './nomsSeances';
 import { enHeures, minutesDe } from './tableau';
@@ -123,7 +124,7 @@ function marqueDuContenu(e: Ecrite, nom: string, minutes: number | null, rienSin
 // séance ajoutée par le coach) ; empreintes : l'empreinte du contenu lu dans Nolio des séances dont la révision a changé
 // (absente : pas lue) ; sports : ceux de la course (lib/app/nolio.ts, SPORTS_COURSE).
 export function comparerLaSemaine({ semaine, envoyees, nolio, posees = new Set(), empreintes = new Map(), sports }: {
-  semaine: Pick<Semaine, 'jours' | 'lundi' | 'seances'>; envoyees: SeanceEnvoyee[]; nolio: PrevueNolio[]; posees?: Set<string>;
+  semaine: Pick<SemaineLue, 'jours' | 'lundi' | 'seances'>; envoyees: SeanceEnvoyee[]; nolio: PrevueNolio[]; posees?: Set<string>;
   empreintes?: Map<string, string | null>; sports: readonly string[];
 }): SemaineComparee {
   const lundi = semaine.lundi ?? '';
@@ -139,7 +140,7 @@ export function comparerLaSemaine({ semaine, envoyees, nolio, posees = new Set()
     if ((s.genre ?? 'seance') !== 'seance' || s.nolio_id === null || s.nolio_id === undefined || s.supprimee
       || s.jour_id.startsWith('fiche:')) continue;
     const renfo = s.jour_id.endsWith(RENFO);
-    const jour: Jour | undefined = semaine.jours.find((j) => j.id === s.jour_id.replace(RENFO, ''));
+    const jour: JourLu | undefined = semaine.jours.find((j) => j.id === s.jour_id.replace(RENFO, ''));
     if (!jour?.date_iso || (!renfo && (jour.famille === 'repos' || jour.famille === 'course'))) continue;
     const lu = lireContenu(s.contenu);
     const rpeEcrit = Number(jour.rpe);

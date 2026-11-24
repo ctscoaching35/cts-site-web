@@ -1,4 +1,5 @@
-import { jMoins, type Semaine } from '@/lib/app/plan';
+import { jMoins } from '@/lib/app/plan';
+import type { SemaineLue } from '@/lib/app/semaineLue';
 import { BANNIERE } from '@/lib/app/charte';
 import { typeCoteCoach } from '@/lib/app/nomsSeances';
 
@@ -11,7 +12,7 @@ import { typeCoteCoach } from '@/lib/app/nomsSeances';
 // volume, seances : ceux de la semaine telle qu'elle est dans Nolio (décision 11 du coach du 09/11/2026, « Sa semaine qui
 // arrive »), à la place de ceux que le moteur a écrits.
 export default function BanniereSemaine({ semaine, course, vers, volume, seances: seancesNolio }: {
-  semaine: Semaine; course?: string; vers?: string; volume?: string; seances?: string;
+  semaine: SemaineLue; course?: string; vers?: string; volume?: string; seances?: string;
 }) {
   // « semaine 15 / 24 » et « 5 séances », tels que le moteur les écrit : l'app ne fait que les ranger.
   const rang = /(\d+)\s*\/\s*(\d+)/.exec(semaine.progression);

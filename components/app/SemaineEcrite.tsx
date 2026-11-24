@@ -1,11 +1,11 @@
-import type { Semaine } from '@/lib/app/plan';
+import type { SemaineLue } from '@/lib/app/semaineLue';
 import { Surtitre } from './Ui';
 
 // La semaine telle que le moteur l'a écrite et sa note « Ta semaine », rendues ici une seule fois : chez l'acheteur
 // (SemaineQuiArrive) et dans l'aperçu avant paiement (components/plan/ApercuPlan.tsx), pour qu'ils se lisent pareil.
 
 // La semaine telle que le moteur l'a écrite (l'aperçu, ou Nolio pas lu).
-export function JoursEcrits({ semaine }: { semaine: Semaine }) {
+export function JoursEcrits({ semaine }: { semaine: Pick<SemaineLue, 'jours'> }) {
   return (
     <ul className="divide-y divide-indigo/10 text-sm">
       {semaine.jours.map((j) => (

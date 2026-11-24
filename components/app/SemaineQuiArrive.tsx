@@ -13,6 +13,7 @@ import { sesJoursEnClair, type SesJours } from '@/lib/app/questionnaireSamedi';
 import { rienDeLu } from '@/lib/app/derniereCourse';
 import type { Lu } from './CeQuIlALu';
 import { ajouterJours, type Semaine } from '@/lib/app/plan';
+import type { SemaineLue } from '@/lib/app/semaineLue';
 import type { Prevision } from '@/lib/app/prevision';
 import { aujourdhuiIso } from '@/lib/app/plan';
 import { septReponses, tonsDesReponses, type LigneNolio, type Reponse, type SemaineComparee } from '@/lib/app/semaineDansNolio';
@@ -36,7 +37,7 @@ const PAR_TOI = 'bg-[#F6ECD8] text-[#6E4A0C]';
 const SANS_AUTEUR = 'bg-[#ECEBF2] text-[#4A4866]';
 
 // Le jour d'une ligne, « Lun. 16/11 » : celui de la semaine écrite, sinon calculé.
-function etiquetteDuJour(semaine: Semaine, iso: string) {
+function etiquetteDuJour(semaine: SemaineLue, iso: string) {
   const ecrit = semaine.jours.find((j) => j.date_iso === iso)?.date;
   if (ecrit) return ecrit;
   const d = new Date(`${iso}T12:00:00Z`);
@@ -71,7 +72,7 @@ function LigneDeNolio({ l }: { l: LigneNolio }) {
 }
 
 // La semaine telle qu'elle est dans Nolio, du lundi au dimanche ; un jour sans séance, « Repos ».
-function JoursNolio({ semaine, comparee }: { semaine: Semaine; comparee: SemaineComparee }) {
+function JoursNolio({ semaine, comparee }: { semaine: SemaineLue; comparee: SemaineComparee }) {
   const lundi = semaine.lundi ?? comparee.lignes[0]?.date ?? '';
   const jours = Array.from({ length: 7 }, (_, i) => ajouterJours(lundi, i));
   return (
@@ -134,7 +135,7 @@ function SeptReponses({ reponses, sousTitre }: { reponses: Reponse[]; sousTitre:
 // en a un (vers) ; une course passée (sa récupération) n'a pas de J-. lue : la semaine lue dans Nolio (une fois partie) ;
 // erreur : Nolio n'a pas répondu ; ecriteLe : l'heure du passage ; reponses : les sept réponses, à droite.
 function LaSemaine({ semaine, course, fond, vers, lue = null, erreur = null, ecriteLe = null, reponses, sousTitre = null }: {
-  semaine: Semaine; course: string; fond: boolean; vers: Vers; lue?: { comparee: SemaineComparee; lue_le: string } | null;
+  semaine: SemaineLue; course: string; fond: boolean; vers: Vers; lue?: { comparee: SemaineComparee; lue_le: string } | null;
   erreur?: string | null; ecriteLe?: string | null; reponses: Reponse[] | null; sousTitre?: string | null;
 }) {
   const versLa = fond ? vers?.date : course;
@@ -248,7 +249,7 @@ export default function SemainesQuiArrivent({ semaines, prevision, vers, aLaMain
           const retouchee = Boolean(lue?.comparee.retouchee);
           // Les sept réponses : celles que la semaine écrite porte (`semaine.pourquoi`, moteur 8.460), sinon le pourquoi
           // d'avant, replié.
-          const reponses = septReponses((l.donnees as Semaine).pourquoi);
+          const reponses = septReponses(l.donnees.pourquoi);
           return (
             <section key={s.planId} className="space-y-3">
               <Carte className="!p-5 space-y-4">

@@ -11,7 +11,8 @@ import CeQuIlALu from '@/components/app/CeQuIlALu';
 import PourquoiSemaine from '@/components/app/PourquoiSemaine';
 import SuiteDeLObjectif from '@/components/app/SuiteDeLObjectif';
 import { exigerCoach } from '@/lib/app/nolio';
-import { ajouterJours, aujourdhuiIso, dateLongue, type Semaine } from '@/lib/app/plan';
+import { ajouterJours, aujourdhuiIso, dateLongue } from '@/lib/app/plan';
+import { lireLaSemaine } from '@/lib/app/semaineLue';
 import { clientService, espaceCoachOuvert } from '@/lib/app/supabase';
 import { CorrigerSemaine } from '@/components/app/GestesEcriture';
 import { choixDeLaSemaine, CORRECTIONS_ACTIVES } from '@/lib/app/corrections';
@@ -52,7 +53,7 @@ export default async function ApercuDimanche({ params }: { params: Promise<{ id:
   const seancesSemaine = sortie ? sortie.semaine.jours.map((j) => j.seance) : undefined;
   // Le nom des séances de ses semaines écrites, pour le journal du moteur (« Séance S13-mardi » brut, 08/11/2026).
   const { data: ecrites } = sortie ? await clientService().from('semaines_ecrites').select('donnees').eq('plan_id', id) : { data: [] };
-  const nomDe = nomsDesSeances((ecrites ?? []).map((x) => x.donnees as Semaine | null));
+  const nomDe = nomsDesSeances((ecrites ?? []).map((x) => lireLaSemaine(x.donnees)));
   // EC3 : les corrections avant l'envoi, sur une semaine de préparation qui partira dimanche (interrupteur éteint : rien).
   const corrigeable = CORRECTIONS_ACTIVES && a?.quoi === 'Semaine' && Boolean(sortie);
   const choix = corrigeable && a ? await choixDeLaSemaine(id, a.lundi).catch(() => null) : null;

@@ -13,7 +13,8 @@ import { destinataire, type SeanceEnvoyee } from './coaching';
 import { compterLaSemaine, type DansNolio, type Familles } from './retouchesCompte';
 import type { Compte } from './ecriture';
 import { listeNolio, nolioConfigure, SPORTS_COURSE } from './nolio';
-import { ajouterJours, type Semaine } from './plan';
+import { ajouterJours } from './plan';
+import { lireLaSemaine } from './semaineLue';
 import { clientService } from './supabase';
 
 // Le calcul pur (les familles, compterLaSemaine, la part sans retouche et la cible), à part pour se tester sans Next ni base.
@@ -35,7 +36,7 @@ export async function compterLesRetouches(budgetMs = 240_000): Promise<Compte[]>
   const { data: lignes, error } = await service.from('semaines_ecrites').select('plan_id, numero, donnees')
     .gte('ecrite_le', new Date(Date.now() - 21 * 86400_000).toISOString());
   if (error) throw new Error(`semaines écrites : ${error.message}`);
-  const ecrites = (lignes ?? []).filter((e) => [precedent, lundi].includes(String((e.donnees as Semaine | null)?.lundi)));
+  const ecrites = (lignes ?? []).filter((e) => [precedent, lundi].includes(String(lireLaSemaine(e.donnees)?.lundi)));
   if (!ecrites.length) return [];
   const { data: liens } = await service.from('coaching').select('plan_id, coach_id, athlete_id')
     .in('plan_id', [...new Set(ecrites.map((e) => e.plan_id as string))]);
@@ -65,7 +66,7 @@ export async function compterLesRetouches(budgetMs = 240_000): Promise<Compte[]>
         .flatMap((e) => (e.seances ?? []) as SeanceEnvoyee[]).map((s) => String(s.nolio_id ?? '')));
       const dejaComptees = new Set<string>();
       for (const e of sesSemaines) {
-        const semaine = e.donnees as Semaine;
+        const semaine = lireLaSemaine(e.donnees);
         const debutSemaine = semaine?.lundi;
         if (!debutSemaine) continue;
         const envoi = (envois ?? []).find((x) => x.plan_id === e.plan_id && x.semaine === e.numero);

@@ -9,6 +9,7 @@ import { continuiteDe, objectifAffiche, trameDuPlan, type LigneTrame, type Reali
 import { listeNolio, SPORTS_COURSE } from './nolio';
 import { semainesDeLaFiche } from './semainesNolio';
 import { ajouterJours, type CleTest, type Semaine } from './plan';
+import { lireLaSemaine, type SemaineLue } from './semaineLue';
 import { clientService } from './supabase';
 import { ajustementDuJournal, debutDeLObjectif, detailDeLaSemaine, minutesDe, trameDesDonnees, volumeDeNolio, type Ajustement, type CourseDuGraphique, type Fiche } from './tableau';
 import { ajustementDeDemonstration, lectureDeDemonstration, recuperationDeDemonstration, semaineDeDemonstration, tableauDeDemonstration } from './demonstration';
@@ -140,11 +141,12 @@ async function accordDuCoache(planId: string): Promise<boolean> {
 
 // La semaine telle qu'elle est partie dans Nolio (semaines_ecrites, ajustements compris) ; sinon celle du plan
 // (un plan envoyé en entier, la démonstration, une semaine pas encore écrite).
-export async function semaineEcrite(ctx: Contexte, numero: string): Promise<Semaine | null> {
+export async function semaineEcrite(ctx: Contexte, numero: string): Promise<SemaineLue | null> {
   if (ctx.demonstration) return semaineDeDemonstration(ctx, numero);
   const duPlan = ctx.plan.semaines.find((s) => s.numero === numero) ?? null;
   const { data } = await clientService().from('semaines_ecrites').select('donnees').eq('plan_id', ctx.cle).eq('numero', numero).maybeSingle();
-  return (data?.donnees as Semaine | undefined) ?? duPlan;
+  // Une semaine de la 8.x ou du moteur v1 : lue par lib/app/semaineLue.ts (décision du coach du 24/11/2026).
+  return lireLaSemaine(data?.donnees) ?? duPlan;
 }
 
 // « Cette semaine » telle qu'elle est dans Nolio (décision coach du 20/10/2026 : « on envoie et je modifie au besoin »,
@@ -272,6 +274,6 @@ export async function ajustementDeLaSemaine(ctx: Contexte, numero: string): Prom
 
 // LE TEST DE LA SEMAINE (Q14, décision coach du 05/11/2026 au soir, « A ») : la séance que la préparation écrit à la
 // place d'une autre pour donner un repère (son jour porte reperes.test.ecrit). Le premier de la semaine, ou null.
-export function testDeLaSemaine(semaine: Semaine | null): CleTest | null {
+export function testDeLaSemaine(semaine: SemaineLue | null): CleTest | null {
   return semaine?.jours.find((j) => j.reperes?.test?.ecrit)?.reperes?.test?.cle ?? null;
 }

@@ -5,7 +5,8 @@ import { BANNIERE, FAMILLES } from '@/lib/app/charte';
 import { lien, type Contexte } from '@/lib/app/contexte';
 import { estSemaineDeWeekEndChoc, nomPourLAthlete, SEMAINE_DE_REPRISE } from '@/lib/app/nomsSeances';
 import { motsDeLaSemaine } from '@/lib/app/motsDeLaSemaine';
-import { ajouterJours, dateLongue, slugFiche, type Jour, type Plan, type Semaine } from '@/lib/app/plan';
+import { ajouterJours, dateLongue, slugFiche, type Plan } from '@/lib/app/plan';
+import type { JourLu, SemaineLue } from '@/lib/app/semaineLue';
 import { calculDeLaMontee, enHeures, estRoute, libelleDeLaMontee, pourcentDeLaMontee, texteDeLaMontee, type Fiche, type Jauge,
   type Montee } from '@/lib/app/tableau';
 import type { CourseSecondaire, EtatNolio, RaisonNolio, SeanceNolio } from '@/lib/app/tableauDuPlan';
@@ -374,7 +375,7 @@ const jourCourt = (iso: string | null, jour: string) => {
   const j = d.toLocaleDateString('fr-FR', { weekday: 'short', timeZone: 'UTC' });
   return `${j.charAt(0).toUpperCase()}${j.slice(1).replace('.', '')}. ${d.getUTCDate()}`;
 };
-const couleurDuJour = (j: Jour) => j.couleur ?? FAMILLES[j.famille]?.filet ?? '#B9C7C3';
+const couleurDuJour = (j: JourLu) => j.couleur ?? FAMILLES[j.famille]?.filet ?? '#B9C7C3';
 
 // AT5 (décision coach du 04/11/2026) : le type de la semaine en mots de coureur ; Q3 (décision coach du 05/11/2026 au
 // soir) : « Semaine allégée », un seul nom (plus d'« assimilation » ni de « décharge »), et « Semaine de course » pour celle
@@ -423,7 +424,7 @@ export type TestDeLaSemaine = { titre: string; comment: string; saisie: string |
 export function CetteSemaine({ semaine, ligne, nolio = null, arrivee = null, depuis = null,
   raison = null, coache = false, lundi = null, horsNolio = false, jour = null, course = null,
   test = null, accord = null }: {
-  semaine: Semaine | null; ligne: LigneTrame | null; nolio?: SeanceNolio[] | null;
+  semaine: SemaineLue | null; ligne: LigneTrame | null; nolio?: SeanceNolio[] | null;
   arrivee?: keyof typeof ARRIVEE | null; depuis?: string | null; raison?: RaisonNolio | null;
   coache?: boolean; lundi?: string | null; horsNolio?: boolean; jour?: string | null; course?: string | null;
   test?: TestDeLaSemaine | null; accord?: string | null;
@@ -461,7 +462,7 @@ export function CetteSemaine({ semaine, ligne, nolio = null, arrivee = null, dep
   };
   const ligneNolio = (x: SeanceNolio) => ligneDeSemaine({ cle: x.id, date: x.date, jourTexte: '', couleur: x.couleur ?? '#B9C7C3',
     nom: nomPourLAthlete(x.nom), duree: x.minutes !== null ? enHeures(x.minutes) : null });
-  const ligneJour = (j: Jour) => ligneDeSemaine({ cle: j.id, date: j.date_iso, jourTexte: j.jour, couleur: couleurDuJour(j),
+  const ligneJour = (j: JourLu) => ligneDeSemaine({ cle: j.id, date: j.date_iso, jourTexte: j.jour, couleur: couleurDuJour(j),
     nom: nomPourLAthlete(j.nom ?? j.seance), duree: j.duree || null });
   const note = (texte: string) => <p className="mt-2.5 p-3 rounded-xl bg-sand text-xs text-[#4A4866] leading-relaxed">{texte}</p>;
   // Les noms des séances affichées, dans le même ordre que les branches ci-dessous (sans accord de lecture : aucune).

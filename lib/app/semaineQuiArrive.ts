@@ -17,14 +17,15 @@ import { destinataire, type FicheAthlete, type SeanceEnvoyee } from './coaching'
 import { apercuDuDimanche, type Apercu, type Revue } from './ecriture';
 import type { SesJours } from './questionnaireSamedi';
 import { appelNolio, listeNolio, nolioConfigure, SPORTS_COURSE } from './nolio';
-import { ajouterJours, type Semaine } from './plan';
+import { ajouterJours } from './plan';
+import { lireLaSemaine, type SemaineLue } from './semaineLue';
 import { comparerLaSemaine, type PrevueNolio, type SemaineComparee } from './semaineDansNolio';
 import { apresLePassage, lundiQuiVient, type SemaineDuDimanche } from './semainesDuDimanche';
 import { clientService } from './supabase';
 import { empreinteSeance } from './trameNolio';
 
 export type LigneEcrite = {
-  numero: string; donnees: Semaine; journal: Record<string, unknown>[]; bilan: string | null; notes: { regle?: string; texte: string }[];
+  numero: string; donnees: SemaineLue; journal: Record<string, unknown>[]; bilan: string | null; notes: { regle?: string; texte: string }[];
   sans_ajustement: boolean; ecrite_le: string; realise: unknown; revue?: Revue | null;
 };
 // sesJours : « ses jours », la dernière réponse lue (lot 0 du 16/11/2026 ; plans.ses_jours, null sans la migration).
@@ -56,10 +57,15 @@ export function lundiMontre(jour: string, apres = apresLePassage()): string | nu
 async function lignesEcrites(planId: string): Promise<{ lignes: LigneEcrite[]; revueGardee: boolean }> {
   const service = clientService();
   const champs = 'numero, donnees, journal, bilan, notes, sans_ajustement, ecrite_le, realise';
+  // « Pourquoi cette semaine » d'une semaine du moteur v1 est gardé à part (semaines_ecrites.pourquoi, migration du 24/11/2026), lu à part : sans la colonne, rien.
+  const { data: pq, error: sansPourquoi } = await service.from('semaines_ecrites').select('numero, pourquoi').eq('plan_id', planId);
+  const pourquoiDe = new Map(sansPourquoi ? [] : (pq ?? []).map((x) => [String(x.numero), x.pourquoi as unknown] as [string, unknown]));
+  // Chaque semaine est lue dans sa forme (la 8.x ou le moteur v1, lib/app/semaineLue.ts).
+  const lues = (lignes: LigneEcrite[]) => lignes.map((l) => ({ ...l, donnees: lireLaSemaine(l.donnees, { pourquoi: pourquoiDe.get(l.numero) }) ?? l.donnees }));
   const avec = await service.from('semaines_ecrites').select(`${champs}, revue`).eq('plan_id', planId);
-  if (!avec.error) return { lignes: (avec.data ?? []) as unknown as LigneEcrite[], revueGardee: true };
+  if (!avec.error) return { lignes: lues((avec.data ?? []) as unknown as LigneEcrite[]), revueGardee: true };
   const sans = await service.from('semaines_ecrites').select(champs).eq('plan_id', planId);
-  return { lignes: (sans.data ?? []) as unknown as LigneEcrite[], revueGardee: false };
+  return { lignes: lues((sans.data ?? []) as unknown as LigneEcrite[]), revueGardee: false };
 }
 
 const numeroDe = (n: string) => Number(String(n).replace(/^S/, ''));
