@@ -8,6 +8,8 @@ import { espaceDuCoach } from '@/lib/app/mesAthletes';
 import { dateLongue } from '@/lib/app/plan';
 import { espaceCoachOuvert } from '@/lib/app/supabase';
 import { exigerCoach } from '@/lib/app/nolio';
+import { moteurEstV9 } from '@/lib/app/moteurEnLigne';
+import { lireLesSeriesDuSamedi, TEXTES_SERIES } from '@/lib/app/seriesDuSamedi';
 
 // Toujours calculée à la visite : la page lit la session du coach.
 export const dynamic = 'force-dynamic';
@@ -23,6 +25,15 @@ export default async function Urgent() {
   const { nolio } = await equipeNolio();
   const espace = await espaceDuCoach(coach.compteId, nolio ? new Set(nolio.map((x) => x.id)) : null);
   const ceSoir = espace.urgent.some((g) => g.lignes.some((l) => l.point.sansGeste));
+  // Sous le moteur 9.0 seulement : les séries du samedi que le coach doit encore retirer de Nolio (entrée 198), lues dans la base du site, jamais dans Nolio.
+  const series = await (async () => {
+    try {
+      if (!(await moteurEstV9())) return 0;
+      return (await lireLesSeriesDuSamedi(coach.compteId, new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date())))?.length ?? 0;
+    } catch {
+      return 0;
+    }
+  })();
   return (
     <CadreCoach actif="urgent" urgents={espace.urgents}>
       {/* Maquette validée par le coach le 08/11/2026 */}
@@ -30,6 +41,13 @@ export default async function Urgent() {
         <h1 className="text-[1.75rem] font-extrabold tracking-tight">Urgent</h1>
         <p className="mt-1.5 text-sm text-[#5E5C78] first-letter:uppercase">{dateLongue(espace.jour)} · ce qui ne peut pas attendre ta revue du dimanche</p>
       </div>
+
+      {series > 0 && (
+        <Link href="/app/coach/series-du-samedi" className="flex items-center justify-between gap-3 bg-indigo text-white rounded-[14px] p-4">
+          <span className="text-sm"><strong>{TEXTES_SERIES.carte(series)}</strong></span>
+          <span className="text-xs text-[#D6D5E6] whitespace-nowrap">Voir ›</span>
+        </Link>
+      )}
 
       {espace.urgent.length === 0 ? (
         <Carte className="!p-5"><p className="text-sm text-teal font-semibold">Rien d’urgent aujourd’hui.</p></Carte>
