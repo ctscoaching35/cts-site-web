@@ -21,8 +21,8 @@ import { parametresDuObjectifV9 } from './parametresPlanV9';
 import {
   ecrireLaSemaineDuLundi, ecrireOuReprendre, passeDuLundiSurUnPlan, pointSansReponse, poserLeQuestionnaireDuDimanche, type ContextePlan, type Resultat, type SortDeLaSemaine,
 } from './passeUnPlanV9';
-import { heureDuRappel, rappelActif } from './rappelDimanche';
-import { TEXTE_RAPPEL_V9_VALIDE, texteDuRappelV9 } from './rappelDimancheV9';
+import { rappelActif } from './rappelDimanche';
+import { heureDuRappelV9, TEXTE_RAPPEL_V9_VALIDE, texteDuRappelV9 } from './rappelDimancheV9';
 import type { Semaine } from './plan';
 
 const ajouterJours = (iso: string, n: number) => new Date(Date.parse(`${iso}T12:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
@@ -187,7 +187,7 @@ export const passageDuLundiV9 = (budgetMs = 240_000, jour = aujourdhuiParis()): 
 export const questionnaireDuMatinV9 = (budgetMs = 120_000, jour = aujourdhuiParis()): Promise<Compte[]> =>
   jourDeLaSemaine(jour) === 0 ? passer(budgetMs, 'questionnaire non posé', (c) => poserLeQuestionnaireDuDimanche(c, jour)) : Promise.resolve([]);
 
-// Le rappel du dimanche (décision 206 du coach, 24/11/2026), vers 15 h (Paris) : un seul message Nolio programmé par athlète et par dimanche, seulement à qui n'a pas répondu à son
+// Le rappel du dimanche (décision 206 du coach, 24/11/2026 ; vers 19 h, Paris, par la décision 211) : un seul message Nolio programmé par athlète et par dimanche, seulement à qui n'a pas répondu à son
 // point du dimanche posé à midi ; plus de rappel pour les séances non remontées. Même interrupteur que sous la 8.x (CTS_RAPPEL_DIMANCHE : coupé, aucune lecture ni aucun appel),
 // même clé « rappel:<dimanche> » (nolio_envois : un seul par dimanche, aussi après un retour à la 8.x), même programmation du message. Une lecture de Nolio qui échoue ne rappelle personne.
 export async function rappelDuDimancheV9(budgetMs = 240_000, maintenant = new Date()): Promise<{ actif: boolean; texteValide: boolean; comptes: Compte[] }> {
@@ -195,7 +195,7 @@ export async function rappelDuDimancheV9(budgetMs = 240_000, maintenant = new Da
   const jour = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(maintenant);
   const comptes: Compte[] = [];
   if (jourDeLaSemaine(jour) !== 0) return { actif: true, texteValide: TEXTE_RAPPEL_V9_VALIDE, comptes };
-  const heure = heureDuRappel(maintenant);
+  const heure = heureDuRappelV9(maintenant);
   if (!heure) return { actif: true, texteValide: TEXTE_RAPPEL_V9_VALIDE, comptes: [{ plan: '', quoi: 'rappel non envoyé : trop tard dans l’après-midi' }] };
   const service = clientService();
   const debut = Date.now();
