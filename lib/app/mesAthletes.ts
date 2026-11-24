@@ -21,6 +21,7 @@ import { prevision, type Prevision } from './prevision';
 import { signauxGardes, SILENCE_JOURS, type SignauxGardes } from './signauxGardes';
 import { TEXTES_A_FAIRE } from './espaceCoachSimple';
 import { moteurEstV9 } from './moteurEnLigne';
+import { ajustementsSansAllegees, pointsSousLaV1 } from './cacherSousLaV1';
 import { apresLePassage, HEURE_PASSAGE_UTC, lundiQuiVient, semainesDuDimanche, type SemainesDuDimanche } from './semainesDuDimanche';
 import { clientService } from './supabase';
 
@@ -142,18 +143,22 @@ function lignesDuMoteur(ajustements: Ajustement[]): LigneMoteur[] {
 // membres : l'équipe Nolio du coach (la page la lit déjà) ; null si Nolio n'a pas répondu.
 export async function espaceDuCoach(coachId: string, membres: Set<string> | null): Promise<EspaceCoach> {
   const jour = aujourdhui();
+  const v9 = await moteurEstV9().catch(() => false);
   const [vue, gardes, ajustements, dimanche] = await Promise.all([
     vueDuCoach(coachId, membres), signauxGardes(coachId).catch(() => null),
     ajustementsDuCoach(coachId).catch(() => [] as Ajustement[]), semainesDuDimanche(coachId, jour),
   ]);
   const { data: regles } = await clientService().from('a_regarder_regles').select('cle').eq('coach_id', coachId);
   const reglees = new Set((regles ?? []).map((r) => String(r.cle)));
-  const moteur = lignesDuMoteur(ajustements);
+  // Sous la 9.x (décision 220 du coach, 24/11/2026 : ce que la v1 ne fait pas encore est caché ; lib/app/cacherSousLaV1.ts) : plus de séance allégée en EF (/v1/fatigue et /v1/veto
+  // sont retirées), donc plus de « allégée en EF » ni de « Garder la séance d'origine », sur aucun écran. Sous la 8.x, les ajustements d'avant.
+  const moteur = lignesDuMoteur(ajustementsSansAllegees(ajustements, v9));
   // La semaine que le passage du dimanche juge (Q1, « Dimanche » tel quel) : celle qui finit le dimanche qui vient.
   const juge = ajouterJours(lundiQuiVient(jour), -7);
+  // Les points que la 9.x ne porte pas (course de préparation, test lu, saison de fond, passe du lundi) ne sont gardés sur aucun écran : un seul filtre, ici.
+  const dits = pointsSousLaV1(vue.aRegarder, v9);
   // Le dimanche après le passage : les semaines du lundi qui vient pas encore parties attendent les reprises de 20 h et
   // 22 h (lundi, ce qui manque encore est le point « semaine » d'« À regarder », avec « Réessayer »).
-  const v9 = await moteurEstV9().catch(() => false);
   const ceSoir = rangDuJour(jour) === 6 && apresLePassage(undefined, v9);
   const lignes = vue.athletes.map((a): EtatAthlete => {
     const g = a.usr && a.accord && a.coache ? gardes?.get(a.usr) ?? null : null;
@@ -171,9 +176,9 @@ export async function espaceDuCoach(coachId: string, membres: Set<string> | null
         texte: `sa semaine du ${jourMois(dimanche.lundi)} n’est pas partie dans Nolio.` })) : [];
     // Le dimanche après le passage, « Semaine pas partie » parle de la semaine qui arrive : celle qui finit ce soir ne se
     // rattrape plus (« Réessayer » l'écrirait à partir d'aujourd'hui).
-    const points: Point[] = [...vue.aRegarder.filter((r) => r.athlete === a.nom && r.niveau === 'bloque' && !(ceSoir && r.genre === 'semaine')), ...pasParties,
-      ...vue.aRegarder.filter((r) => r.athlete === a.nom && r.niveau === 'sante'), ...sante,
-      ...vue.aRegarder.filter((r) => r.athlete === a.nom && r.niveau === 'arrive')];
+    const points: Point[] = [...dits.filter((r) => r.athlete === a.nom && r.niveau === 'bloque' && !(ceSoir && r.genre === 'semaine')), ...pasParties,
+      ...dits.filter((r) => r.athlete === a.nom && r.niveau === 'sante'), ...sante,
+      ...dits.filter((r) => r.athlete === a.nom && r.niveau === 'arrive')];
     const decisions = moteur.filter((l) => l.athlete === a.nom).sort((x, y) => String(y.lundi ?? '').localeCompare(String(x.lundi ?? '')));
     const decision = decisions[0] ? decisionDuMoteur(decisions[0]) : null;
     return {

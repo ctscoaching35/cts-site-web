@@ -10,7 +10,6 @@ import { CIBLE_RETOUCHEES, chiffresDuCoaching, cibleTenue, type ChiffresCoaching
 import type { FamilleRetouche } from '@/lib/app/retouches';
 import { exigerCoach } from '@/lib/app/nolio';
 import { ArreterPreparation } from '@/components/app/GestesEcriture';
-import { CORRECTIONS, CORRECTIONS_ACTIVES, correctionsComptees, RAISONS } from '@/lib/app/corrections';
 import { ajouterJours } from '@/lib/app/plan';
 import { espaceCoachOuvert } from '@/lib/app/supabase';
 
@@ -166,7 +165,6 @@ async function PartieCoaching({ coachId }: { coachId: string }) {
     <>
       <SansRetouche c={c.sansRetouche} />
       <Retouches r={c.retouches} enCours={c.lundi} />
-      <Corrections coachId={coachId} />
     </>
   );
 }
@@ -210,38 +208,6 @@ function SansRetouche({ c }: { c: ChiffresCoaching['sansRetouche'] }) {
           <p className="text-[0.8125rem] text-[#5E5C78]">
             Une semaine par athlète et par objectif ; les 4 semaines finies avant celle en cours, qui peut encore se retoucher.
           </p>
-        </>
-      )}
-    </section>
-  );
-}
-
-// Tes corrections avant l'envoi (EC3, décision coach du 04/11/2026) : ce que tu as corrigé sur l'aperçu, et pourquoi,
-// ces 8 dernières semaines ; la boussole des prochaines améliorations du moteur, comme tes retouches.
-async function Corrections({ coachId }: { coachId: string }) {
-  const jour = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
-  const c = await correctionsComptees(coachId, ajouterJours(jour, -56)).catch(() => null);
-  if (!CORRECTIONS_ACTIVES && !c?.semaines) return null;
-  return (
-    <section className="bg-white rounded-2xl border border-indigo/[0.08] p-5 space-y-3">
-      <h2 className="text-[0.6875rem] font-bold tracking-[0.14em] uppercase text-teal">Tes corrections avant l’envoi</h2>
-      {!c?.semaines ? (
-        <p className="text-sm text-[#5E5C78]">Rien encore : elles se comptent quand une semaine corrigée sur son aperçu part dimanche.</p>
-      ) : (
-        <>
-          <p className="text-sm text-[#3B3957]">{c.semaines} semaine{c.semaines > 1 ? 's' : ''} corrigée{c.semaines > 1 ? 's' : ''} en 8 semaines.</p>
-          <div className="flex flex-wrap gap-x-8 gap-y-3 text-sm">
-            <ul className="space-y-1">
-              {Object.entries(c.parCorrection).sort((x, y) => y[1] - x[1]).map(([k, n]) => (
-                <li key={k}><span className="font-semibold tabular-nums">{n}</span> {CORRECTIONS[k as keyof typeof CORRECTIONS] ?? k}</li>
-              ))}
-            </ul>
-            <ul className="space-y-1">
-              {Object.entries(c.parRaison).sort((x, y) => y[1] - x[1]).map(([k, n]) => (
-                <li key={k}><span className="font-semibold tabular-nums">{n}</span> {RAISONS[k as keyof typeof RAISONS] ?? 'Sans raison dite'}</li>
-              ))}
-            </ul>
-          </div>
         </>
       )}
     </section>

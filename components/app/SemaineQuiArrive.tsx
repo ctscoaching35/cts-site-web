@@ -20,6 +20,7 @@ import { septReponses, tonsDesReponses, type LigneNolio, type Reponse, type Sema
 import { heureDe, heureDuPassage, jourDeLInstant, reponseAncienne, type SemaineQuiArrive } from '@/lib/app/semaineQuiArrive';
 import { enHeures } from '@/lib/app/tableau';
 import { montrerLInfra, TEXTES_A_FAIRE } from '@/lib/app/espaceCoachSimple';
+import { apercuDisponible, carteAvantVisible, passeDuLundiVisible } from '@/lib/app/cacherSousLaV1';
 
 // « Sa semaine qui arrive » (maquette validée par le coach le 08/11/2026, Q4 « A » ; les écrans de la doctrine, décision 11
 // du coach du 09/11/2026) : la semaine à gauche, TELLE QU'ELLE EST DANS NOLIO une fois partie, chaque retouche marquée
@@ -174,9 +175,11 @@ function LaSemaine({ semaine, course, fond, vers, lue = null, erreur = null, ecr
 // « Demandé / écrit » sous « Ce qu'il a lu » (lot 0 du 16/11/2026, point 5) : ce qu'il a demandé au samedi, ce que le moteur a
 // écrit, chaque écart et la phrase de la note qui le dit ; « Ses jours », sa dernière réponse lue ; et ce que la passe du lundi a
 // décidé (semaine réécrite, ou ce qui aurait changé, avec de quoi l'appliquer). BROUILLONS : les textes, à valider par le coach.
-function DemandeEcrit({ planId, numero, revue, sesJours }: { planId: string; numero: string; revue: Revue | null; sesJours: SesJours | null }) {
+// Sous la 9.x (décision 220 du coach, 24/11/2026 ; lib/app/cacherSousLaV1.ts), la passe du lundi de la 8.x n'existe plus : « La passe du lundi n'a pas réécrit la semaine » et le geste
+// « Appliquer ce que le moteur aurait écrit » ne s'affichent pas (v9).
+function DemandeEcrit({ planId, numero, revue, sesJours, v9 = false }: { planId: string; numero: string; revue: Revue | null; sesJours: SesJours | null; v9?: boolean }) {
   const c = demandeEnClair(revue?.demande);
-  const lundi = revue?.lundi;
+  const lundi = revue?.lundi && (passeDuLundiVisible(v9) || revue.lundi.etat !== 'non_reecrite') ? revue.lundi : undefined;
   if (!c.demande && !c.ecrit && !sesJours && !lundi) return null;
   return (
     <div className="bg-white rounded-2xl border border-indigo/[0.08] p-5 space-y-2">
@@ -227,6 +230,8 @@ function Replies({ pourquoi, lu, realise, ancienne }: { pourquoi: Pourquoi | nul
 // v9 et dansSesPoints : sous la 9.x (décision 220 du coach, 24/11/2026 : « un seul endroit pour ce qui est à faire »), « Urgent » n'existe plus et un point n'est
 // dit qu'une fois sur la page : une semaine pas partie qui est déjà un point de « À faire pour lui » (dansSesPoints : ses objectifs) n'a pas ici son bouton
 // « Réessayer » ; plus de « reprises de 20 h et 22 h » ni de migration à passer dans ce que le coach lit. Sous la 8.x, rien ne change.
+// TROISIÈME SIMPLIFICATION (même décision 220, lib/app/cacherSousLaV1.ts) : sous la 9.x, l'aperçu du dimanche n'est pas porté (ni « Ouvrir l'aperçu complet », ni « Voir ce que le
+// moteur écrirait ») et la passe du lundi de la 8.x n'existe plus (ni « La passe du lundi n'a pas réécrit la semaine », ni « Appliquer ce que le moteur aurait écrit »).
 export default function SemainesQuiArrivent({ semaines, prevision, vers, aLaMain, v9 = false, dansSesPoints = [] }: {
   semaines: SemaineQuiArrive[]; prevision: Prevision; vers: Vers; aLaMain: boolean; v9?: boolean; dansSesPoints?: string[];
 }) {
@@ -242,9 +247,10 @@ export default function SemainesQuiArrivent({ semaines, prevision, vers, aLaMain
     <div id="semaine-qui-arrive" className="space-y-3 scroll-mt-6">
       {semaines.map((s) => {
         const versDe = s.fond ? vers : null;
-        const apercuComplet = (
+        // Sous la 9.x, l'aperçu du dimanche n'est pas porté : ni « Ouvrir l'aperçu complet » ni « Voir ce que le moteur écrirait » (lib/app/cacherSousLaV1.ts).
+        const apercuComplet = apercuDisponible(v9) ? (
           <Link href={`/app/coach/plan/${s.planId}/apercu`} className="inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">Ouvrir l’aperçu complet ›</Link>
-        );
+        ) : null;
         if (s.etat === 'ecrite') {
           const l = s.ligne;
           const textes = l.bilan ? [l.bilan] : (l.notes ?? []).map((n) => n.texte);
@@ -273,7 +279,7 @@ export default function SemainesQuiArrivent({ semaines, prevision, vers, aLaMain
                   <Replies pourquoi={reponses ? null : r.pourquoi ?? null} realise={r.realise ?? null}
                     lu={r.lu ? { ...r.lu, ...(r.lundi?.reponse_tardive ? { tardive: true } : {}) } : null}
                     ancienne={reponseAncienne(r.lu?.questionnaire_du, l.ecrite_le)} />
-                  <DemandeEcrit planId={s.planId} numero={l.numero} revue={r} sesJours={s.sesJours} />
+                  <DemandeEcrit planId={s.planId} numero={l.numero} revue={r} sesJours={s.sesJours} v9={v9} />
                 </>
               ) : (
                 <>
@@ -284,7 +290,7 @@ export default function SemainesQuiArrivent({ semaines, prevision, vers, aLaMain
                         : 'Son « pourquoi » et ce qu’il a lu ne sont pas encore gardés au passage : la migration du 08/11/2026 est à passer.'}
                     </p>
                   )}
-                  <DemandeEcrit planId={s.planId} numero={l.numero} revue={null} sesJours={s.sesJours} />
+                  <DemandeEcrit planId={s.planId} numero={l.numero} revue={null} sesJours={s.sesJours} v9={v9} />
                 </>
               )}
               {apercuComplet}
@@ -312,6 +318,8 @@ export default function SemainesQuiArrivent({ semaines, prevision, vers, aLaMain
         const a = s.apercu;
         const sortie = a?.sortie;
         const reponses = sortie ? septReponses((sortie.semaine as Semaine).pourquoi) : null;
+        // Sous la 9.x, sans « Voir ce que le moteur écrirait », une carte sans phrase n'aurait que son titre : elle ne s'affiche pas.
+        if (!a && !s.erreur && !carteAvantVisible(v9, prevision.prevoit)) return null;
         return (
           <section key={s.planId} className="space-y-3">
             <Carte className="!p-5 space-y-3">
@@ -322,10 +330,12 @@ export default function SemainesQuiArrivent({ semaines, prevision, vers, aLaMain
                   {prevision.prevoit && (
                     <p className="text-sm text-[#4A4866]">{prevision.prevoit}{prevision.pourquoi ? ` (${prevision.pourquoi})` : ''}.</p>
                   )}
-                  <Link href={`?apercu=${s.planId}#semaine-qui-arrive`} scroll={false}
-                    className="inline-flex items-center justify-center min-h-11 px-4 rounded-xl border border-teal text-teal text-[0.8125rem] font-bold">
-                    Voir ce que le moteur écrirait
-                  </Link>
+                  {apercuDisponible(v9) && (
+                    <Link href={`?apercu=${s.planId}#semaine-qui-arrive`} scroll={false}
+                      className="inline-flex items-center justify-center min-h-11 px-4 rounded-xl border border-teal text-teal text-[0.8125rem] font-bold">
+                      Voir ce que le moteur écrirait
+                    </Link>
+                  )}
                 </>
               )}
               {s.erreur && <p className="text-sm text-[#8A3326] font-semibold">{s.erreur}</p>}

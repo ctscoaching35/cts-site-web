@@ -22,6 +22,7 @@ import { lireLaSemaine, type SemaineLue } from './semaineLue';
 import { comparerLaSemaine, type PrevueNolio, type SemaineComparee } from './semaineDansNolio';
 import { apresLePassage, lundiQuiVient, type SemaineDuDimanche } from './semainesDuDimanche';
 import { clientService } from './supabase';
+import { apercuDisponible } from './cacherSousLaV1';
 import { empreinteSeance } from './trameNolio';
 
 export type LigneEcrite = {
@@ -93,7 +94,8 @@ export async function semainesQuiArrivent(ecrites: SemaineDuDimanche[], jour: st
       }
       return { ...commun, etat: 'pas_partie', ceSoir: rangDuJour(jour) === 6, laissee: laisseesAuCoach.has(o.plan_id) };
     }
-    if (apercu !== o.plan_id) return { ...commun, etat: 'avant' };
+    // Sous la 9.x, l'aperçu du dimanche n'est pas porté (décision 220 du coach, 24/11/2026 ; lib/app/cacherSousLaV1.ts) : une adresse d'avant avec `?apercu=` ne calcule rien.
+    if (!apercuDisponible(v9) || apercu !== o.plan_id) return { ...commun, etat: 'avant' };
     try {
       return { ...commun, etat: 'avant', apercu: await apercuDuDimanche(o.plan_id) };
     } catch (e) {

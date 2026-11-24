@@ -1,4 +1,5 @@
 import { moteurEstV9 } from '@/lib/app/moteurEnLigne';
+import { preparationsDisponibles } from '@/lib/app/cacherSousLaV1';
 import Link from 'next/link';
 import { formatRouteDe } from '@/lib/app/route';
 import CadreCoach from '@/components/app/CadreCoach';
@@ -19,7 +20,8 @@ export const dynamic = 'force-dynamic';
 // « Ajouter un athlète » (CTS_NOLIO_CADRAGE.md, N2) : le coach remplit le questionnaire à la place de son
 // athlète ; le plan se génère sans paiement et rejoint son espace coach. « Nouvel objectif » (N9, PO1, PO2) : le
 // questionnaire court, son profil repris du dernier objectif ; seules sa charge du moment (préremplie depuis Nolio) et
-// la course se demandent. Une course de préparation s'ajoute à son objectif en cours.
+// la course se demandent. Une course de préparation s'ajoute à son objectif en cours (sous la 8.x : sous la 9.x, la course de préparation n'est pas portée, décision 220 du coach,
+// 24/11/2026 ; lib/app/cacherSousLaV1.ts : son onglet n'est plus là).
 export default async function NouvelAthlete({ searchParams }: { searchParams: Recherche }) {
   const coach = await exigerCoach();
   // Les mots du questionnaire de la semaine (lib/app/motsDuQuestionnaire.ts) : « Ta semaine prochaine » sous la 8.x, « Ton point du dimanche » sous le moteur 9.0.
@@ -96,7 +98,7 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
               : 'Remplis le questionnaire avec ses réponses. L’objectif se crée sans paiement et rejoint ton espace coach.'}
           </p>
         </div>
-        {court && !aModifier && !demande && (
+        {court && !aModifier && !demande && preparationsDisponibles(v9) && (
           <div role="group" aria-label="Genre d’objectif" className="inline-flex mb-6 p-1 rounded-xl bg-sand-dark gap-1">
             <span aria-current="true" className="inline-flex items-center min-h-11 px-4 rounded-[9px] bg-white text-indigo text-sm font-bold shadow-sm">Objectif principal</span>
             {enCours ? (

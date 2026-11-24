@@ -10,7 +10,7 @@
  *   (b) Sa carte de coureur : son profil, ses tests, ses repères, ses zones, son style, en une carte. Ce qui manque saute aux yeux, avec son geste.
  *   (c) Ses objectifs : la course, la date, et de quoi vérifier que tout est rempli (côte, critères, tapis, trace GPX).
  *   (d) Sa semaine qui arrive (components/app/SemaineQuiArrive.tsx, inchangée).
- * Rien ne disparaît : tout le reste est dans « Réglages » (ORDRE_DES_REGLAGES_9X).
+ * Rien ne disparaît : tout le reste est dans « Réglages » (ORDRE_DES_REGLAGES_9X), sauf ce que la 9.x ne porte pas encore (ses courses de préparation, sa saison de fond : lib/app/cacherSousLaV1.ts).
  *
  * Le calcul seul, sans lecture ni réseau : il s'essaie avec des données fabriquées (scripts/test-espace-coach-simple-2.mjs). Les textes ci-dessous
  * sont NOUVEAUX et ne sont lus que par le coach ; ceux qui sont repris de la page d'avant le disent.
@@ -68,7 +68,6 @@ export const TEXTES_PAGE_ATHLETE = {
   reglagesSous: 'sa semaine passée, ses courses, sa programmation, l’app, son compte Nolio, son accord',
   ouEnEstIl: 'Où il en est',
   aVenir: 'À venir pour lui',
-  preparations: 'Ses courses de préparation',
   anciensObjectifs: 'Ses objectifs passés',
 } as const;
 
@@ -88,7 +87,7 @@ export type BlocHaut9x = (typeof ORDRE_9X)[number];
 // Dans « Réglages » : ce qui y est déjà sous la 8.x (le bloc `details` qui existe), puis ce qui s'y ajoute sous la 9.x, « Retirer cet athlète » toujours en dernier.
 export const ORDRE_DES_REGLAGES_8X = ['programmation', 'app', 'nolio', 'accord', 'retirer'] as const;
 export const ORDRE_DES_REGLAGES_9X = [
-  'etat', 'programmation', 'app', 'nolio', 'accord', 'a_venir', 'revue', 'semaine_passee', 'courses_nolio', 'preparations', 'anciens_objectifs', 'demande', 'entree', 'retirer',
+  'etat', 'programmation', 'app', 'nolio', 'accord', 'a_venir', 'revue', 'semaine_passee', 'courses_nolio', 'anciens_objectifs', 'demande', 'entree', 'retirer',
 ] as const;
 export type SectionDesReglages = (typeof ORDRE_DES_REGLAGES_9X)[number];
 
@@ -99,14 +98,15 @@ export const ordreDesReglages = (v9: boolean): readonly string[] => (v9 ? ORDRE_
 //   - « À faire pour lui » : ses points à faire en (a) ; ce qui arrive (« À venir ») et sa revue du dimanche dans « Réglages » ;
 //   - « Son entrée » : ses étapes à faire sont des lignes de (a) ; la carte, une fois ces étapes faites, est dans « Réglages » ;
 //   - « Ses repères », « Son profil de coureur », « Ses zones », « Son style » : une seule carte, (b) ;
-//   - « Ses objectifs » : la course et ce qui se vérifie en (c) ; ses courses de préparation et ses objectifs passés dans « Réglages ».
+//   - « Ses objectifs » : la course et ce qui se vérifie en (c) ; ses objectifs passés dans « Réglages ». Ses courses de préparation et sa saison de fond n'y sont plus : la 9.x ne les
+//     porte pas encore (troisième simplification, lib/app/cacherSousLaV1.ts) ; sous la 8.x, la page d'avant les montre.
 export const PLACE_EN_9X: Record<Bloc8x, readonly (BlocHaut9x | SectionDesReglages)[]> = {
   demande: ['demande'],
   entree: ['a_faire', 'entree'],
   a_faire: ['a_faire', 'a_venir', 'revue'],
   semaine_qui_arrive: ['semaine_qui_arrive'],
   semaine_passee: ['semaine_passee'],
-  objectifs: ['objectifs', 'preparations', 'anciens_objectifs'],
+  objectifs: ['objectifs', 'anciens_objectifs'],
   courses_nolio: ['courses_nolio'],
   reperes: ['carte'],
   zones: ['carte'],
@@ -159,7 +159,7 @@ export function aFairePourLui(points: Point[], entree: Pick<Entree, 'etapes'>, p
   return [...aFaire.map((point): LigneAFaire => ({ type: 'point', point })), ...lignes.map((ligne): LigneAFaire => ({ type: 'entree', ligne }))];
 }
 
-// Ce qui arrive (niveau « À venir » : une course de préparation, une course A dans Nolio, rien après l'objectif…) : il quitte le haut de la page et va dans « Réglages ».
+// Ce qui arrive (niveau « À venir » : une course A dans Nolio, rien après l'objectif… ; plus de course de préparation, la 9.x ne la porte pas) : il quitte le haut de la page et va dans « Réglages ».
 export const pointsAVenir = (points: Point[]): Point[] => points.filter((p) => groupeUrgent(p) === null);
 
 // ─── (b) Sa carte de coureur ──────────────────────────────────────────────────────────────────────────────────────────

@@ -27,7 +27,8 @@ import { entreeDe } from '@/lib/app/entree';
 import {
   aFairePourLui, ceQuiManqueAuCoureur, departagerLesObjectifs, entreeDansLesReglages, pointsAVenir, TEXTES_PAGE_ATHLETE, verifierObjectif,
 } from '@/lib/app/pageAthleteSimple';
-import { coursesDansNolio, pasEncoreIci } from '@/lib/app/coursesNolio';
+import { coursesDansNolio, pasEncoreIci, type CourseNolio } from '@/lib/app/coursesNolio';
+import { coursesNolioVisibles, estUneCourseEnPreparation, TEXTES_CACHES, testsLusDisponibles } from '@/lib/app/cacherSousLaV1';
 import { espaceDuCoach } from '@/lib/app/mesAthletes';
 import { montrerLInfra, pointsDeSaPage, semainesDansSesPoints, TEXTES_A_FAIRE } from '@/lib/app/espaceCoachSimple';
 import { decimale, suiteDe, virgule, type Point } from '@/lib/app/espaceParAthlete';
@@ -83,6 +84,10 @@ const TENDANCE = { hausse: 'en hausse', baisse: 'en baisse', stable: 'stable' } 
 // vérifier que tout est rempli), (d) sa semaine qui arrive ; puis « Réglages », replié, où va tout le reste (sa revue du dimanche, sa semaine passée et ses 7 jours,
 // ses courses dans Nolio, ses courses de préparation, ce qui arrive, son entrée complète…). Rien ne disparaît. L'ordre et ce qui manque se calculent dans
 // lib/app/pageAthleteSimple.ts. Sous la 8.x, les treize blocs d'avant, dans leur ordre : le rendu est celui d'avant.
+// TROISIÈME SIMPLIFICATION, « ce que la v1 ne fait pas encore est caché » (même décision 220, lib/app/cacherSousLaV1.ts) : sous la 9.x, ni l'aperçu du dimanche (« Voir ce que le moteur
+// écrirait »), ni les courses de préparation (leur section de « Réglages », le lien « En préparation » d'une course de Nolio), ni la saison de fond (son lien, son nom sous le sien), ni
+// les tests lus (la phrase du test de vitesse critique ne parle plus de leur lecture), ni les séances allégées en EF et « Garder la séance d'origine » (lib/app/mesAthletes.ts les ôte
+// des données). Sous la 8.x, rien ne change.
 export default async function PageAthlete({ params, searchParams }: {
   params: Promise<{ id: string }>; searchParams: Promise<{ apercu?: string }>;
 }) {
@@ -154,9 +159,9 @@ export default async function PageAthlete({ params, searchParams }: {
   // ni course de préparation à leur date.
   const dejaIci = new Set([...a.objectifs.map((o) => o.course_date), ...(plans ?? []).flatMap((p) =>
     (((p.parametres as Record<string, unknown> | null)?.courses_secondaires ?? []) as CourseSecondaire[]).map((c) => c.date))]);
-  const coursesNolio = a.nolio_athlete_id && relie
+  const coursesPosees = a.nolio_athlete_id && relie
     ? pasEncoreIci(await coursesDansNolio(a.nolio_athlete_id).catch(() => []), dejaIci) : [];
-  const courseA = coursesNolio.find((c) => c.type === 'a') ?? null;
+  const courseA = coursesPosees.find((c) => c.type === 'a') ?? null;
   // Son entrée (décision coach du 22/10/2026), sur son prochain objectif.
   const pp = prochain ? parPlan.get(prochain) : undefined;
   // Une fiche passée en mode plan avant le 04/11/2026 (le mode n'est plus dans l'interface) : rien ne s'écrit pour lui,
@@ -172,6 +177,9 @@ export default async function PageAthlete({ params, searchParams }: {
   // Une course B devient une préparation de son objectif en cours, à partir de lundi prochain et avant sa course.
   const lundiProchain = ajouterJours(jour, 7 - ((new Date(`${jour}T12:00:00Z`).getUTCDay() + 6) % 7));
   const dateProchain = objectifs.find((o) => o.plan_id === prochain)?.course_date ?? '';
+  // Sous la 9.x, une course B de Nolio n'a plus « En préparation » pour geste (la course de préparation n'est pas portée) : elle n'est pas proposée (lib/app/cacherSousLaV1.ts).
+  const enPreparation = (c: CourseNolio) => estUneCourseEnPreparation(c, { prochain, ecrit: Boolean(pp?.parametres), lundiProchain, dateProchain });
+  const coursesNolio = coursesNolioVisibles(coursesPosees, enPreparation, v9);
   const pastilles: [string, boolean][] = [
     [a.nolio_athlete_id ? 'Nolio relié' : 'Nolio à associer', Boolean(a.nolio_athlete_id)],
     [accord ? 'Accord de lecture reçu' : 'Sans accord de lecture', Boolean(accord)],
@@ -236,7 +244,7 @@ export default async function PageAthlete({ params, searchParams }: {
   ];
   // Son prochain objectif, sous son nom ; sinon sa saison en cours.
   const sousLeNom = objectifApres ? `${objectifApres.course_nom} · ${dateLongue(objectifApres.course_date, true)} · ${jMoins(jour, objectifApres.course_date)}`
-    : saisonEnCours ? `${saisonEnCours.course_nom} · jusqu’au ${dateLongue(saisonEnCours.course_date, true)}` : null;
+    : saisonEnCours && !v9 ? `${saisonEnCours.course_nom} · jusqu’au ${dateLongue(saisonEnCours.course_date, true)}` : null;
   const couleur = etat?.prevision.niveau ?? 'rien';
   // Sous la 9.x, « la migration du 04/11/2026 est à passer » n'est plus dite au coach : pas de « Ses 7 jours » vide, une ligne au journal.
   const septJoursVisibles = !(gardesManquent && !montrerLInfra(v9, 'Ses signaux ne sont pas encore gardés : la migration du 04/11/2026 est à passer dans Supabase.'));
@@ -253,9 +261,6 @@ export default async function PageAthlete({ params, searchParams }: {
     return { planId: o.plan_id, nom: o.course_nom, date: o.course_date, principal: o.plan_id === prochain,
       verif: parametres ? verifierObjectif(parametres.champs ?? {}, a.profil) : null };
   });
-  const saison9 = v9 && saisonEnCours ? { planId: saisonEnCours.plan_id, nom: saisonEnCours.course_nom, jusquau: dateLongue(saisonEnCours.course_date, true) } : null;
-  const preparations = v9 ? objectifs.flatMap((o) => (((parPlan.get(o.plan_id)?.parametres as Record<string, unknown> | null)?.courses_secondaires ?? []) as CourseSecondaire[])
-    .filter((c) => c.date >= jour).sort((x, y) => x.date.localeCompare(y.date))) : [];
   // Ses zones et son style, repliés dans sa carte : seulement ce qu'il y a à lire.
   const zonesEtStyle = v9 && ((zones && lignesZones.length > 0) || profilCoureur(profilZones)) ? (
     <>
@@ -334,7 +339,7 @@ export default async function PageAthlete({ params, searchParams }: {
             <p className="text-sm text-[#4A4866]">Ses signaux ne sont pas encore gardés : la migration du 04/11/2026 est à passer.</p>
           ) : !septJours ? (
             // « Ses 7 jours » vide : validé par le coach le 08/11/2026 (la continuité entre deux objectifs, 1e).
-            <p className="text-sm text-[#4A4866]">Rien de lu pour l’instant. Ses séances et son Hooper des 7 derniers jours se lisent dans Nolio chaque soir, dès qu’un objectif ou une saison a démarré. « Relire maintenant » les lit tout de suite.</p>
+            <p className="text-sm text-[#4A4866]">{v9 ? TEXTES_CACHES.septJoursVide : 'Rien de lu pour l’instant. Ses séances et son Hooper des 7 derniers jours se lisent dans Nolio chaque soir, dès qu’un objectif ou une saison a démarré. « Relire maintenant » les lit tout de suite.'}</p>
           ) : (
             <>
               <p className="text-sm text-[#3B3957]">
@@ -376,7 +381,7 @@ export default async function PageAthlete({ params, searchParams }: {
       <Surtitre>Ses courses dans Nolio</Surtitre>
       <p className="text-[0.8125rem] leading-relaxed text-[#4A4866]">Celles que tu as posées dans Nolio et qui ne sont pas encore ici.</p>
       {coursesNolio.map((c) => {
-        const preparation = c.type === 'b' && prochain && pp?.parametres && c.date >= lundiProchain && c.date < dateProchain;
+        const preparation = enPreparation(c);
         return (
           <div key={c.id} className="flex flex-wrap items-center gap-3 p-3 rounded-xl border border-indigo/[0.12]">
             <PastilleDate iso={c.date} />
@@ -399,8 +404,12 @@ export default async function PageAthlete({ params, searchParams }: {
   const contenuTest = (
     <>
       <p className="mb-3 text-[0.8125rem] leading-relaxed text-[#4A4866]">
-        S’il ne l’a pas fait dans l’app, ou si sa lecture dans Nolio n’a pas abouti : ses deux efforts donnent sa vitesse
-        critique et son profil de coureur. Un test écrit dans ses semaines et pas encore lu est alors marqué lu.
+        {testsLusDisponibles(v9) ? (
+          <>
+            S’il ne l’a pas fait dans l’app, ou si sa lecture dans Nolio n’a pas abouti : ses deux efforts donnent sa vitesse
+            critique et son profil de coureur. Un test écrit dans ses semaines et pas encore lu est alors marqué lu.
+          </>
+        ) : TEXTES_CACHES.testSaisi}
       </p>
       <TestVcCoach athleteId={a.id} aujourdhui={jour} />
     </>
@@ -429,17 +438,6 @@ export default async function PageAthlete({ params, searchParams }: {
       <section id="revue" className="py-4">{contenuRevue}</section>
       <section id="sa-semaine-passee" className="py-4 scroll-mt-6">{contenuSemainePassee}</section>
       {coursesNolio.length > 0 && <section id="courses-nolio" className="py-4 space-y-3 scroll-mt-6">{contenuCoursesNolio}</section>}
-      {preparations.length > 0 && (
-        <section className="py-4 space-y-2">
-          <h3 className="text-sm font-bold">{TEXTES_PAGE_ATHLETE.preparations}</h3>
-          {preparations.map((c) => (
-            <div key={`${c.date}-${c.nom}`} className="flex items-center gap-3 p-3 rounded-xl border border-indigo/[0.12]">
-              <PastilleDate iso={c.date} />
-              <span className="text-[0.84rem]"><strong>{c.nom}</strong> · préparation · {c.distance_km} km{c.dplus_m ? ` · ${c.dplus_m} m D+` : ''}</span>
-            </div>
-          ))}
-        </section>
-      )}
       {objectifsPasses.length > 0 && (
         <section className="py-4 space-y-2">
           <h3 className="text-sm font-bold">{TEXTES_PAGE_ATHLETE.anciensObjectifs}</h3>
@@ -500,7 +498,7 @@ export default async function PageAthlete({ params, searchParams }: {
           <PointsPourLui lignes={lignesAFaire} accordRecu={donnerLAccord} />
           <CarteCoureur lignesProfil={profilVide ? [] : lignesProfil} reperes={reperes} manque={manqueCoureur} profilVide={profilVide}
             formulaires={{ profil: contenuProfil, test_vc: contenuTest, reperes: contenuReperes }} zonesEtStyle={zonesEtStyle} />
-          <ObjectifsAVerifier athleteId={a.id} lignes={lignesObjectifs} saison={saison9} />
+          <ObjectifsAVerifier athleteId={a.id} lignes={lignesObjectifs} />
           {semaine}
         </>
       ) : (

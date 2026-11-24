@@ -8,6 +8,7 @@ import { SEMAINE_DE_REPRISE, typeCoteCoach } from '@/lib/app/nomsSeances';
 import { ajouterJours, dateAbregee, jMoins } from '@/lib/app/plan';
 import { ecartDeLaMontee, texteCourtDeLaMontee, type Montee } from '@/lib/app/tableau';
 import { manqueDeLaLigne } from '@/lib/app/espaceCoachSimple';
+import { objectifSansSaison } from '@/lib/app/cacherSousLaV1';
 
 // Les pastilles et les étiquettes de chaque ligne (maquette validée par le coach le 24/10/2026, puis l'espace par athlète,
 // maquette validée le 08/11/2026).
@@ -43,8 +44,8 @@ const dateCourte = (iso: string, jour: string) => new Intl.DateTimeFormat('fr-FR
 export type Filtre = 'tous' | 'route' | 'demarrer' | 'sans';
 const FILTRES: [Filtre, string][] = [['tous', 'Tous'], ['route', 'En route'], ['demarrer', 'À démarrer'], ['sans', 'Sans objectif']];
 export const filtreDe = (demande?: string): Filtre => FILTRES.find(([cle]) => cle === demande)?.[0] ?? 'tous';
-function categorie(e: EtatAthlete, jour: string): Exclude<Filtre, 'tous'> {
-  const o = e.a.objectif;
+function categorie(e: EtatAthlete, jour: string, v9: boolean): Exclude<Filtre, 'tous'> {
+  const o = objectifSansSaison(e.a.objectif, v9);
   if (!o || o.course_date < jour) return 'sans';
   return o.demarre ? 'route' : 'demarrer';
 }
@@ -58,8 +59,8 @@ function categorie(e: EtatAthlete, jour: string): Exclude<Filtre, 'tous'> {
 export default function TableauAthletes({ lignes: toutes, jour, passee, filtre, base = '/app/coach', v9 = false }: {
   lignes: EtatAthlete[]; jour: string; passee: string; filtre: Filtre; base?: string; v9?: boolean;
 }) {
-  const parCategorie = (f: Filtre) => f === 'tous' ? toutes.length : toutes.filter((e) => categorie(e, jour) === f).length;
-  const lignes = toutes.filter((e) => filtre === 'tous' || categorie(e, jour) === filtre);
+  const parCategorie = (f: Filtre) => f === 'tous' ? toutes.length : toutes.filter((e) => categorie(e, jour, v9) === f).length;
+  const lignes = toutes.filter((e) => filtre === 'tous' || categorie(e, jour, v9) === filtre);
   // La semaine des chiffres (décision 2A du coach, 05/11/2026) : la dernière finie, du lundi au dimanche ; le dimanche, dès
   // le passage, celle qui finit ce soir (décision A du coach, 06/11/2026). « 1er nov. » finit déjà par son point.
   const dimanche = dateAbregee(ajouterJours(passee, 6));
@@ -127,9 +128,11 @@ const Partie = ({ partie }: { partie: boolean }) => (
 // écrite ce soir (maquette du 08/11/2026). La saison de fond (décisions coach du 24/10/2026) : le thème de la semaine. Le
 // type en mots (décisions coach du 08/11/2026) : « Semaine allégée », « Semaine de reprise ». Un plan démarré ne dit jamais
 // « Démarre le … » (bogue du 05/11/2026).
-export function SaSemaine({ e, jour }: { e: EtatAthlete; jour: string }) {
+// v9 : sous la 9.x (décision 220 du coach, 24/11/2026), la saison de fond n'existe pas (lib/app/cacherSousLaV1.ts) : ni « Saison de fond », ni « Bloc … », ni « tests dans … » ; une saison se
+// lit comme « Sans objectif ». Sous la 8.x, rien ne change.
+export function SaSemaine({ e, jour, v9 = false }: { e: EtatAthlete; jour: string; v9?: boolean }) {
   const a = e.a;
-  const o = a.objectif;
+  const o = objectifSansSaison(a.objectif, v9);
   const avenir = Boolean(o && o.course_date >= jour);
   const cours = o?.suivante ?? o?.cours ?? null;
   const partie = o?.suivante ? o.suivante.partie : o?.partie ?? null;
@@ -157,7 +160,7 @@ export function SaSemaine({ e, jour }: { e: EtatAthlete; jour: string }) {
 // Une ligne du tableau : toute la ligne ouvre sa page (le lien de son nom, étiré sur la ligne).
 function Ligne({ e, jour, v9 }: { e: EtatAthlete; jour: string; v9: boolean }) {
   const a = e.a;
-  const o = a.objectif;
+  const o = objectifSansSaison(a.objectif, v9);
   const avenir = Boolean(o && o.course_date >= jour);
   const sous = 'block text-[0.72rem] text-[#5E5C78] mt-0.5';
   const pastille = 'inline-block text-[0.66rem] font-bold px-2 py-0.5 rounded-full whitespace-nowrap';
@@ -187,7 +190,7 @@ function Ligne({ e, jour, v9 }: { e: EtatAthlete; jour: string; v9: boolean }) {
             réalisé, le prévu à ce jour et la pastille de l'écart (13/11/2026). */}
         {o?.montee && avenir && !o.fond && <EcartAuPrevu montee={o.montee} />}
       </span>
-      <SaSemaine e={e} jour={jour} />
+      <SaSemaine e={e} jour={jour} v9={v9} />
       <SemainePassee a={a} />
       <span className="min-w-0 flex flex-col gap-2">
         {e.etiquettes.map((x) => <EtiquetteAthlete key={x.texte} e={x} />)}

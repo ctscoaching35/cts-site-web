@@ -1,16 +1,9 @@
-// Les corrections d'une semaine avant son envoi et leurs raisons (EC3, lib/app/corrections.ts) : les mots seuls, lus
-// aussi par le formulaire de l'aperçu (côté navigateur).
+// Les corrections d'une semaine avant son envoi (EC3, audit de l'app coach du 03/11/2026) : leurs noms seuls, lus par le journal du moteur en clair
+// (lib/app/journalEnClair.ts, l'entrée « COACH » que le moteur de la 8.x écrit pour une correction appliquée). L'écran qui les choisissait (« Corriger avant l'envoi »,
+// sur l'aperçu), la carte « Tes corrections avant l'envoi » de « Chiffres », leurs gestes et leur lecture dans la base sont supprimés (décision 220 du coach, 24/11/2026 :
+// le coach corrige dans Nolio, le moteur repart de sa correction) ; ce qui reste ne sert qu'à lire un journal déjà écrit.
 export const CORRECTIONS = {
   semaine_allegee: 'Semaine allégée', sans_qualite: 'Sans qualité', sl_courte: 'Sortie longue plus courte',
   decaler_qualite: 'Décaler la qualité',
 } as const;
 export type Correction = keyof typeof CORRECTIONS;
-
-// Pourquoi (les causes du diagnostic des retouches) : là où chaque correction se corrigera ensuite.
-export const RAISONS = {
-  etat: 'Son état du moment (fatigue, douleur, imprévu)', info: 'Une info que le moteur n’a pas (temps, terrain, charge)',
-  placement: 'Le placement dans sa semaine', dose: 'La dose ne lui va pas', facon: 'Ta façon de coacher',
-} as const;
-export type Raison = keyof typeof RAISONS;
-
-export type Choix = { corrections: Correction[]; raison: Raison | null; appliquee: boolean };

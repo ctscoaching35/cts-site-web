@@ -180,7 +180,7 @@ export function tables(): Record<string, Ligne[]> {
     signaux_suivi: signauxDuSoir(maintenant),
     retouches: retouches(lundi).filter(vu),
     mesures: mesures(lundi), achats: achats(), relances: [{ accord_le: ajouterJours(lundi, -4) }, { accord_le: ajouterJours(lundi, -18) }],
-    a_regarder_regles: [], corrections_semaine: [], tests_lus: [], semaines_athlete: [], zones: [], badges: [],
+    a_regarder_regles: [], tests_lus: [], semaines_athlete: [], zones: [], badges: [],
   };
   gardees = { minute, tables: t };
   return t;

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import BanniereSemaine from '@/components/app/BanniereSemaine';
 import CadreCoach from '@/components/app/CadreCoach';
 import { Carte, Surtitre } from '@/components/app/Ui';
@@ -14,8 +14,8 @@ import { exigerCoach } from '@/lib/app/nolio';
 import { ajouterJours, aujourdhuiIso, dateLongue } from '@/lib/app/plan';
 import { lireLaSemaine } from '@/lib/app/semaineLue';
 import { clientService, espaceCoachOuvert } from '@/lib/app/supabase';
-import { CorrigerSemaine } from '@/components/app/GestesEcriture';
-import { choixDeLaSemaine, CORRECTIONS_ACTIVES } from '@/lib/app/corrections';
+import { apercuDisponible } from '@/lib/app/cacherSousLaV1';
+import { moteurEstV9 } from '@/lib/app/moteurEnLigne';
 
 // Toujours calculée à la visite : la page lit Nolio et demande la semaine au moteur, sans rien garder.
 export const dynamic = 'force-dynamic';
@@ -26,11 +26,15 @@ export const maxDuration = 60;
 // avec la note « Ta semaine », puis la semaine ; « Pourquoi cette semaine » et « Ce qu'il a lu » repliés. La semaine
 // écoulée se dit une fois, dans « Ce qu'il a lu », en charge tenue (la mesure de « Mes athlètes ») : le moteur la disait
 // aussi dans son pourquoi, en charge faite.
+// SOUS LA 9.x (décision 220 du coach, 24/11/2026 : ce que la v1 ne fait pas encore est caché ; lib/app/cacherSousLaV1.ts) : l'aperçu du dimanche n'est pas porté (`apercuDuDimanche`
+// refuse), plus rien n'y mène et l'adresse renvoie à la page de l'objectif, avant de rien lire. Sous la 8.x, la page est celle d'avant. Le bloc « Corriger avant l'envoi » est supprimé
+// (même décision : le coach corrige dans Nolio, le moteur repart de sa correction).
 
 export default async function ApercuDimanche({ params }: { params: Promise<{ id: string }> }) {
   if (!espaceCoachOuvert()) notFound();
   const coach = await exigerCoach();
   const { id } = await params;
+  if (!apercuDisponible(await moteurEstV9().catch(() => false))) redirect(`/app/coach/plan/${id}`);
   const o = await objectifCoache(coach.compteId, id);
   if (!o) notFound();
   let a: Awaited<ReturnType<typeof apercuDuDimanche>> | null = null;
@@ -54,9 +58,6 @@ export default async function ApercuDimanche({ params }: { params: Promise<{ id:
   // Le nom des séances de ses semaines écrites, pour le journal du moteur (« Séance S13-mardi » brut, 08/11/2026).
   const { data: ecrites } = sortie ? await clientService().from('semaines_ecrites').select('donnees').eq('plan_id', id) : { data: [] };
   const nomDe = nomsDesSeances((ecrites ?? []).map((x) => lireLaSemaine(x.donnees)));
-  // EC3 : les corrections avant l'envoi, sur une semaine de préparation qui partira dimanche (interrupteur éteint : rien).
-  const corrigeable = CORRECTIONS_ACTIVES && a?.quoi === 'Semaine' && Boolean(sortie);
-  const choix = corrigeable && a ? await choixDeLaSemaine(id, a.lundi).catch(() => null) : null;
   return (
     <CadreCoach actif="athletes">
       <Link href={`/app/coach/plan/${id}`} className="inline-flex items-center min-h-9 text-[0.8125rem] font-bold text-teal">‹ {o.athlete.nom}</Link>
@@ -102,18 +103,6 @@ export default async function ApercuDimanche({ params }: { params: Promise<{ id:
               ))}
             </ul>
           </Carte>
-          {corrigeable && a && (
-            <Carte className="!p-5 space-y-2">
-              <Surtitre>Corriger avant l’envoi</Surtitre>
-              <p className="text-sm text-[#4A4866]">
-                Ce que tu corrigerais dans Nolio, choisi ici : le moteur l’applique dimanche soir, et ta raison se compte dans
-                « Chiffres ». Tu peux le retirer jusque-là. Sortie longue plus courte : 75 %, jamais sous 45 min ; décaler : au
-                jour libre le plus proche, jamais à côté de la sortie longue ni d’une séance dure. Aucune note n’est ajoutée
-                dans Nolio : ton athlète ne voit pas pourquoi, dis-le-lui si besoin.
-              </p>
-              <CorrigerSemaine planId={id} lundi={a.lundi} choix={choix} />
-            </Carte>
-          )}
           {sortie.pourquoi && <PourquoiSemaine pourquoi={sortie.pourquoi} />}
           {a && (
             <CeQuIlALu realise={r} ancienne={Boolean(a.retours?.questionnaire_du && a.retours.questionnaire_du < ajouterJours(aujourdhuiIso(), -6))}

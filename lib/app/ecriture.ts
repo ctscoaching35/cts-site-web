@@ -48,7 +48,6 @@ import { noteARemplacer, peutAppelerLeMoteur, quelqueChoseDeNouveau, semaineDans
 import { derniereCourse, JOURS_DERNIERE_COURSE, rienDeLu } from './derniereCourse';
 import { semaineAReprendre, sortieApresArret } from './reprises';
 import { historiqueDejaRecu, historiqueParSemaine, niveauHabituel, plusLonguesParSemaine, SEMAINES_HISTORIQUE, type HistoriqueSemaine } from './charge';
-import { correctionsAEnvoyer, CORRECTIONS_ACTIVES, marquerAppliquees } from './corrections';
 import { derniereActivite, garderLesSignaux } from './signauxGardes';
 import { demonstrationCoachOuverte, moteurDemonstration } from './demonstrationCoach';
 import { enTetesMoteur } from './cleMoteur';
@@ -819,10 +818,7 @@ async function corpsDeLaSemaine(o: Objectif, numero: string, retours: Retours | 
   const strategie = options.parametres ? null : await strategieDeLaCourse(o.planId).catch(() => null);
   const lundi = o.plan.semaines.find((x) => x.numero === numero)?.lundi;
   const faits = await testsFaitsSansValeur(o.planId, lundi, o.accordLecture).catch(() => new Set<string>());
-  // EC3 : les corrections que le coach a choisies sur l'aperçu, derrière leur interrupteur (lib/app/corrections.ts).
-  const corrections = await correctionsAEnvoyer(o.planId, lundi, Boolean(options.sansAjustement));
   return {
-    ...(corrections.length ? { corrections } : {}),
     parametres: options.parametres ?? parametresAvecLaStrategie(o.parametres, strategie), numero, etat: o.etat, retours,
     sans_ajustement: Boolean(options.sansAjustement),
     valeurs: valeursConnues(o, lundi, faits), reprise: Boolean(options.reprise),
@@ -1731,8 +1727,6 @@ export async function passageDuDimanche(budgetMs = 240_000): Promise<Compte[]> {
       const sortie = recuperation
         ? await ecrireLaRecuperation(o, numero, recuperation.jusqua, retours, { sansNote: true })
         : await ecrireEtEnvoyer(o, numero, retours, { reprise: premiereDuFond && await saisonApresUneCourse(o, lundi), sansNote: true });
-      // EC3 : les corrections de cette semaine, envoyées, se comptent (« Chiffres »).
-      if (s && CORRECTIONS_ACTIVES) await marquerAppliquees(planId, lundi, sortie.journal ?? []).catch(() => null);
       // Q4 (08/11/2026) : son pourquoi et ce qu'il a lu, gardés à part pour la revue du dimanche soir (jamais une raison
       // d'échec : la semaine est déjà partie).
       await garderLaRevue(planId, numero, revueDe(sortie, retours, recuperation ? 'Semaine de récupération' : 'Semaine', premiereDuFond));
@@ -2092,6 +2086,9 @@ export async function passageDuLundi(budgetMs = 240_000, jour = aujourdhuiParis(
 // il veut ce qu'elle aurait écrit. Seulement la dernière semaine écrite ; la note « Ta semaine » du dimanche est remplacée par le
 // bilan que le moteur a réécrit (`resultat.bilan`, décision du 16/11/2026), la même note mise à jour ; sans bilan, elle reste.
 export async function appliquerLaSemaineDuLundi(planId: string, numero: string): Promise<void> {
+  // Le moteur v1 (9.x) ne rend plus /v1/semaine/lundi (404 ; décision du coach du 24/11/2026, entrée 191) : il n'y a plus de passe du lundi de la 8.x dont appliquer le résultat gardé
+  // (le geste est caché sous la 9.x, décision 220 ; cette garde n'est que le serveur qui refuse comme le geste).
+  if (await moteurEstV9()) throw new Error('« Appliquer ce que le moteur aurait écrit » n’existe pas sous le moteur v1 : le coach corrige la semaine dans Nolio, et le moteur repart de sa correction.');
   const o = await objectifEcrit(planId);
   if (!o?.nolioAthlete) throw new Error('Plan introuvable');
   const { data } = await clientService().from('semaines_ecrites').select('etat_avant, revue').eq('plan_id', planId).eq('numero', numero).maybeSingle();

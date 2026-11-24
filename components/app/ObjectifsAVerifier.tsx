@@ -7,11 +7,10 @@ import { repereDeLObjectif, TEXTES_PAGE_ATHLETE, type VerifObjectif } from '@/li
 // venir : la course, sa date, un repère (« Complet » ou « Il manque : … ») et ce que le moteur lit : sa côte en minutes, ses deux critères, son tapis, la trace de sa course
 // (lib/app/pageAthleteSimple.ts, verifierObjectif). Le lien vers la page de l'objectif reste ; les deux boutons « + Objectif » aussi. Ses courses de préparation et ses objectifs passés
 // sont dans « Réglages ». Sous la 8.x, la page garde sa carte d'avant. verif : null pour un objectif envoyé en entier (il n'a pas de réponses à vérifier).
+// Sans la saison de fond (troisième simplification, lib/app/cacherSousLaV1.ts) : le moteur v1 n'en écrit pas, son lien « en cours » n'est plus ici.
 export type LigneObjectif = { planId: string; nom: string; date: string; principal: boolean; verif: VerifObjectif | null };
-// jusquau : sa date de fin, écrite par la page (« 12 déc. »).
-export type SaisonEnCours = { planId: string; nom: string; jusquau: string };
 
-export default function ObjectifsAVerifier({ athleteId, lignes, saison }: { athleteId: string; lignes: LigneObjectif[]; saison: SaisonEnCours | null }) {
+export default function ObjectifsAVerifier({ athleteId, lignes }: { athleteId: string; lignes: LigneObjectif[] }) {
   const t = TEXTES_PAGE_ATHLETE;
   return (
     <Carte id="ses-objectifs" className="!p-5 space-y-3 scroll-mt-6">
@@ -25,15 +24,6 @@ export default function ObjectifsAVerifier({ athleteId, lignes, saison }: { athl
           + Objectif trail
         </Link>
       </div>
-      {saison && (
-        <Link href={`/app/coach/plan/${saison.planId}`} className="flex items-center gap-3.5 p-3.5 rounded-xl bg-[#E1EFEA] text-[#0B4A40]">
-          <span className="flex-1 min-w-0">
-            <span className="block text-[0.9375rem] font-bold">{saison.nom} · en cours</span>
-            <span className="block text-[0.78rem]">Jusqu’au {saison.jusquau} · le moteur écrit ses semaines ; un objectif qui arrive prend la suite.</span>
-          </span>
-          <span aria-hidden>›</span>
-        </Link>
-      )}
       {lignes.length === 0 && <p className="text-sm text-[#4A4866]">{t.aucunObjectif}</p>}
       {lignes.map((o) => (
         <Link key={o.planId} href={`/app/coach/plan/${o.planId}`} className="block p-3.5 rounded-xl border border-indigo/[0.12] text-indigo space-y-2">

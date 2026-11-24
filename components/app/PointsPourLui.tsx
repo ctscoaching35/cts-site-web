@@ -54,7 +54,7 @@ export default function PointsPourLui({ lignes, accordRecu }: { lignes: LigneAFa
   );
 }
 
-// « À venir pour lui », dans « Réglages » (9.x) : ce qui arrive (niveau « À venir » : une course de préparation, une course A dans Nolio, rien après l'objectif…) a quitté le haut de la
+// « À venir pour lui », dans « Réglages » (9.x) : ce qui arrive (niveau « À venir » : une course A dans Nolio, rien après l'objectif…) a quitté le haut de la
 // page. Les mêmes points, le même geste, le même « Réglé » (PointsCoach.tsx) que dans « À faire pour lui » ; rien du tout s'il n'y en a pas.
 export function PointsAVenir({ points }: { points: Point[] }) {
   if (points.length === 0) return null;

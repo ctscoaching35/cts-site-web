@@ -17,6 +17,7 @@ import { demandesDuCoach } from '@/lib/app/demandes';
 import { annonceDepart, continuiteDe, PAS_UN_AJUSTEMENT, trameDuPlan, type Realise } from '@/lib/app/ecriture';
 import { texteProgrammeApres } from '@/lib/app/jonction';
 import { moteurEstV9 } from '@/lib/app/moteurEnLigne';
+import { ajustementsAnnulesVisibles, apercuDisponible, preparationsDisponibles, testsLusDisponibles } from '@/lib/app/cacherSousLaV1';
 import { typeCoteCoach } from '@/lib/app/nomsSeances';
 import { lienFicheCourse } from '@/lib/app/ficheCourse';
 import { exigerCoach } from '@/lib/app/nolio';
@@ -49,6 +50,9 @@ function resultatTest(r: Record<string, unknown>): string {
 // 19/10/2026). Écrit semaine par semaine : son départ dans Nolio, puis le journal des semaines écrites (ce qui a été
 // fait, les ajustements, que le coach peut annuler, les tests lus), sa montagne, ses courses de préparation. Envoyé en
 // entier (avant le 19/10/2026) : ses semaines et leur envoi, comme avant.
+// SOUS LA 9.x SEULEMENT (décision 220 du coach, 24/11/2026 : ce que la v1 ne fait pas encore est caché ; lib/app/cacherSousLaV1.ts) : ni l'aperçu du dimanche (le lien « Voir ce
+// qu'elle donnerait aujourd'hui »), ni les courses de préparation (leur carte, leurs gestes, leurs fiches), ni les tests lus (leurs lignes et « Ses cibles et ses zones ont suivi »),
+// ni mention d'« Ajustements annulés ». Sous la 8.x, rien ne change.
 export default async function ObjectifCoache({ params, searchParams }: {
   params: Promise<{ id: string }>; searchParams: Promise<{ course?: string }>;
 }) {
@@ -58,11 +62,14 @@ export default async function ObjectifCoache({ params, searchParams }: {
   const o = await objectifCoache(coach.compteId, id);
   if (!o) notFound();
   const service = clientService();
+  // Sous le moteur v1 : la semaine part vers 21 h (décision 211), « Annuler » n'est plus affiché (décision 213) : le coach corrige la semaine dans Nolio, le moteur repart de sa correction ;
+  // et ce que la v1 ne porte pas encore est caché (décision 220, lib/app/cacherSousLaV1.ts).
+  const v9 = await moteurEstV9().catch(() => false);
   const { data: ecriture } = await service.from('plans').select('parametres, demarre_le, depart_prevu').eq('id', id).single();
   const { data: ecrites } = ecriture?.parametres
     ? await service.from('semaines_ecrites').select('numero, journal, bilan, sans_ajustement, ecrite_le, realise, lundi:donnees->>lundi').eq('plan_id', id)
     : { data: null };
-  const { data: tests } = ecriture?.parametres
+  const { data: tests } = ecriture?.parametres && testsLusDisponibles(v9)
     ? await service.from('tests_lus').select('jour_id, cle, statut, resultat, lu_le').eq('plan_id', id).order('lu_le', { ascending: false })
     : { data: null };
   const demandes = await demandesDuCoach(coach.compteId).catch(() => []);
@@ -71,10 +78,8 @@ export default async function ObjectifCoache({ params, searchParams }: {
   const nolio = o.athlete.nolio_athlete_id;
   // Une course B de Nolio, depuis sa fiche (« En préparation ») : le formulaire s'ouvre déjà rempli.
   const { course: courseId } = await searchParams;
-  const depuisNolio = nolio && courseId ? await courseNolio(nolio, courseId).catch(() => null) : null;
+  const depuisNolio = nolio && courseId && preparationsDisponibles(v9) ? await courseNolio(nolio, courseId).catch(() => null) : null;
   const envois = nolio ? await verifierEnvois(id, nolio, o.plan, o.envois) : o.envois.map((e) => ({ ...e, retouchees: 0, supprimees: 0 }));
-  // Sous le moteur v1 : la semaine part vers 21 h (décision 211) et « Annuler » n'est plus affiché (décision 213) : le coach corrige la semaine dans Nolio, le moteur repart de sa correction.
-  const v9 = await moteurEstV9().catch(() => false);
   const jour = aujourdhuiParis();
   const trame = ecriture?.parametres ? await trameDuPlan(id).catch(() => null) : null;
   // PC1 : avant le départ, la date où l'écriture commencera si le coach a déjà posé des séances.
@@ -117,7 +122,7 @@ export default async function ObjectifCoache({ params, searchParams }: {
   const depart = ((ecriture?.parametres as Record<string, unknown> | null)?.depart_lu ?? null) as DepartLu | null;
   const preps = (((ecriture?.parametres as Record<string, unknown> | null)?.courses_secondaires ?? []) as CourseSecondaire[])
     .slice().sort((a, b) => a.date.localeCompare(b.date));
-  const fichesPrepa = ecriture?.parametres ? await fichesDePreparation(id) : new Set<string>();
+  const fichesPrepa = ecriture?.parametres && preparationsDisponibles(v9) ? await fichesDePreparation(id) : new Set<string>();
   const valeurs = [o.athlete.fc_seuil1 && `FC seuil 1 ${o.athlete.fc_seuil1}`, o.athlete.v_seuil1_ms && `allure seuil 1 ${allureDepuisVitesse(o.athlete.v_seuil1_ms)}/km`,
     o.athlete.vc_ms && `VC ${allureDepuisVitesse(o.athlete.vc_ms)}/km`, o.athlete.fc_seuil2 && `FC seuil 2 ${o.athlete.fc_seuil2}`].filter(Boolean).join(' · ');
   const { course } = o.plan;
@@ -213,9 +218,11 @@ export default async function ObjectifCoache({ params, searchParams }: {
                           {prochaine.seances_cles.length ? ` · ${prochaine.seances_cles.map((c) => nomCourt(c.nom ?? c.seance)).join(' ; ')}` : ''}
                           {prochaine.sl_min ? ` · sortie longue de ${enHeures(prochaine.sl_min)} annoncée` : ''}.
                         </p>
-                        <Link href={`/app/coach/plan/${id}/apercu`} className="inline-flex items-center min-h-9 mt-1 text-[0.8125rem] font-bold text-teal">
-                          Voir ce qu’elle donnerait aujourd’hui ›
-                        </Link>
+                        {apercuDisponible(v9) && (
+                          <Link href={`/app/coach/plan/${id}/apercu`} className="inline-flex items-center min-h-9 mt-1 text-[0.8125rem] font-bold text-teal">
+                            Voir ce qu’elle donnerait aujourd’hui ›
+                          </Link>
+                        )}
                       </div>
                     </div>
                   )}
@@ -262,7 +269,7 @@ export default async function ObjectifCoache({ params, searchParams }: {
                               <p className="mt-1.5 text-[0.8125rem] leading-relaxed text-[#3B3957] whitespace-pre-line">{w.bilan}</p>
                             </details>
                           ) : <div className="min-h-8 flex items-center">{ligne}</div>}
-                          {w.sans_ajustement && <p className="text-xs text-[#5E5C78]">Ajustements annulés.</p>}
+                          {ajustementsAnnulesVisibles(v9) && w.sans_ajustement && <p className="text-xs text-[#5E5C78]">Ajustements annulés.</p>}
                           {lus.map((t) => (
                             <p key={t.jour_id} className="flex items-start gap-2 p-2.5 rounded-[10px] bg-white text-[0.8rem] leading-relaxed text-[#3B3957]">
                               <span aria-hidden className={t.statut === 'lu' ? 'text-teal' : 'text-[#8A5E10]'}>{t.statut === 'lu' ? '✓' : '·'}</span>
@@ -367,7 +374,7 @@ export default async function ObjectifCoache({ params, searchParams }: {
             </Carte>
           )}
 
-          {ecriture?.parametres && (
+          {preparationsDisponibles(v9) && ecriture?.parametres && (
             <Carte id="ajouter-course" className="!p-5 space-y-3 scroll-mt-6">
               <Surtitre>Ses courses de préparation</Surtitre>
               {preps.length === 0 && <p className="text-[0.8125rem] text-[#4A4866]">Aucune pour l’instant.</p>}
