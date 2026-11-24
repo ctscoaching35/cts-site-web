@@ -146,10 +146,10 @@ async function enregistrerCourse(planId: string, form: FormData, ancienne: strin
   const parametres = { ...o.parametres, courses_secondaires: autres };
   // SOUS LE MOTEUR v1 (9.x ; décision du coach du 25/11/2026, C5) : /v1/course-secondaire n'existe plus et la v1 ne refuse rien (« aucune porte, aucun refus : la course est toujours écrite ») ; la course
   // se garde avec les paramètres du plan et part au moteur en `courses_mineures` (sa date, son nom, sa durée = son chrono visé : lib/app/moteurV9.ts, coursesMineuresDe). D'un coaché seulement : un
-  // acheteur n'a pas de course de préparation. Seule garde du site : la course tombe avant l'objectif.
+  // acheteur n'a pas de course de préparation. Seule garde du site : la course tombe avant l'objectif (la phrase dit quoi faire, comme les messages de saisie de la décision 236).
   const v9 = await moteurEstV9();
   if (v9 && !o.coache) return { ok: false, message: MESSAGE_COURSE_DE_PREPARATION_FERMEE };
-  if (v9 && date >= o.plan.course.date) return { ok: false, message: 'Ta course doit tomber avant ton objectif.' };
+  if (v9 && date >= o.plan.course.date) return { ok: false, message: 'Choisis une date avant celle de ton objectif.' };
   let verdict: { ok?: boolean; message?: string | null } | null = { ok: true, message: null };
   if (!v9) {
     const reelles = Object.values(((o.etat ?? {}) as { sl_reelles?: Record<string, number> }).sl_reelles ?? {});
