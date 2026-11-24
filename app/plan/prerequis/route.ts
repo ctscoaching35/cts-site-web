@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { API_URL } from '@/lib/plan';
 import { planOuvert } from '@/lib/planAcces';
 import { enTetesMoteur } from '@/lib/app/cleMoteur';
+import { prerequisPermis } from '@/lib/app/apercuLimite';
 import { moteurEstV9 } from '@/lib/app/moteurEnLigne';
 import { parametresV9 } from '@/lib/app/moteurV9';
 import { retirerIdentite } from '@/lib/apercu';
@@ -9,7 +10,8 @@ import { prerequisDeLaReponse, prerequisPourLAchat } from '@/lib/prerequis';
 
 // LES PRÉREQUIS D'UN PLAN, DITS À L'ACHETEUR AVANT LE PAIEMENT (entrée 234 du coach, 25/11/2026 ; lib/prerequis.ts) : le questionnaire de l'acheteur, sans e-mail ni nom ni réponse de santé (le navigateur
 // ne les envoie pas), part au moteur v1 (POST /v1/prerequis, route réservée au serveur du site : X-CTS-Cle) sous la forme de ses paramètres (lib/app/moteurV9.ts, parametresV9), et seul ce qui sert aux phrases
-// revient. Même porte que le reste de l'achat (planOuvert, sinon 404). Sous la 8.x, ou si le moteur ne répond pas : { prerequis: null }, et le récapitulatif ne dit rien de plus ; l'achat reste possible.
+// revient. Même porte que le reste de l'achat (planOuvert, sinon 404), même limite que l'aperçu (10 par heure). Sous la 8.x, ou si le moteur ne répond pas : { prerequis: null }, et le récapitulatif ne dit rien de plus ;
+// la vente suit son cours (sauf `vendable: false`, qui la ferme : lib/prerequis.ts).
 // Rien n'est gardé ici.
 const TAILLE_MAX = 20_000;
 const DELAI_MS = 5_000;
@@ -26,6 +28,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'intake', prerequis: null }, { status: 400 });
   }
   if (!(await moteurEstV9().catch(() => false))) return NextResponse.json({ prerequis: null });
+  // 10 appels par visiteur et par heure, comme l'aperçu (lib/app/apercuLimite.ts) ; au-delà, rien n'est lu : la vente suit son cours.
+  if (!(await prerequisPermis(request.headers))) return NextResponse.json({ error: 'limite', prerequis: null }, { status: 429 });
   try {
     const r = await fetch(`${API_URL}/v1/prerequis`, {
       method: 'POST', headers: enTetesMoteur({ 'Content-Type': 'application/json' }), body: JSON.stringify({ parametres: parametresV9(retirerIdentite(intake)) }),

@@ -8,7 +8,7 @@ import CriteresEntree from './CriteresEntree';
 import { COTE_MAX_MIN, coteEnClair } from '@/lib/cote';
 import { CRITERES_BRANCHES, criteresDe, TITRE_SECTION_CRITERES, titreReponse } from '@/lib/criteres';
 import { type Apercu, type ApercuGarde, apercuGardeValide, apercuPourCeParcours, CLE_CACHE_APERCU, classerReponse, empreinteApercu, jourParis, MESSAGE_APERCU_INDISPONIBLE, PHRASE_AUTRE_JOUR, type ResultatApercu, retirerIdentite } from '@/lib/apercu';
-import { messagesDesPrerequis, type PrerequisAchat } from '@/lib/prerequis';
+import { etatDeLaVente, lirePrerequisDeLAchat, messagesDesPrerequis, type PrerequisAchat } from '@/lib/prerequis';
 import { estimerChrono } from '@/lib/app/route';
 import { attestationDuFormat, phraseCaseNonCochee } from '@/lib/attestation';
 import { alerteSortieLongue, API_URL, avertissements, type Champs, champsVides, type ConfigPlan, courseTropProche, debutFormule, dureeCocheeDOffice, dureesProposees, formatDepuisDistance, MESSAGE_COURSE_TROP_PROCHE, messageTempsMinimum, formatOuvert, intakePourApi, noteFormat, PHRASE_TEMPS_DE_TETE, placementReference, referenceExigee, plancherSeances, reperesChrono, FORMATS_ROUTE, tempsDeTete, textes, type CourseReference } from '@/lib/plan';
@@ -129,7 +129,13 @@ export default function Questionnaire({
   const traceDemandee = useRef(0);
   // Les prérequis du plan (entrée 234, lib/prerequis.ts) : ce que le moteur v1 dit du plan avec ces réponses, lu après la vérification, pour le dire à l'acheteur dans le récapitulatif ; jamais bloquant.
   const [prerequis, setPrerequis] = useState<PrerequisAchat | null>(null);
+  const [prerequisEnCours, setPrerequisEnCours] = useState(false);
   const prerequisDemandes = useRef(0);
+  // La vente est fermée quand le moteur dit `vendable: false` (décision 234) : ni aperçu ni paiement, les phrases et « ← Modifier mes réponses ». Tant que le moteur n'a pas répondu (au plus quelques secondes), on
+  // n'ouvre pas non plus : sinon un clic rapide passerait avant lui. Rien lu (route absente, délai, forme inattendue) : la vente suit son cours, sans message. Jamais pour le coach ni pour la demande d'un coaché.
+  const vente = etatDeLaVente({ achat: !coach && !demande, prerequis, enCours: prerequisEnCours });
+  const ferme = vente === 'fermee';
+  const enAttenteDesPrerequis = vente === 'en_attente';
   const [etape, setEtape] = useState<'formulaire' | 'recap' | 'apercu'>('formulaire');
   // L'aperçu du plan avant paiement (décision du coach du 16/11/2026) : seulement un achat. sansApercu : le moteur n'en a
   // pas (404) ou n'en rend pas pour l'instant : le parcours reste celui d'avant, le paiement directement.
@@ -350,6 +356,7 @@ export default function Questionnaire({
     if (joursCoches.length === 0 || manqueSemaine.length) return;
     setRefus('');
     setPrerequis(null);
+    setPrerequisEnCours(false);
     setEnvoi(true);
     // Refus métier vérifiés par l'API avant le récapitulatif : l'athlète ne relit pas
     // ses réponses pour découvrir ensuite qu'elles ne permettent pas de plan.
@@ -387,10 +394,12 @@ export default function Questionnaire({
     if (!coach && !demande) {
       const lecture = ++prerequisDemandes.current;
       const reponses = { ...retirerIdentite(avecReference(intakePourApi(c))), cote_min: c.cote_min };
-      fetch('/plan/prerequis', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(reponses), signal: AbortSignal.timeout(8_000) })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((corps) => { if (lecture === prerequisDemandes.current) setPrerequis((corps?.prerequis ?? null) as PrerequisAchat | null); })
-        .catch(() => {});
+      setPrerequisEnCours(true);
+      lirePrerequisDeLAchat(reponses).then((lu) => {
+        if (lecture !== prerequisDemandes.current) return;
+        setPrerequis(lu);
+        setPrerequisEnCours(false);
+      });
     }
   }
 
@@ -454,6 +463,7 @@ export default function Questionnaire({
   }
 
   async function voirApercu() {
+    if (ferme) return;
     setEnvoi(true);
     setRefus('');
     setAvisApercu('');
@@ -487,6 +497,7 @@ export default function Questionnaire({
   }
 
   async function generer(simuler = false) {
+    if (ferme) return;
     setEnvoi(true);
     setRefus('');
     const donnees = new FormData();
@@ -631,6 +642,8 @@ export default function Questionnaire({
               )}
             </>
           )}
+          {/* Vente fermée (décision 234) : seuls les points à lire et « ← Modifier mes réponses » restent ; ni avertissement à cocher, ni accord, ni bouton. */}
+          {!ferme && <>
           {demande ? (
             <div className="space-y-3 text-indigo/80 leading-relaxed">
               <div className="eyebrow text-teal">À lire avant d’envoyer</div>
@@ -688,6 +701,7 @@ export default function Questionnaire({
               </span>
             </label>
           )}
+          </>}
         </section>
 
         {refus && (
@@ -695,7 +709,7 @@ export default function Questionnaire({
         )}
 
         {/* J3 (audits du 05/11/2026, S3) : ce que tu achètes, juste avant le bouton (art. L221-14). Validé par le coach le 07/11/2026. */}
-        {!coach && (
+        {!coach && !ferme && (
           <section className="bg-white rounded-2xl border border-indigo/[0.08] p-5 sm:p-6 text-[0.875rem] text-indigo/80 leading-relaxed">
             <p><span className="font-bold text-indigo">Ce que tu achètes :</span> une préparation construite sur tes réponses et ajustée
               automatiquement chaque semaine à ce que tu as fait, sans suivi par un coach. Tes séances arrivent dans Nolio : il te
@@ -703,14 +717,14 @@ export default function Questionnaire({
           </section>
         )}
 
-        <section className="bg-indigo text-white rounded-[18px] p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+        {!ferme && <section className="bg-indigo text-white rounded-[18px] p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
           <div>
             <div className="eyebrow text-teal-light mb-2">{demande ? 'Ton objectif · jusqu’à la course' : coach ? `Plan de ${c.nom} · jusqu’à la course` : `Ton plan · ${c.duree_mois} mois`}</div>
             {!coach && <div className="text-4xl font-black">{prix} €</div>}
             {/* A-41 (audits du 05/11/2026) : le prix final et sa mention de TVA. */}
             {!coach && <div className="mt-1 text-xs text-white/70">Prix final, TVA non applicable (art. 293 B du CGI)</div>}
           </div>
-          <button type="button" onClick={() => (avecApercu ? voirApercu() : generer())} disabled={bloque || envoi} className={boutonCls}>
+          <button type="button" onClick={() => (avecApercu ? voirApercu() : generer())} disabled={bloque || envoi || enAttenteDesPrerequis} className={boutonCls}>
             {envoi
               ? (demande ? 'Envoi…' : coach ? 'Génération…' : avecApercu ? 'Calcul de ton aperçu…' : 'Vérification…')
               : avecApercu
@@ -725,14 +739,14 @@ export default function Questionnaire({
                   ? 'Générer mon plan (test, sans paiement) →'
                   : `Payer ${prix} € →`}
           </button>
-        </section>
+        </section>}
         {avisApercu && (
           <p role="status" className="bg-sand rounded-r-xl border-l-4 border-teal px-4 py-3 text-[0.8125rem] text-indigo leading-relaxed">{avisApercu}</p>
         )}
-        {bloque && manque.length > 0 && (
+        {!ferme && bloque && manque.length > 0 && (
           <p className="text-[0.8125rem] text-[#4A4866] -mt-3">Pour continuer, {manque.join(', puis ')}.</p>
         )}
-        {simulation && !coach && (
+        {simulation && !coach && !ferme && (
           <div className="flex flex-wrap items-center justify-between gap-3 bg-white rounded-2xl border border-dashed border-indigo/25 p-4">
             <p className="text-[0.8125rem] text-[#4A4866] leading-relaxed flex-[1_1_260px]">
               Coach connecté : tu peux simuler l’achat, sans paiement. Le plan se range comme après un paiement, à 0 €, hors

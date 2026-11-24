@@ -9,6 +9,9 @@
  *   - les deux : les deux phrases, l'une après l'autre.
  * Sans les nombres qu'une phrase dit, elle n'est pas écrite : rien d'inventé. Un plan vendable, une saison de fond sans date (`applicable: false`), une réponse qui n'a pas la forme du contrat : aucune phrase.
  * Le bouton qui suit (un plan plus long, une course plus courte) revient aux réponses : c'est « Modifier mes réponses » du récapitulatif.
+ *
+ * LA VENTE EST FERMÉE (décision 234 du coach : « sans les deux prérequis, on ne vend pas cette course ») : quand le moteur répond `vendable: false`, le récapitulatif ne propose plus de payer ce plan : les phrases,
+ * puis « ← Modifier mes réponses ». Quand le moteur ne répond pas (route absente, délai, forme inattendue), la vente suit son cours, sans message : un moteur muet ne ferme jamais une vente (`venteFermee`).
  */
 export type PrerequisAchat = {
   applicable?: boolean; vendable?: boolean; raisons?: string[];
@@ -45,6 +48,30 @@ export function prerequisPourLAchat(p: PrerequisAchat | null | undefined): Prere
   };
 }
 
+// Le moteur dit-il que ce plan ne se vend pas ? Seulement sur `vendable: false` lu (et un plan applicable) ; rien lu, c'est non.
+export const venteFermee = (p: PrerequisAchat | null | undefined): boolean => Boolean(p) && p?.applicable !== false && p?.vendable === false;
+
+// L'état de la vente d'un plan, pour le récapitulatif : « en_attente » tant que le moteur n'a pas répondu (au plus quelques secondes : un clic rapide ne passe pas avant lui), « fermee » quand il dit non vendable,
+// « ouverte » sinon, y compris quand il n'a rien dit. `achat` : un acheteur ; ni le coach ni la demande d'un coaché n'ont de prérequis à lire.
+export type EtatDeLaVente = 'ouverte' | 'en_attente' | 'fermee';
+export function etatDeLaVente({ achat, prerequis, enCours }: { achat: boolean; prerequis: PrerequisAchat | null | undefined; enCours: boolean }): EtatDeLaVente {
+  if (!achat) return 'ouverte';
+  if (enCours) return 'en_attente';
+  return venteFermee(prerequis) ? 'fermee' : 'ouverte';
+}
+
+// Ce que le navigateur lit : la route du site (`POST /plan/prerequis`, app/plan/prerequis/route.ts). Ne rejette jamais : une réponse qui n'est pas bonne (404, 429, 5xx), un délai, un réseau coupé ou un corps qui
+// n'a pas la forme du contrat donnent `null`, et `null` ne ferme rien.
+export async function lirePrerequisDeLAchat(reponses: Record<string, unknown>, appeler: typeof fetch = (...a) => fetch(...a), delaiMs = 8_000): Promise<PrerequisAchat | null> {
+  try {
+    const r = await appeler('/plan/prerequis', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(reponses), signal: AbortSignal.timeout(delaiMs) });
+    if (!r.ok) return null;
+    return prerequisPourLAchat(prerequisDeLaReponse(await r.json()));
+  } catch {
+    return null;
+  }
+}
+
 // Les phrases dites à l'acheteur, dans l'ordre (la sortie longue, puis les séances) ; aucune quand le plan est vendable ou que la réponse n'en dit pas assez.
 export function messagesDesPrerequis(p: PrerequisAchat | null | undefined): string[] {
   if (!p || p.applicable === false || p.vendable !== false) return [];
@@ -56,5 +83,6 @@ export function messagesDesPrerequis(p: PrerequisAchat | null | undefined): stri
       : t.choix]
     : [];
   const seances = raisons.includes('seances') && nombre(p.seances_min) ? [t.seances(Math.round(p.seances_min))] : [];
-  return [...sl, ...seances];
+  // Une vente fermée ne reste jamais sans un mot : si aucun nombre ne permet une phrase, celle du choix (« un plan plus long ou une course plus courte ») dit quoi faire.
+  return sl.length || seances.length ? [...sl, ...seances] : [t.choix];
 }
