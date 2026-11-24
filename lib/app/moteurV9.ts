@@ -16,8 +16,9 @@
  */
 import { lireCote, TERRAIN_DE_COTE } from '../cote';
 import type { ReponsesDimanche, VersionDimanche } from './dimancheV9';
+import { estMoteurV9 } from './versionDuMoteur';
 
-export const estMoteurV9 = (versionMoteur: unknown): boolean => typeof versionMoteur === 'string' && /^9(\.|$)/.test(versionMoteur.trim());
+export { estMoteurV9 };
 
 // Le rang d'une semaine dans la liste de `POST /v1/trame` (1 à N) : « S9 », 9 ou « 9 » ; null s'il ne se lit pas.
 export function numeroMoteur(numero: unknown): number | null {

@@ -14,10 +14,14 @@ import { enregistrerConfirmation } from './confirmation';
 import { annulerLeChoix, CORRECTIONS, CORRECTIONS_ACTIVES, garderLeChoix, RAISONS, type Correction, type Raison } from './corrections';
 import { coachConnecte } from './nolio';
 import { enTetesMoteur } from './cleMoteur';
+import { moteurEstV9 } from './moteurEnLigne';
 import { clientServeur, clientService } from './supabase';
 import { estPlanDeDemonstration, REFUS_DEMONSTRATION } from './demonstrationPorte';
 
 export type EtatGeste = { ok: boolean; message: string } | null;
+
+// Sous le moteur v1, avant l'objectif mineur (C5) : la course de préparation ne s'ajoute pas (BROUILLON, à faire valider par le coach).
+const MESSAGE_COURSE_DE_PREPARATION_FERMEE = 'Les courses de préparation reviennent avec l’objectif mineur : cette version du moteur ne les ajoute pas encore.';
 
 // Le compte connecté et, s'il est coach, son compte coach.
 async function qui(): Promise<{ compteId: string | null; coachId: string | null }> {
@@ -135,6 +139,9 @@ async function enregistrerCourse(planId: string, form: FormData, ancienne: strin
   // Modifiée, elle se vérifie sans elle-même (la règle d'une course toutes les 4 semaines).
   const autres = toutes.filter((c) => c.date !== ancienne);
   const parametres = { ...o.parametres, courses_secondaires: autres };
+  // Le moteur v1 (9.x) ne rend plus /v1/course-secondaire (404 ; décision du coach du 24/11/2026, entrée 191) : la course de préparation
+  // revient avec l'objectif mineur (C5), dont le champ sera écrit dans CONTRAT_API_CTS.md. TEXTE : BROUILLON.
+  if (await moteurEstV9()) return { ok: false, message: MESSAGE_COURSE_DE_PREPARATION_FERMEE };
   const reelles = Object.values(((o.etat ?? {}) as { sl_reelles?: Record<string, number> }).sl_reelles ?? {});
   const r = await fetch(`${API_URL}/v1/course-secondaire`, {
     method: 'POST', headers: enTetesMoteur({ 'Content-Type': 'application/json' }), cache: 'no-store',

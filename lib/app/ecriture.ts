@@ -15,6 +15,7 @@
 import { cache } from 'react';
 import { site } from '@/lib/content';
 import { API_URL, dureeConseillee, dureesPossibles, lireTemps, type Champs, type ConfigPlan } from '@/lib/plan';
+import { moteurEstV9 } from './moteurEnLigne';
 import {
   chargeDepuisNolio, creer, destinataire, envoyerSemaineCible, ficheAthlete, garderEnvoi, mettreAJourSemaineCible, profilDe, remplacerLaNote, seancesDuMoteur,
   volumeDuMoment,
@@ -1781,6 +1782,8 @@ async function saisonApresUneCourse(o: Objectif, lundi: string): Promise<boolean
 // pour ses graphiques ; les décisions du dimanche restent les siennes, rien n'est réécrit (POST /v1/realise). Avec
 // l'accord de lecture seulement.
 export async function refaireLesResumes(budgetMs = 120_000): Promise<Compte[]> {
+  // Le moteur v1 (9.x) ne rend plus /v1/realise (404 ; décision du coach du 24/11/2026, entrée 191) : le réalisé se lit dans `nolio`.
+  if (await moteurEstV9()) return [];
   const debut = Date.now();
   const aujourdhui = aujourdhuiParis();
   const lundi = ajouterJours(aujourdhui, -((new Date(`${aujourdhui}T12:00:00Z`).getUTCDay() + 6) % 7));
@@ -1827,6 +1830,9 @@ export async function fatigueDuJour(planId: string): Promise<Compte | null> {
   // EC2 : les signaux de la semaine d'un coaché, gardés avec ce qui vient d'être lu, pour l'accueil du coach.
   if (o.coache && lecture.lu) await garderLesSignauxDuSoir(o, lecture.lu, aujourdhui)
     .catch((e) => console.error(`Signaux de ${planId} :`, e instanceof Error ? e.message : e));
+  // Le moteur v1 (9.x) ne rend plus /v1/fatigue (404 ; décision du coach du 24/11/2026, entrée 191) : plus aucun allègement en cours
+  // de semaine, la fatigue se lit le dimanche (les signaux du coach ci-dessus se gardent comme avant).
+  if (await moteurEstV9()) return null;
   const r = await moteur<{ remplacer: string | null; note?: string; journal?: Record<string, unknown>; etat?: Etat }>(
     '/v1/fatigue', { etat: o.etat, retours, aujourdhui });
   if (!r.remplacer || !r.etat) return null;
@@ -1860,6 +1866,8 @@ async function garderLesSignauxDuSoir(o: Objectif, lu: LuDansNolio, aujourdhui: 
 // Le veto : l'athlète garde sa séance d'origine, celle d'avant l'allègement (gardée dans le jour allégé) ; l'état
 // oublie l'allègement (A8 : la marche n'est pas reprise).
 export async function garderSeanceOrigine(planId: string, seance: string, compteId: string): Promise<boolean> {
+  // Le moteur v1 (9.x) ne rend plus /v1/veto (404 ; décision du coach du 24/11/2026, entrée 191) : plus d'allègement, donc plus de veto.
+  if (await moteurEstV9()) return false;
   const o = await objectifEcrit(planId);
   if (!o || ![o.compteId, o.coachId, o.compteAthlete].includes(compteId) || !o.etat) return false;
   const numero = seance.split('-')[0];
