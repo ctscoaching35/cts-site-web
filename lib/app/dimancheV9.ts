@@ -28,8 +28,13 @@ import {
 export type VersionDimanche = 'normale' | 'aucune_seance_vue' | 'fatigue';
 export const VERSIONS_DIMANCHE: VersionDimanche[] = ['normale', 'aucune_seance_vue', 'fatigue'];
 
-// Le même nom que celui du samedi : le lecteur du site le reconnaît par lui (lib/app/questionnaireSamedi.ts, estLeQuestionnaire).
-export const NOM_DU_QUESTIONNAIRE = 'Ta semaine prochaine';
+// Son nom (décision du coach du 24/11/2026, entrée 198) : « Ton point du dimanche ». Il vient du site (le moteur ne rend pas de nom), et il n'est plus celui du samedi : les séries
+// « Ta semaine prochaine » déjà posées dans Nolio y restent jusqu'à ce que le coach les retire, et leurs réponses ne sont jamais prises pour celles du dimanche.
+export const NOM_DU_QUESTIONNAIRE = 'Ton point du dimanche';
+// Le résultat de Nolio qui répond au questionnaire de la semaine `numero` : par l'identifiant Nolio posé ; celui d'avant la première semaine (que rien n'a posé) par son nom,
+// jamais par celui du samedi (« Ta semaine prochaine »).
+export const repondAuDimanche = (r: { name?: string | null; quiz_planned?: string | null }, numero: number, pose?: { nolio_id?: string | null } | null): boolean =>
+  pose?.nolio_id ? r.quiz_planned === pose.nolio_id : numero === 0 && String(r.name ?? '').trim().toLowerCase() === NOM_DU_QUESTIONNAIRE.toLowerCase();
 // L'heure d'envoi, à Paris (décision du coach du 23/11/2026) : le moteur lit la semaine le matin, choisit la version, puis le site
 // envoie ; le premier passage de lecture est à 17 h UTC, soit 18 h.
 export const HEURE_D_ENVOI = '12:00';

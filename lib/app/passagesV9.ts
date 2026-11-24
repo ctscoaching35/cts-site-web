@@ -12,7 +12,7 @@ import { destinataire, envoyerSemaineCible, mettreAJourSemaineCible } from './co
 import {
   aujourdhuiParis, garderNote, indiceHooper, moteur, noteDeLaSemaine, objectifEcrit, plansActifs, plansEnRecuperation, type Compte, type Objectif,
 } from './ecriture';
-import { HEURE_D_ENVOI, lireReponsesDimanche, NOM_DU_QUESTIONNAIRE, type ReponsesDimanche } from './dimancheV9';
+import { HEURE_D_ENVOI, lireReponsesDimanche, repondAuDimanche, type ReponsesDimanche } from './dimancheV9';
 import { lireEtatDuPlan, garderLEtat, garderLeQuestionnairePose, garderLesReponsesLues, garderUneEcriture, lireLaDerniereSemaine, lireLeQuestionnairePose } from './stockageV9';
 import { noteEnTexte } from './moteurV9';
 import { lundisALire, nolioDepuisNolio, type HooperLu, type PlanifieeLue, type ReelleLue } from './nolioV9';
@@ -76,8 +76,7 @@ async function contextePlan(planId: string): Promise<{ c: ContextePlan; o: Objec
         const aujourdhui = aujourdhuiParis();
         const resultats = await listeNolio<{ id: string; name?: string; date_start: string; quiz_planned?: string; items?: { question?: string; order?: number | null; value: unknown }[] }>(
           `real/quiz_results/?date_from=${ajouterJours(aujourdhui, -10)}&date_to=${aujourdhui}${q}`);
-        const siens = resultats.filter((r) => (pose?.nolio_id ? r.quiz_planned === pose.nolio_id
-          : numero === 0 && String(r.name ?? '').trim().toLowerCase() === NOM_DU_QUESTIONNAIRE.toLowerCase()))
+        const siens = resultats.filter((r) => repondAuDimanche(r, numero, pose))
           .sort((a, b) => b.date_start.localeCompare(a.date_start));
         if (!siens[0]) return null;
         const { reponses, illisibles } = lireReponsesDimanche(siens[0].items ?? [], { version: pose?.version ?? 'normale', cles: pose?.cles ?? [] });
