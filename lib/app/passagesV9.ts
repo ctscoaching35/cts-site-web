@@ -8,7 +8,8 @@
  */
 import { clientService } from './supabase';
 import { appelNolio, listeNolio, refusNolio, SPORTS_COURSE } from './nolio';
-import { destinataire, envoyerSemaineCible, lireLuAuDepart, mettreAJourSemaineCible } from './coaching';
+import { destinataire, envoyerSemaineCible, mettreAJourSemaineCible } from './coaching';
+import { lireLuAuDepart } from './luAuDepart';
 import {
   aujourdhuiParis, garderNote, indiceHooper, moteur, noteDeLaSemaine, objectifEcrit, plansActifs, plansEnRecuperation, type Compte, type Objectif,
 } from './ecriture';
