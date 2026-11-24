@@ -612,7 +612,7 @@ export default function Questionnaire({
               <div className="eyebrow text-teal">À lire avant d’envoyer</div>
               <p>
                 Je relis tes réponses avant de lancer ta préparation. Si une douleur ou une blessure t’empêche de
-                courir normalement, dis-le-lui : vous adapterez ensemble. Ce plan ne remplace pas un avis médical.
+                courir normalement, dis-le-moi : j’adapte ta préparation avec toi. Ce plan ne remplace pas un avis médical.
               </p>
             </div>
           ) : !coach && config.avertissement && (

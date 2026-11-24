@@ -209,7 +209,7 @@ export function ChiffreDeLaMontee({ montee, coache = false, bloc = null, mots }:
         <details className="col-start-1 row-start-1 pointer-events-none">
           <summary className={'pointer-events-auto ml-auto flex w-fit items-center min-h-11 cursor-pointer list-none [&::-webkit-details-marker]:hidden '
             + 'rounded text-[0.75rem] text-[#D6D5E6] underline underline-offset-[3px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#8FD1C3]'}>
-            Comment c’est calculé&nbsp;?
+            D’où vient ce chiffre&nbsp;?
           </summary>
           <p className="pointer-events-auto pb-1 text-[0.75rem] leading-relaxed text-[#D6D5E6]">{mots ? mots.calcul(montee) : calculDeLaMontee(montee)}</p>
         </details>

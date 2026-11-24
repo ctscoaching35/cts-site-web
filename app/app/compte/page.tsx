@@ -113,13 +113,13 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
             <p className="text-[1.0625rem] font-bold">{coach.prenom}</p>
             <p className="text-[0.8125rem] leading-relaxed text-[#D6D5E6]">
               {/* Le prénom du coach (§8, point 4, audit du 03/11/2026) : « Juliette relit… » pour ses coachés. */}
-              {coach.texte} {ctx.aLaMain ? `${coach.prenom} écrit tes séances dans Nolio.` : 'Je relis ta préparation et je peux changer une semaine à tout moment.'}
+              {coach.texte} {ctx.aLaMain ? 'J’écris tes séances dans Nolio.' : 'Je relis ta préparation et je peux changer une semaine à tout moment.'}
             </p>
             {/* Q5 et Q18 (décisions coach du 05/11/2026 au soir, « A ») : plus de bouton vers le site de Nolio, qui n'ouvrait
                 pas sa conversation ; ses mots restent dans Nolio, la carte le dit. Validé par le coach le 05/11/2026 (1A) ; « sur
                 WhatsApp ou » ajouté le 12/11/2026 (lot 2, point 3, texte validé). */}
             <p className="text-[0.8125rem] leading-relaxed text-white font-semibold">
-              Écris-lui sur WhatsApp ou dans ton appli Nolio. Ses mots sur ta semaine sont dans Nolio.
+              Écris-moi sur WhatsApp ou dans ton appli Nolio. Mes mots sur ta semaine sont dans Nolio.
             </p>
           </CarteSombre>
         )}

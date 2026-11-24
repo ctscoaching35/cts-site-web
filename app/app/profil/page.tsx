@@ -173,8 +173,8 @@ export default async function MonProfil({ searchParams }: { searchParams: Recher
           </ul>
           {ctx.coache && saisie && <p className="text-xs text-[#5E5C78]">{ctx.aLaMain
             // C47 : à la main ou sans objectif, aucune semaine ne s'écrit le dimanche. Validé par le coach le 05/11/2026 (1A).
-            ? 'Un test refait de ton côté s’entre ici : tes zones changent dès maintenant, ton coach le voit sur ta fiche et en tient compte pour ta semaine suivante.'
-            : 'Un test refait de ton côté s’entre ici : tes zones changent dès maintenant, tes séances à partir de la semaine écrite dimanche, et ton coach le voit sur ta fiche.'}</p>}
+            ? 'Tu as refait un test de ton côté ? Entre-le ici. Tes zones changent tout de suite, je le vois sur ta fiche et j’en tiens compte pour ta semaine suivante.'
+            : 'Tu as refait un test de ton côté ? Entre-le ici. Tes zones changent tout de suite, tes séances à partir de la semaine que je te prépare dimanche, et je le vois sur ta fiche.'}</p>}
         </Carte>
         <StyleCoureur profil={profil} titre="Ton style de coureur" />
 

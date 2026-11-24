@@ -98,11 +98,11 @@ export default async function Confidentialite() {
               Brevo (ton consentement).
             </li>
             <li>
-              <strong>Ta demande de coaching.</strong> Elle va à Romain, qui t’appelle. Elle garde tes réponses, ton téléphone, les moments
+              <strong>Ta demande de coaching.</strong> Elle va à l’un de nous, qui t’appelle. Elle garde tes réponses, ton téléphone, les moments
               où t’appeler, et, joints par l’app, ton profil et tes courses. Les informations de santé sont facultatives, derrière
               une case à part, non cochée : sans elle, rien n’est envoyé ni gardé. Une demande sans suite est effacée 3 mois après
               ton envoi, avec ta santé ; tu peux l’effacer toi-même à tout moment (Compte, « Effacer ma demande »), et elle l’est tout de suite
-              si le coach la classe sans suite. Si tu deviens coaché, ta demande reste lisible sur ta fiche, et tes données suivent les
+              si nous la classons sans suite. Si tu deviens coaché, ta demande reste lisible sur ta fiche, et tes données suivent les
               règles de la section « Si tu es coaché par CTS sur Nolio » (le contrat, et ton consentement pour la santé).
             </li>
           </Liste>
@@ -233,7 +233,7 @@ export default async function Confidentialite() {
           <Liste>
             <li>
               <strong>Tes zones</strong> : ta fréquence cardiaque aux seuils, ta vitesse critique, tes allures. Elles servent
-              seulement à régler tes séances. Tu les effaces quand tu veux (« Effacer mes valeurs »).
+              seulement à établir tes zones et tes repères, et à régler tes séances. Tu les effaces quand tu veux (« Effacer mes valeurs »).
             </li>
           </Liste>
           <p>
@@ -268,19 +268,19 @@ export default async function Confidentialite() {
           </li>
           <li>
             chaque dimanche, sauf séances préparées à la main, tes séances de la semaine suivante sont préparées d’après ta
-            semaine écoulée, avec les mêmes lectures. Romain la suit et la corrige dans Nolio. Nous gardons un résumé chiffré de chaque semaine (charge, séances
-            faites, plus longue sortie, dénivelé, Hooper), celles que ton coach écrit à la main comprises, relevées chaque nuit
+            semaine écoulée, avec les mêmes lectures. Nous la suivons et la corrigeons dans Nolio. Nous gardons un résumé chiffré de chaque semaine (charge, séances
+            faites, plus longue sortie, dénivelé, Hooper), celles que nous écrivons à la main comprises, relevées chaque nuit
             dans Nolio, pour ajuster tes séances et afficher tes graphiques dans ton espace CTS ;
           </li>
           <li>
-            si ton coach t’ouvre un espace dans l’app, nous gardons ton adresse e-mail, pour ta connexion par un code
+            si nous t’ouvrons un espace dans l’app, nous gardons ton adresse e-mail, pour ta connexion par un code
             envoyé par e-mail ; un objectif que tu y demandes (ton questionnaire, et la trace GPX si tu en joins une)
-            arrive dans l’espace de ton coach ;
+            arrive dans notre espace coach ;
           </li>
           <li>nous gardons ton nom, ton identifiant Nolio et la date de ton accord.</li>
         </Liste>
         <p>
-          Retirer ton accord efface tes repères, ces résumés, ces signaux et tes badges, et arrête la lecture. Personne d’autre que ton coach et toi
+          Retirer ton accord efface tes repères, ces résumés, ces signaux et tes badges, et arrête la lecture. Personne d’autre que nous et toi
           ne voit ces données.
           Les séances placées dans ton calendrier restent dans Nolio, qui applique sa propre politique de
           confidentialité. Ta fiche de course est une page à lien privé, que seuls ceux qui ont le lien peuvent ouvrir.

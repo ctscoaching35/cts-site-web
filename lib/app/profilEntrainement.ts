@@ -156,7 +156,7 @@ export function lireProfil(form: FormData, pour: 'son' | 'ton', ancien?: ProfilE
   if (!niveau) return { erreur: pour === 'son'
     ? 'Réponds aux deux questions de son niveau, ou choisis-le.'
     : 'Réponds aux deux questions de ton niveau.' };
-  if (cote === null || !terrain) return { erreur: pour === 'son' ? TEXTES_COTE.illisibleSa : TEXTES_COTE.illisibleCoache };
+  if (cote === null || !terrain) return { erreur: pour === 'son' ? TEXTES_COTE.illisibleSa : TEXTES_COTE.illisible };
   if (!jours.length || !jours.includes(jourSl)) return { erreur: `Coche ${ses} jours disponibles, dont celui de ${pour === 'son' ? 'sa' : 'ta'} sortie longue.` };
   if (!Number.isInteger(freq) || freq < 1 || freq > Math.min(7, jours.length))
     return { erreur: `Le nombre de séances doit tenir dans ${ses} jours disponibles.` };

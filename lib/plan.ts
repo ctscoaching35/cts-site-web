@@ -185,7 +185,8 @@ export function avertissements(c: Champs, config: ConfigPlan, aujourdhui = new D
 /** Repères de chrono, une aide jamais un contrôle : km-effort / vitesse, arrondi à 5 min. */
 // coach : le questionnaire du coaching individualisé (QD6, décision coach du 19/10/2026) : les mêmes portes, sans
 // renvoyer au coaching qu'il est en train de faire.
-const HORS_DU_MOTEUR = 'Le moteur ne construit pas ce cas : à préparer toi-même, hors du parcours automatique.';
+// Décision 236 (S52) : une seule phrase pour le coach et le coaché, sans « moteur » ni « toi-même » ; « à la main » est le mot du coach.
+const HORS_DU_PARCOURS = 'Ce cas sort du parcours habituel : il se prépare à la main.';
 
 // LES REPÈRES DE CHRONO EN CINQ BANDES (décisions coach du 23/10/2026 ; CTS_CHRONO_RECHERCHE.md dans le dépôt du moteur) :
 // la vitesse médiane des finishers selon la taille de la course en km-effort (presque plate jusqu'à 190, puis la
@@ -230,7 +231,7 @@ export function reperesChrono(c: Champs, config: ConfigPlan, coach = false): Rep
   const temps = [`moins de ${borne(p10)}`, de(p10, p30), de(p30, p60), de(p60, p85), `plus de ${borne(p85)}`];
   const depasse = plafond !== undefined && p85 > plafond;
   const fin = !depasse ? null
-    : coach ? `Au-delà de ${plafond}h, c’est hors du plafond de ce plan. ${HORS_DU_MOTEUR}`
+    : coach ? `Au-delà de ${plafond}h, c’est hors du plafond de ce plan. ${HORS_DU_PARCOURS}`
       : `Au-delà de ${plafond}h, c’est hors du plafond de ce plan : un coaching individualisé est plus adapté.`;
   return {
     kmEffort: Math.round(ke),
@@ -474,7 +475,7 @@ export function noteFormat(c: Champs, config: ConfigPlan, coach = false): string
   if (formatOuvert(c, config, coach)) return `Ta course est un ${nom(c.format)}.`;
   const ouverts = config.formats_par_niveau?.[c.niveau] ?? [];
   const debut = `Une course de ${c.distance_km.replace('.', ',')} km est un ${nom(c.format)} : ce format n’est pas ouvert à ton niveau. Choisis une course ${ouverts.map((f) => `de ${nom(f)}`).join(' ou ')}`;
-  return coach ? `${debut}. ${HORS_DU_MOTEUR}` : `${debut}, ou oriente-toi vers un coaching individualisé.`;
+  return coach ? `${debut}. ${HORS_DU_PARCOURS}` : `${debut}, ou oriente-toi vers un coaching individualisé.`;
 }
 
 /** Temps saisi -> heures, la même lecture que l'API (cts_intake.parse_temps_cible) ; null si illisible. */

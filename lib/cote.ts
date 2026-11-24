@@ -35,12 +35,11 @@ export const TEXTES_COTE = {
   // Posée à tous, plus seulement avec une côte de moins de 5 min (23/11/2026).
   tapis: 'As-tu accès à un tapis de course qui monte ?',
   // TEXTES : BROUILLONS, à faire valider par le coach.
-  // Deux voix (24/11/2026) : `illisible`, neutre, pour qui demande le coaching (pas encore coaché) ; `illisibleCoache`, la voix du coach, pour le coaché.
-  illisible: 'Ta plus longue côte n’est pas valide : un nombre de minutes, par exemple 12.',
-  illisibleCoache: 'Je ne comprends pas ta plus longue côte : un nombre de minutes, par exemple 12.',
+  // Décision 236 (S51) : une consigne, la même pour qui demande le coaching et pour le coaché ; `illisibleSa` pour le coach, sur la fiche.
+  illisible: 'Écris ta plus longue côte en minutes, par exemple 12.',
   // La fiche du coaché, dite par le coach.
   sa: 'Sa plus longue côte, en minutes',
-  illisibleSa: 'Sa plus longue côte ne se lit pas : un nombre de minutes, par exemple 12.',
+  illisibleSa: 'Écris sa plus longue côte en minutes, par exemple 12.',
 };
 
 /**
