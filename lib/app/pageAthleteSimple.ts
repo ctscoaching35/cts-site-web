@@ -70,6 +70,10 @@ export const TEXTES_PAGE_ATHLETE = {
   titreTapis: 'Tapis',
   titreGpx: 'Trace GPX',
   titreSemaine: 'Semaine',
+  // Ses courses de préparation (décision du coach du 25/11/2026, C5), sous chaque objectif de « Ses objectifs ».
+  coursesDePreparation: 'Ses courses de préparation',
+  aucuneCourse: 'Aucune pour l’instant.',
+  ajouterUneCourse: 'Ajouter une course de préparation',
   traceDonnee: 'donnée',
   sansValeur: '—',
   // « Réglages » : les rubriques qui s'y ajoutent sous la 9.x. Sans « sa semaine passée » (décision 220 du coach, 24/11/2026, suite) : elle ne s'y trouve que s'il y a un réalisé à montrer, ce que le moteur v1 n'écrit
@@ -153,12 +157,14 @@ export const entreeDansLesReglages = (entree: Pick<Entree, 'etapes'>): boolean =
 
 // `alerte` : l'alerte du moteur sur un objectif qui n'a pas démarré (entrée 234, lib/app/alerteCoach.ts) : ses phrases, et le lien qui mène à l'objectif à modifier.
 export type LigneAlerte = { planId: string; nom: string; phrases: string[]; href: string };
-export type LigneAFaire = { type: 'point'; point: Point } | { type: 'entree'; ligne: LigneEntree } | { type: 'alerte'; alerte: LigneAlerte };
+// `test` : un test que la v1 a écrit et dont le résultat n'est pas saisi (lib/app/testsASaisir.ts) : sa phrase, le geste de la carte qui le saisit (ses mots sont ceux de la carte), le lien qui y mène.
+export type LigneTest = { cle: string; texte: string; geste: GesteDeLaCarte; href: string };
+export type LigneAFaire = { type: 'point'; point: Point } | { type: 'entree'; ligne: LigneEntree } | { type: 'alerte'; alerte: LigneAlerte } | { type: 'test'; test: LigneTest };
 
 // Ses points à faire, rangés comme les quatre groupes d'« Urgent » (« A besoin de toi », « Ne court plus », « Semaine pas partie », « Objectif bloqué » ; dans chaque groupe,
 // l'ordre reçu), puis les étapes de son entrée. Jamais « À venir » (ils sont dans « Réglages »). Un point n'y est dit qu'une fois : celui que dit déjà une ligne de l'entrée
 // (compte Nolio, accord, départ) ou la carte de coureur (profil à remplir) est retiré. `profilManque` : la carte dit « il manque son profil ».
-export function aFairePourLui(points: Point[], entree: Pick<Entree, 'etapes'>, profilManque: boolean, alertes: LigneAlerte[] = []): LigneAFaire[] {
+export function aFairePourLui(points: Point[], entree: Pick<Entree, 'etapes'>, profilManque: boolean, alertes: LigneAlerte[] = [], tests: LigneTest[] = []): LigneAFaire[] {
   const lignes = lignesDEntree(entree);
   const dit = new Set(lignes.map((l) => POINT_DE_LA_LIGNE[l.cle]));
   const rang = (p: Point) => GROUPES_URGENT.findIndex((g) => g.cle === groupeUrgent(p));
@@ -168,6 +174,7 @@ export function aFairePourLui(points: Point[], entree: Pick<Entree, 'etapes'>, p
     .sort((x, y) => rang(x.point) - rang(y.point) || x.i - y.i)
     .map(({ point }) => point);
   return [...aFaire.map((point): LigneAFaire => ({ type: 'point', point })), ...alertes.map((alerte): LigneAFaire => ({ type: 'alerte', alerte })),
+    ...tests.map((test): LigneAFaire => ({ type: 'test', test })),
     ...lignes.map((ligne): LigneAFaire => ({ type: 'entree', ligne }))];
 }
 

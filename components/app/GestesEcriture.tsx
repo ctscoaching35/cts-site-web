@@ -69,22 +69,23 @@ export function RetirerCourse({ planId, date, nom }: { planId: string; date: str
 
 // Modifier une course de préparation à venir (décision coach du 23/10/2026, « tout modifiable ») : le formulaire de
 // l'ajout, prérempli.
-export function ModifierCourse({ planId, course }: {
-  planId: string; course: { nom: string; date: string; distance_km: number; dplus_m: number; chrono?: string | null; discipline?: 'trail' | 'route';
+export function ModifierCourse({ planId, course, sansMode = false }: {
+  planId: string; sansMode?: boolean; course: { nom: string; date: string; distance_km: number; dplus_m: number; chrono?: string | null; discipline?: 'trail' | 'route';
     mode?: 'gestion' | 'a_fond' };
 }) {
   return (
     <details className="text-xs min-w-0 open:basis-full">
       <summary className="cursor-pointer inline-flex items-center min-h-11 font-semibold text-[#5E5C78] underline underline-offset-2">Modifier</summary>
-      <div className="mt-1 pb-2"><AjouterCourse planId={planId} ancienne={course.date} initial={{ ...course, chrono: course.chrono ?? null }} /></div>
+      <div className="mt-1 pb-2"><AjouterCourse planId={planId} ancienne={course.date} sansMode={sansMode} initial={{ ...course, chrono: course.chrono ?? null }} /></div>
     </details>
   );
 }
 
 // initial : une course B de Nolio (lib/app/coursesNolio.ts), à relire avant d'ajouter ; ou la course à modifier
 // (ancienne : sa date d'avant).
-export function AjouterCourse({ planId, initial, ancienne }: {
-  planId: string; ancienne?: string;
+// sansMode : sous la 9.x, la v1 ne lit pas « Comment tu la cours ? » (CONTRAT_API_CTS.md, `courses_mineures` : la date, le nom, la durée = le chrono visé) : la question n'est pas posée.
+export function AjouterCourse({ planId, initial, ancienne, sansMode = false }: {
+  planId: string; ancienne?: string; sansMode?: boolean;
   initial?: { nom: string; date: string; distance_km: number | null; dplus_m: number | null; chrono: string | null; discipline?: 'trail' | 'route';
     mode?: 'gestion' | 'a_fond' } | null;
 }) {
@@ -128,7 +129,7 @@ export function AjouterCourse({ planId, initial, ancienne }: {
           <input name="chrono" required placeholder={route ? '0h45' : '2h15'} className={champ} defaultValue={initial?.chrono ?? undefined} />
         </label>
       </div>
-      <div className="text-xs font-semibold text-indigo">Comment tu la cours ?
+      {!sansMode && <div className="text-xs font-semibold text-indigo">Comment tu la cours ?
         <div role="group" aria-label="Comment tu la cours" className="mt-1.5 flex p-1 rounded-xl bg-[#F2EFE8] gap-1">
           {([[false, 'En gestion'], [true, 'À fond']] as const).map(([f, nom]) => (
             <button key={nom} type="button" aria-pressed={aFond === f} onClick={() => setAFond(f)}
@@ -140,7 +141,7 @@ export function AjouterCourse({ planId, initial, ancienne }: {
         <span className="mt-1 block font-normal text-[#5E5C78]">{aFond
           ? 'À fond, pour une course de moins de 3 h : un vrai test, avec une récupération plus longue après.'
           : 'En gestion : environ 7 sur 10, ton objectif reste devant.'}</span>
-      </div>
+      </div>}
       {!route && <label className="flex flex-col gap-1.5 text-xs font-semibold text-indigo">{ancienne ? 'Nouvelle trace GPX — facultative' : 'Trace GPX — facultative'}
         <input name="gpx" type="file" accept=".gpx" className="block w-full max-w-full text-sm font-normal text-indigo file:mr-3 file:min-h-10 file:px-3 file:rounded-[10px] file:border-0 file:bg-[#E1EFEA] file:text-teal-dark file:font-bold" />
         <span className="font-normal text-[#5E5C78]">{ancienne

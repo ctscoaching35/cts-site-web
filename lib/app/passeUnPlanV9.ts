@@ -16,7 +16,7 @@ import {
   etatApresEcriture, ecrireLaSemaine, lireLaTrame, preparerLeQuestionnaire, signatureDesReponses, suiteDeLaReponse, type Ports, type SemaineEcriteV9,
 } from './ecritureV9';
 import type { EtatDuPlan } from './etatMoteur';
-import { numeroDeLaSemaine, parametresV9, type NolioVu, type SortieV9 } from './moteurV9';
+import { coursesMineuresDe, numeroDeLaSemaine, parametresV9, type NolioVu, type SortieV9 } from './moteurV9';
 
 export type QuestionnairePoseV9 = { version: VersionDimanche; cles: SeanceCle[]; nolio_id: string | null; pose_le: string };
 export type SemaineEnMemoire = { numero: number; lundi: string | null; semaine: SortieV9['semaine']; reponsesLues: ReponsesDimanche | null;
@@ -186,11 +186,15 @@ export function parametresDuPlanV9({ parametres, profil, coache, accordLecture, 
   const champs = (parametres.champs ?? {}) as Record<string, unknown>;
   const tests = Object.fromEntries(['vc_ms', 'fc_seuil1', 'fc_seuil2'].flatMap((k) => (typeof profil[k] === 'number' && (profil[k] as number) > 0 ? [[k, profil[k]]] : [])));
   const unTexte = (v: unknown) => (typeof v === 'string' ? v : undefined);
+  const entree = coache ? (typeof champs.entree === 'string' ? champs.entree : premierLundi) : null;
   return parametresV9({ ...champs, ...tests }, {
     criteres: { intensite: categorie(fiche?.critere_intensite), mecanique: categorie(fiche?.critere_denivele) },
     cote_min: unTexte(fiche?.cote_min), tapis: fiche?.tapis === 'oui' ? 'oui' : fiche?.tapis === 'non' ? 'non' : undefined,
     // L'entrée gardée au départ (entreesDuDepart) l'emporte sur le premier lundi du plan d'achat : un plan lancé plus tard n'entre pas à sa première semaine.
-    coaching: coache, entree: coache ? (typeof champs.entree === 'string' ? champs.entree : premierLundi) : null, glucides, accord_lecture: accordLecture,
+    coaching: coache, entree,
+    // Ses courses de préparation (C5) : le chrono visé en est la durée ; d'un coaché seulement.
+    courses_mineures: coache ? coursesMineuresDe(parametres.courses_secondaires, entree) : null,
+    glucides, accord_lecture: accordLecture,
   });
 }
 

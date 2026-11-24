@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import clsx from 'clsx';
 import { Carte, PastilleDate, Surtitre } from './Ui';
+import CoursesDePreparation, { type CourseDePreparation } from './CoursesDePreparation';
 import { gestesDeLObjectif, repereDeLObjectif, TEXTES_PAGE_ATHLETE, type VerifObjectif } from '@/lib/app/pageAthleteSimple';
 
 // « SES OBJECTIFS », SUR LA PAGE D'UN ATHLÈTE, SOUS LA 9.x SEULEMENT (décision 220 du coach, 24/11/2026 : seulement ce qui sert à vérifier que tout est rempli). Pour chaque objectif à
@@ -11,11 +12,12 @@ import { gestesDeLObjectif, repereDeLObjectif, TEXTES_PAGE_ATHLETE, type VerifOb
 // la page suit l'ancre, components/app/OuvrirLeReglage.tsx) ; « Ajouter la trace » et « Modifier l'objectif » mènent au questionnaire de l'objectif. La ligne « Semaine » dit ce que le moteur lit
 // pour ses jours, sa sortie longue et son nombre de séances : ceux de l'objectif, pas ceux de sa fiche.
 // Sans la saison de fond (troisième simplification, lib/app/cacherSousLaV1.ts) : le moteur v1 n'en écrit pas, son lien « en cours » n'est plus ici.
-export type LigneObjectif = { planId: string; nom: string; date: string; principal: boolean; verif: VerifObjectif | null };
+// courses : ses courses de préparation (`parametres.courses_secondaires`), quand l'objectif s'écrit semaine par semaine (sinon `null` : rien à ajouter) ; jour : aujourd'hui, pour ce qui se modifie encore.
+export type LigneObjectif = { planId: string; nom: string; date: string; principal: boolean; verif: VerifObjectif | null; courses?: CourseDePreparation[] | null };
 
 const GESTE = 'inline-flex items-center min-h-10 px-3.5 rounded-xl border border-teal bg-white text-teal text-[0.8125rem] font-bold';
 
-export default function ObjectifsAVerifier({ athleteId, lignes }: { athleteId: string; lignes: LigneObjectif[] }) {
+export default function ObjectifsAVerifier({ athleteId, lignes, jour }: { athleteId: string; lignes: LigneObjectif[]; jour: string }) {
   const t = TEXTES_PAGE_ATHLETE;
   return (
     <Carte id="ses-objectifs" className="!p-5 space-y-3 scroll-mt-6">
@@ -64,6 +66,7 @@ export default function ObjectifsAVerifier({ athleteId, lignes }: { athleteId: s
               : <Link key={g} href={`/app/coach/nouveau?athlete=${athleteId}&modifier=${o.planId}`} className={GESTE}>{g === 'trace' ? t.gesteTrace : t.gesteObjectif}</Link>)}
           </div>
         )}
+        {o.courses && <CoursesDePreparation planId={o.planId} courses={o.courses} jour={jour} />}
         </div>
       ))}
     </Carte>

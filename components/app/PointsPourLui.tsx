@@ -36,6 +36,12 @@ export default function PointsPourLui({ lignes, accordRecu }: { lignes: LigneAFa
                 </div>
               )}
             </li>
+          ) : l.type === 'test' ? (
+            // Un test que la v1 a écrit : son résultat est à saisir (lib/app/testsASaisir.ts) ; le geste est celui de la carte de coureur, qui s'ouvre au clic.
+            <li key={`test:${l.test.cle}`} className={ligne}>
+              <p className="min-w-0 flex-[1_1_300px] text-sm text-[#4A4866] leading-snug"><span className="font-semibold text-indigo">{l.test.texte}</span></p>
+              <a href={l.test.href} className={geste}>{l.test.geste === 'test_vc' ? t.saisirTest : t.modifierReperes}</a>
+            </li>
           ) : l.type === 'alerte' ? (
             // L'alerte du moteur sur un objectif qui n'a pas démarré (entrée 234, lib/app/alerteCoach.ts) : ses phrases, puis « Modifier l'objectif ».
             <li key={`alerte:${l.alerte.planId}`} className={ligne}>

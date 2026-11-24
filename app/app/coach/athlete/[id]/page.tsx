@@ -9,8 +9,11 @@ import CarteEntree from '@/components/app/CarteEntree';
 import FormulaireValeurs from '@/components/app/FormulaireValeurs';
 import InvitationApp from '@/components/app/InvitationApp';
 import ObjectifsAVerifier, { type LigneObjectif } from '@/components/app/ObjectifsAVerifier';
+import type { CourseDePreparation } from '@/components/app/CoursesDePreparation';
 import { alertesDuCoach, lirePrerequisDuMoteur, prochainLundi } from '@/lib/app/alerteCoach';
 import { parametresDuPlanV9 } from '@/lib/app/passeUnPlanV9';
+import { lireLesSemainesRecentes } from '@/lib/app/stockageV9';
+import { ANCRE_DU_GESTE, TEXTES_TESTS, testsASaisir } from '@/lib/app/testsASaisir';
 import PointsPourLui, { PointsAVenir } from '@/components/app/PointsPourLui';
 import ProfilAthlete from '@/components/app/ProfilAthlete';
 import SemainesQuiArrivent from '@/components/app/SemaineQuiArrive';
@@ -27,7 +30,7 @@ import { demandeDeLAthlete } from '@/lib/app/demandesCoaching';
 import { initiales } from '@/lib/app/contexte';
 import { entreeDe } from '@/lib/app/entree';
 import {
-  aFairePourLui, ceQuiManqueAuCoureur, departagerLesObjectifs, entreeDansLesReglages, pointsAVenir, TEXTES_PAGE_ATHLETE, verifierObjectif, type LigneAlerte,
+  aFairePourLui, ceQuiManqueAuCoureur, departagerLesObjectifs, entreeDansLesReglages, pointsAVenir, TEXTES_PAGE_ATHLETE, verifierObjectif, type LigneAlerte, type LigneTest,
 } from '@/lib/app/pageAthleteSimple';
 import { coursesDansNolio, pasEncoreIci, type CourseNolio } from '@/lib/app/coursesNolio';
 import { coursesNolioVisibles, estUneCourseEnPreparation, TEXTES_CACHES, testsLusDisponibles } from '@/lib/app/cacherSousLaV1';
@@ -283,12 +286,19 @@ export default async function PageAthlete({ params, searchParams }: {
       premierLundi: (p.depart_prevu as string | null) ?? prochainLundi(jour),
     }, a.profil) }];
   }), lirePrerequisDuMoteur)).map((x) => ({ ...x, href: `/app/coach/nouveau?athlete=${a.id}&modifier=${x.planId}` })) : [];
-  const lignesAFaire = v9 ? aFairePourLui(points, entree, manqueCoureur.some((m) => m.cle === 'profil'), alertes) : [];
+  // Les tests que la v1 a écrits dans ses semaines et dont le résultat n'est pas saisi (lib/app/testsASaisir.ts) : « Saisir le résultat de son test de … », avec le geste de sa carte de coureur. La v1 ne les relit
+  // pas dans Nolio ; le point tombe dès que le repère est saisi, par toi ou par lui. Sans la migration du 24/11/2026 (état du moteur v1), rien n'est lu et rien n'est dit.
+  const semainesDeLaV1 = v9 ? await lireLesSemainesRecentes(service, a.objectifs.map((o) => o.plan_id), new Date(Date.now() - 70 * 86_400_000).toISOString()).catch(() => []) : [];
+  const testsAFaire: LigneTest[] = v9 ? testsASaisir({ semaines: semainesDeLaV1, sources: a.reperes_sources, aujourdhui: jour }).map((t) => ({
+    cle: `${t.mot}:${t.jour}`, texte: TEXTES_TESTS.saisir(t.mot), geste: t.geste, href: ANCRE_DU_GESTE[t.geste] })) : [];
+  const lignesAFaire = v9 ? aFairePourLui(points, entree, manqueCoureur.some((m) => m.cle === 'profil'), alertes, testsAFaire) : [];
   // Les réponses de l'objectif (parametres.champs), lues avec celles de la fiche comme le moteur v1 les lit ; un objectif envoyé en entier n'a pas de réponses à vérifier.
   const lignesObjectifs: LigneObjectif[] = objectifsAVenir.map((o) => {
     const parametres = parPlan.get(o.plan_id)?.parametres as { champs?: Record<string, unknown> } | null | undefined;
     return { planId: o.plan_id, nom: o.course_nom, date: o.course_date, principal: o.plan_id === prochain,
-      verif: parametres ? verifierObjectif(parametres.champs ?? {}, a.profil) : null };
+      verif: parametres ? verifierObjectif(parametres.champs ?? {}, a.profil) : null,
+      // Ses courses de préparation (C5) : celles que l'objectif garde, quand il s'écrit semaine par semaine (il a des paramètres).
+      courses: parametres ? ((parametres as { courses_secondaires?: CourseDePreparation[] }).courses_secondaires ?? []) : null };
   });
   // Ses zones et son style, repliés dans sa carte : seulement ce qu'il y a à lire.
   const zonesEtStyle = v9 && ((zones && lignesZones.length > 0) || profilCoureur(profilZones)) ? (
@@ -533,7 +543,7 @@ export default async function PageAthlete({ params, searchParams }: {
           <PointsPourLui lignes={lignesAFaire} accordRecu={donnerLAccord} />
           <CarteCoureur lignesProfil={profilVide ? [] : lignesProfil} reperes={reperes} manque={manqueCoureur} profilVide={profilVide}
             formulaires={{ profil: contenuProfil, test_vc: contenuTest, reperes: contenuReperes }} zonesEtStyle={zonesEtStyle} />
-          <ObjectifsAVerifier athleteId={a.id} lignes={lignesObjectifs} />
+          <ObjectifsAVerifier athleteId={a.id} lignes={lignesObjectifs} jour={jour} />
           {semaine}
         </>
       ) : (

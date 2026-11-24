@@ -40,7 +40,8 @@ export default function CarteCoureur({ lignesProfil, reperes, manque, profilVide
             <span>{t.ilManque(manque.map((m) => m.texte))}</span>
           </p>
           <div className="flex flex-col items-start gap-2">
-            {manque.map((m) => <GesteDeCarte key={m.cle} cle={m.cle} manque={manque} ouvert={m.cle === 'profil' && profilVide} formulaires={formulaires} id={m.cle === 'profil' ? 'geste-profil' : undefined} />)}
+            {manque.map((m) => <GesteDeCarte key={m.cle} cle={m.cle} manque={manque} ouvert={m.cle === 'profil' && profilVide} formulaires={formulaires}
+              id={m.cle === 'profil' ? 'geste-profil' : m.cle === 'test_vc' ? 'geste-test-vc' : 'geste-reperes'} />)}
           </div>
         </div>
       )}
@@ -69,8 +70,8 @@ export default function CarteCoureur({ lignesProfil, reperes, manque, profilVide
         </ul>
         {(ici('test_vc') || ici('reperes')) && (
           <div className="flex flex-col items-start gap-1 pt-2">
-            {ici('test_vc') && <GesteDeCarte cle="test_vc" manque={manque} formulaires={formulaires} />}
-            {ici('reperes') && <GesteDeCarte cle="reperes" manque={manque} formulaires={formulaires} />}
+            {ici('test_vc') && <GesteDeCarte cle="test_vc" manque={manque} formulaires={formulaires} id="geste-test-vc" />}
+            {ici('reperes') && <GesteDeCarte cle="reperes" manque={manque} formulaires={formulaires} id="geste-reperes" />}
           </div>
         )}
       </div>

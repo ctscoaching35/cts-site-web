@@ -144,22 +144,30 @@ async function enregistrerCourse(planId: string, form: FormData, ancienne: strin
   // Modifiée, elle se vérifie sans elle-même (la règle d'une course toutes les 4 semaines).
   const autres = toutes.filter((c) => c.date !== ancienne);
   const parametres = { ...o.parametres, courses_secondaires: autres };
-  // Le moteur v1 (9.x) ne rend plus /v1/course-secondaire (404 ; décision du coach du 24/11/2026, entrée 191) : la course de préparation
-  // revient avec l'objectif mineur (C5), dont le champ sera écrit dans CONTRAT_API_CTS.md. TEXTE : BROUILLON.
-  if (await moteurEstV9()) return { ok: false, message: MESSAGE_COURSE_DE_PREPARATION_FERMEE };
-  const reelles = Object.values(((o.etat ?? {}) as { sl_reelles?: Record<string, number> }).sl_reelles ?? {});
-  const r = await fetch(`${API_URL}/v1/course-secondaire`, {
-    method: 'POST', headers: enTetesMoteur({ 'Content-Type': 'application/json' }), cache: 'no-store',
-    body: JSON.stringify({ parametres, course, sl_30j_min: reelles.length ? Math.max(...reelles.slice(-4)) : null }),
-  });
-  const verdict = await r.json().catch(() => null) as { ok?: boolean; message?: string | null } | null;
-  if (!r.ok || !verdict) return { ok: false, message: verdict?.message ?? 'Le service ne répond pas : réessaie dans un moment.' };
-  if (!verdict.ok) return { ok: false, message: verdict.message ?? 'Cette course ne peut pas s’ajouter au plan.' };
+  // SOUS LE MOTEUR v1 (9.x ; décision du coach du 25/11/2026, C5) : /v1/course-secondaire n'existe plus et la v1 ne refuse rien (« aucune porte, aucun refus : la course est toujours écrite ») ; la course
+  // se garde avec les paramètres du plan et part au moteur en `courses_mineures` (sa date, son nom, sa durée = son chrono visé : lib/app/moteurV9.ts, coursesMineuresDe). D'un coaché seulement : un
+  // acheteur n'a pas de course de préparation. Seule garde du site : la course tombe avant l'objectif.
+  const v9 = await moteurEstV9();
+  if (v9 && !o.coache) return { ok: false, message: MESSAGE_COURSE_DE_PREPARATION_FERMEE };
+  if (v9 && date >= o.plan.course.date) return { ok: false, message: 'Ta course doit tomber avant ton objectif.' };
+  let verdict: { ok?: boolean; message?: string | null } | null = { ok: true, message: null };
+  if (!v9) {
+    const reelles = Object.values(((o.etat ?? {}) as { sl_reelles?: Record<string, number> }).sl_reelles ?? {});
+    const r = await fetch(`${API_URL}/v1/course-secondaire`, {
+      method: 'POST', headers: enTetesMoteur({ 'Content-Type': 'application/json' }), cache: 'no-store',
+      body: JSON.stringify({ parametres, course, sl_30j_min: reelles.length ? Math.max(...reelles.slice(-4)) : null }),
+    });
+    verdict = await r.json().catch(() => null) as { ok?: boolean; message?: string | null } | null;
+    if (!r.ok || !verdict) return { ok: false, message: verdict?.message ?? 'Le service ne répond pas : réessaie dans un moment.' };
+    if (!verdict.ok) return { ok: false, message: verdict.message ?? 'Cette course ne peut pas s’ajouter au plan.' };
+  }
+  if (!verdict) return { ok: false, message: 'Le service ne répond pas : réessaie dans un moment.' };
   // Modifiée : l'ancienne quitte Nolio (sa course et le rappel de sa fiche, encore à venir).
   const soucis = ancienne === null ? [] : await retirerCourseDeNolio(o, ancienne).catch((e) => [e instanceof Error ? e.message : String(e)]);
   if (soucis.length) console.error(`Course du ${ancienne} (${planId}) : restée dans Nolio — ${soucis.join(' ; ')}`);
   const service = clientService();
-  await service.from('plans').update({ parametres: { ...o.parametres, courses_secondaires: [...autres, course] } }).eq('id', planId);
+  // Sous la 9.x, la trame gardée se refait avec la course (la semaine de la course et celle d'après changent de gabarit).
+  await service.from('plans').update({ parametres: { ...o.parametres, courses_secondaires: [...autres, course] }, ...(v9 ? { trame: null } : {}) }).eq('id', planId);
   // PO3 : sa fiche de course, sans plan, avec sa trace si elle est donnée, ou celle d'avant ; gardée par sa date (après
   // la migration du 19/10/2026 : sans elle, la course s'ajoute sans fiche).
   const gpx = form.get('gpx');
@@ -208,7 +216,7 @@ async function enregistrerCourse(planId: string, form: FormData, ancienne: strin
     await prevenirCoach(`Course de préparation ${ancienne !== null ? 'modifiée' : 'ajoutée'} : ${course.nom}`,
       `Ton athlète ${ancienne !== null ? 'a modifié' : 'a ajouté'} une course de préparation à son objectif « ${o.plan.course.nom} » : `
       + `${course.nom}, le ${date}, ${course.distance_km} km${course.dplus_m ? `, ${course.dplus_m} m D+` : ''}, ${course.mode === 'a_fond' ? 'à fond' : 'en gestion'}.`
-      + (aLaMain ? ' Tu le programmes à la main : adapte ses semaines autour d’elle.' : ' Ses semaines s’ajustent autour d’elle dans le moteur.'),
+      + (aLaMain ? ' Tu le programmes à la main : adapte ses semaines autour d’elle.' : v9 ? ' Ses prochaines semaines s’ajustent autour d’elle.' : ' Ses semaines s’ajustent autour d’elle dans le moteur.'),
       o.coachId).catch(() => null);
   }
   if (aLaMain) {
@@ -310,7 +318,7 @@ export async function retirerCourse(planId: string, date: string, _e: EtatGeste)
   const soucis = await retirerCourseDeNolio(o, date).catch((e) => [e instanceof Error ? e.message : String(e)]);
   if (soucis.length) console.error(`Course du ${date} (${planId}) : restée dans Nolio — ${soucis.join(' ; ')}`);
   const service = clientService();
-  await service.from('plans').update({ parametres: { ...o.parametres, courses_secondaires: courses.filter((c) => c.date !== date) } }).eq('id', planId);
+  await service.from('plans').update({ parametres: { ...o.parametres, courses_secondaires: courses.filter((c) => c.date !== date) }, ...((await moteurEstV9()) ? { trame: null } : {}) }).eq('id', planId);
   const { data: fp, error } = await service.from('plans').select('fiches_preparation').eq('id', planId).maybeSingle();
   if (!error) {
     const fiches = { ...((fp as { fiches_preparation?: Record<string, unknown> } | null)?.fiches_preparation ?? {}) };

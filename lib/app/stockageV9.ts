@@ -77,6 +77,19 @@ export async function lireLaDerniereSemaine(service: SupabaseClient, planId: str
     questionnaire: l.questionnaire && Array.isArray(l.questionnaire.cles) ? l.questionnaire : null };
 }
 
+// Les semaines que la v1 a écrites depuis `depuis` (un instant ISO) pour ces plans : leur lundi et leurs jours, rien de plus (« À faire pour lui » y cherche les tests écrits : lib/app/testsASaisir.ts).
+export type SemaineRecenteV9 = { planId: string; numero: number; lundi: string | null; jours: unknown };
+export async function lireLesSemainesRecentes(service: SupabaseClient, planIds: string[], depuis: string): Promise<SemaineRecenteV9[]> {
+  if (!planIds.length) return [];
+  const { data, error } = await service.from('semaines_ecrites').select('plan_id, numero, lundi:donnees->>lundi, jours:donnees->jours')
+    .in('plan_id', planIds).eq('moteur', MOTEUR_ECRIT).gte('ecrite_le', depuis);
+  if (error) throw echec('semaines_ecrites', error);
+  return ((data ?? []) as unknown as { plan_id: string; numero: string; lundi: string | null; jours: unknown }[]).flatMap((l) => {
+    const numero = numeroDeLaCle(l.numero);
+    return numero === null ? [] : [{ planId: l.plan_id, numero, lundi: typeof l.lundi === 'string' ? l.lundi : null, jours: l.jours }];
+  });
+}
+
 // Les réponses qu'une réponse tardive a vues : la semaine n'est pas réécrite, mais la même réponse ne se rejoue pas au passage suivant.
 export async function garderLesReponsesLues(service: SupabaseClient, planId: string, numero: number, reponses: ReponsesDimanche): Promise<void> {
   const { error } = await service.from('semaines_ecrites').update({ reponses_lues: reponses }).eq('plan_id', planId).eq('numero', cleDeLaSemaine(numero));

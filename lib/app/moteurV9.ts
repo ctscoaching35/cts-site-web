@@ -29,6 +29,26 @@ export function numeroMoteur(numero: unknown): number | null {
 }
 
 export type Categorie = 'jamais' | 'parfois' | 'regulier';
+// Une course de préparation d'un coaché, comme le moteur la lit (`parametres.courses_mineures`, C5, CONTRAT_API_CTS.md) : sa date, sa durée estimée en heures (le chrono visé, entrée 214 du coach ;
+// sans durée lisible, le moteur prend la tranche de 1 h 30 à 3 h et le dit dans « Pourquoi cette semaine »), son nom. Aucune porte, aucun refus : la course est toujours écrite.
+export type CourseMineure = { date: string; duree_h?: number; nom?: string };
+
+// Les courses de préparation que le site garde (`parametres.courses_secondaires` : nom, date, distance, D+, chrono visé en heures `temps_h`), dites au moteur : la date et le nom, la durée = le chrono visé.
+// Une ligne sans date lisible n'est pas envoyée ; `depuis` : une course d'avant l'entrée du coaché (la première semaine du moteur) ne dit rien à la trame. Rangées par date, jamais deux le même jour.
+export function coursesMineuresDe(courses: unknown, depuis?: string | null): CourseMineure[] {
+  if (!Array.isArray(courses)) return [];
+  const vues = new Set<string>();
+  const lues = courses.flatMap((c): CourseMineure[] => {
+    const o = c as { date?: unknown; temps_h?: unknown; nom?: unknown } | null;
+    const date = typeof o?.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(o.date) ? o.date : null;
+    if (!date || (depuis && date < depuis) || vues.has(date)) return [];
+    vues.add(date);
+    const duree = typeof o?.temps_h === 'number' && Number.isFinite(o.temps_h) && o.temps_h > 0 ? Math.round(o.temps_h * 100) / 100 : null;
+    const nom = typeof o?.nom === 'string' ? o.nom.trim().slice(0, 80) : '';
+    return [{ date, ...(duree !== null ? { duree_h: duree } : {}), ...(nom ? { nom } : {}) }];
+  });
+  return lues.sort((a, b) => a.date.localeCompare(b.date));
+}
 export type CoteMax = '1m30' | '2-5' | '5-10' | '10+';
 export type EntreesAthlete = {
   // Les deux critères (`criteres.intensite`, `criteres.mecanique`) : un critère absent vaut « jamais », et « Pourquoi cette semaine » le dit.
@@ -45,6 +65,8 @@ export type EntreesAthlete = {
   // Le profil de sa trace (POST /v1/trace, lib/app/gpxV9.ts) ; sans lui, ou d'une autre forme que celle du contrat, rien ne part et le moteur se replie sur la classe de la course.
   gpx?: unknown;
   coaching?: boolean; entree?: string | null; course_precedente?: { date: string; duree_h: number } | null;
+  // Ses courses de préparation (C5) : d'un coaché seulement ; vide, rien ne part.
+  courses_mineures?: CourseMineure[] | null;
   // La cible du calculateur de l'app : une fourchette [bas, haut] ou un nombre, en g/h ; le moteur lit UN nombre (absent : 60).
   glucides?: [number, number] | number | null;
   accord_lecture?: boolean;
@@ -89,6 +111,7 @@ export function parametresV9(base: Record<string, unknown>, e: EntreesAthlete = 
     sortie.coaching = 'oui';
     if (e.entree) sortie.entree = e.entree;
     if (e.course_precedente) sortie.course_precedente = e.course_precedente;
+    if (e.courses_mineures?.length) sortie.courses_mineures = e.courses_mineures;
   }
   const glucides = glucidesPourLeMoteur(e.glucides ?? base.glucides_cible);
   if (glucides !== null) sortie.glucides_cible = glucides;

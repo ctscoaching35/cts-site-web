@@ -15,6 +15,7 @@ import { blocsDuPlan, jaugeDuPlan } from '@/lib/app/tableau';
 import { donneesTableau, fichesDePreparation, recuperationAvantLObjectif, semainesDetaillees, type CourseSecondaire } from '@/lib/app/tableauDuPlan';
 import { BlocsDeLaSaison } from '@/components/app/SaisonDeFond';
 import { datesDesFiches, objectifsDeDemonstration } from '@/lib/app/demonstration';
+import { moteurEstV9 } from '@/lib/app/moteurEnLigne';
 import SemainesDuPlan from '@/components/app/SemainesDuPlan';
 import SelecteurPlan from '@/components/app/SelecteurPlan';
 import { CarteMontagne } from '@/components/app/TableauDeBord';
@@ -61,6 +62,8 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
   // Un coaché sans objectif : son accueil, qui dit aussi qu'une demande est partie.
   if (ctx.sansObjectif) redirect(r.demande === 'envoyee' ? '/app?demande=envoyee' : '/app');
   const { plan, jour } = ctx;
+  // Sous la 9.x (décision du coach du 25/11/2026, C5) : les courses de préparation sont celles d'un coaché, sans « Comment tu la cours ? » (la v1 ne le lit pas) ; un acheteur n'en a pas.
+  const v9 = await moteurEstV9().catch(() => false);
   const d = await donneesTableau(ctx);
   // En démonstration : l'objectif affiché, et l'objectif suivant demandé (?objectif=demande).
   const objectifs = ctx.demonstration ? await objectifsDeDemonstration(ctx, d.courses) : await mesObjectifs();
@@ -180,7 +183,7 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
           </ol>
         </Carte>}
 
-        {d.ecrit && !plan.fond && (
+        {d.ecrit && !plan.fond && (!v9 || ctx.coache) && (
           <Carte id="ajouter-course" className="space-y-3 scroll-mt-20">
             <Surtitre>Tes courses de préparation</Surtitre>
             {d.courses.map((c) => (
@@ -195,7 +198,7 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
                     <Link href={lien('/app/plan/course', ctx, { course: c.date })} className="shrink-0 inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">Sa fiche ›</Link>
                   )}
                 </div>
-                {c.date > jour && <div className="pl-14 -mt-1 flex flex-wrap gap-x-5"><ModifierCourse planId={ctx.cle} course={c} /><RetirerCourse planId={ctx.cle} date={c.date} nom={c.nom} /></div>}
+                {c.date > jour && <div className="pl-14 -mt-1 flex flex-wrap gap-x-5"><ModifierCourse planId={ctx.cle} course={c} sansMode={v9} /><RetirerCourse planId={ctx.cle} date={c.date} nom={c.nom} /></div>}
               </div>
             ))}
             {/* C19 : une préparation arrêtée n'ajoute plus de course (le serveur la refuse aussi). */}
@@ -206,7 +209,7 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
                     ? 'Une course avant ton objectif ? Ajoute-la : j’ajuste les jours autour d’elle (quelques jours plus légers avant, de la récupération après), sans toucher à la suite de ta préparation.'
                     : 'Une course avant ton objectif ? Ajoute-la : les jours autour d’elle sont ajustés (quelques jours plus légers avant, de la récupération après), sans toucher à la suite de ta préparation.'}
                 </p>
-                <AjouterCourse planId={ctx.cle} />
+                <AjouterCourse planId={ctx.cle} sansMode={v9} />
               </>
             )}
           </Carte>
