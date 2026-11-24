@@ -40,6 +40,38 @@
       "schedule": "0 5 * * 1"
     },
     {
+      "path": "/api/ecriture/lundi",
+      "schedule": "0 7 * * 1"
+    },
+    {
+      "path": "/api/ecriture/lundi",
+      "schedule": "0 9 * * 1"
+    },
+    {
+      "path": "/api/ecriture/lundi",
+      "schedule": "0 11 * * 1"
+    },
+    {
+      "path": "/api/ecriture/lundi",
+      "schedule": "0 13 * * 1"
+    },
+    {
+      "path": "/api/ecriture/lundi",
+      "schedule": "0 15 * * 1"
+    },
+    {
+      "path": "/api/ecriture/lundi",
+      "schedule": "0 17 * * 1"
+    },
+    {
+      "path": "/api/ecriture/lundi",
+      "schedule": "0 19 * * 1"
+    },
+    {
+      "path": "/api/ecriture/lundi",
+      "schedule": "0 21 * * 1"
+    },
+    {
       "path": "/api/ecriture/rappel",
       "schedule": "0 14 * * 0"
     }
