@@ -36,6 +36,15 @@ export default function PointsPourLui({ lignes, accordRecu }: { lignes: LigneAFa
                 </div>
               )}
             </li>
+          ) : l.type === 'alerte' ? (
+            // L'alerte du moteur sur un objectif qui n'a pas démarré (entrée 234, lib/app/alerteCoach.ts) : ses phrases, puis « Modifier l'objectif ».
+            <li key={`alerte:${l.alerte.planId}`} className={ligne}>
+              <p className="min-w-0 flex-[1_1_300px] text-sm text-[#4A4866] leading-snug">
+                <span className="font-semibold text-indigo">{l.alerte.nom}</span>
+                {l.alerte.phrases.map((ph) => <span key={ph} className="block mt-0.5 text-xs text-[#5E5C78]">{ph}</span>)}
+              </p>
+              <Link href={l.alerte.href} className={geste}>{t.gesteObjectif}</Link>
+            </li>
           ) : (
             // « son-entree » : l'adresse que « Mes athlètes » donne à « Accord reçu ».
             <li key={`entree:${l.ligne.cle}`} id={l.ligne.cle === 'accord' ? 'son-entree' : undefined} className={ligne}>

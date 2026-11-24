@@ -9,6 +9,8 @@ import CarteEntree from '@/components/app/CarteEntree';
 import FormulaireValeurs from '@/components/app/FormulaireValeurs';
 import InvitationApp from '@/components/app/InvitationApp';
 import ObjectifsAVerifier, { type LigneObjectif } from '@/components/app/ObjectifsAVerifier';
+import { alertesDuCoach, lirePrerequisDuMoteur, prochainLundi } from '@/lib/app/alerteCoach';
+import { parametresDuPlanV9 } from '@/lib/app/passeUnPlanV9';
 import PointsPourLui, { PointsAVenir } from '@/components/app/PointsPourLui';
 import ProfilAthlete from '@/components/app/ProfilAthlete';
 import SemainesQuiArrivent from '@/components/app/SemaineQuiArrive';
@@ -25,7 +27,7 @@ import { demandeDeLAthlete } from '@/lib/app/demandesCoaching';
 import { initiales } from '@/lib/app/contexte';
 import { entreeDe } from '@/lib/app/entree';
 import {
-  aFairePourLui, ceQuiManqueAuCoureur, departagerLesObjectifs, entreeDansLesReglages, pointsAVenir, TEXTES_PAGE_ATHLETE, verifierObjectif,
+  aFairePourLui, ceQuiManqueAuCoureur, departagerLesObjectifs, entreeDansLesReglages, pointsAVenir, TEXTES_PAGE_ATHLETE, verifierObjectif, type LigneAlerte,
 } from '@/lib/app/pageAthleteSimple';
 import { coursesDansNolio, pasEncoreIci, type CourseNolio } from '@/lib/app/coursesNolio';
 import { coursesNolioVisibles, estUneCourseEnPreparation, TEXTES_CACHES, testsLusDisponibles } from '@/lib/app/cacherSousLaV1';
@@ -270,8 +272,18 @@ export default async function PageAthlete({ params, searchParams }: {
   // coach fait lui-même), ce qui manque à sa carte de coureur, ce que chaque objectif à venir a de rempli, ce qui arrive. Rien n'est lu de plus : les mêmes données que la 8.x. Sous la 8.x, rien.
   const donnerLAccord = a.nolio_athlete_id && !accord ? accordRecu.bind(null, a.nolio_athlete_id, a.nom) : undefined;
   const manqueCoureur = v9 ? ceQuiManqueAuCoureur({ profil, vcMs: a.vc_ms, fc1: a.fc_seuil1, fc2: a.fc_seuil2, vs1: a.v_seuil1_ms }) : [];
-  const lignesAFaire = v9 ? aFairePourLui(points, entree, manqueCoureur.some((m) => m.cle === 'profil')) : [];
   const { aVenir: objectifsAVenir, passes: objectifsPasses } = v9 ? departagerLesObjectifs(objectifs, jour) : { aVenir: [], passes: [] };
+  // L'alerte du moteur (entrée 234, lib/app/alerteCoach.ts) : pour un objectif qui n'a pas démarré, le moteur dit si sa sortie longue de départ ou ses séances par semaine ne tiennent pas. Les paramètres sont
+  // ceux que le moteur lira (parametresDuPlanV9), entrée au prochain lundi sans départ prévu ; une route qui ne répond pas ne donne pas d'alerte et ne fait rien échouer.
+  const alertes: LigneAlerte[] = v9 ? (await alertesDuCoach(objectifsAVenir.flatMap((o) => {
+    const p = parPlan.get(o.plan_id);
+    if (!p?.parametres || p.demarre_le) return [];
+    return [{ planId: o.plan_id, nom: o.course_nom, parametres: parametresDuPlanV9({
+      parametres: p.parametres as Record<string, unknown>, profil: { vc_ms: a.vc_ms, fc_seuil1: a.fc_seuil1, fc_seuil2: a.fc_seuil2 }, coache: true, accordLecture: Boolean(accord),
+      premierLundi: (p.depart_prevu as string | null) ?? prochainLundi(jour),
+    }, a.profil) }];
+  }), lirePrerequisDuMoteur)).map((x) => ({ ...x, href: `/app/coach/nouveau?athlete=${a.id}&modifier=${x.planId}` })) : [];
+  const lignesAFaire = v9 ? aFairePourLui(points, entree, manqueCoureur.some((m) => m.cle === 'profil'), alertes) : [];
   // Les réponses de l'objectif (parametres.champs), lues avec celles de la fiche comme le moteur v1 les lit ; un objectif envoyé en entier n'a pas de réponses à vérifier.
   const lignesObjectifs: LigneObjectif[] = objectifsAVenir.map((o) => {
     const parametres = parPlan.get(o.plan_id)?.parametres as { champs?: Record<string, unknown> } | null | undefined;

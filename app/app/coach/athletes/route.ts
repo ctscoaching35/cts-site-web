@@ -5,6 +5,7 @@ import { planAchete } from '@/lib/app/acheteurs';
 import { quitterLAttenteDuProfil } from '@/lib/app/coaching';
 import { reprogrammerSortie } from '@/lib/app/ecriture';
 import { avecLeGpx } from '@/lib/app/gpxV9';
+import { avecLesEntreesGardees } from '@/lib/app/entreesGardees';
 import { moteurEstV9 } from '@/lib/app/moteurEnLigne';
 import { messageAuCoach } from '@/lib/app/erreursDuCoach';
 import { lireLaTraceV9 } from '@/lib/app/traceV9';
@@ -111,8 +112,10 @@ export async function POST(request: NextRequest) {
       bande_majeure: nouveaux.bande_majeure ?? anciensParametres.bande_majeure ?? null,
       ...(ancien.demarre_le ? { declaree_le: anciensParametres.declaree_le } : {}),
     }, gpxV9, anciensParametres);
+    // Sous la 9.x, un objectif déjà parti garde ce que le site a posé dans ses réponses (son entrée, sa course d'avant, ce qu'il courait au départ) : lib/app/entreesGardees.ts.
+    const gardes = ancien.demarre_le && (await moteurEstV9()) ? avecLesEntreesGardees(parametres, anciensParametres) : parametres;
     const r3 = await fetch(`${API_URL}/v1/trame`, {
-      method: 'POST', headers: enTetesMoteur({ 'Content-Type': 'application/json' }), body: JSON.stringify({ parametres }), cache: 'no-store',
+      method: 'POST', headers: enTetesMoteur({ 'Content-Type': 'application/json' }), body: JSON.stringify({ parametres: gardes }), cache: 'no-store',
     });
     if (!r3.ok) {
       const c3 = await r3.json().catch(() => null);
@@ -120,7 +123,7 @@ export async function POST(request: NextRequest) {
     }
     const { error } = await service.from('plans').update({
       course_nom: donnees.course.nom, course_date: donnees.course.date, debut_plan: donnees.course.date_debut_plan,
-      schema: donnees.schema, version_moteur: donnees.version_moteur, donnees, intake: c2.intake ?? {}, parametres, trame: null,
+      schema: donnees.schema, version_moteur: donnees.version_moteur, donnees, intake: c2.intake ?? {}, parametres: gardes, trame: null,
       coach_id: coach.compteId,
       ...(ancien.demarre_le ? {} : { depart_prevu: null }),
     }).eq('id', ancien.id);

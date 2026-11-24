@@ -10,11 +10,12 @@ import { motDuGeste, ouEstLeGeste, TEXTES_PAGE_ATHLETE, type GesteDeLaCarte, typ
 // dans la carte. Sous la 8.x, la page garde ses quatre blocs d'avant.
 type Repere = [titre: string, valeur: string | null, source: string | null];
 
-function GesteDeCarte({ cle, manque, ouvert = false, formulaires }: {
-  cle: GesteDeLaCarte; manque: ManqueCoureur[]; ouvert?: boolean; formulaires: Record<GesteDeLaCarte, React.ReactNode>;
+function GesteDeCarte({ cle, manque, ouvert = false, formulaires, id }: {
+  cle: GesteDeLaCarte; manque: ManqueCoureur[]; ouvert?: boolean; formulaires: Record<GesteDeLaCarte, React.ReactNode>; id?: string;
 }) {
   return (
-    <details open={ouvert}>
+    // `id` : l'adresse que prend un lien qui mène à ce geste (« geste-profil » : « Modifier son profil » de « Ses objectifs »), qui ouvre le formulaire (OuvrirLeReglage).
+    <details id={id} open={ouvert} className="scroll-mt-6">
       <summary className="cursor-pointer inline-flex items-center min-h-11 px-4 rounded-xl border border-teal bg-white text-teal text-[0.8125rem] font-bold">{motDuGeste(cle, manque)}</summary>
       <div className="pt-3">{formulaires[cle]}</div>
     </details>
@@ -39,7 +40,7 @@ export default function CarteCoureur({ lignesProfil, reperes, manque, profilVide
             <span>{t.ilManque(manque.map((m) => m.texte))}</span>
           </p>
           <div className="flex flex-col items-start gap-2">
-            {manque.map((m) => <GesteDeCarte key={m.cle} cle={m.cle} manque={manque} ouvert={m.cle === 'profil' && profilVide} formulaires={formulaires} />)}
+            {manque.map((m) => <GesteDeCarte key={m.cle} cle={m.cle} manque={manque} ouvert={m.cle === 'profil' && profilVide} formulaires={formulaires} id={m.cle === 'profil' ? 'geste-profil' : undefined} />)}
           </div>
         </div>
       )}
@@ -53,7 +54,7 @@ export default function CarteCoureur({ lignesProfil, reperes, manque, profilVide
           ))}
         </dl>
       )}
-      {ici('profil') && <GesteDeCarte cle="profil" manque={manque} formulaires={formulaires} />}
+      {ici('profil') && <GesteDeCarte cle="profil" manque={manque} formulaires={formulaires} id="geste-profil" />}
 
       <div className="pt-3 border-t border-indigo/[0.07] space-y-1">
         <Surtitre as="h3" ton="gris">Ses repères</Surtitre>

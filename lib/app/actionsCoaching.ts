@@ -13,7 +13,8 @@ import { athletesNolio, coachConnecte } from './nolio';
 import { usrAcheteurs } from './acheteurs';
 import { retirerFiche, supprimerPlans } from './retrait';
 import { lireAllure } from './allureCoach';
-import { messageAuCoach, pasEncoreSonAccordAuCoach, soucisAuCoach } from './erreursDuCoach';
+import { messageAuCoach, pasEncoreSonAccordAuCoach, profilEnregistre, soucisAuCoach } from './erreursDuCoach';
+import { moteurEstV9 } from './moteurEnLigne';
 import { clientService } from './supabase';
 
 // avertissement : une ligne sous le résultat, quand ce qui s'enregistre sort de l'habituel (le test de vitesse critique).
@@ -262,7 +263,7 @@ export async function enregistrerProfil(athleteId: string, _e: EtatCoach, form: 
   await quitterLAttenteDuProfil(coach.compteId, athleteId);
   revalidatePath(`/app/coach/athlete/${athleteId}`);
   // Sa préparation en cours le reprend par « Modifier l'objectif » (décision coach du 23/10/2026).
-  return { ok: true, message: 'C’est enregistré. Ses prochains objectifs partent de ce profil ; « Modifier » sur son objectif en cours le lui donne aussi.' };
+  return { ok: true, message: profilEnregistre(await moteurEstV9().catch(() => false)) };
 }
 
 // Le test de vitesse critique d'un coaché, saisi par son coach (décision coach du 19/10/2026 : quand l'athlète ne le

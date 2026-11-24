@@ -3,7 +3,7 @@
  * la colle avec le vrai Nolio et la vraie base ; ce que chaque passage décide est dans lib/app/passeUnPlanV9.ts (essayé avec de fausses pièces,
  * scripts/test-passes-v9.mjs). Les routes (app/api/ecriture/*) ne l'appellent que sous une 9.x (lib/app/chaineDuMoteur.ts) : sous la 8.474, rien ne change.
  *
- * PAS PORTÉ sous le moteur v1 (la liste de la mise en ligne) : le départ d'un objectif (`demarrerObjectif`), « Réessayer » et « Annuler », l'aperçu du
+ * PAS PORTÉ sous le moteur v1 (la liste de la mise en ligne ; le départ d'un objectif l'est, lib/app/departV9.ts) : « Réessayer » et « Annuler », l'aperçu du
  * dimanche, le rattrapage, la saison de fond, les corrections du coach, les tests lus (VC, FC), les fiches de préparation et les courses de préparation.
  */
 import { clientService } from './supabase';

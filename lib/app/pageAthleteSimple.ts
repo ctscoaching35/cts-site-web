@@ -57,6 +57,11 @@ export const TEXTES_PAGE_ATHLETE = {
   manqueMecanique: 'son critère de mécanique',
   manqueTapis: 'son tapis (oui ou non)',
   manqueGpx: 'sa trace GPX',
+  manqueSemaine: 'sa semaine habituelle',
+  // Les gestes d'un objectif (inventaire du 25/11/2026, « Préparer ses coachés pour la v1 ») : sa côte, ses critères et son tapis sont sur sa fiche (« Modifier son profil ») ; sa trace et
+  // sa semaine habituelle sont dans l'objectif (« Modifier »). Les mots de « Modifier son profil » sont ceux de la carte ; « Ajouter la trace » est celui du bouton de l'athlète.
+  gesteTrace: 'Ajouter la trace',
+  gesteObjectif: 'Modifier l’objectif',
   // Les cinq choses qu'un objectif doit avoir, avec ce que le moteur en lit : « Côte : 12 min », « Mécanique : Jamais », « Trace GPX : donnée » ; « — » quand il manque. Les titres des
   // deux critères sont ceux de la fiche du coaché (lib/criteres.ts : « Intensité », « Mécanique »).
   titreCote: 'Côte',
@@ -64,6 +69,7 @@ export const TEXTES_PAGE_ATHLETE = {
   titreMecanique: 'Mécanique',
   titreTapis: 'Tapis',
   titreGpx: 'Trace GPX',
+  titreSemaine: 'Semaine',
   traceDonnee: 'donnée',
   sansValeur: '—',
   // « Réglages » : les rubriques qui s'y ajoutent sous la 9.x. Sans « sa semaine passée » (décision 220 du coach, 24/11/2026, suite) : elle ne s'y trouve que s'il y a un réalisé à montrer, ce que le moteur v1 n'écrit
@@ -145,12 +151,14 @@ export function lignesDEntree(entree: Pick<Entree, 'etapes'>): LigneEntree[] {
 // La carte « Son entrée » n'a sa place en haut de nulle part : sous la 9.x, tant qu'une étape est à faire par le coach, elle est dans « À faire pour lui » ; sinon la carte est dans « Réglages ».
 export const entreeDansLesReglages = (entree: Pick<Entree, 'etapes'>): boolean => lignesDEntree(entree).length === 0;
 
-export type LigneAFaire = { type: 'point'; point: Point } | { type: 'entree'; ligne: LigneEntree };
+// `alerte` : l'alerte du moteur sur un objectif qui n'a pas démarré (entrée 234, lib/app/alerteCoach.ts) : ses phrases, et le lien qui mène à l'objectif à modifier.
+export type LigneAlerte = { planId: string; nom: string; phrases: string[]; href: string };
+export type LigneAFaire = { type: 'point'; point: Point } | { type: 'entree'; ligne: LigneEntree } | { type: 'alerte'; alerte: LigneAlerte };
 
 // Ses points à faire, rangés comme les quatre groupes d'« Urgent » (« A besoin de toi », « Ne court plus », « Semaine pas partie », « Objectif bloqué » ; dans chaque groupe,
 // l'ordre reçu), puis les étapes de son entrée. Jamais « À venir » (ils sont dans « Réglages »). Un point n'y est dit qu'une fois : celui que dit déjà une ligne de l'entrée
 // (compte Nolio, accord, départ) ou la carte de coureur (profil à remplir) est retiré. `profilManque` : la carte dit « il manque son profil ».
-export function aFairePourLui(points: Point[], entree: Pick<Entree, 'etapes'>, profilManque: boolean): LigneAFaire[] {
+export function aFairePourLui(points: Point[], entree: Pick<Entree, 'etapes'>, profilManque: boolean, alertes: LigneAlerte[] = []): LigneAFaire[] {
   const lignes = lignesDEntree(entree);
   const dit = new Set(lignes.map((l) => POINT_DE_LA_LIGNE[l.cle]));
   const rang = (p: Point) => GROUPES_URGENT.findIndex((g) => g.cle === groupeUrgent(p));
@@ -159,7 +167,8 @@ export function aFairePourLui(points: Point[], entree: Pick<Entree, 'etapes'>, p
     .map((point, i) => ({ point, i }))
     .sort((x, y) => rang(x.point) - rang(y.point) || x.i - y.i)
     .map(({ point }) => point);
-  return [...aFaire.map((point): LigneAFaire => ({ type: 'point', point })), ...lignes.map((ligne): LigneAFaire => ({ type: 'entree', ligne }))];
+  return [...aFaire.map((point): LigneAFaire => ({ type: 'point', point })), ...alertes.map((alerte): LigneAFaire => ({ type: 'alerte', alerte })),
+    ...lignes.map((ligne): LigneAFaire => ({ type: 'entree', ligne }))];
 }
 
 // Ce qui arrive (niveau « À venir » : une course A dans Nolio, rien après l'objectif… ; plus de course de préparation, la 9.x ne la porte pas) : il quitte le haut de la page et va dans « Réglages ».
@@ -201,8 +210,18 @@ export function motDuGeste(cle: GesteDeLaCarte, manque: ManqueCoureur[]): string
 
 // ─── (c) Ses objectifs : de quoi vérifier que tout est rempli ────────────────────────────────────────────────────────────
 
-export type ItemObjectif = { cle: 'cote' | 'intensite' | 'mecanique' | 'tapis' | 'gpx'; titre: string; valeur: string | null; manque: string };
+export type ItemObjectif = { cle: 'cote' | 'intensite' | 'mecanique' | 'tapis' | 'gpx' | 'semaine'; titre: string; valeur: string | null; manque: string };
 export type VerifObjectif = { route: boolean; items: ItemObjectif[]; manque: string[]; complet: boolean };
+
+// Sa semaine habituelle comme le moteur la lit dans les réponses de l'objectif : « 4 séances · mar, jeu, sam · sortie longue le samedi » ; null s'il en manque un morceau (ses jours, sa sortie
+// longue, son nombre de séances). Elle ne suit pas la fiche : celle de la fiche sert aux prochains objectifs, « Modifier » l'objectif change celle-ci.
+export function semaineDeLObjectif(champs: Reponses): string | null {
+  const jours = Array.isArray(champs?.jours_disponibles) ? (champs.jours_disponibles as unknown[]).map(String).filter(Boolean) : [];
+  const n = Number(champs?.freq_hebdo);
+  const sl = String(champs?.jour_sl ?? '');
+  if (!jours.length || !(n > 0) || !sl) return null;
+  return `${n} séance${n > 1 ? 's' : ''} · ${jours.map((j) => j.slice(0, 3)).join(', ')} · sortie longue le ${sl}`;
+}
 
 // Un 10 km, un semi ou un marathon : le questionnaire de la route ne pose ni terrain (côte, tapis), ni dénivelé (mécanique), ni trace ; l'intensité seule.
 export const estUneCourseSurRoute = (champs: Reponses): boolean => FORMATS_ROUTE.some((f) => f.code === champs?.format);
@@ -226,10 +245,23 @@ export function verifierObjectif(champs: Reponses, fiche: Reponses = null): Veri
     { cle: 'mecanique', titre: t.titreMecanique, valeur: critere('critere_denivele', 'mecanique'), manque: t.manqueMecanique },
     { cle: 'tapis', titre: t.titreTapis, valeur: typeof tapis === 'string' ? tapis : null, manque: t.manqueTapis },
     { cle: 'gpx', titre: t.titreGpx, valeur: lireGpx(champs?.gpx) ? t.traceDonnee : null, manque: t.manqueGpx },
+    { cle: 'semaine', titre: t.titreSemaine, valeur: semaineDeLObjectif(champs), manque: t.manqueSemaine },
   ];
-  const items = route ? tous.filter((i) => i.cle === 'intensite') : tous;
+  const items = route ? tous.filter((i) => i.cle === 'intensite' || i.cle === 'semaine') : tous;
   const manque = items.filter((i) => i.valeur === null).map((i) => i.manque);
   return { route, items, manque, complet: manque.length === 0 };
+}
+
+// Le geste qui règle ce qui manque à un objectif, un seul par chose : la côte, les critères et le tapis se donnent sur la fiche (la carte de coureur), la trace et la semaine habituelle dans
+// l'objectif. Dans l'ordre de l'objectif ; rien quand tout y est.
+export type GesteDeLObjectif = 'profil' | 'trace' | 'semaine';
+export function gestesDeLObjectif(v: VerifObjectif): GesteDeLObjectif[] {
+  const manque = new Set(v.items.filter((i) => i.valeur === null).map((i) => i.cle));
+  return [
+    ...(['cote', 'intensite', 'mecanique', 'tapis'] as const).some((c) => manque.has(c)) ? ['profil' as const] : [],
+    ...(manque.has('gpx') ? ['trace' as const] : []),
+    ...(manque.has('semaine') ? ['semaine' as const] : []),
+  ];
 }
 
 // Le repère d'un objectif : « Complet », ou « Il manque : … ».

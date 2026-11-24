@@ -68,6 +68,12 @@ export const PAS_ENCORE_SON_ACCORD_V9 = 'Pas encore son accord de lecture : asso
 export const pasEncoreSonAccord = (v9: boolean): string => (v9 ? PAS_ENCORE_SON_ACCORD_V9 : PAS_ENCORE_SON_ACCORD);
 export const pasEncoreSonAccordAuCoach = async (): Promise<string> => pasEncoreSonAccord(await moteurEstV9().catch(() => false));
 
+// Ce que dit « Modifier son profil » une fois enregistré (inventaire du 25/11/2026, « Préparer ses coachés pour la v1 »). Sous la 9.x, la côte, les deux critères et le tapis de la fiche sont relus à chaque passage :
+// ils servent dès sa prochaine semaine ; ses jours, sa sortie longue et son nombre de séances sont ceux de son objectif (« Modifier » l'objectif). Sous la 8.x, la phrase d'avant. Texte pour le coach seul.
+export const PROFIL_ENREGISTRE = 'C’est enregistré. Ses prochains objectifs partent de ce profil ; « Modifier » sur son objectif en cours le lui donne aussi.';
+export const PROFIL_ENREGISTRE_V9 = 'C’est enregistré. Sa côte, ses critères et son tapis servent dès sa prochaine semaine, et ses prochains objectifs partent de ce profil ; pour ses jours, sa sortie longue et son nombre de séances, « Modifier » son objectif en cours.';
+export const profilEnregistre = (v9: boolean): string => (v9 ? PROFIL_ENREGISTRE_V9 : PROFIL_ENREGISTRE);
+
 export async function messageAuCoach(message: string): Promise<string> {
   return messageDuCoach(message, await moteurEstV9().catch(() => false));
 }
