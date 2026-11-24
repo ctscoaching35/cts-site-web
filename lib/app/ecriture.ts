@@ -1948,7 +1948,7 @@ export async function derniereSemaineEcrite(planId: string): Promise<string | nu
 
 export async function annulerAjustements(planId: string, numero: string): Promise<void> {
   // Le contrat du moteur v1 n'a pas d'écriture « sans les règles du dimanche » : sans réponse ni Nolio, la semaine prévue, mais pas ce que « Annuler » garde (la réponse du samedi).
-  if (await moteurEstV9()) throw new Error('« Annuler » n’existe pas encore sous le moteur v1 : son contrat ne sait pas écrire une semaine sans les règles du dimanche.');
+  if (await moteurEstV9()) throw new Error('« Annuler » n’existe pas sous le moteur v1 : le coach corrige la semaine dans Nolio avec sa barre, et le moteur repart de sa correction.');
   const o = await objectifEcrit(planId);
   if (!o) throw new Error('Plan introuvable');
   const { data: ecrite } = await clientService().from('semaines_ecrites').select('etat_avant, donnees').eq('plan_id', planId).eq('numero', numero).maybeSingle();

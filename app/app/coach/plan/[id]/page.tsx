@@ -16,6 +16,7 @@ import { courseNolio } from '@/lib/app/coursesNolio';
 import { demandesDuCoach } from '@/lib/app/demandes';
 import { annonceDepart, continuiteDe, PAS_UN_AJUSTEMENT, trameDuPlan, type Realise } from '@/lib/app/ecriture';
 import { texteProgrammeApres } from '@/lib/app/jonction';
+import { moteurEstV9 } from '@/lib/app/moteurEnLigne';
 import { typeCoteCoach } from '@/lib/app/nomsSeances';
 import { lienFicheCourse } from '@/lib/app/ficheCourse';
 import { exigerCoach } from '@/lib/app/nolio';
@@ -72,6 +73,8 @@ export default async function ObjectifCoache({ params, searchParams }: {
   const { course: courseId } = await searchParams;
   const depuisNolio = nolio && courseId ? await courseNolio(nolio, courseId).catch(() => null) : null;
   const envois = nolio ? await verifierEnvois(id, nolio, o.plan, o.envois) : o.envois.map((e) => ({ ...e, retouchees: 0, supprimees: 0 }));
+  // Sous le moteur v1 : la semaine part vers 21 h (décision 211) et « Annuler » n'est plus affiché (décision 213) : le coach corrige la semaine dans Nolio, le moteur repart de sa correction.
+  const v9 = await moteurEstV9().catch(() => false);
   const jour = aujourdhuiParis();
   const trame = ecriture?.parametres ? await trameDuPlan(id).catch(() => null) : null;
   // PC1 : avant le départ, la date où l'écriture commencera si le coach a déjà posé des séances.
@@ -204,7 +207,7 @@ export default async function ObjectifCoache({ params, searchParams }: {
                     <div className="flex gap-3.5 p-3.5 rounded-xl border border-dashed border-indigo/[0.22]">
                       <span className="w-12 text-[0.8125rem] font-extrabold text-[#5E5C78]">{jourMois(prochaine.lundi)}</span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold">S’écrit le {dateLongue(ajouterJours(prochaine.lundi, -1), true)}, vers 18 h</p>
+                        <p className="text-sm font-bold">{v9 ? 'Sa semaine part' : 'S’écrit'} le {dateLongue(ajouterJours(prochaine.lundi, -1), true)}, vers {v9 ? '21' : '18'} h</p>
                         <p className="mt-1 text-[0.8125rem] text-[#4A4866] leading-relaxed">
                           D’après sa semaine et son questionnaire du matin. {typeCoteCoach(prochaine.type)}
                           {prochaine.seances_cles.length ? ` · ${prochaine.seances_cles.map((c) => nomCourt(c.nom ?? c.seance)).join(' ; ')}` : ''}
@@ -267,7 +270,7 @@ export default async function ObjectifCoache({ params, searchParams }: {
                             </p>
                           ))}
                           {/* B-EC-1 : seulement la dernière semaine écrite ; une plus ancienne ferait reculer sa préparation. */}
-                          {ajuste && w.numero === ecritesTriees.find((x) => /^S\d+$/.test(String(x.numero)))?.numero && <AnnulerSemaine planId={id} numero={w.numero} />}
+                          {!v9 && ajuste && w.numero === ecritesTriees.find((x) => /^S\d+$/.test(String(x.numero)))?.numero && <AnnulerSemaine planId={id} numero={w.numero} />}
                         </li>
                       );
                     })}
