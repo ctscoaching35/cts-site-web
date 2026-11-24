@@ -1,3 +1,4 @@
+import { selonLeMoteur } from '@/lib/app/chaineDuMoteur';
 import { rappelerLeDimanche } from '@/lib/app/rappelDuDimanche';
 import { supabaseConfigure } from '@/lib/app/supabase';
 
@@ -12,7 +13,9 @@ export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET?.trim();
   if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`) return new Response('Refusé', { status: 401 });
   if (!supabaseConfigure()) return Response.json({ actif: false, rappels: [] });
-  const { actif, texteValide, comptes } = await rappelerLeDimanche(240_000);
+  // Sous le moteur v1 (9.x) le rappel ne part pas : il lit la réponse du samedi (« Ta semaine prochaine »), que « Ton point du dimanche » a remplacée, et dirait « questionnaire du
+  // samedi » à l'athlète. À porter (lecture des réponses par l'identifiant posé, texte à valider) avant de le rallumer sous la 9.x. Sous la 8.x, rien ne change.
+  const { actif, texteValide, comptes } = await selonLeMoteur({ avant: () => rappelerLeDimanche(240_000), v1: async () => ({ actif: false, texteValide: true, comptes: [] }) });
   const echecs = comptes.filter((c) => c.erreur);
   if (echecs.length) console.error('Rappel du dimanche :', echecs.map((c) => `${c.plan} — ${c.quoi} : ${c.erreur}`).join(' ; '));
   return Response.json({ actif, texteValide, rappels: comptes.map(({ plan, quoi, erreur }) => ({ plan, quoi, erreur: erreur ?? null })) });
