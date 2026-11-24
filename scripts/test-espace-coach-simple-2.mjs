@@ -329,7 +329,7 @@ test('ce qui manque à sa carte : son profil de coureur, son test de vitesse cri
   for (const k of Object.keys(PROFIL_COMPLET)) assert.equal(profilEstRempli({ ...PROFIL_COMPLET, [k]: undefined }), false, k);
   assert.equal(profilEstRempli({ ...PROFIL_COMPLET, jours_disponibles: [] }), false);
   assert.equal(profilEstRempli(null), false);
-  // Un seul repère suffit (« pas de repères » : aucun) ; le test de vitesse critique a son propre mot.
+  // Un seul repère suffit (« pas de repères » : aucun) ; le test de référence a son propre mot.
   for (const x of [{ fc1: 150 }, { fc2: 172 }, { vs1: 3.1 }]) assert.deepEqual(ceQuiManqueAuCoureur({ profil: PROFIL_COMPLET, vcMs: 3.8, ...x }), []);
   assert.equal(ceQuiManqueAuCoureur({ profil: PROFIL_COMPLET, vcMs: 0 }).some((m) => m.cle === 'test_vc'), true, 'une VC à zéro n’est pas un test');
 });
@@ -345,10 +345,11 @@ test('un seul geste par chose : dans le bandeau « Il manque » quand elle manqu
   }
   assert.equal(motDuGeste('profil', [{ cle: 'profil', texte: '' }]), 'Remplir son profil');
   assert.equal(motDuGeste('profil', []), 'Modifier son profil');
+  // Étape 5 (décision 220, 24/11/2026) : « vitesse critique » reste, c'est le mot du coach (comme « Seuil 1 » et « Seuil 2 »).
   assert.equal(motDuGeste('test_vc', []), 'Saisir son test de vitesse critique');
   assert.equal(motDuGeste('reperes', []), 'Modifier ses repères');
   for (const mot of ['Remplir son profil', 'Modifier son profil', 'Saisir son test de vitesse critique', 'Modifier ses repères', 'Ce qu’il lit dans son app']) {
-    assert.ok(page.includes(mot), `« ${mot} » est le mot de la page d’avant`);
+    assert.ok(page.includes(mot), `« ${mot} » est le mot de la page d’avant (la 8.x : sa branche le garde)`);
   }
   const c = source('components/app/CarteCoureur.tsx');
   assert.match(c, /\{manque\.length > 0 && \(/, 'le bandeau n’est là que s’il manque quelque chose');
@@ -499,9 +500,11 @@ test('les textes nouveaux : apostrophe typographique, phrases courtes, mots simp
     'titreCote', 'titreIntensite', 'titreMecanique', 'titreTapis', 'titreGpx', 'traceDonnee', 'sansValeur', 'reglagesSous', 'ouEnEstIl', 'aVenir', 'anciensObjectifs',
   ]);
   // Les textes repris de la page d'avant sont ceux de la page d'avant, mot pour mot.
-  for (const cle of ['aFaire', 'rienAFaire', 'remplirProfil', 'modifierProfil', 'saisirTest', 'modifierReperes', 'ceQuIlLit', 'objectifs', 'aucunObjectif']) {
+  // (saisirTest : « Saisir son test de vitesse critique », le même mot sous les deux moteurs.)
+  for (const cle of ['aFaire', 'rienAFaire', 'remplirProfil', 'modifierProfil', 'modifierReperes', 'ceQuIlLit', 'objectifs', 'aucunObjectif']) {
     assert.ok(page.includes(TEXTES_PAGE_ATHLETE[cle]), `${cle} : « ${TEXTES_PAGE_ATHLETE[cle]} » est dans la page d’avant`);
   }
+  assert.ok(page.includes('Saisir son test de vitesse critique') && TEXTES_PAGE_ATHLETE.saisirTest === 'Saisir son test de vitesse critique', '« vitesse critique » reste : c’est le mot du coach');
   assert.equal(TEXTES_PAGE_ATHLETE.ilManque(['a', 'b']), 'Il manque : a, b');
   // Chaque texte de la liste est écrit dans le fichier, et les pages ne l'écrivent pas une seconde fois en dur.
   for (const cle of ['nolio', 'accord', 'depart', 'carte', 'complet', 'ouEnEstIl']) {

@@ -344,9 +344,9 @@ test('la saison de fond : ni son lien, ni son nom, ni ses points sous la 9.x ; l
   assert.ok('saison' in GENRES_CACHES_9X && 'profil' in GENRES_CACHES_9X);
   const c = source('components/app/CarteCoureur.tsx');
   assert.ok(c.includes('{t.ilManque(manque.map((m) => m.texte))}') && source('lib/app/pageAthleteSimple.ts').includes("manqueProfil: 'son profil de coureur'"));
-  // Ses 7 jours, rien de lu : la phrase de la 9.x est celle de la 8.x sans « ou une saison ».
-  assert.equal(TEXTES_CACHES.septJoursVide, 'Rien de lu pour l’instant. Ses séances et son Hooper des 7 derniers jours se lisent dans Nolio chaque soir, dès qu’un objectif a démarré. « Relire maintenant » les lit tout de suite.');
-  assert.ok(athlete.includes(TEXTES_CACHES.septJoursVide.replace('dès qu’un objectif a démarré', 'dès qu’un objectif ou une saison a démarré')), 'la phrase de la 8.x est celle-ci, avec « ou une saison »');
+  // Ses 7 jours, rien de lu : la phrase de la 9.x est celle de la 8.x sans « ou une saison » (étape 5 : et sans « Hooper », « sa fatigue déclarée » à la place).
+  assert.equal(TEXTES_CACHES.septJoursVide, 'Rien de lu pour l’instant. Ses séances et sa fatigue déclarée des 7 derniers jours se lisent dans Nolio chaque soir, dès qu’un objectif a démarré. « Relire maintenant » les lit tout de suite.');
+  assert.ok(athlete.includes('Rien de lu pour l’instant. Ses séances et son Hooper des 7 derniers jours se lisent dans Nolio chaque soir, dès qu’un objectif ou une saison a démarré. « Relire maintenant » les lit tout de suite.'), 'la phrase de la 8.x : mot pour mot, avec « ou une saison »');
 });
 
 // ─── (d) les tests lus ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -364,6 +364,7 @@ test('les tests lus : cachés sous la 9.x ; le geste « Saisir son test de vites
   // Sa phrase d'explication : celle de la 8.x, mot pour mot ; sous la 9.x, sans la lecture dans Nolio ni le test « marqué lu ».
   const ancienne = 'S’il ne l’a pas fait dans l’app, ou si sa lecture dans Nolio n’a pas abouti : ses deux efforts donnent sa vitesse\n            critique et son profil de coureur. Un test écrit dans ses semaines et pas encore lu est alors marqué lu.';
   assert.ok(athlete.includes(ancienne));
+  // Étape 5 (décision 220) : « vitesse critique » reste, c'est le mot du coach.
   assert.equal(TEXTES_CACHES.testSaisi, 'S’il ne l’a pas fait dans l’app : ses deux efforts donnent sa vitesse critique et son profil de coureur.');
   assert.ok(!/Nolio|lu\b/.test(TEXTES_CACHES.testSaisi));
   // Le point « Test à revoir » : ôté (voir plus haut). Le test saisi par le coach reste écrit comme avant (rien de lu ni d'écrit de plus).

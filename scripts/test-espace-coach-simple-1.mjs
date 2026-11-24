@@ -380,6 +380,9 @@ test('aucun texte nouveau n’est lu par un athlète : le fichier n’est lu que
   assert.deepEqual(lecteurs, [
     'app/api/ecriture/dimanche/route.ts',
     'app/app/coach/athlete/[id]/page.tsx',
+    // Étape 5 : « Chiffres » (la clé Stripe) et « Demandes » (la migration) réutilisent `montrerLInfra` : le journal du serveur, plus l'écran.
+    'app/app/coach/chiffres/page.tsx',
+    'app/app/coach/demandes/page.tsx',
     'app/app/coach/page.tsx',
     'components/app/AFaire.tsx',
     'components/app/CadreCoach.tsx',
