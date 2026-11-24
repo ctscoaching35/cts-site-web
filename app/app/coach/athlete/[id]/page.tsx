@@ -23,6 +23,7 @@ import { initiales } from '@/lib/app/contexte';
 import { entreeDe } from '@/lib/app/entree';
 import { coursesDansNolio, pasEncoreIci } from '@/lib/app/coursesNolio';
 import { espaceDuCoach } from '@/lib/app/mesAthletes';
+import { montrerLInfra, pointsDeSaPage, semainesDansSesPoints, TEXTES_A_FAIRE } from '@/lib/app/espaceCoachSimple';
 import { decimale, suiteDe, virgule, type Point } from '@/lib/app/espaceParAthlete';
 import { semainesQuiArrivent, lundiMontre } from '@/lib/app/semaineQuiArrive';
 import { apresLePassage } from '@/lib/app/semainesDuDimanche';
@@ -66,6 +67,10 @@ const TENDANCE = { hausse: 'en hausse', baisse: 'en baisse', stable: 'stable' } 
 // (Q5) ; ses objectifs ; ses repères, puis ses zones et son style de coureur tels qu'il les lit dans son app (Q9) ; son
 // profil de coureur ; « Réglages » replié. Venue de la fiche d'un athlète coaché (CTS_NOLIO_CADRAGE.md, N8, N9, T6 ;
 // maquette validée par le coach le 19/10/2026 ; décisions coach du 04/11/2026).
+// SOUS LA 9.x SEULEMENT (décision 220 du coach, 24/11/2026 : « un seul endroit pour ce qui est à faire », première simplification) : « Urgent » n'existe plus,
+// ses points sont dans « À faire » de « Mes athlètes » ; sur cette page, ses points à lui ne sont dits qu'une fois (« À faire pour lui » ne redit ni ce que
+// « Son entrée » porte déjà, ni le bouton « Réessayer » de « Sa semaine qui arrive »), et plus de message pour le développeur (la clé de l'API Nolio, la
+// migration de Supabase) : il reste au journal du serveur. Le reste de la page ne change pas. Sous la 8.x, rien ne change.
 export default async function PageAthlete({ params, searchParams }: {
   params: Promise<{ id: string }>; searchParams: Promise<{ apercu?: string }>;
 }) {
@@ -166,6 +171,8 @@ export default async function PageAthlete({ params, searchParams }: {
   const prenom = a.nom.split(' ')[0];
   // Ses points (« À faire pour lui », venus de « Cette semaine ») : ce qui bloque, la santé, ce qui arrive.
   const points = etat?.points ?? [];
+  // Sous la 9.x, ses points une seule fois sur la page (lib/app/espaceCoachSimple.ts) : « Son entrée » dit déjà associer Nolio, « Accord reçu » et démarrer.
+  const pointsIci = v9 ? pointsDeSaPage(points, entree) : points;
   const decisions = etat?.decisions ?? [];
   const allegees = decisions.flatMap((l) => l.ajustements.flatMap((x) => x.allegees.map((j) => ({ planId: x.planId, j }))));
   // Sa semaine qui arrive (Q4) : celles que le moteur écrit dimanche pour lui.
@@ -219,6 +226,8 @@ export default async function PageAthlete({ params, searchParams }: {
   const sousLeNom = objectifApres ? `${objectifApres.course_nom} · ${dateLongue(objectifApres.course_date, true)} · ${jMoins(jour, objectifApres.course_date)}`
     : saisonEnCours ? `${saisonEnCours.course_nom} · jusqu’au ${dateLongue(saisonEnCours.course_date, true)}` : null;
   const couleur = etat?.prevision.niveau ?? 'rien';
+  // Sous la 9.x, « la migration du 04/11/2026 est à passer » n'est plus dite au coach : pas de « Ses 7 jours » vide, une ligne au journal.
+  const septJoursVisibles = !(gardesManquent && !montrerLInfra(v9, 'Ses signaux ne sont pas encore gardés : la migration du 04/11/2026 est à passer dans Supabase.'));
   const prenomDe = (nom: string) => nom.split(' ')[0];
   return (
     <CadreCoach actif="athletes" urgents={espace.urgents}>
@@ -268,9 +277,9 @@ export default async function PageAthlete({ params, searchParams }: {
       {/* « À faire pour lui » (venu de « Cette semaine ») et sa revue du dimanche (Q3). */}
       <Carte id="a-faire" className="!p-5 space-y-3 scroll-mt-6">
         <Surtitre>À faire pour lui</Surtitre>
-        {points.length === 0 ? <p className="text-sm text-teal font-semibold">Rien à faire pour lui pour l’instant.</p> : (
+        {pointsIci.length === 0 ? <p className="text-sm text-teal font-semibold">Rien à faire pour lui pour l’instant.</p> : (
           <ul>
-            {points.map((p) => (
+            {pointsIci.map((p) => (
               <li key={p.cle} className="flex flex-wrap items-center justify-between gap-3 py-3 border-t first:border-t-0 border-indigo/[0.07]">
                 <div className="min-w-0 flex-[1_1_280px] flex flex-wrap items-start gap-x-2 gap-y-1 text-sm text-[#4A4866] leading-snug">
                   <span className={clsx('text-[0.6875rem] font-bold px-2 py-0.5 rounded-full mt-0.5', PASTILLE_RAISON[p.niveau])}>{RAISON[p.niveau]}</span>
@@ -308,7 +317,8 @@ export default async function PageAthlete({ params, searchParams }: {
       </Carte>
 
       <SemainesQuiArrivent semaines={semaines} prevision={etat?.prevision ?? { niveau: 'rien', pourquoi: '', prevoit: '' }} aLaMain={aLaMain}
-        vers={objectifApres ? { date: objectifApres.course_date, nom: objectifApres.course_nom } : null} />
+        vers={objectifApres ? { date: objectifApres.course_date, nom: objectifApres.course_nom } : null}
+        v9={v9} dansSesPoints={v9 ? semainesDansSesPoints(pointsIci) : []} />
 
       {/* Sa semaine passée et ses 7 jours, en une carte (Q5 « A ») : la semaine finie, puis les signaux des 7 derniers jours. */}
       <Carte id="sa-semaine-passee" className="!p-5 scroll-mt-6">
@@ -341,7 +351,7 @@ export default async function PageAthlete({ params, searchParams }: {
             {sousLaSemaine && <p className="text-sm text-[#3B3957]">{sousLaSemaine.charAt(0).toUpperCase()}{sousLaSemaine.slice(1)}.</p>}
           </div>
 
-          {accord && a.nolio_athlete_id && (
+          {accord && a.nolio_athlete_id && septJoursVisibles && (
             <div className="flex-[1_1_300px] min-w-0 space-y-3">
               <div className="flex flex-wrap items-baseline justify-between gap-3">
                 <Surtitre>Ses 7 jours</Surtitre>
@@ -604,9 +614,11 @@ export default async function PageAthlete({ params, searchParams }: {
           <section id="son-nolio" className="py-4 space-y-3 scroll-mt-6">
             <h3 className="text-sm font-bold">Son compte Nolio</h3>
             {!relie ? (
-              <p className="text-sm text-[#4A4866]">La clé de l’API Nolio manque dans Vercel (NOLIO_API_KEY).</p>
+              montrerLInfra(v9, 'La clé de l’API Nolio manque dans Vercel (NOLIO_API_KEY).')
+                ? <p className="text-sm text-[#4A4866]">La clé de l’API Nolio manque dans Vercel (NOLIO_API_KEY).</p>
+                : <p className="text-sm text-[#4A4866]">{TEXTES_A_FAIRE.nolioMuet}</p>
             ) : erreur ? (
-              <p className="text-sm text-[#4A4866]">{erreur}</p>
+              <p className="text-sm text-[#4A4866]">{v9 ? TEXTES_A_FAIRE.nolioMuet : erreur}</p>
             ) : (
               <>
                 {a.nolio_athlete_id && (

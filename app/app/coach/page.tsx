@@ -1,11 +1,14 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import AFaire from '@/components/app/AFaire';
 import CadreCoach from '@/components/app/CadreCoach';
 import { CarteDemandes } from '@/components/app/LienDemandes';
 import { Carte, Surtitre } from '@/components/app/Ui';
 import TableauAthletes, { filtreDe } from '@/components/app/TableauAthletes';
 import { equipeNolio, synchroniserLEquipe } from '@/lib/app/espaceCoach';
 import { espaceDuCoach } from '@/lib/app/mesAthletes';
+import { moteurEstV9 } from '@/lib/app/moteurEnLigne';
+import { aFaireDe, etiquettesSansAFaire, lesSeriesAFaire, montrerLInfra, TEXTES_A_FAIRE, texteBilanV9 } from '@/lib/app/espaceCoachSimple';
 import { texteBilan } from '@/lib/app/espaceParAthlete';
 import { creerFicheDepuisNolio } from '@/lib/app/actionsCoaching';
 import { usrAcheteurs } from '@/lib/app/acheteurs';
@@ -22,9 +25,14 @@ export const dynamic = 'force-dynamic';
 // semaine passée, « Ce qui l'attend » en étiquettes (Q6, Q7) ; ceux qui t'attendent en tête (Q2, aussi l'ordre d'« Athlète
 // suivant ») ; le bilan du dimanche en tête, du dimanche soir au lundi soir (Q10) ; les filtres et « Dans Nolio » comme
 // avant. Remplace « Cette semaine » (l'urgent est dans « Urgent ») et « Dimanche ». Pour l'ordinateur d'abord (EC5).
+// SOUS LA 9.x SEULEMENT (décision 220 du coach, 24/11/2026 : « l'espace coach doit être très simple » ; première simplification, « un seul endroit pour ce
+// qui est à faire ») : « Urgent » est fondu ici, une section « À faire » avant la liste (mêmes points, mêmes gestes, un seul « Réglé », les séries du samedi
+// à retirer comprises) ; un point n'est dit qu'une fois (le bandeau du dimanche ne dit plus que ce qui est parti, la colonne « Ce qui l'attend » ne redit pas
+// « À faire ») ; plus de message pour le développeur (la clé de l'API Nolio, la migration de Supabase), il reste au journal du serveur. Sous la 8.x, rien ne change.
 export default async function MesAthletes({ searchParams }: { searchParams: Promise<{ filtre?: string }> }) {
   if (!espaceCoachOuvert()) notFound();
   const coach = await exigerCoach();
+  const v9 = await moteurEstV9().catch(() => false);
   const { filtre: demande } = await searchParams;
   const filtre = filtreDe(demande);
   const { nolio, erreur } = await equipeNolio();
@@ -46,13 +54,19 @@ export default async function MesAthletes({ searchParams }: { searchParams: Prom
   // Le coach lui-même (décision coach du 24/10/2026) : sa fiche de test, pour vivre l'app d'un coaché sur son Nolio.
   const toi = (nolio ?? []).find((x) => x.name.endsWith('(toi)') && !relies.has(x.id));
   const jour = espace.jour;
+  // Sous la 9.x : ce qui attend le coach est dans « À faire » ; la colonne « Ce qui l'attend » ne le redit pas.
+  const series = await lesSeriesAFaire(coach.compteId, v9);
+  const lignes = v9 ? espace.lignes.map((e) => ({ ...e, etiquettes: etiquettesSansAFaire(e.points, e.moteur) })) : espace.lignes;
+  const bilanV9 = v9 && bilan ? texteBilanV9(bilan.parties) : null;
+  // Sous la 9.x, la clé de l'API Nolio qui manque n'est plus dite au coach : pas de carte « Dans Nolio », une ligne au journal.
+  const carteNolio = !(!nolioConfigure() && !montrerLInfra(v9, 'La clé de l’API Nolio manque dans Vercel (NOLIO_API_KEY).'));
   return (
     <CadreCoach actif="athletes" urgents={espace.urgents}>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-[1.75rem] font-extrabold tracking-tight">Mes athlètes</h1>
           {/* Maquette validée par le coach le 08/11/2026 */}
-          <p className="mt-1.5 text-sm text-[#5E5C78] first-letter:uppercase">{dateLongue(jour)} · tes athlètes un par un, ceux qui t’attendent en tête</p>
+          <p className="mt-1.5 text-sm text-[#5E5C78] first-letter:uppercase">{dateLongue(jour)} · {v9 ? TEXTES_A_FAIRE.sousTitre : 'tes athlètes un par un, ceux qui t’attendent en tête'}</p>
         </div>
         <Link href="/app/coach/nouveau" className="inline-flex items-center min-h-12 px-5 rounded-xl bg-teal text-white text-sm font-bold">
           + Ajouter un athlète
@@ -62,7 +76,7 @@ export default async function MesAthletes({ searchParams }: { searchParams: Prom
       {/* Lot A2 de l'app gratuite : une demande de coaching attend (rien tant que l'app gratuite est coupée). */}
       <CarteDemandes />
 
-      {bilan && (
+      {bilan && !v9 && (
         <Link href="/app/coach/urgent" className="flex items-center justify-between gap-3 bg-indigo text-white rounded-[14px] p-4">
           <span className="text-sm">
             <strong>Dimanche {dateAbregee(bilan.dimanche, false)}</strong> : {texteBilan(bilan.parties, bilan.pasParties, espace.urgents)}
@@ -71,8 +85,17 @@ export default async function MesAthletes({ searchParams }: { searchParams: Prom
         </Link>
       )}
 
-      <TableauAthletes lignes={espace.lignes} jour={jour} passee={vue.semainePassee} filtre={filtre} />
-      {!espace.signaux && (
+      {/* Sous la 9.x, le bilan du dimanche ne dit que ce qui est parti : les semaines pas parties et les athlètes qui attendent sont dans « À faire ». */}
+      {bilanV9 && bilan && (
+        <div className="bg-indigo text-white rounded-[14px] p-4 text-sm">
+          <strong>Dimanche {dateAbregee(bilan.dimanche, false)}</strong> : {bilanV9}
+        </div>
+      )}
+
+      {v9 && <AFaire lignes={aFaireDe(espace.urgent)} series={series} />}
+
+      <TableauAthletes lignes={lignes} jour={jour} passee={vue.semainePassee} filtre={filtre} v9={v9} />
+      {!espace.signaux && montrerLInfra(v9, 'Les signaux de la semaine ne sont pas gardés : la migration du 04/11/2026 est à passer dans Supabase.') && (
         <p className="text-xs text-[#5E5C78]">
           Les signaux de la semaine (commentaires, sensations, Hooper, rien de remonté) ne sont pas encore gardés : la migration
           du 04/11/2026 est à passer dans Supabase.
@@ -101,39 +124,41 @@ export default async function MesAthletes({ searchParams }: { searchParams: Prom
         </Carte>
       )}
 
-      <Carte className="!p-5 space-y-2">
-        <Surtitre>Dans Nolio</Surtitre>
-        {!nolioConfigure() ? (
-          <p className="text-sm text-[#4A4866]">La clé de l’API Nolio manque dans Vercel (NOLIO_API_KEY).</p>
-        ) : erreur ? (
-          <p className="text-sm text-[#4A4866]">{erreur}</p>
-        ) : (
-          <details className="text-sm" open={sansFiche.length > 0 || Boolean(toi)}>
-            <summary className="cursor-pointer min-h-11 flex items-center font-semibold text-indigo">
-              {sansFiche.length ? `${sansFiche.length} athlète${sansFiche.length > 1 ? 's' : ''} de Nolio sans fiche ici` : 'Tous tes athlètes de Nolio ont leur fiche'}
-            </summary>
-            {/* « Créer sa fiche » (décision coach du 22/10/2026) : d'un clic, déjà reliée à Nolio. */}
-            <ul className="pb-2 text-[#4A4866] divide-y divide-indigo/[0.06]">
-              {sansFiche.map((x) => (
-                <li key={x.id} className="flex items-center justify-between gap-3 py-1.5">
-                  <span>{x.name}</span>
-                  <form action={creerFicheDepuisNolio.bind(null, x.id)}>
-                    <button type="submit" className="min-h-10 px-3 rounded-[10px] border border-teal text-teal text-[0.8125rem] font-bold">Créer sa fiche ›</button>
+      {carteNolio && (
+        <Carte className="!p-5 space-y-2">
+          <Surtitre>Dans Nolio</Surtitre>
+          {!nolioConfigure() ? (
+            <p className="text-sm text-[#4A4866]">La clé de l’API Nolio manque dans Vercel (NOLIO_API_KEY).</p>
+          ) : erreur ? (
+            <p className="text-sm text-[#4A4866]">{v9 ? TEXTES_A_FAIRE.nolioMuet : erreur}</p>
+          ) : (
+            <details className="text-sm" open={sansFiche.length > 0 || Boolean(toi)}>
+              <summary className="cursor-pointer min-h-11 flex items-center font-semibold text-indigo">
+                {sansFiche.length ? `${sansFiche.length} athlète${sansFiche.length > 1 ? 's' : ''} de Nolio sans fiche ici` : 'Tous tes athlètes de Nolio ont leur fiche'}
+              </summary>
+              {/* « Créer sa fiche » (décision coach du 22/10/2026) : d'un clic, déjà reliée à Nolio. */}
+              <ul className="pb-2 text-[#4A4866] divide-y divide-indigo/[0.06]">
+                {sansFiche.map((x) => (
+                  <li key={x.id} className="flex items-center justify-between gap-3 py-1.5">
+                    <span>{x.name}</span>
+                    <form action={creerFicheDepuisNolio.bind(null, x.id)}>
+                      <button type="submit" className="min-h-10 px-3 rounded-[10px] border border-teal text-teal text-[0.8125rem] font-bold">Créer sa fiche ›</button>
+                    </form>
+                  </li>
+                ))}
+              </ul>
+              {toi && (
+                <div className="flex items-center justify-between gap-3 pt-2 pb-1 border-t border-indigo/[0.06] text-[#4A4866]">
+                  <span>Toi : vis l’app d’un coaché sur ton propre Nolio.</span>
+                  <form action={creerFicheDepuisNolio.bind(null, toi.id)}>
+                    <button type="submit" className="min-h-10 px-3 rounded-[10px] border border-teal text-teal text-[0.8125rem] font-bold">Créer ta fiche de test ›</button>
                   </form>
-                </li>
-              ))}
-            </ul>
-            {toi && (
-              <div className="flex items-center justify-between gap-3 pt-2 pb-1 border-t border-indigo/[0.06] text-[#4A4866]">
-                <span>Toi : vis l’app d’un coaché sur ton propre Nolio.</span>
-                <form action={creerFicheDepuisNolio.bind(null, toi.id)}>
-                  <button type="submit" className="min-h-10 px-3 rounded-[10px] border border-teal text-teal text-[0.8125rem] font-bold">Créer ta fiche de test ›</button>
-                </form>
-              </div>
-            )}
-          </details>
-        )}
-      </Carte>
+                </div>
+              )}
+            </details>
+          )}
+        </Carte>
+      )}
     </CadreCoach>
   );
 }

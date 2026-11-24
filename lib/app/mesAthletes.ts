@@ -19,6 +19,7 @@ import { lienNolioAthlete } from './liensNolio';
 import { ajouterJours, dateAbregee, dateLongue, jourMois, joursEntre } from './plan';
 import { prevision, type Prevision } from './prevision';
 import { signauxGardes, SILENCE_JOURS, type SignauxGardes } from './signauxGardes';
+import { TEXTES_A_FAIRE } from './espaceCoachSimple';
 import { moteurEstV9 } from './moteurEnLigne';
 import { apresLePassage, HEURE_PASSAGE_UTC, lundiQuiVient, semainesDuDimanche, type SemainesDuDimanche } from './semainesDuDimanche';
 import { clientService } from './supabase';
@@ -163,8 +164,10 @@ export async function espaceDuCoach(coachId: string, membres: Set<string> | null
         && a.objectif?.suivante?.partie !== true)
       .map(({ o }) => ({ niveau: 'bloque', genre: 'semaine', cle: `semaine:${o.plan_id}:${dimanche.lundi}`, athlete: a.nom, action: '', href: `/app/coach/athlete/${a.id}#semaine-qui-arrive`,
         planId: o.plan_id, sansGeste: true,
-        // La maquette validée par le coach le 08/11/2026 : sa ligne dans « Mes athlètes », et dans « Urgent ».
-        detail: 'Reprises ce soir à 20 h et 22 h ; sinon « Réessayer »', sous: 'Ce soir, elle se refait aux reprises de 20 h et 22 h.',
+        // La maquette validée par le coach le 08/11/2026 : sa ligne dans « Mes athlètes », et dans « Urgent ». Sous la 9.x (décision 220 du coach,
+        // 24/11/2026 : plus de message d'infrastructure), pas un mot des « reprises de 20 h et 22 h » (celles de la 8.x) : « Réessayer » lundi.
+        detail: v9 ? TEXTES_A_FAIRE.pasPartieDetail : 'Reprises ce soir à 20 h et 22 h ; sinon « Réessayer »',
+        sous: v9 ? TEXTES_A_FAIRE.pasPartieSous : 'Ce soir, elle se refait aux reprises de 20 h et 22 h.',
         texte: `sa semaine du ${jourMois(dimanche.lundi)} n’est pas partie dans Nolio.` })) : [];
     // Le dimanche après le passage, « Semaine pas partie » parle de la semaine qui arrive : celle qui finit ce soir ne se
     // rattrape plus (« Réessayer » l'écrirait à partir d'aujourd'hui).

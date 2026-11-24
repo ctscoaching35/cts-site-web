@@ -7,6 +7,7 @@ import type { Niveau as Couleur } from '@/lib/app/prevision';
 import { SEMAINE_DE_REPRISE, typeCoteCoach } from '@/lib/app/nomsSeances';
 import { ajouterJours, dateAbregee, jMoins } from '@/lib/app/plan';
 import { ecartDeLaMontee, texteCourtDeLaMontee, type Montee } from '@/lib/app/tableau';
+import { manqueDeLaLigne } from '@/lib/app/espaceCoachSimple';
 
 // Les pastilles et les étiquettes de chaque ligne (maquette validée par le coach le 24/10/2026, puis l'espace par athlète,
 // maquette validée le 08/11/2026).
@@ -51,8 +52,11 @@ function categorie(e: EtatAthlete, jour: string): Exclude<Filtre, 'tous'> {
 // « Tes athlètes » (l'accueil, maquette du 08/11/2026) : les filtres (un lien chacun, ?filtre=), puis une ligne par
 // athlète, dans l'ordre de Nolio, alphabétique du prénom (09/11/2026) ; toute la ligne ouvre sa page. passee : le lundi de la
 // semaine des chiffres (VueCoach.semainePassee).
-export default function TableauAthletes({ lignes: toutes, jour, passee, filtre, base = '/app/coach' }: {
-  lignes: EtatAthlete[]; jour: string; passee: string; filtre: Filtre; base?: string;
+// v9 : sous la 9.x (décision 220 du coach, 24/11/2026), ce qui attend le coach est dans « À faire », en haut de la page : sous le nom, la pastille
+// « Nolio à associer » ou « sans accord » n'est pas redite quand « À faire » la dit ; la colonne « Ce qui l'attend » (étiquettes déjà ôtées de ses
+// points par la page) dit un tiret quand il ne reste rien. Sous la 8.x, rien ne change.
+export default function TableauAthletes({ lignes: toutes, jour, passee, filtre, base = '/app/coach', v9 = false }: {
+  lignes: EtatAthlete[]; jour: string; passee: string; filtre: Filtre; base?: string; v9?: boolean;
 }) {
   const parCategorie = (f: Filtre) => f === 'tous' ? toutes.length : toutes.filter((e) => categorie(e, jour) === f).length;
   const lignes = toutes.filter((e) => filtre === 'tous' || categorie(e, jour) === filtre);
@@ -87,7 +91,7 @@ export default function TableauAthletes({ lignes: toutes, jour, passee, filtre, 
             <p className="py-1.5 text-[0.72rem] text-[#5E5C78] border-b border-indigo/[0.06]">
               Séances, charge tenue et Hooper : semaine du {dateAbregee(passee)} au {dimanche}{dimanche.endsWith('.') ? '' : '.'}
             </p>
-            {lignes.map((e) => <Ligne key={e.id} e={e} jour={jour} />)}
+            {lignes.map((e) => <Ligne key={e.id} e={e} jour={jour} v9={v9} />)}
           </div>
         </div>
       )}
@@ -151,14 +155,14 @@ export function SaSemaine({ e, jour }: { e: EtatAthlete; jour: string }) {
 }
 
 // Une ligne du tableau : toute la ligne ouvre sa page (le lien de son nom, étiré sur la ligne).
-function Ligne({ e, jour }: { e: EtatAthlete; jour: string }) {
+function Ligne({ e, jour, v9 }: { e: EtatAthlete; jour: string; v9: boolean }) {
   const a = e.a;
   const o = a.objectif;
   const avenir = Boolean(o && o.course_date >= jour);
   const sous = 'block text-[0.72rem] text-[#5E5C78] mt-0.5';
   const pastille = 'inline-block text-[0.66rem] font-bold px-2 py-0.5 rounded-full whitespace-nowrap';
   // Ce qui lui manque (« app à inviter » reste sur sa page, décision coach du 04/11/2026).
-  const manque = [!a.nolio && 'Nolio à associer', a.nolio && !a.accord && 'sans accord'].filter(Boolean) as string[];
+  const manque = manqueDeLaLigne(a, e.points, v9);
   return (
     <div className={clsx('relative grid gap-x-3.5 items-start min-h-16 py-3 text-[0.84rem] border-b last:border-b-0 border-indigo/[0.06] hover:bg-sand/50', COLONNES)}>
       <span className="min-w-0 flex gap-2.5">
@@ -185,7 +189,10 @@ function Ligne({ e, jour }: { e: EtatAthlete; jour: string }) {
       </span>
       <SaSemaine e={e} jour={jour} />
       <SemainePassee a={a} />
-      <span className="min-w-0 flex flex-col gap-2">{e.etiquettes.map((x) => <EtiquetteAthlete key={x.texte} e={x} />)}</span>
+      <span className="min-w-0 flex flex-col gap-2">
+        {e.etiquettes.map((x) => <EtiquetteAthlete key={x.texte} e={x} />)}
+        {e.etiquettes.length === 0 && <span className="text-[#5E5C78]">—</span>}
+      </span>
       <span aria-hidden className="text-[#5E5C78]">›</span>
     </div>
   );

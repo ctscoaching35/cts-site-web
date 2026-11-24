@@ -19,6 +19,7 @@ import { aujourdhuiIso } from '@/lib/app/plan';
 import { septReponses, tonsDesReponses, type LigneNolio, type Reponse, type SemaineComparee } from '@/lib/app/semaineDansNolio';
 import { heureDe, heureDuPassage, jourDeLInstant, reponseAncienne, type SemaineQuiArrive } from '@/lib/app/semaineQuiArrive';
 import { enHeures } from '@/lib/app/tableau';
+import { montrerLInfra, TEXTES_A_FAIRE } from '@/lib/app/espaceCoachSimple';
 
 // « Sa semaine qui arrive » (maquette validée par le coach le 08/11/2026, Q4 « A » ; les écrans de la doctrine, décision 11
 // du coach du 09/11/2026) : la semaine à gauche, TELLE QU'ELLE EST DANS NOLIO une fois partie, chaque retouche marquée
@@ -223,8 +224,11 @@ function Replies({ pourquoi, lu, realise, ancienne }: { pourquoi: Pourquoi | nul
   );
 }
 
-export default function SemainesQuiArrivent({ semaines, prevision, vers, aLaMain }: {
-  semaines: SemaineQuiArrive[]; prevision: Prevision; vers: Vers; aLaMain: boolean;
+// v9 et dansSesPoints : sous la 9.x (décision 220 du coach, 24/11/2026 : « un seul endroit pour ce qui est à faire »), « Urgent » n'existe plus et un point n'est
+// dit qu'une fois sur la page : une semaine pas partie qui est déjà un point de « À faire pour lui » (dansSesPoints : ses objectifs) n'a pas ici son bouton
+// « Réessayer » ; plus de « reprises de 20 h et 22 h » ni de migration à passer dans ce que le coach lit. Sous la 8.x, rien ne change.
+export default function SemainesQuiArrivent({ semaines, prevision, vers, aLaMain, v9 = false, dansSesPoints = [] }: {
+  semaines: SemaineQuiArrive[]; prevision: Prevision; vers: Vers; aLaMain: boolean; v9?: boolean; dansSesPoints?: string[];
 }) {
   if (!semaines.length) {
     return aLaMain ? (
@@ -273,11 +277,13 @@ export default function SemainesQuiArrivent({ semaines, prevision, vers, aLaMain
                 </>
               ) : (
                 <>
-                  <p className="text-[0.8125rem] text-[#5E5C78]">
-                    {s.revueGardee
-                      ? 'Son « pourquoi » et ce qu’il a lu n’ont pas été gardés pour cette semaine : ils le sont à partir du prochain passage du dimanche.'
-                      : 'Son « pourquoi » et ce qu’il a lu ne sont pas encore gardés au passage : la migration du 08/11/2026 est à passer.'}
-                  </p>
+                  {(s.revueGardee || montrerLInfra(v9, 'Son « pourquoi » et ce qu’il a lu ne sont pas gardés au passage : la migration du 08/11/2026 est à passer dans Supabase.')) && (
+                    <p className="text-[0.8125rem] text-[#5E5C78]">
+                      {s.revueGardee
+                        ? 'Son « pourquoi » et ce qu’il a lu n’ont pas été gardés pour cette semaine : ils le sont à partir du prochain passage du dimanche.'
+                        : 'Son « pourquoi » et ce qu’il a lu ne sont pas encore gardés au passage : la migration du 08/11/2026 est à passer.'}
+                    </p>
+                  )}
                   <DemandeEcrit planId={s.planId} numero={l.numero} revue={null} sesJours={s.sesJours} />
                 </>
               )}
@@ -294,8 +300,8 @@ export default function SemainesQuiArrivent({ semaines, prevision, vers, aLaMain
               </div>
               {s.laissee ? (
                 <p className="text-sm text-[#4A4866]">Semaine laissée : tu as déjà posé des séances cette semaine-là, elles restent les tiennes.</p>
-              ) : s.ceSoir ? (
-                <p className="text-sm text-[#4A4866]">Ce soir, elle se refait aux reprises de 20 h et 22 h ; lundi, ce qui manque encore est dans « Urgent », avec « Réessayer ».</p>
+              ) : v9 && dansSesPoints.includes(s.planId) ? null : s.ceSoir ? (
+                <p className="text-sm text-[#4A4866]">{v9 ? TEXTES_A_FAIRE.pasPartieCarte : 'Ce soir, elle se refait aux reprises de 20 h et 22 h ; lundi, ce qui manque encore est dans « Urgent », avec « Réessayer ».'}</p>
               ) : (
                 <ReessayerSemaine planId={s.planId} />
               )}

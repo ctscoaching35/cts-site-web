@@ -1,6 +1,8 @@
 import { nomsDesPlans, passageDuDimanche, prevenirCoach, REMIS, type Compte } from '@/lib/app/ecriture';
 import { selonLeMoteur } from '@/lib/app/chaineDuMoteur';
 import { passageDuDimancheV9 } from '@/lib/app/passagesV9';
+import { moteurEstV9 } from '@/lib/app/moteurEnLigne';
+import { TEXTES_A_FAIRE } from '@/lib/app/espaceCoachSimple';
 import { saisonsDuJour } from '@/lib/app/fond';
 import { DERNIERE_ECRITURE_DU_DIMANCHE_8X, derniereEcritureDuDimancheV9, ecritureDuDimancheV9, ECRITURE_DU_DIMANCHE_8X, estUnLancementDe8x } from '@/lib/app/heuresDePassage';
 import { site } from '@/lib/content';
@@ -54,7 +56,8 @@ export async function GET(request: Request) {
     await prevenirCoach(`Plans CTS : ${echecs.length} semaine${echecs.length > 1 ? 's' : ''} non écrite${echecs.length > 1 ? 's' : ''}`,
       `Le passage du dimanche n’a pas pu écrire ou envoyer certaines semaines dans Nolio, même après ses reprises${qui ? ` : ${qui}` : ''}. `
       + 'Le passage de lundi soir les reprend, à partir de mardi, et te dit ce qui reste ; pour un coaché, tu peux aussi le faire '
-      + `toi-même dès lundi matin, « Réessayer » dans « Urgent » (${site.url}/app/coach/urgent).`);
+      // Sous la 9.x (décision 220 du coach, 24/11/2026), « Urgent » n'existe plus : « Réessayer » est dans « À faire », sur « Mes athlètes ». Sous la 8.x, rien ne change.
+      + `toi-même dès lundi matin, « Réessayer » dans ${(await moteurEstV9().catch(() => false)) ? TEXTES_A_FAIRE.ouReessayer(site.url) : `« Urgent » (${site.url}/app/coach/urgent)`}.`);
   }
   return Response.json({ semaines: comptes.map(({ plan, quoi, erreur }) => ({ plan, quoi, erreur: erreur ?? null })) });
 }

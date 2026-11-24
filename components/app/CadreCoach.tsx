@@ -4,6 +4,8 @@ import clsx from 'clsx';
 import { Deconnexion } from './BoutonsCompte';
 import LienDemandes from './LienDemandes';
 import { demonstrationCoachOuverte, jourSimuleEnClair, MOMENTS } from '@/lib/app/demonstrationCoach';
+import { moteurEstV9 } from '@/lib/app/moteurEnLigne';
+import { liensDuMenu, rubriqueActive, rubriqueDeLaPastille, type RubriqueCoach } from '@/lib/app/espaceCoachSimple';
 
 // Le cadre de l'espace coach (maquettes validées par le coach le 19/10/2026, puis le 24/10/2026) : un menu à gauche sur
 // ordinateur, au-dessus du contenu sur téléphone. L'espace réorganisé par athlète (décision « 1A » du coach et maquette
@@ -13,18 +15,19 @@ import { demonstrationCoachOuverte, jourSimuleEnClair, MOMENTS } from '@/lib/app
 // Plus de Bibliothèque (décision coach du 20/10/2026) ni de lien « Voir l'app d'un athlète » : chaque version se voit par
 // son propre compte (coach, coaché, acheteur).
 // Lot A2 de l'app gratuite : « Demandes », les demandes de coaching (le premier coach de CTS_COACHS, app gratuite ouverte seulement).
-export type RubriqueCoach = 'athletes' | 'urgent' | 'chiffres' | 'demandes';
+// SOUS LA 9.x (décision 220 du coach, 24/11/2026 : « un seul endroit pour ce qui est à faire ») : plus d'entrée « Urgent », ses points sont dans
+// « Mes athlètes » et la pastille y passe (lib/app/espaceCoachSimple.ts). Sous la 8.x, le menu est celui d'avant.
+export type { RubriqueCoach };
 
 // urgents : le nombre d'athlètes qui ont au moins une ligne dans « Urgent », le même sur chaque page qui le donne. Plus de
 // nom du coach ni de « Nolio relié » en bas du menu (décision coach du 04/11/2026).
-export default function CadreCoach({ actif, urgents = 0, children }: {
+export default async function CadreCoach({ actif: demande, urgents = 0, children }: {
   actif: RubriqueCoach; urgents?: number; children: React.ReactNode;
 }) {
-  const liens: [RubriqueCoach, string, string][] = [
-    ['athletes', 'Mes athlètes', '/app/coach'],
-    ['urgent', 'Urgent', '/app/coach/urgent'],
-    ['chiffres', 'Chiffres', '/app/coach/chiffres'],
-  ];
+  const v9 = await moteurEstV9().catch(() => false);
+  const liens = liensDuMenu(v9);
+  const actif = rubriqueActive(demande, v9);
+  const pastille = rubriqueDeLaPastille(v9);
   return (
     <div className="min-h-screen flex flex-wrap bg-sand text-indigo">
       <aside className="flex-[1_1_220px] lg:max-w-[260px] bg-indigo text-white px-4 py-5 lg:py-6 flex flex-col gap-5">
@@ -43,7 +46,7 @@ export default function CadreCoach({ actif, urgents = 0, children }: {
               className={clsx('flex items-center justify-between gap-2 min-h-11 px-3 rounded-[10px] text-sm',
                 cle === actif ? 'bg-white/10 text-white font-bold' : 'text-[#D6D5E6] font-semibold hover:bg-white/5')}>
               <span>{titre}</span>
-              {cle === 'urgent' && urgents > 0 && (
+              {cle === pastille && urgents > 0 && (
                 <span className="min-w-[22px] h-[22px] px-1 rounded-full bg-[#2BB39B] text-[#10302B] text-xs font-extrabold inline-flex items-center justify-center">{urgents}</span>
               )}
             </Link>

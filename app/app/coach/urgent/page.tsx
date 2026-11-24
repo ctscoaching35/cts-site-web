@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import CadreCoach from '@/components/app/CadreCoach';
 import { Carte } from '@/components/app/Ui';
 import { Geste, Regle } from '@/components/app/PointsCoach';
@@ -19,9 +19,12 @@ export const dynamic = 'force-dynamic';
 // « Ne court plus », « Semaine pas partie », « Objectif bloqué »), chacune avec son bouton et « Réglé » ; le nom ouvre la
 // page de l'athlète. Ce qui arrive (« À venir », Q7) et ce que le moteur a réglé seul n'y vont jamais : ils sont sur la page
 // de chaque athlète. Pour le téléphone d'abord (EC5).
+// SOUS LA 9.x (décision 220 du coach, 24/11/2026 : « un seul endroit pour ce qui est à faire ») : cette page n'existe plus, ses points sont dans la section
+// « À faire » de « Mes athlètes » (app/app/coach/page.tsx) ; l'adresse y renvoie. Sous la 8.x, la page reste telle quelle.
 export default async function Urgent() {
   if (!espaceCoachOuvert()) notFound();
   const coach = await exigerCoach();
+  if (await moteurEstV9().catch(() => false)) redirect('/app/coach');
   const { nolio } = await equipeNolio();
   const espace = await espaceDuCoach(coach.compteId, nolio ? new Set(nolio.map((x) => x.id)) : null);
   const ceSoir = espace.urgent.some((g) => g.lignes.some((l) => l.point.sansGeste));
