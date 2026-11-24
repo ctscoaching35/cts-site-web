@@ -330,7 +330,7 @@ test('messageAuCoach lit la version du moteur lui-même (moteurEstV9, sans répo
 
 test('où le coach reçoit le message après un geste : chaque site le passe par `messageAuCoach` / `soucisAuCoach`, la 8.x en garde le texte', () => {
   const c = sansCommentaires(source('lib/app/actionsCoaching.ts'));
-  assert.ok(c.includes("import { messageAuCoach, soucisAuCoach } from './erreursDuCoach';"));
+  assert.ok(c.includes("import { messageAuCoach, pasEncoreSonAccordAuCoach, soucisAuCoach } from './erreursDuCoach';"), 'la même importation, plus « Pas encore son accord » (scripts/test-pas-encore-son-accord.mjs)');
   // enregistrerValeurs et enregistrerTestVc : les soucis de Nolio (« Zones Nolio : … »).
   assert.equal((c.match(/const soucis = await soucisAuCoach\(/g) ?? []).length, 2);
   assert.ok(c.includes('const soucis = await soucisAuCoach(o ? await zonesVersNolio(o) : dernier ? [] : await zonesDeLaFicheVersNolio(athleteId));'));
