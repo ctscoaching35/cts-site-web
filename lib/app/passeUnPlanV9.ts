@@ -179,14 +179,16 @@ export function parametresDuPlanV9({ parametres, profil, coache, accordLecture, 
 
 /**
  * Ce qu'un départ garde avec les réponses du plan pour le moteur v1 (parametres.champs, lu comme le reste de l'intake) : `entree`, le lundi de la première semaine écrite ;
- * `course_precedente`, l'objectif majeur qu'il vient de courir (sa date, sa durée en heures : le moteur en tire la récupération puis la reprise). Pas `lu` : ce qu'il court au
- * départ (entrée 203) se lit une fois, au premier passage du plan sans état (lireLeDepartSiBesoin), départ d'un objectif compris : un seul lecteur, un seul endroit.
+ * `course_precedente`, l'objectif majeur qu'il vient de courir (sa date, sa durée en heures : le moteur en tire la récupération puis la reprise). `dureeCourue` : la durée qu'il a
+ * COURUE, lue dans Nolio (lib/app/luAuDepart.ts, lireLaDureeCourue), une course abandonnée comprise ; sans elle (non lisible), le temps visé de l'objectif (`apres.temps_h`). Pas
+ * `lu` : ce qu'il court au départ (entrée 203) se lit une fois, au premier passage du plan sans état (lireLeDepartSiBesoin), départ d'un objectif compris : un seul lecteur.
  */
-export function entreesDuDepart({ premiere, apres }: {
-  premiere: string; apres: { course_date: string; temps_h: number } | null;
+export function entreesDuDepart({ premiere, apres, dureeCourue = null }: {
+  premiere: string; apres: { course_date: string; temps_h: number } | null; dureeCourue?: number | null;
 }): { entree: string; course_precedente?: { date: string; duree_h: number } } {
+  const duree = typeof dureeCourue === 'number' && dureeCourue > 0 ? dureeCourue : apres?.temps_h ?? 0;
   return {
     entree: premiere,
-    ...(apres && apres.temps_h > 0 ? { course_precedente: { date: apres.course_date, duree_h: apres.temps_h } } : {}),
+    ...(apres && duree > 0 ? { course_precedente: { date: apres.course_date, duree_h: duree } } : {}),
   };
 }
