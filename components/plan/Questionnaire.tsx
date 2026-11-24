@@ -8,6 +8,7 @@ import CriteresEntree from './CriteresEntree';
 import { COTE_MAX_MIN, coteEnClair } from '@/lib/cote';
 import { CRITERES_BRANCHES, criteresDe, TITRE_SECTION_CRITERES, titreReponse } from '@/lib/criteres';
 import { type Apercu, type ApercuGarde, apercuGardeValide, apercuPourCeParcours, CLE_CACHE_APERCU, classerReponse, empreinteApercu, jourParis, MESSAGE_APERCU_INDISPONIBLE, PHRASE_AUTRE_JOUR, type ResultatApercu, retirerIdentite } from '@/lib/apercu';
+import { messagesDesPrerequis, type PrerequisAchat } from '@/lib/prerequis';
 import { estimerChrono } from '@/lib/app/route';
 import { attestationDuFormat, phraseCaseNonCochee } from '@/lib/attestation';
 import { alerteSortieLongue, API_URL, avertissements, type Champs, champsVides, type ConfigPlan, courseTropProche, debutFormule, dureeCocheeDOffice, dureesProposees, formatDepuisDistance, MESSAGE_COURSE_TROP_PROCHE, messageTempsMinimum, formatOuvert, intakePourApi, noteFormat, PHRASE_TEMPS_DE_TETE, placementReference, referenceExigee, plancherSeances, reperesChrono, FORMATS_ROUTE, tempsDeTete, textes, type CourseReference } from '@/lib/plan';
@@ -126,6 +127,9 @@ export default function Questionnaire({
   // du 28/09/2026) : l'athlète apprenait après avoir payé qu'elle était illisible.
   const [avisTrace, setAvisTrace] = useState('');
   const traceDemandee = useRef(0);
+  // Les prérequis du plan (entrée 234, lib/prerequis.ts) : ce que le moteur v1 dit du plan avec ces réponses, lu après la vérification, pour le dire à l'acheteur dans le récapitulatif ; jamais bloquant.
+  const [prerequis, setPrerequis] = useState<PrerequisAchat | null>(null);
+  const prerequisDemandes = useRef(0);
   const [etape, setEtape] = useState<'formulaire' | 'recap' | 'apercu'>('formulaire');
   // L'aperçu du plan avant paiement (décision du coach du 16/11/2026) : seulement un achat. sansApercu : le moteur n'en a
   // pas (404) ou n'en rend pas pour l'instant : le parcours reste celui d'avant, le paiement directement.
@@ -345,6 +349,7 @@ export default function Questionnaire({
     setTente(true);
     if (joursCoches.length === 0 || manqueSemaine.length) return;
     setRefus('');
+    setPrerequis(null);
     setEnvoi(true);
     // Refus métier vérifiés par l'API avant le récapitulatif : l'athlète ne relit pas
     // ses réponses pour découvrir ensuite qu'elles ne permettent pas de plan.
@@ -377,6 +382,16 @@ export default function Questionnaire({
     setConfirme(false);
     setEtape('recap');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Les prérequis du plan (234) : l'acheteur seul ; sans nom, sans e-mail, sans réponse de santé (intakePourApi les a retirées). Le serveur ne répond que sous le moteur v1 ; une route qui
+    // ne répond pas, un délai : rien à dire, et rien n'empêche l'achat.
+    if (!coach && !demande) {
+      const lecture = ++prerequisDemandes.current;
+      const reponses = { ...retirerIdentite(avecReference(intakePourApi(c))), cote_min: c.cote_min };
+      fetch('/plan/prerequis', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(reponses), signal: AbortSignal.timeout(8_000) })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((corps) => { if (lecture === prerequisDemandes.current) setPrerequis((corps?.prerequis ?? null) as PrerequisAchat | null); })
+        .catch(() => {});
+    }
   }
 
   function choisirTrace(fichier: File | null) {
@@ -563,6 +578,10 @@ export default function Questionnaire({
     // les points propres à l'athlète au-dessus quand il y en a.
     // QD5 (décision coach du 19/10/2026) : le coach lance l'objectif sans avertissement à cocher ; le coaché qui envoie
     // sa demande coche un avertissement propre au coaching (BROUILLON) ; l'acheteur, celui du plan automatique.
+    // Les points à lire avant de construire : les avertissements, puis ce que les prérequis du plan disent (234, pour l'acheteur seul), avec, à la suite, de quoi revenir à ses réponses
+    // (un plan plus long, une course plus courte).
+    const prerequisDits = !coach && !demande ? messagesDesPrerequis(prerequis) : [];
+    const aLire = [...alertes, ...prerequisDits];
     const sansAvertissement = coach && !demande;
     const bloque = (!sansAvertissement && !confirme) || (!coach && !debutImmediat);
     // Ce qui manque quand le bouton reste grisé (C2, audit de l'app plan du 03/11/2026) : dit sous le bouton.
@@ -599,12 +618,17 @@ export default function Questionnaire({
         </section>
 
         <section className="bg-white rounded-2xl border border-indigo/[0.08] p-5 sm:p-6">
-          {alertes.length > 0 && (
+          {aLire.length > 0 && (
             <>
               <h2 className="text-lg text-indigo mb-4">{demande ? 'Avant que je construise ta préparation, lis ces points' : 'Avant de construire ton plan, lis ces points'}</h2>
               <ul className="space-y-3 text-indigo/80 leading-relaxed list-disc pl-5 mb-6">
-                {alertes.map((a) => <li key={a}>{a}</li>)}
+                {aLire.map((a) => <li key={a}>{a}</li>)}
               </ul>
+              {prerequisDits.length > 0 && (
+                <button type="button" onClick={() => setEtape('formulaire')} className={`${boutonSecondaireCls} mb-6`}>
+                  ← Modifier mes réponses
+                </button>
+              )}
             </>
           )}
           {demande ? (
