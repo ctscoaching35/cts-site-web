@@ -444,8 +444,8 @@ test('la migration écrite crée les colonnes que le stockage lit et écrit, et 
   assert.ok(!/etat_ecriture|etat_avant:\s|\.revue|realise/.test(source.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '')), 'le code n’écrit ni ne lit les colonnes de la 8.x');
 });
 
-test('préparé, pas branché : aucun fichier du site (hors la chaîne elle-même) ne lit la chaîne, l’état, le stockage ni la lecture de Nolio du moteur v1', () => {
-  const famille = ['lib/app/ecritureV9.ts', 'lib/app/etatMoteur.ts', 'lib/app/stockageV9.ts', 'lib/app/nolioV9.ts'];
+test('branché seulement derrière la garde de version : hors de la chaîne du moteur v1, personne ne lit la chaîne, l’état, le stockage ni la lecture de Nolio', () => {
+  const famille = ['lib/app/ecritureV9.ts', 'lib/app/etatMoteur.ts', 'lib/app/stockageV9.ts', 'lib/app/nolioV9.ts', 'lib/app/passeUnPlanV9.ts', 'lib/app/passagesV9.ts'];
   for (const nom of ['ecritureV9', 'etatMoteur', 'stockageV9', 'nolioV9']) {
     let lecteurs = [];
     try {

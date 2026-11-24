@@ -179,7 +179,7 @@ test('réponse de /v1/semaine : lue seulement si elle est d’une 9.0', () => {
   assert.deepEqual(m.lireSortieV9({ ...r, note: undefined }).note, [], 'pas de note : aucune ligne');
 });
 
-test('préparé, pas branché : aucun fichier du site ne lit encore le contrat du moteur 9.0', () => {
+test('branché seulement derrière la garde de version : seules les pièces de la chaîne du moteur v1 lisent son contrat, et les Nolio du moteur (coaching.ts, sous une 9.x)', () => {
   let lecteurs = [];
   try {
     lecteurs = execFileSync('grep', ['-rlE', 'from [\'"][^\'"]*moteurV9[\'"]|import\\([^)]*moteurV9', 'app', 'components', 'lib'], { cwd: RACINE, encoding: 'utf8' }).split('\n').filter(Boolean);
@@ -187,6 +187,7 @@ test('préparé, pas branché : aucun fichier du site ne lit encore le contrat d
     if (e.status !== 1) throw e;
   }
   // Seules les pièces de la même chaîne (préparées aussi, lues par personne) le lisent.
-  const CHAINE = ['lib/app/nolioV9.ts', 'lib/app/etatMoteur.ts', 'lib/app/ecritureV9.ts', 'lib/app/stockageV9.ts'];
+  const CHAINE = ['lib/app/nolioV9.ts', 'lib/app/etatMoteur.ts', 'lib/app/ecritureV9.ts', 'lib/app/stockageV9.ts', 'lib/app/passeUnPlanV9.ts', 'lib/app/passagesV9.ts',
+    'lib/app/coaching.ts'];
   assert.deepEqual(lecteurs.filter((f) => !CHAINE.includes(f)), []);
 });

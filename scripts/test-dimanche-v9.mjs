@@ -208,5 +208,5 @@ test('préparé, pas branché : aucun fichier du site ne lit encore le questionn
     if (e.status !== 1) throw e;
   }
   // lib/app/moteurV9.ts n'en prend que les types (il est préparé, pas branché non plus : scripts/test-moteur-v9.mjs).
-  assert.deepEqual(lecteurs.filter((f) => !['lib/app/moteurV9.ts', 'lib/app/ecritureV9.ts', 'lib/app/stockageV9.ts'].includes(f)), []);
+  assert.deepEqual(lecteurs.filter((f) => !['lib/app/moteurV9.ts', 'lib/app/ecritureV9.ts', 'lib/app/stockageV9.ts', 'lib/app/passeUnPlanV9.ts', 'lib/app/passagesV9.ts'].includes(f)), []);
 });

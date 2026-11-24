@@ -60,7 +60,7 @@ test('vercel.json : la passe du lundi, toutes les deux heures de 5 h à 21 h UTC
   for (const h of l.HEURES_DES_PASSAGES_DU_LUNDI.filter((x) => x !== 5)) assert.ok(h >= 6 && h <= 23, `${h} h`);
   // Les autres tâches n'ont pas bougé.
   assert.equal(crons.filter((c) => c.path === '/api/ecriture/dimanche').length, 3);
-  assert.equal(crons.length, 18, '10 tâches d’avant, plus les 8 passages du lundi de 7 h à 21 h');
+  assert.equal(crons.length, 19, '10 tâches d’avant, les 8 passages du lundi de 7 h à 21 h, le questionnaire du dimanche matin');
 });
 
 test('sous la 8.x, les passages de plus ne changent rien : une semaine déjà passée (sa note du lundi posée) est sautée', () => {
@@ -76,5 +76,5 @@ test('la décision du lundi n’est lue par personne (préparée, pas branchée)
   try {
     lecteurs = execFileSync('grep', ['-rlE', 'from [\'"][^\'"]*lundiV9[\'"]|import\\([^)]*lundiV9', 'app', 'components', 'lib'], { cwd: RACINE, encoding: 'utf8' }).split('\n').filter(Boolean);
   } catch { /* grep ne trouve rien : code 1 */ }
-  assert.deepEqual(lecteurs.filter((f) => f !== 'lib/app/ecritureV9.ts'), [], 'seule la chaîne du moteur v1, préparée aussi, le lit');
+  assert.deepEqual(lecteurs.filter((f) => f !== 'lib/app/ecritureV9.ts'), [], 'seule la chaîne du moteur v1 le lit');
 });
