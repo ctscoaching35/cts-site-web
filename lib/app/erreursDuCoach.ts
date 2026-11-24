@@ -61,6 +61,13 @@ export function soucisDuCoach(soucis: string[], v9: boolean, journal?: (m: strin
 }
 
 // Les deux, avec la version du moteur lue ici (moteurEstV9 est gardée 5 minutes par processus, et sans réponse, c'est une 8.x : le message reste celui d'avant).
+// « PAS ENCORE SON ACCORD » (décision 220 du coach, 24/11/2026, suite) : le coach enregistre des repères ou un test avant que l'athlète ait donné son accord de lecture. Sous la 8.x, la phrase d'avant
+// (elle envoie vers « le Suivi », écran supprimé) ; sous la 9.x, ce que le coach fait, sans parler d'écran : le bouton « Accord reçu » est dans ce qui est à faire pour l'athlète.
+export const PAS_ENCORE_SON_ACCORD = 'Pas encore son accord : associe-le à Nolio, envoie-lui le message d’accord, puis coche « Accord reçu » dans le Suivi quand il a répondu oui.';
+export const PAS_ENCORE_SON_ACCORD_V9 = 'Pas encore son accord de lecture : associe-le à Nolio, envoie-lui le message d’accord, puis clique sur « Accord reçu » quand il a répondu oui.';
+export const pasEncoreSonAccord = (v9: boolean): string => (v9 ? PAS_ENCORE_SON_ACCORD_V9 : PAS_ENCORE_SON_ACCORD);
+export const pasEncoreSonAccordAuCoach = async (): Promise<string> => pasEncoreSonAccord(await moteurEstV9().catch(() => false));
+
 export async function messageAuCoach(message: string): Promise<string> {
   return messageDuCoach(message, await moteurEstV9().catch(() => false));
 }

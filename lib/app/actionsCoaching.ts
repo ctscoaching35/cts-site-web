@@ -13,7 +13,7 @@ import { athletesNolio, coachConnecte } from './nolio';
 import { usrAcheteurs } from './acheteurs';
 import { retirerFiche, supprimerPlans } from './retrait';
 import { lireAllure } from './allureCoach';
-import { messageAuCoach, soucisAuCoach } from './erreursDuCoach';
+import { messageAuCoach, pasEncoreSonAccordAuCoach, soucisAuCoach } from './erreursDuCoach';
 import { clientService } from './supabase';
 
 // avertissement : une ligne sous le résultat, quand ce qui s'enregistre sort de l'habituel (le test de vitesse critique).
@@ -110,7 +110,7 @@ export async function enregistrerValeurs(athleteId: string, _e: EtatCoach, form:
   // Vider les champs reste toujours possible ; garder une valeur demande son accord (E3).
   const aGarder = [fc1.valeur, allure, allureS1, fc2.valeur].some((v) => v !== null);
   if (aGarder && !(await accordDeLAthlete(coach.compteId, athleteId)))
-    return { ok: false, message: 'Pas encore son accord : associe-le à Nolio, envoie-lui le message d’accord, puis coche « Accord reçu » dans le Suivi quand il a répondu oui.' };
+    return { ok: false, message: await pasEncoreSonAccordAuCoach() };
   const avant = await ficheAthlete(coach.compteId, athleteId);
   const { error } = await clientService().from('athletes_coaches').update({
     fc_seuil1: fc1.valeur === null ? null : Math.round(fc1.valeur),
@@ -289,7 +289,7 @@ export async function enregistrerTestVc(athleteId: string, _e: EtatCoach, form: 
   const vc = vitesseCritiqueCoach(efforts[0] as { duree_s: number; distance_m: number }, efforts[1] as { duree_s: number; distance_m: number });
   if ('erreur' in vc) return { ok: false, message: vc.erreur };
   if (!(await accordDeLAthlete(coach.compteId, athleteId)))
-    return { ok: false, message: 'Pas encore son accord : associe-le à Nolio, envoie-lui le message d’accord, puis coche « Accord reçu » dans le Suivi quand il a répondu oui.' };
+    return { ok: false, message: await pasEncoreSonAccordAuCoach() };
   const fiche = await ficheAthlete(coach.compteId, athleteId);
   if (!fiche) return { ok: false, message: 'Athlète introuvable.' };
   const vc_ms = Math.round(vc.vc_ms * 1000) / 1000;
