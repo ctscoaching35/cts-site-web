@@ -37,9 +37,9 @@ test('la VO2max n’est plus oubliée ; le Seuil 2 seulement quand il y en a', (
   assert.ok(!mots(['EF R', 'VO2c 12×1′/1′ R']).includes('Seuil 2'));
 });
 
-test('tempo, montée sur tapis, renfo, week-end choc ; « Renfo, endurance de force » ne fait pas venir l’EF', () => {
+test('tempo, séance sur tapis, renfo, week-end choc ; « Renfo, endurance de force » ne fait pas venir l’EF', () => {
   assert.deepEqual(mots(['T 3×8′/2′ R', 'TAPIS 3×8′ 10-12 %', 'RF force A (freiner) 2/3 · Renfo, endurance de force',
-    'WEC J1 · Week-end choc, jour 1 sur 2', 'WEC J2']), ['Tempo', 'Montée sur tapis', 'Renfo', 'Week-end choc', 'RPE']);
+    'WEC J1 · Week-end choc, jour 1 sur 2', 'WEC J2']), ['Tempo', 'Séance sur tapis', 'Renfo', 'Week-end choc', 'RPE']);
 });
 
 test('l’allure : le mot exact de la séance s’il n’y en a qu’une, « Allure de course » s’il y en a plusieurs', () => {
@@ -75,14 +75,24 @@ test('les définitions validées, mot pour mot, et jamais le Hooper', () => {
   const tout = motsDeLaSemaine(['EF R', 'SL R', 'S1 3×10′/2′ R', 'T 20′ R', 'S2l 4×8′ C+', 'VO2c 12×1′/1′ R', 'A10 6×4′/2′',
     'NAV 30′', 'MYO 2×4 chaise', 'TAPIS 2×15′ 10-12 %', 'RF force B (pousser) 1/3', 'WEC J1']);
   assert.deepEqual(tout.map((m) => m.mot), ['EF', 'SL', 'Seuil 1', 'Tempo', 'Seuil 2', 'VO2max', 'Allure 10 km', 'Navettes',
-    'Côtes et renfo', 'Montée sur tapis', 'Renfo', 'Week-end choc', 'RPE']);
+    'Côtes et renfo', 'Séance sur tapis', 'Renfo', 'Week-end choc', 'RPE']);
   const sens = Object.fromEntries(tout.map((m) => [m.mot, m.sens]));
   assert.equal(sens['Côtes et renfo'], 'de la force en côte : des montées enchaînées avec des exercices de renforcement.');
   assert.equal(sens['Seuil 1'], 'RPE 4-5 : un effort soutenu mais confortable, tu tiens une phrase courte.');
   assert.equal(sens.Tempo, 'RPE 6 : entre tes deux seuils, quelques mots seulement.');
   assert.equal(sens.VO2max, 'RPE 8-9 : très dur, un ou deux mots, sur des répétitions de quelques minutes au plus.');
-  assert.equal(sens['Montée sur tapis'], 'une montée sur tapis incliné, pour qui n’a pas de longue côte.');
+  // Texte validé par le coach le 24/11/2026 (entrée 197), mot pour mot ; rien des règles internes (« une fois par semaine », « séance à plat »).
+  assert.equal(sens['Séance sur tapis'], 'ta séance faite sur ton tapis, incliné. Tout le travail se fait en montée, à la pente indiquée dans la séance ; entre les blocs, tu remets le tapis à plat et tu trottines.');
+  assert.ok(!/une fois par semaine|à plat\b.*séance|séance à plat|pour qui n’a pas de longue côte/.test(sens['Séance sur tapis'].replace('tu remets le tapis à plat', '')), 'aucune règle interne dite à l’athlète');
   assert.equal(sens.Renfo, 'du renforcement musculaire, à faire chez toi.');
   assert.equal(sens['Week-end choc'], 'des sorties longues enchaînées, pour apprendre à courir fatigué.');
   assert.ok(!tout.some((m) => /Hooper/.test(m.mot)));
+});
+
+test('« Séance sur tapis » se reconnaît à tout titre qui contient « tapis » : un Seuil 1 sur tapis, un titre du moteur, un code de la barre', () => {
+  for (const titre of ['Seuil 1 tapis · 30 min — 2 × 15 min', 'Tempo · tapis', 'TAPIS 2×15′ 10-12 %', 'Mécanique · 40 min sur tapis']) {
+    assert.ok(mots([titre]).includes('Séance sur tapis'), titre);
+  }
+  assert.ok(!mots(['EF plate', 'Seuil 1 route · 45 min']).includes('Séance sur tapis'));
+  assert.ok(!mots(['Seuil 1 tapis · 30 min']).includes('Montée sur tapis'), 'l’ancien mot n’existe plus');
 });
