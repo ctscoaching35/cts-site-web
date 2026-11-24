@@ -80,9 +80,9 @@ test('les textes fixes de l’achat et de la FAQ ne disent ni le jour ni le nom 
   for (const t of ['lib/plan.ts', 'lib/content.ts', 'lib/app/emailBienvenue.ts']) assert.ok(!/Chaque samedi|point du dimanche/.test(sansCommentaires(t)), t);
 });
 
-test('le rappel du dimanche ne part pas sous le moteur 9.0 : il lit la réponse du samedi et dirait « questionnaire du samedi »', () => {
+test('le rappel du dimanche sous le moteur 9.0 (décision 206) : celui de la 8.x garde sa chaîne, la 9.x a la sienne (essayé dans test-rappel-v9.mjs)', () => {
   const route = source('app/api/ecriture/rappel/route.ts');
-  assert.ok(route.includes('selonLeMoteur') && /avant: \(\) => rappelerLeDimanche/.test(route) && /v1: async \(\) => \(\{ actif: false/.test(route));
+  assert.ok(route.includes('selonLeMoteur') && /avant: \(\) => rappelerLeDimanche\(240_000\)/.test(route) && /v1: \(\) => rappelDuDimancheV9\(240_000\)/.test(route));
 });
 
 test('le code TAPIS se dit « Séance sur tapis » (entrée 197), ses mots de la famille mécanique inchangés', () => {

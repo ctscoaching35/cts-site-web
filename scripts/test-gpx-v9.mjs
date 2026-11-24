@@ -128,7 +128,7 @@ test('la création ou la refonte de l’objectif d’un coaché lit la trace, de
 test('« Ajouter la trace » d’un objectif déjà écrit : sous la 9.x la trace passe aussi par /v1/trace et son profil s’ajoute aux paramètres ; sous la 8.x, rien de plus', () => {
   const e = readFileSync(`${RACINE}lib/app/actionsEcriture.ts`, 'utf8');
   const geste = e.slice(e.indexOf('export async function ajouterTraceObjectif'), e.indexOf('// Retirer une course de préparation à venir'));
-  const bloc = /if \(await moteurEstV9\(\)\) \{\n\s+const profil = await lireLaTraceV9\(gpx\);\n\s+if \(!profil \|\| !\(await garderLeGpxDuPlan\(planId, profil\)\)\) console\.error\([^\n]*\);\n\s+\}\n\s+revalidatePath\('\/app\/plan\/course'\);/;
+  const bloc = /let profilGarde = false;\n\s+if \(await moteurEstV9\(\)\) \{\n\s+const profil = await lireLaTraceV9\(gpx\);\n\s+profilGarde = Boolean\(profil\) && \(await garderLeGpxDuPlan\(planId, profil!\)\);\n\s+if \(!profilGarde\) console\.error\([^\n]*\);\n\s+\}\n\s+revalidatePath\('\/app\/plan\/course'\);/;
   assert.match(geste, bloc, 'derrière la garde du moteur, une fois la fiche refaite et la trace rangée');
   assert.equal((geste.match(/lireLaTraceV9\(/g) ?? []).length, 1);
   // Ce que la 8.x faisait reste, dans le même ordre, avant le bloc : la fiche du moteur, les données du plan, la trace rangée.

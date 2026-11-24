@@ -64,17 +64,21 @@ test('versions : sept questions en normale et en aucune séance vue, huit en fat
 });
 
 test('versions : le mot d’ouverture de chacune, en tête de la description, et la phrase de la fatigue validée par le coach', () => {
-  const base = d.DESCRIPTION_DE_BASE;
+  // Décision 206 : « Pense à synchroniser ta montre avant de répondre. » est la première ligne de toutes les versions.
+  const sync = 'Pense à synchroniser ta montre avant de répondre.';
+  assert.equal(d.PENSE_A_SYNCHRONISER, sync);
+  const base = `${sync}\n\n${d.DESCRIPTION_DE_BASE}`;
   assert.equal(d.questionnaireDuDimanche({ version: 'normale', cles: CLES }).description, base);
   assert.equal(d.questionnaireDuDimanche({ version: 'aucune_seance_vue', cles: CLES }).description,
-    `On n’a vu aucune séance cette semaine. Si tu as couru sans montre, réponds « Non ». Si tu as arrêté de courir, dis-le-nous : depuis combien de temps et pourquoi.\n\n${base}`);
+    `${sync}\n\nOn n’a vu aucune séance cette semaine. Si tu as couru sans montre, réponds « Non ». Si tu as arrêté de courir, dis-le-nous : depuis combien de temps et pourquoi.\n\n${d.DESCRIPTION_DE_BASE}`);
   const fatigue = d.questionnaireDuDimanche({ version: 'fatigue', cles: CLES });
-  assert.equal(fatigue.description.split('\n\n')[0],
+  assert.equal(fatigue.description.split('\n\n')[0], sync);
+  assert.equal(fatigue.description.split('\n\n')[1],
     'Cette semaine, ton ressenti, ton RPE ou ton Hooper sortent de tes habitudes. Ça peut traduire de la fatigue. Pour que tu récupères et repartes bien, on peut alléger ta semaine prochaine.');
   assert.equal(fatigue.items[0].question, 'Veux-tu une semaine plus légère ?');
   assert.deepEqual(fatigue.items[0].choices.choices, ['Oui', 'Non']);
   // La ligne d'effet, quand le coach l'a donnée, suit l'ouverture de la fatigue et d'elle seule.
-  assert.equal(d.questionnaireDuDimanche({ version: 'fatigue', cles: CLES, ligneEffet: 'Ligne d’effet.' }).description.split('\n\n')[1], 'Ligne d’effet.');
+  assert.equal(d.questionnaireDuDimanche({ version: 'fatigue', cles: CLES, ligneEffet: 'Ligne d’effet.' }).description.split('\n\n')[2], 'Ligne d’effet.');
   assert.ok(!d.questionnaireDuDimanche({ version: 'normale', cles: CLES, ligneEffet: 'Ligne d’effet.' }).description.includes('Ligne d’effet.'));
   assert.equal(d.NOM_DU_QUESTIONNAIRE, 'Ton point du dimanche');
   assert.equal(d.HEURE_D_ENVOI, '12:00', 'vers midi, heure de Paris');
@@ -89,7 +93,7 @@ test('questions : l’arrêt, les deux facultatives préfixées, la liste réell
     'Si tu as arrêté toute la semaine : pourquoi ?',
     'Une séance clé pas faite comme écrite ?',
     'Quels jours peux-tu courir la semaine prochaine ?',
-    'Combien de séances veux-tu faire ?',
+    'Combien de séances peux-tu faire par semaine ?',
     'Quel jour pour ta sortie longue ?',
   ]);
   assert.deepEqual(par['As-tu arrêté de courir cette semaine ?'].choices.choices, ['Non', 'Quelques jours', 'Oui, toute la semaine']);
@@ -106,14 +110,14 @@ test('questions : l’arrêt, les deux facultatives préfixées, la liste réell
   assert.ok(!cles.choices.choices.some((c) => /aucune/i.test(c)), '« Aucune » est retiré');
   assert.equal(par['Quels jours peux-tu courir la semaine prochaine ?'].choices.choices.length, 7);
   assert.equal(par['Quel jour pour ta sortie longue ?'].choices.choices.length, 7, 'la sortie longue parmi les sept jours');
-  assert.equal(par['Combien de séances veux-tu faire ?'].unit, 'séances');
+  assert.equal(par['Combien de séances peux-tu faire par semaine ?'].unit, 'séances');
 });
 
 test('le dimanche d’avant la semaine 1 : les jours, le nombre de séances et la sortie longue, rien d’autre', () => {
   for (const version of d.VERSIONS_DIMANCHE) {
     const q = d.questionnaireDuDimanche({ version, cles: CLES, premiere: true });
-    assert.deepEqual(questions(q), ['Quels jours peux-tu courir la semaine prochaine ?', 'Combien de séances veux-tu faire ?', 'Quel jour pour ta sortie longue ?'], version);
-    assert.equal(q.description, d.DESCRIPTION_DE_BASE, 'pas de mot d’ouverture : aucune semaine écoulée');
+    assert.deepEqual(questions(q), ['Quels jours peux-tu courir la semaine prochaine ?', 'Combien de séances peux-tu faire par semaine ?', 'Quel jour pour ta sortie longue ?'], version);
+    assert.equal(q.description, `${d.PENSE_A_SYNCHRONISER}\n\n${d.DESCRIPTION_DE_BASE}`, 'pas de mot d’ouverture : aucune semaine écoulée, mais la montre se synchronise toujours');
   }
 });
 
@@ -143,7 +147,7 @@ test('« Ton point du dimanche » n’a plus le nom du samedi (entrée 198) : le
 const item = (question, value) => ({ question, value });
 const Q = { arret: 'As-tu arrêté de courir cette semaine ?', sem: 'Si tu as arrêté toute la semaine : depuis combien de semaines as-tu arrêté, en tout ?',
   cause: 'Si tu as arrêté toute la semaine : pourquoi ?', cles: 'Une séance clé pas faite comme écrite ?', jours: 'Quels jours peux-tu courir la semaine prochaine ?',
-  nb: 'Combien de séances veux-tu faire ?', sl: 'Quel jour pour ta sortie longue ?', fatigue: 'Veux-tu une semaine plus légère ?' };
+  nb: 'Combien de séances peux-tu faire par semaine ?', nbAvant: 'Combien de séances veux-tu faire ?', sl: 'Quel jour pour ta sortie longue ?', fatigue: 'Veux-tu une semaine plus légère ?' };
 
 test('lecture : un arrêt de la semaine entière, ses semaines et sa cause, les séances clés retrouvées par leur identifiant', () => {
   const { reponses, illisibles } = d.lireReponsesDimanche([
@@ -224,4 +228,14 @@ test('les réponses du dimanche se prennent par l’identifiant posé ; avant la
   assert.equal(d.repondAuDimanche({ name: '  ton point du DIMANCHE ' }, 0, null), true);
   assert.equal(d.repondAuDimanche(samediRestant, 0, null), false, 'une série « Ta semaine prochaine » du samedi n’est pas lue comme le point du dimanche');
   assert.equal(d.repondAuDimanche({ name: 'Ton point du dimanche' }, 2, null), false, 'passé la semaine 0, seul l’identifiant posé compte');
+});
+
+test('le nombre de séances (décision 207) : la nouvelle question est lue, l’ancienne aussi (un point déjà posé), la nouvelle l’emportant', () => {
+  assert.equal(d.QUESTION_SEANCES, 'Combien de séances peux-tu faire par semaine ?');
+  const lire = (...items) => d.lireReponsesDimanche(items, { version: 'normale' }).reponses.nb_seances;
+  assert.equal(lire(item(Q.nb, 4)), 4);
+  assert.equal(lire(item(Q.nbAvant, 3)), 3, 'un point posé avec « veux-tu faire » est encore lu');
+  assert.equal(lire(item(Q.nbAvant, 3), item(Q.nb, 5)), 5);
+  assert.equal(lire(item(Q.jours, [0])), undefined, 'sans réponse, rien');
+  assert.equal(d.lireReponsesDimanche([item(Q.nb, 'beaucoup')], { version: 'normale' }).illisibles.join(), 'nb_seances');
 });

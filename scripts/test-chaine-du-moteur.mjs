@@ -22,7 +22,8 @@ const FAUX = {
     passageQuotidienLeger: [], passageQuotidienLong: [], retirerLaTrameAuDela: [], prevenirCoach: null })}
 export const nomsDesPlans = async () => new Map(); export const REMIS = 'remis';`,
   '/lib/app/passagesV9.ts': fonctions('passagesV9', { passageDuDimancheV9: [{ plan: 'b', quoi: 'v1' }], passageDuLundiV9: [{ plan: 'b', quoi: 'v1' }],
-    questionnaireDuMatinV9: [{ plan: 'b', quoi: 'v1' }] }),
+    questionnaireDuMatinV9: [{ plan: 'b', quoi: 'v1' }], rappelDuDimancheV9: { actif: true, texteValide: true, comptes: [{ plan: 'b', quoi: 'rappel v1' }] } }),
+  '/lib/app/rappelDuDimanche.ts': fonctions('rappelDuDimanche', { rappelerLeDimanche: { actif: true, texteValide: true, comptes: [{ plan: 'a', quoi: 'rappel avant' }] } }),
   '/lib/app/fond.ts': fonctions('fond', { saisonsDuJour: [{ plan: 's', quoi: 'saison' }] }),
   // Les dimanches notent aussi leurs options (le Hooper seul sous la 9.x) : globalThis.__options, le deuxième argument.
   '/lib/app/dimanchesCoaches.ts': `export const programmerLesDimanches = async (...a) => { globalThis.__appels.push(['dimanchesCoaches.programmerLesDimanches', a[0]]); globalThis.__options = a[1] ?? null; return [{ plan: 'd', quoi: 'dimanches' }]; };`,
@@ -98,6 +99,20 @@ test('le passage quotidien : sous la 8.x, les saisons de fond et les dimanches d
   assert.deepEqual(v1.appels.filter((n) => n.startsWith('passagesV9')), [], 'le passage quotidien n’écrit rien par la chaîne du moteur v1');
 });
 
+test('le rappel du dimanche : sous la 8.x, celui d’avant (240 s) ; sous la 9.x, celui du point du dimanche (décision 206), jamais l’un pour l’autre', async () => {
+  const avant = await appeler('ecriture/rappel', { v9: false });
+  assert.deepEqual(avant.brut, [['rappelDuDimanche.rappelerLeDimanche', 240_000]]);
+  assert.deepEqual(avant.corps.rappels, [{ plan: 'a', quoi: 'rappel avant', erreur: null }]);
+  const v1 = await appeler('ecriture/rappel', { v9: true });
+  assert.deepEqual(v1.brut, [['passagesV9.rappelDuDimancheV9', 240_000]]);
+  assert.deepEqual(v1.corps.rappels, [{ plan: 'b', quoi: 'rappel v1', erreur: null }]);
+  for (const v9 of [false, true]) {
+    const sans = await appeler('ecriture/rappel', { v9, secret: 'autre' });
+    assert.equal(sans.reponse.status, 401);
+    assert.deepEqual(sans.appels, []);
+  }
+});
+
 test('sans le secret des tâches planifiées : refusé, rien n’est appelé, sous les deux moteurs', async () => {
   for (const chemin of ['ecriture/dimanche', 'ecriture/lundi', 'ecriture/questionnaire']) {
     for (const v9 of [false, true]) {
@@ -128,7 +143,7 @@ test('rien ne peut appeler les passages du moteur v1 sans l’aiguillage : chaqu
   const lecteurs = execFileSync('grep', ['-rlE', `from ['"][^'"]*passagesV9['"]|import\\([^)]*passagesV9`, 'app', 'components', 'lib'], { cwd: RACINE, encoding: 'utf8' })
     .split('\n').filter(Boolean).sort();
   // Les routes passent par selonLeMoteur ; ecriture.ts (« Réessayer ») et departV9.ts (le départ d'un objectif) ne s'importent qu'APRÈS un `if (await moteurEstV9())`.
-  assert.deepEqual(lecteurs, ['app/api/ecriture/dimanche/route.ts', 'app/api/ecriture/lundi/route.ts', 'app/api/ecriture/questionnaire/route.ts', 'lib/app/departV9.ts', 'lib/app/ecriture.ts']);
+  assert.deepEqual(lecteurs, ['app/api/ecriture/dimanche/route.ts', 'app/api/ecriture/lundi/route.ts', 'app/api/ecriture/questionnaire/route.ts', 'app/api/ecriture/rappel/route.ts', 'lib/app/departV9.ts', 'lib/app/ecriture.ts']);
   const e = readFileSync(`${RACINE}lib/app/ecriture.ts`, 'utf8');
   assert.match(e, /if \(await moteurEstV9\(\)\) \{\n(?:[^\n]*\n)*?\s+const \{ ecrireLaSemaineDemandee \} = await import\('\.\/passagesV9'\);/, '« Réessayer » : derrière la garde');
   for (const f of lecteurs.filter((x) => x.startsWith('app/'))) {
