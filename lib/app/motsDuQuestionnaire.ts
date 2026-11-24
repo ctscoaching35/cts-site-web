@@ -38,8 +38,8 @@ const TEXTES: Record<Cle, { avant: string; v9: string; v9Coache?: string }> = {
   // components/app/PourBienDemarrer.tsx : la phrase au bas de « Pour bien démarrer ».
   pourBienDemarrer: {
     avant: 'Chaque samedi à 8 h, le questionnaire « Ta semaine prochaine » t’attend dans Nolio : réponds d’ici dimanche 18 h, ta semaine suivante s’écrit dimanche soir d’après tes réponses.',
-    v9: 'Chaque dimanche vers midi, « Ton point du dimanche » t’attend dans Nolio : réponds d’ici dimanche 18 h, ta semaine suivante est préparée dimanche soir d’après tes réponses.',
-    v9Coache: 'Chaque dimanche vers midi, « Ton point du dimanche » t’attend dans Nolio : réponds d’ici dimanche 18 h, je prépare ta semaine suivante dimanche soir d’après tes réponses.',
+    v9: 'Chaque dimanche vers midi, « Ton point du dimanche » t’attend dans Nolio : réponds d’ici dimanche 21 h, ta semaine suivante est préparée dimanche soir d’après tes réponses.',
+    v9Coache: 'Chaque dimanche vers midi, « Ton point du dimanche » t’attend dans Nolio : réponds d’ici dimanche 21 h, je prépare ta semaine suivante dimanche soir d’après tes réponses.',
   },
   // components/app/PourBienDemarrer.tsx : pour un acheteur dont la préparation s'adapte.
   sAdapte: {

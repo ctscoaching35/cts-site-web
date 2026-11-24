@@ -277,11 +277,12 @@ export async function envoyerRelanceInvitation(email: string, nom: string, lienA
 // LE RAPPEL DE LA CONFIRMATION DE CHARGE (décision coach du 04/11/2026 au soir, « A » ; lib/app/confirmation.ts) : le
 // samedi qui précède le départ, à l'acheteur qui n'a pas répondu à la carte de son app. Sans réponse, rien ne bloque.
 // Validé par le coach le 05/11/2026 au soir.
-export function contenuRappelConfirmation(nom: string, lienApp: string, charge: Charge) {
+// heureLimite : 18 h sous la 8.x, 21 h sous le moteur v1 (décision 211 du coach : la semaine s'écrit vers 21 h).
+export function contenuRappelConfirmation(nom: string, lienApp: string, charge: Charge, heureLimite = '18 h') {
   const prenom = nom.trim().split(/\s+/)[0] ?? '';
   const paragraphes = [
     `Ta préparation commence lundi. À ton achat, tu nous disais ${chargeEnClair(charge)}. C’est toujours vrai ?`,
-    'Réponds dans ton app CTS d’ici dimanche 18 h : « Oui », ou corrige en quelques secondes. Ta première semaine '
+    `Réponds dans ton app CTS d’ici dimanche ${heureLimite} : « Oui », ou corrige en quelques secondes. Ta première semaine `
       + 's’écrit dimanche soir sur ta réponse ; sans réponse, elle part de tes réponses de l’achat.',
   ];
   const signature = 'Juliette et Romain — CTS Coaching';
@@ -300,13 +301,13 @@ ${piedHtml()}
   return { sujet: 'Avant ta première semaine : ce que tu cours a-t-il changé ?', texte, html };
 }
 
-export async function envoyerRappelConfirmation(email: string, nom: string, lienApp: string, charge: Charge) {
+export async function envoyerRappelConfirmation(email: string, nom: string, lienApp: string, charge: Charge, heureLimite = '18 h') {
   const cle = process.env.BREVO_API_KEY?.trim();
   if (!cle) {
     console.warn('Rappel de la confirmation non envoyé : BREVO_API_KEY absente.');
     return;
   }
-  const { sujet, texte, html } = contenuRappelConfirmation(nom, lienApp, charge);
+  const { sujet, texte, html } = contenuRappelConfirmation(nom, lienApp, charge, heureLimite);
   const reponse = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: { 'api-key': cle, 'Content-Type': 'application/json', Accept: 'application/json' },

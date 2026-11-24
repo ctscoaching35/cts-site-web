@@ -204,7 +204,7 @@ export default async function AccueilAthlete({ ctx, demarrage, montre = false, d
 
         {confirmation && (
           <ConfirmationCharge planId={confirmation.planId} achat={confirmation.achat} reponse={confirmation.reponse}
-            dimanche={dateLongue(confirmation.dimanche)} demonstration={ctx.demonstration} />
+            dimanche={dateLongue(confirmation.dimanche)} demonstration={ctx.demonstration} heureLimite={v9 ? '21 h' : '18 h'} />
         )}
         {/* Sa liste dit où en est l'invitation Nolio ; masquée, la carte Nolio le redit. */}
         {etape !== 'apres' && demarrage && d.nolio !== 'sorti' && d.nolio !== 'coaching' && (

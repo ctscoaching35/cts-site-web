@@ -12,9 +12,10 @@ import { BOUTON, BOUTON_SECONDAIRE, Carte, Surtitre } from './Ui';
 // note ni arrêt récent), relues par le moteur ; une plus longue sortie sous 45 min part du plancher (S10). Sans réponse,
 // rien ne bloque. dimanche : le soir où sa première semaine s'écrit, déjà en lettres.
 // demonstration : rien n'est enregistré.
-export default function ConfirmationCharge({ planId, achat, reponse, dimanche, demonstration = false }: {
+// heureLimite : l'heure à laquelle sa première semaine s'écrit le soir même : 18 h sous la 8.x, 21 h sous le moteur v1 (décision 211 du coach, 24/11/2026).
+export default function ConfirmationCharge({ planId, achat, reponse, dimanche, demonstration = false, heureLimite = '18 h' }: {
   planId: string; achat: Charge; reponse: { reponse: 'oui' | 'corrige'; charge: Charge } | null; dimanche: string;
-  demonstration?: boolean;
+  demonstration?: boolean; heureLimite?: string;
 }) {
   const [etat, action, enCours] = useActionState<EtatGeste, FormData>(confirmerMaCharge.bind(null, planId), null);
   const [corriger, setCorriger] = useState(false);
@@ -73,7 +74,7 @@ export default function ConfirmationCharge({ planId, achat, reponse, dimanche, d
           )}
           {/* C23 (audits du 05/11/2026) : l'heure limite, comme l'e-mail de rappel. Validé par le coach le 05/11/2026 (1A). */}
           <p className="text-xs text-[#5E5C78] leading-relaxed">
-            Réponds d’ici {dimanche}, 18 h : ta première semaine s’écrit le soir même sur ta réponse ; sans réponse, sur
+            Réponds d’ici {dimanche}, {heureLimite} : ta première semaine s’écrit le soir même sur ta réponse ; sans réponse, sur
             celles de ton achat.
           </p>
         </>

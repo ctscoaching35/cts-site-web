@@ -26,6 +26,7 @@ import { carteOuverte, chargeAuPlancher, chargeChangee, chargeDe, chargeEnClair,
 import { ajouterJours, dateLongue } from './plan';
 import { clientService } from './supabase';
 import { enTetesMoteur } from './cleMoteur';
+import { moteurEstV9 } from './moteurEnLigne';
 
 // demandee et plancher (S10) : la correction donnée, et la première semaine partie du plancher à sa place.
 export type Confirmation = { le: string; reponse: 'oui' | 'corrige'; charge: Charge; demandee?: Charge; plancher?: boolean };
@@ -175,7 +176,8 @@ export async function rappelerLesConfirmations(aujourdhui = aujourdhuiParis()): 
       const { data: u } = await service.auth.admin.getUserById(String(p.compte_id));
       if (!u?.user?.email) continue;
       const charge = chargeDe(((p.parametres ?? {}) as Record<string, unknown>).champs as Record<string, unknown>);
-      await envoyerRappelConfirmation(u.user.email, String(p.nom ?? ''), `${site.url}/app`, charge);
+      // Sous le moteur v1, la première semaine s'écrit vers 21 h (décision 211 du coach, 24/11/2026) ; sous la 8.x, 18 h comme avant.
+      await envoyerRappelConfirmation(u.user.email, String(p.nom ?? ''), `${site.url}/app`, charge, (await moteurEstV9()) ? '21 h' : '18 h');
       comptes.push({ plan: String(p.id), quoi: 'confirmation de charge rappelée' });
     } catch (e) {
       comptes.push({ plan: String(p.id), quoi: 'confirmation non rappelée', erreur: e instanceof Error ? e.message : String(e) });

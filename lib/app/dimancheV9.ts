@@ -39,8 +39,8 @@ export const repondAuDimanche = (r: { name?: string | null; quiz_planned?: strin
 // l'envoie, visible à midi ; la semaine s'écrit le dimanche soir vers 21 h (décision 211, lib/app/heuresDePassage.ts).
 export const HEURE_D_ENVOI = '12:00';
 // Sa deuxième ligne, en deux voix (« Deux voix », 24/11/2026) : celle de l'acheteur, neutre (`DESCRIPTION_DE_BASE`), et celle du coaché, la voix du coach (« je »).
-export const DESCRIPTION_DE_BASE = 'Une minute, d’ici dimanche 18 h : tes séances de la semaine prochaine sont préparées dimanche soir à partir de tes réponses.';
-export const DESCRIPTION_DE_BASE_COACHE = 'Une minute, d’ici dimanche 18 h : je prépare tes séances de la semaine prochaine dimanche soir à partir de tes réponses.';
+export const DESCRIPTION_DE_BASE = 'Une minute, d’ici dimanche 21 h : tes séances de la semaine prochaine sont préparées dimanche soir à partir de tes réponses.';
+export const DESCRIPTION_DE_BASE_COACHE = 'Une minute, d’ici dimanche 21 h : je prépare tes séances de la semaine prochaine dimanche soir à partir de tes réponses.';
 export const descriptionDeBase = (coache: boolean): string => (coache ? DESCRIPTION_DE_BASE_COACHE : DESCRIPTION_DE_BASE);
 // La première ligne de la description, quelle que soit la version (décision 211 du coach, 24/11/2026 : les athlètes répondent après leur dernière sortie, souvent le dimanche soir) ;
 // elle remplace « Pense à synchroniser ta montre avant de répondre. » (décision 206). Deux voix : le coaché lit celle du coach (« je »), l'acheteur une voix neutre.
