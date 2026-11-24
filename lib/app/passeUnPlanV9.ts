@@ -31,7 +31,8 @@ export type ContextePlan = {
   lireLesReponses: (numero: number, pose: QuestionnairePoseV9 | null) => Promise<{ reponses: ReponsesDimanche; illisibles: string[] } | null>;
   // Le questionnaire posé à la fin de la semaine `numero` (gardé avec elle), ou null.
   questionnaireDe: (numero: number) => Promise<QuestionnairePoseV9 | null>;
-  envoyer: (ecrite: SemaineEcriteV9) => Promise<void>;
+  // depuis : le premier jour envoyé dans Nolio (un départ en milieu de semaine : les jours d'avant ne partent pas).
+  envoyer: (ecrite: SemaineEcriteV9, options?: { depuis?: string }) => Promise<void>;
   garderEcriture: (ecrite: SemaineEcriteV9, apres: EtatDuPlan) => Promise<void>;
   garderEtat: (etat: EtatDuPlan['courant']) => Promise<void>;
   garderReponsesLues: (numero: number, reponses: ReponsesDimanche) => Promise<void>;
@@ -59,17 +60,25 @@ async function reponsesDeLaVeille(c: ContextePlan): Promise<ReponsesDimanche | n
 
 // ─── Le dimanche soir : la semaine du lundi qui vient ───────────────────────────────────────────────
 
-export async function ecrireLaSemaineDuLundi(c: ContextePlan, lundi: string): Promise<Resultat> {
+// Le sort d'une semaine demandée : écrite maintenant, déjà écrite (les reprises du soir et du lundi la sautent), ou hors de la trame (avant l'entrée du plan, après sa fin).
+export type SortDeLaSemaine = { statut: 'ecrite'; numero: number } | { statut: 'deja'; numero: number } | { statut: 'hors_trame' };
+
+export async function ecrireOuReprendre(c: ContextePlan, lundi: string, options: { depuis?: string } = {}): Promise<SortDeLaSemaine> {
   const trame = await lireLaTrame(c.ports, c.parametres);
   const numero = numeroDeLaSemaine(trame, lundi);
-  if (numero === null) return null; // pas avant l'entrée du plan, ni après sa fin : rien à écrire
-  if (c.etat.ecrites.some((w) => w.numero === numero)) return null; // déjà écrite : les reprises du soir et du lundi la sautent
+  if (numero === null) return { statut: 'hors_trame' };
+  if (c.etat.ecrites.some((w) => w.numero === numero)) return { statut: 'deja', numero };
   const reponses = await reponsesDeLaVeille(c);
   const nolio = c.etat.ecrites.length ? await c.lireNolio(lundi, false) : null;
   const ecrite = await ecrireLaSemaine(c.ports, { parametres: c.parametres, lundi, etat: c.etat, nolio, reponses, trame });
-  await c.envoyer(ecrite);
+  await c.envoyer(ecrite, options);
   await c.garderEcriture(ecrite, etatApresEcriture(c.etat, ecrite));
-  return { quoi: `S${numero} écrite` };
+  return { statut: 'ecrite', numero };
+}
+
+export async function ecrireLaSemaineDuLundi(c: ContextePlan, lundi: string, options: { depuis?: string } = {}): Promise<Resultat> {
+  const sort = await ecrireOuReprendre(c, lundi, options);
+  return sort.statut === 'ecrite' ? { quoi: `S${sort.numero} écrite` } : null;
 }
 
 // ─── Le lundi ───────────────────────────────────────────────────────────────────────────────────────
@@ -141,6 +150,28 @@ export function parametresDuPlanV9({ parametres, profil, coache, accordLecture, 
   return parametresV9({ ...champs, ...tests }, {
     criteres: { intensite: categorie(fiche?.critere_intensite), mecanique: categorie(fiche?.critere_denivele) },
     cote_min: unTexte(fiche?.cote_min), tapis: fiche?.tapis === 'oui' ? 'oui' : fiche?.tapis === 'non' ? 'non' : undefined,
-    coaching: coache, entree: coache ? premierLundi : null, glucides, accord_lecture: accordLecture,
+    // L'entrée gardée au départ (entreesDuDepart) l'emporte sur le premier lundi du plan d'achat : un plan lancé plus tard n'entre pas à sa première semaine.
+    coaching: coache, entree: coache ? (typeof champs.entree === 'string' ? champs.entree : premierLundi) : null, glucides, accord_lecture: accordLecture,
   });
+}
+
+// ─── Le départ d'un objectif ────────────────────────────────────────────────────────────────────────
+
+/**
+ * Ce qu'un départ garde avec les réponses du plan pour le moteur v1 (parametres.champs, lu comme le reste de l'intake) : `entree`, le lundi de la première semaine écrite ;
+ * `course_precedente`, l'objectif majeur qu'il vient de courir (sa date, sa durée en heures : le moteur en tire la récupération puis la reprise) ; `lu`, ce que Nolio montre de
+ * ses 4 dernières semaines (volume et plus longue sortie, en minutes), qui remplace le déclaré. Une valeur qui ne se lit pas n'est pas gardée.
+ * heures : le lecteur des durées de l'app (« 5h30 » -> 5,5).
+ */
+export function entreesDuDepart({ premiere, apres, charge, heures }: {
+  premiere: string; apres: { course_date: string; temps_h: number } | null; charge: { volume?: string; sl?: string } | null; heures: (t: unknown) => number;
+}): { entree: string; course_precedente?: { date: string; duree_h: number }; lu?: { volume_min?: number; sl_min?: number } } {
+  const minutes = (t?: string) => { const m = Math.round(heures(t) * 60); return m > 0 ? m : undefined; };
+  const volume = minutes(charge?.volume);
+  const sl = minutes(charge?.sl);
+  return {
+    entree: premiere,
+    ...(apres && apres.temps_h > 0 ? { course_precedente: { date: apres.course_date, duree_h: apres.temps_h } } : {}),
+    ...(volume || sl ? { lu: { ...(volume ? { volume_min: volume } : {}), ...(sl ? { sl_min: sl } : {}) } } : {}),
+  };
 }

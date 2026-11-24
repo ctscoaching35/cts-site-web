@@ -18,7 +18,7 @@ import { noteEnTexte } from './moteurV9';
 import { lundisALire, nolioDepuisNolio, type HooperLu, type PlanifieeLue, type ReelleLue } from './nolioV9';
 import { parametresDuObjectifV9 } from './parametresPlanV9';
 import {
-  ecrireLaSemaineDuLundi, passeDuLundiSurUnPlan, poserLeQuestionnaireDuDimanche, type ContextePlan, type Resultat,
+  ecrireLaSemaineDuLundi, ecrireOuReprendre, passeDuLundiSurUnPlan, poserLeQuestionnaireDuDimanche, type ContextePlan, type Resultat, type SortDeLaSemaine,
 } from './passeUnPlanV9';
 import type { Semaine } from './plan';
 
@@ -29,6 +29,8 @@ const jourDeLaSemaine = (iso: string) => new Date(`${iso}T12:00:00Z`).getUTCDay(
 async function contextePlan(planId: string): Promise<{ c: ContextePlan; o: Objectif } | null> {
   const o = await objectifEcrit(planId);
   if (!o?.nolioAthlete) return null;
+  // La saison de fond d'un coaché (décisions du coach du 24/10/2026) n'est pas portée sous le moteur v1 : le contrat n'a ni sa route ni sa trame.
+  if ((o.parametres as { fond?: unknown }).fond) return null;
   const service = clientService();
   const [etat, derniere] = await Promise.all([lireEtatDuPlan(service, planId), lireLaDerniereSemaine(service, planId)]);
   const premierLundi = o.plan.semaines.find((s) => s.lundi)?.lundi ?? null;
@@ -89,9 +91,11 @@ async function contextePlan(planId: string): Promise<{ c: ContextePlan; o: Objec
 
     // Nolio : la première fois, ses séances et son bandeau ; une semaine déjà partie (une réécriture, une reprise en route) se met à jour sur place, ses retouches
     // gardées (envoyerSemaineCible et mettreAJourSemaineCible, comme avant : seancesDuMoteur lit /v1/nolio/seances du moteur v1). Puis sa note.
-    envoyer: async (ecrite) => {
+    envoyer: async (ecrite, options) => {
       const numero = `S${ecrite.numero}`;
-      const semaine = ecrite.semaine as unknown as Semaine;
+      // Un départ en milieu de semaine : les jours d'avant ne partent pas dans Nolio (la semaine gardée reste entière).
+      const depuis = options?.depuis;
+      const semaine = (depuis ? { ...ecrite.semaine, jours: (ecrite.semaine.jours ?? []).filter((j) => !(j as { date?: string }).date || (j as { date: string }).date >= depuis) } : ecrite.semaine) as unknown as Semaine;
       if (o.envois.some((e) => e.semaine === numero)) await mettreAJourSemaineCible(o, numero, semaine);
       else await envoyerSemaineCible(o, numero, semaine);
       const texte = noteEnTexte(ecrite.note);
@@ -161,3 +165,14 @@ export const passageDuLundiV9 = (budgetMs = 240_000, jour = aujourdhuiParis()): 
 // Le dimanche matin : le questionnaire de la semaine écrite, posé dans Nolio pour 12 h. Ni un autre jour.
 export const questionnaireDuMatinV9 = (budgetMs = 120_000, jour = aujourdhuiParis()): Promise<Compte[]> =>
   jourDeLaSemaine(jour) === 0 ? passer(budgetMs, 'questionnaire non posé', (c) => poserLeQuestionnaireDuDimanche(c, jour)) : Promise.resolve([]);
+
+// La première semaine d'un objectif qui démarre, ou une semaine rattrapée à la main (« Réessayer ») : celle qui commence ce lundi, écrite et envoyée comme le dimanche, à
+// partir de `depuis` (les jours d'avant ne partent pas). Une semaine déjà écrite n'est pas refaite (la reprise d'un départ coupé la retrouve) ; hors de la trame du moteur, c'est
+// une erreur dite, jamais un silence. Rend le numéro de la semaine.
+export async function ecrireLaSemaineDemandee(planId: string, lundi: string, options: { depuis?: string } = {}): Promise<{ numero: string; sort: SortDeLaSemaine }> {
+  const cx = await contextePlan(planId);
+  if (!cx) throw new Error('Ce plan ne s’écrit pas semaine par semaine (pas de Nolio relié, ou saison de fond, pas portée sous le moteur v1).');
+  const sort = await ecrireOuReprendre(cx.c, lundi, options);
+  if (sort.statut === 'hors_trame') throw new Error(`Le moteur ne place aucune semaine de ce plan au lundi ${lundi} : son plan d’achat et la trame du moteur v1 ne tombent pas sur les mêmes semaines.`);
+  return { numero: `S${sort.numero}`, sort };
+}

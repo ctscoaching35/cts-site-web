@@ -637,6 +637,14 @@ export async function rattraperLaSemaine(planId: string, { depuis }: { depuis?: 
   if ((await plansALaMain()).has(planId)) throw new Error('Tu programmes cet athlète à la main : rien ne s’écrit dans son Nolio.');
   const aujourdhui = aujourdhuiParis();
   const lundi = ajouterJours(aujourdhui, -((new Date(`${aujourdhui}T12:00:00Z`).getUTCDay() + 6) % 7));
+  // SOUS LE MOTEUR v1 (9.x) : la semaine qui commence ce lundi, d'après la trame du moteur (lib/app/passagesV9.ts) ; des séances que le coach a posées restent les siennes.
+  if (await moteurEstV9()) {
+    if (o.envois.some((e) => e.semaine === cleLaissee(lundi)) || await seancesDejaPosees(o, lundi, ajouterJours(lundi, 6))) {
+      throw new Error('Des séances que tu as posées sont déjà dans son Nolio cette semaine : elles restent les tiennes, rien ne s’écrit par-dessus.');
+    }
+    const { ecrireLaSemaineDemandee } = await import('./passagesV9');
+    return (await ecrireLaSemaineDemandee(planId, lundi, { depuis: depuis && depuis > aujourdhui ? depuis : aujourdhui })).numero;
+  }
   const s = semaineDu(o.plan, lundi);
   if (!s) throw new Error('Pas de semaine de préparation cette semaine.');
   const reservation = await etatDeLaReservation(o, s.numero);
@@ -1150,6 +1158,14 @@ export async function demarrerObjectif(planId: string, { prevenir = true, lundi,
       for (const saison of lien ? await arreterLaSaison(String(lien.athlete_id), premiere.lundi) : []) {
         await retirerDeNolio(saison, { depuis: premier });
       }
+    }
+    // SOUS LE MOTEUR v1 (9.x) : le départ garde son entrée, la course d'avant et ce que Nolio montre, pose les courses et écrit la première semaine par la chaîne du moteur v1
+    // (lib/app/departV9.ts) ; les réglages de la 8.x ci-dessous (charge recalée, départ individualisé, rythme, durée au départ, questionnaire du samedi) n'existent plus.
+    if (await moteurEstV9()) {
+      const { demarrerSousLeMoteurV1 } = await import('./departV9');
+      const ecrite = await demarrerSousLeMoteurV1(o, { premiere: premiere.lundi, depart, apres: apres?.q ?? null });
+      if (!o.coache) await rangerAcheteur(o);
+      return ecrite;
     }
     // D9 (audits du 05/11/2026, lot 1) : les recalages du départ se refont tant qu'aucune semaine n'est partie. Avant, un
     // départ qui échouait après avoir posé ses questionnaires ou sa course (des envois notés) ne recalait plus rien au
@@ -1748,6 +1764,8 @@ export async function passageDuDimanche(budgetMs = 240_000): Promise<Compte[]> {
 export type Apercu = { lundi: string; numero: string | null; quoi: string; sortie?: SortieMoteur; retours?: Retours | null;
   suite?: Continuite['suivant']; premiere?: boolean; revue?: Revue };
 export async function apercuDuDimanche(planId: string): Promise<Apercu> {
+  // L'aperçu du dimanche n'est pas porté sous le moteur v1 : il rendrait la sortie de la 8.x, que ses écrans lisent.
+  if (await moteurEstV9()) throw new Error('L’aperçu du dimanche n’est pas encore porté sous le moteur v1.');
   const aujourdhui = aujourdhuiParis();
   // Le lundi qui vient (le dimanche, celui du lendemain).
   const lundi = ajouterJours(aujourdhui, 7 - ((new Date(`${aujourdhui}T12:00:00Z`).getUTCDay() + 6) % 7));
@@ -1927,6 +1945,8 @@ export async function derniereSemaineEcrite(planId: string): Promise<string | nu
 }
 
 export async function annulerAjustements(planId: string, numero: string): Promise<void> {
+  // Le contrat du moteur v1 n'a pas d'écriture « sans les règles du dimanche » : sans réponse ni Nolio, la semaine prévue, mais pas ce que « Annuler » garde (la réponse du samedi).
+  if (await moteurEstV9()) throw new Error('« Annuler » n’existe pas encore sous le moteur v1 : son contrat ne sait pas écrire une semaine sans les règles du dimanche.');
   const o = await objectifEcrit(planId);
   if (!o) throw new Error('Plan introuvable');
   const { data: ecrite } = await clientService().from('semaines_ecrites').select('etat_avant, donnees').eq('plan_id', planId).eq('numero', numero).maybeSingle();
