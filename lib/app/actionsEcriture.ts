@@ -24,6 +24,9 @@ export type EtatGeste = { ok: boolean; message: string } | null;
 // Sous le moteur v1, avant l'objectif mineur (C5) : la course de préparation ne s'ajoute pas (BROUILLON, à faire valider par le coach).
 const MESSAGE_COURSE_DE_PREPARATION_FERMEE = 'Les courses de préparation reviennent avec l’objectif mineur : cette version du moteur ne les ajoute pas encore.';
 
+// Après « Ajouter la trace », sous le moteur v1 (décision 208 du coach, 24/11/2026) : ses mots.
+const MESSAGE_TRACE_AJOUTEE_V9 = 'Trace ajoutée : tes prochaines semaines tiendront compte de ses montées.';
+
 // Le compte connecté et, s'il est coach, son compte coach.
 async function qui(): Promise<{ compteId: string | null; coachId: string | null }> {
   const { data } = await (await clientServeur()).auth.getClaims();
@@ -276,12 +279,16 @@ export async function ajouterTraceObjectif(planId: string, _e: EtatGeste, form: 
   // SOUS LE MOTEUR v1 (9.x ; décision du coach, règles 2 et 9 : le profil de la course choisit la forme en côte au spécifique) : la trace passe aussi par POST /v1/trace et son
   // profil s'ajoute aux paramètres du plan (`champs.gpx`) ; rien d'autre n'y change, la semaine suivante le lit. C'est aussi ainsi que le coach redonne la trace d'un plan venu de
   // la 8.x. Un profil que le moteur ne rend pas n'empêche rien : la fiche est faite, le moteur se replie sur la classe de la course. Sous la 8.x, rien de plus.
+  let profilGarde = false;
   if (await moteurEstV9()) {
     const profil = await lireLaTraceV9(gpx);
-    if (!profil || !(await garderLeGpxDuPlan(planId, profil))) console.error(`Trace de ${planId} : le profil du moteur v1 n’a pas été gardé avec le plan.`);
+    profilGarde = Boolean(profil) && (await garderLeGpxDuPlan(planId, profil!));
+    if (!profilGarde) console.error(`Trace de ${planId} : le profil du moteur v1 n’a pas été gardé avec le plan.`);
   }
   revalidatePath('/app/plan/course');
   revalidatePath('/app/plan');
+  // Décision 208 du coach (24/11/2026), sous la 9.x : la trace ajoutée compte pour les semaines qui viennent. Profil non gardé, ou 8.x : le message d'avant, vrai (rien ne change).
+  if (profilGarde) return { ok: true, message: MESSAGE_TRACE_AJOUTEE_V9 };
   return { ok: true, message: 'C’est fait : le profil et les tronçons de ta course sont dans ta fiche. Ta préparation, elle, ne change pas.' };
 }
 

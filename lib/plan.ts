@@ -143,6 +143,9 @@ export const textes = {
   },
   // La section « Ta semaine » (« Ta disponibilité » jusqu'au 07/11/2026, P2).
   disponibilite: {
+    // Le nombre de séances (décision 207 du coach, 24/11/2026), à l'achat comme sur la fiche du coaché : le moteur la lit comme un maximum. Elle remplace « Séances par semaine »
+    // (et, dans le point du dimanche, « Combien de séances veux-tu faire ? », lib/app/dimancheV9.ts).
+    seances: 'Combien de séances peux-tu faire par semaine ?',
     aide:
       // Le point de départ (décision coach du 20/10/2026) : le questionnaire de la semaine dans Nolio les change ensuite. « Chaque semaine » : vrai sous la 8.x (le samedi) comme sous
       // le moteur 9.0 (« Ton point du dimanche ») ; ce texte est fixe, il ne dit ni le jour ni le nom.
