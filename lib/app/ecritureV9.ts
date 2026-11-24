@@ -35,8 +35,9 @@ export async function lireLaTrame(ports: Ports, parametres: Record<string, unkno
   return trame;
 }
 
-async function numeroDe(ports: Ports, parametres: Record<string, unknown>, lundi: string): Promise<number> {
-  const numero = numeroDeLaSemaine(await lireLaTrame(ports, parametres), lundi);
+// trame : celle qu'on vient de lire (un passage la lit une fois par plan, pas une fois par appel).
+async function numeroDe(ports: Ports, parametres: Record<string, unknown>, lundi: string, trame?: TrameV9): Promise<number> {
+  const numero = numeroDeLaSemaine(trame ?? await lireLaTrame(ports, parametres), lundi);
   if (numero === null) throw new Error(`Le lundi ${lundi} ne commence aucune semaine de la trame du moteur.`);
   return numero;
 }
@@ -46,16 +47,26 @@ async function numeroDe(ports: Ports, parametres: Record<string, unknown>, lundi
 export type SemaineEcriteV9 = {
   numero: number; lundi: string; semaine: SortieV9['semaine']; note: string[]; pourquoi: unknown[]; branche: number | null;
   etatUtilise: Etat | null; etatRendu: Etat; reecrite: boolean;
+  // Les réponses du dimanche qui ont servi à l'écrire (null : aucune lue) : le lundi, une réponse différente est une réponse nouvelle.
+  reponses: ReponsesDimanche | null;
 };
+
+// Une empreinte stable des réponses lues (les clés triées) : deux lectures de la même réponse se ressemblent, une réponse changée non.
+export function signatureDesReponses(r: ReponsesDimanche | null | undefined): string {
+  if (!r) return '';
+  const trier = (v: unknown): unknown => (Array.isArray(v) ? v.map(trier) : v && typeof v === 'object'
+    ? Object.fromEntries(Object.entries(v as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b)).map(([k, x]) => [k, trier(x)])) : v);
+  return JSON.stringify(trier(r));
+}
 
 /**
  * Écrit (ou réécrit) la semaine qui commence ce lundi. nolio : ce que Nolio montre, ou null s'il n'a pas pu se lire (alors la clé ne part pas) ;
  * reponses : le questionnaire du dimanche lu, ou null. Rend ce que le moteur a rendu, avec l'état qui a servi, à garder avec la semaine.
  */
-export async function ecrireLaSemaine(ports: Ports, { parametres, lundi, etat, nolio = null, reponses = null }: {
-  parametres: Record<string, unknown>; lundi: string; etat: EtatDuPlan; nolio?: NolioVu | null; reponses?: ReponsesDimanche | null;
+export async function ecrireLaSemaine(ports: Ports, { parametres, lundi, etat, nolio = null, reponses = null, trame }: {
+  parametres: Record<string, unknown>; lundi: string; etat: EtatDuPlan; nolio?: NolioVu | null; reponses?: ReponsesDimanche | null; trame?: TrameV9;
 }): Promise<SemaineEcriteV9> {
-  const numero = await numeroDe(ports, parametres, lundi);
+  const numero = await numeroDe(ports, parametres, lundi, trame);
   const { etat: etatUtilise, reecrite } = etatPourEcrire(etat, numero);
   const sortie = lireSortieV9(await ports.appeler('/v1/semaine', corpsDeLaSemaine({ parametres, numero, etat: etatUtilise, nolio, reponses })));
   if (!sortie) throw new ReponseIllisible('/v1/semaine');
@@ -63,7 +74,8 @@ export async function ecrireLaSemaine(ports: Ports, { parametres, lundi, etat, n
   if (sortie.semaine.numero !== numero || (sortie.semaine.lundi !== undefined && sortie.semaine.lundi !== lundi)) {
     throw new Error(`Moteur /v1/semaine : la semaine rendue (${String(sortie.semaine.numero)}, ${String(sortie.semaine.lundi)}) n'est pas celle demandée (${numero}, ${lundi}).`);
   }
-  return { numero, lundi, semaine: sortie.semaine, note: sortie.note, pourquoi: sortie.pourquoi, branche: sortie.branche, etatUtilise, etatRendu: sortie.etat, reecrite };
+  return { numero, lundi, semaine: sortie.semaine, note: sortie.note, pourquoi: sortie.pourquoi, branche: sortie.branche, etatUtilise, etatRendu: sortie.etat, reecrite,
+    reponses: reponses ?? null };
 }
 
 /** L'état du plan après une écriture. */
@@ -78,11 +90,11 @@ export type QuestionnairePose = { version: VersionDimanche; cles: SeanceCle[]; q
  * lundiASuivre : le lundi de la semaine que le moteur écrira (« la semaine suivante ») ; derniere : la semaine écrite que le questionnaire
  * interroge (ses séances clés) ; null au dimanche d'avant la première semaine (seulement les jours, le nombre, la sortie longue).
  */
-export async function preparerLeQuestionnaire(ports: Ports, { parametres, lundiASuivre, etat, nolio = null, derniere, coache = false, ligneEffet = null }: {
+export async function preparerLeQuestionnaire(ports: Ports, { parametres, lundiASuivre, etat, nolio = null, derniere, coache = false, ligneEffet = null, trame }: {
   parametres: Record<string, unknown>; lundiASuivre: string; etat: EtatDuPlan; nolio?: NolioVu | null;
-  derniere: SortieV9['semaine'] | null; coache?: boolean; ligneEffet?: string | null;
+  derniere: SortieV9['semaine'] | null; coache?: boolean; ligneEffet?: string | null; trame?: TrameV9;
 }): Promise<QuestionnairePose> {
-  const numero = await numeroDe(ports, parametres, lundiASuivre);
+  const numero = await numeroDe(ports, parametres, lundiASuivre, trame);
   if (!derniere) {
     return { version: 'normale', cles: [], quiz: questionnaireDuDimanche({ version: 'normale', premiere: true, coache }) };
   }
@@ -98,10 +110,10 @@ export async function preparerLeQuestionnaire(ports: Ports, { parametres, lundiA
 export type ReponseTardive = { note: string[]; etat: EtatDuPlan };
 
 /** Une réponse arrivée alors qu'une séance de la semaine est déjà faite : le moteur ne réécrit rien, l'état rendu est à garder. */
-export async function repondreEnRetard(ports: Ports, { parametres, lundi, etat, nolio = null, reponses }: {
-  parametres: Record<string, unknown>; lundi: string; etat: EtatDuPlan; nolio?: NolioVu | null; reponses: ReponsesDimanche;
+export async function repondreEnRetard(ports: Ports, { parametres, lundi, etat, nolio = null, reponses, trame }: {
+  parametres: Record<string, unknown>; lundi: string; etat: EtatDuPlan; nolio?: NolioVu | null; reponses: ReponsesDimanche; trame?: TrameV9;
 }): Promise<ReponseTardive> {
-  const numero = await numeroDe(ports, parametres, lundi);
+  const numero = await numeroDe(ports, parametres, lundi, trame);
   // Le moteur ne connaît que les semaines de son état : une semaine jamais écrite par lui n'a rien à garder.
   if (!etat.ecrites.some((w) => w.numero === numero) || !etat.courant) throw new Error(`La semaine ${numero} n'a pas été écrite par le moteur v1 : une réponse tardive n'a rien à y garder.`);
   const r = lireReponseTardive(await ports.appeler('/v1/reponse-tardive', { parametres, numero, etat: etat.courant, ...(nolio ? { nolio } : {}), reponses }));
@@ -127,14 +139,15 @@ export const semaineEnCours = (nolio: NolioVu | null | undefined, lundi: string)
  */
 export async function suiteDeLaReponse(ports: Ports, e: {
   parametres: Record<string, unknown>; lundi: string; etat: EtatDuPlan; nolio: NolioVu | null; reponses: ReponsesDimanche | null; reponseNouvelle: boolean;
+  trame?: TrameV9;
 }): Promise<SuiteDeLaReponse> {
   const action: ActionDuLundi = actionDuLundi({ reponseNouvelle: e.reponseNouvelle, semaine: semaineEnCours(e.nolio, e.lundi) });
   if (action === 'rien' || !e.reponses) return { action: 'rien', etat: e.etat };
   if (action === 'reponse_tardive') {
-    const r = await repondreEnRetard(ports, { parametres: e.parametres, lundi: e.lundi, etat: e.etat, nolio: e.nolio, reponses: e.reponses });
+    const r = await repondreEnRetard(ports, { parametres: e.parametres, lundi: e.lundi, etat: e.etat, nolio: e.nolio, reponses: e.reponses, trame: e.trame });
     return { action, note: r.note, etat: r.etat };
   }
-  const ecrite = await ecrireLaSemaine(ports, { parametres: e.parametres, lundi: e.lundi, etat: e.etat, nolio: e.nolio, reponses: e.reponses });
+  const ecrite = await ecrireLaSemaine(ports, { parametres: e.parametres, lundi: e.lundi, etat: e.etat, nolio: e.nolio, reponses: e.reponses, trame: e.trame });
   return { action, ecrite, etat: etatApresEcriture(e.etat, ecrite) };
 }
 
@@ -147,6 +160,9 @@ export async function seancesPourNolio(ports: Ports, semaine: SortieV9['semaine'
   return r;
 }
 
+// NOTE : la chaîne vivante (lib/app/passagesV9.ts) envoie par envoyerSemaineCible et mettreAJourSemaineCible (lib/app/coaching.ts), qui lisent /v1/nolio/seances
+// sous une 9.x (seancesDuMoteur) : leurs retouches gardées, leurs reprises en route et leurs séances en trop sont celles d'avant. `seancesPourNolio` et
+// `envoyerLaSemaine` ci-dessous sont la version à ports de la même chose, essayée seule (scripts/test-ecriture-v9.mjs), que la chaîne vivante n'appelle pas.
 export type EnvoiNolio = { jour_id: string; nolio_id: string | null; erreur?: string; deja?: boolean; genre?: string };
 export type PortNolio = {
   creer: (jourId: string, corps: Record<string, unknown>, genre: 'seance' | 'cycle') => Promise<EnvoiNolio>;

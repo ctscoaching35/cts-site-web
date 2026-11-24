@@ -12,7 +12,7 @@
  *     date et son titre : seules les séances de course, de trail et de tapis comptent, jamais un renfo ou un autre sport (il remplacerait
  *     à tort une séance du moteur du même jour) ;
  *   - `faite` : vrai quand une activité est reliée à la séance ; `false` seulement quand l'athlète coche « pas faite » (le site ne le lit
- *     pas : jamais envoyé) ; sinon `null` ;
+ *     pas : jamais envoyé) ; sinon `null`. QUESTION OUVERTE (session moteur-v1, 24/11/2026) : où Nolio dit-il « pas faite » ? Jusque-là, jamais `false` ;
  *   - le RPE et le ressenti ne se lisent qu'avec l'accord de lecture ; la durée faite, sans.
  */
 import { nolioPourLeMoteur, SEMAINES_LUES_AU_PLUS, type EtapeAPlat, type NolioVu, type SeanceVue, type SemaineVue } from './moteurV9';

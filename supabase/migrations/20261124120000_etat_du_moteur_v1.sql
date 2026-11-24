@@ -8,6 +8,8 @@
 --   semaines_ecrites.etat_avant_moteur     l'état que le moteur a REÇU pour écrire cette semaine (rien pour la première) ;
 --   semaines_ecrites.moteur                la version du moteur qui l'a écrite (« 9.0 ») : une ligne de la 8.x reste sans ;
 --   semaines_ecrites.pourquoi, .branche    « Pourquoi cette semaine » (sept lignes, pour l'espace coach) et la branche de l'adaptation (1 à 5) ;
+--   semaines_ecrites.reponses_lues         les réponses du dimanche qui ont servi à l'écrire (null : aucune lue) : le lundi, une réponse
+--                                          différente est une réponse nouvelle (réécriture avant la première séance, sinon réponse tardive) ;
 --   semaines_ecrites.questionnaire         le questionnaire du dimanche posé à la fin de cette semaine : sa version (normale, aucune séance vue,
 --                                          fatigue), ses séances clés dans l'ordre posé (la réponse les dit par leur rang) et l'identifiant Nolio.
 -- Les colonnes de la 8.x (plans.etat_ecriture, semaines_ecrites.etat_avant, revue, realise) ne sont ni lues ni modifiées par la 9.x : un retour à
@@ -26,6 +28,7 @@ alter table public.semaines_ecrites add column if not exists etat_avant_moteur j
 alter table public.semaines_ecrites add column if not exists pourquoi jsonb;
 alter table public.semaines_ecrites add column if not exists branche smallint check (branche is null or branche between 1 and 5);
 alter table public.semaines_ecrites add column if not exists questionnaire jsonb;
+alter table public.semaines_ecrites add column if not exists reponses_lues jsonb;
 comment on column public.semaines_ecrites.moteur is
   'La version du moteur qui a écrit cette semaine (« 9.0 ») ; null pour une semaine de la 8.x.';
 comment on column public.semaines_ecrites.etat_avant_moteur is
@@ -33,6 +36,8 @@ comment on column public.semaines_ecrites.etat_avant_moteur is
 comment on column public.semaines_ecrites.pourquoi is
   '« Pourquoi cette semaine » du moteur v1 : sept lignes { n, libelle, texte, manque? }, pour l''espace coach, jamais montrées à l''acheteur.';
 comment on column public.semaines_ecrites.branche is 'La branche de l''adaptation (1 à 5) que le moteur v1 a suivie.';
+comment on column public.semaines_ecrites.reponses_lues is
+  'Les réponses du dimanche (version, arrêt, séances clés pas faites, jours, nombre, sortie longue) qui ont servi à écrire cette semaine ; null si aucune lue.';
 comment on column public.semaines_ecrites.questionnaire is
   'Le questionnaire du dimanche posé à la fin de cette semaine : { version, cles: [{ id, libelle }], nolio_id, pose_le } ; sert à lire les réponses en rangs.';
 
