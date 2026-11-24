@@ -1,0 +1,1252 @@
+{
+ "requete": {
+  "chemin": "/v1/semaine",
+  "corps": {
+   "parametres": {
+    "nom": "Essai Fictif",
+    "format": "TM",
+    "date_course": "2027-03-14",
+    "distance_km": 42,
+    "dplus_m": 1800,
+    "temps_cible": "5h30",
+    "duree_mois": 4,
+    "jours_disponibles": [
+     "mardi",
+     "jeudi",
+     "samedi",
+     "dimanche"
+    ],
+    "jour_sl": "dimanche",
+    "freq_hebdo": 4,
+    "volume_hebdo_actuel": "5h",
+    "sortie_longue_actuelle": "2h",
+    "tapis": "non",
+    "criteres": {
+     "intensite": "parfois",
+     "mecanique": "jamais"
+    },
+    "cote_min": 8,
+    "accord_lecture": true
+   },
+   "numero": 1
+  }
+ },
+ "reponse": {
+  "semaine": {
+   "numero": 1,
+   "lundi": "2026-11-23",
+   "type": "charge",
+   "gabarit": "G1",
+   "bloc": "fondations",
+   "bloc_no": 1,
+   "rang": 1,
+   "n_charges": 3,
+   "wec": false,
+   "legere": false,
+   "nombre": 4,
+   "volume_min": 305,
+   "sl_min": 120,
+   "sl_rampe": 120.0,
+   "sl_filet_110": 0,
+   "ef_min": 75,
+   "ef_habituelle": 70,
+   "fatigue_cycle": false,
+   "jours": [
+    {
+     "jour": "lundi",
+     "date": "2026-11-23",
+     "seance": null,
+     "renfo": {
+      "famille": "renfo",
+      "role": "RENFO",
+      "terrain": null,
+      "forme": "force, freiner",
+      "forme_libelle": "force, freiner",
+      "dose_min": 22,
+      "ideales": {},
+      "etapes": null,
+      "workout": [
+       {
+        "kind": "superset",
+        "rounds": 2,
+        "rest": {
+         "value": 60,
+         "unit": "s"
+        },
+        "exercises": [
+         {
+          "kind": "exercise",
+          "exercice_nom": "Pogojump",
+          "sets": [
+           {
+            "reps": 15,
+            "rest": {
+             "value": 30,
+             "unit": "s"
+            }
+           },
+           {
+            "reps": 15,
+            "rest": {
+             "value": 30,
+             "unit": "s"
+            }
+           }
+          ],
+          "comment": "rebonds pieds joints, le moins de temps possible au sol"
+         },
+         {
+          "kind": "exercise",
+          "exercice_nom": "Squat sauté",
+          "sets": [
+           {
+            "reps": 6,
+            "rest": {
+             "value": 30,
+             "unit": "s"
+            }
+           },
+           {
+            "reps": 6,
+            "rest": {
+             "value": 30,
+             "unit": "s"
+            }
+           }
+          ],
+          "comment": "réception souple et silencieuse"
+         }
+        ]
+       },
+       {
+        "kind": "superset",
+        "rounds": 2,
+        "rest": {
+         "value": 90,
+         "unit": "s"
+        },
+        "exercises": [
+         {
+          "kind": "exercise",
+          "exercice_nom": "Squat",
+          "sets": [
+           {
+            "reps": 15,
+            "rest": {
+             "value": 25,
+             "unit": "s"
+            }
+           },
+           {
+            "reps": 15,
+            "rest": {
+             "value": 25,
+             "unit": "s"
+            }
+           }
+          ],
+          "comment": "descente en 3 s"
+         },
+         {
+          "kind": "exercise",
+          "exercice_nom": "Fentes arrières",
+          "sets": [
+           {
+            "reps": 12,
+            "rest": {
+             "value": 25,
+             "unit": "s"
+            }
+           },
+           {
+            "reps": 12,
+            "rest": {
+             "value": 25,
+             "unit": "s"
+            }
+           }
+          ],
+          "comment": "par jambe, descente lente"
+         },
+         {
+          "kind": "exercise",
+          "exercice_nom": "Step down",
+          "sets": [
+           {
+            "reps": 10,
+            "rest": {
+             "value": 25,
+             "unit": "s"
+            }
+           },
+           {
+            "reps": 10,
+            "rest": {
+             "value": 25,
+             "unit": "s"
+            }
+           }
+          ],
+          "comment": "par jambe, descente en 3 s"
+         },
+         {
+          "kind": "exercise",
+          "exercice_nom": "Extension mollets avec genoux fléchis",
+          "sets": [
+           {
+            "reps": 20,
+            "rest": {
+             "value": 25,
+             "unit": "s"
+            }
+           },
+           {
+            "reps": 20,
+            "rest": {
+             "value": 25,
+             "unit": "s"
+            }
+           }
+          ],
+          "comment": "le soléaire, descente lente"
+         },
+         {
+          "kind": "exercise",
+          "exercice_nom": "Gainage latéral",
+          "sets": [
+           {
+            "duration": {
+             "value": 30,
+             "unit": "s"
+            },
+            "rest": {
+             "value": 25,
+             "unit": "s"
+            }
+           },
+           {
+            "duration": {
+             "value": 30,
+             "unit": "s"
+            },
+            "rest": {
+             "value": 25,
+             "unit": "s"
+            }
+           }
+          ],
+          "comment": "par côté"
+         }
+        ]
+       }
+      ],
+      "duree_min": 22,
+      "rpe": 5,
+      "sauts": true,
+      "bloc": "fondations",
+      "titre": "Renfo · 22 min — force, freiner",
+      "texte": "",
+      "jour": "lundi",
+      "id": "S1-lundi:renfo"
+     }
+    },
+    {
+     "jour": "mardi",
+     "date": "2026-11-24",
+     "seance": {
+      "famille": "seuil1",
+      "role": "P",
+      "terrain": "plat",
+      "forme": "blocs longs",
+      "forme_libelle": "blocs longs, 4 × 10 min",
+      "dose_min": 40,
+      "dose_demandee": 40,
+      "ideale": 40.0,
+      "etapes": [
+       {
+        "etape": "Échauffement",
+        "intensite": "echauffement",
+        "duree_s": 900,
+        "cibles": {
+         "vc_pct": [
+          70,
+          80
+         ],
+         "fc_s2_pct": null,
+         "rpe": 3,
+         "table": null
+        },
+        "commentaire": "en endurance, conversation aisée"
+       },
+       {
+        "repeter": 4,
+        "etapes": [
+         {
+          "etape": "Bloc",
+          "intensite": "effort",
+          "duree_s": 600,
+          "cibles": {
+           "vc_pct": [
+            83,
+            86
+           ],
+           "fc_s2_pct": null,
+           "rpe": 5,
+           "table": null
+          },
+          "commentaire": "phrases courtes",
+          "travail": true
+         },
+         {
+          "etape": "Récupération",
+          "intensite": "recuperation",
+          "duree_s": 150,
+          "cibles": {
+           "vc_pct": null,
+           "fc_s2_pct": null,
+           "rpe": 3,
+           "table": null
+          },
+          "commentaire": "en endurance"
+         }
+        ]
+       },
+       {
+        "etape": "Retour au calme",
+        "intensite": "retour",
+        "duree_s": 600,
+        "cibles": {
+         "vc_pct": [
+          70,
+          80
+         ],
+         "fc_s2_pct": null,
+         "rpe": 3,
+         "table": null
+        },
+        "commentaire": "en endurance, très facile"
+       }
+      ],
+      "duree_min": 75,
+      "rpe": 5,
+      "titre": "Seuil 1 route · 40 min — blocs longs, 4 × 10 min",
+      "texte": "Consignes : Pourquoi : Construire ton endurance de course : du temps au Seuil 1, l'effort soutenu mais confortable de tes longues courses. Comment : Après l'échauffement, enchaîne les blocs au Seuil 1 indiqués sur les étapes, avec l'endurance entre chacun, puis le retour au calme. Aujourd'hui : échauffement 15 min, 4 × (bloc 10 min + récupération 2 min 30), retour au calme 10 min. Repères : Cible de chaque bloc sur son étape : % de ta VC à plat (un peu plus basse sur les blocs longs), 88 à 92 % de ta FC au seuil 2 en relief ; le relief fait varier l'allure, pas l'effort. RPE 4 à 5, phrases courtes. Échauffement, récupération, retour : RPE 3. Le même effort d'un bloc à l'autre, sans accélérer à la fin. Trop dur : ralentis, l'effort prime.",
+      "ideales": {
+       "seuil1": 40.0
+      },
+      "excentrique": false,
+      "longueur": "longue",
+      "jour": "mardi",
+      "id": "S1-mardi"
+     },
+     "renfo": null
+    },
+    {
+     "jour": "mercredi",
+     "date": "2026-11-25",
+     "seance": null,
+     "renfo": null
+    },
+    {
+     "jour": "jeudi",
+     "date": "2026-11-26",
+     "seance": {
+      "famille": "mecanique",
+      "role": "M",
+      "terrain": null,
+      "forme": "navette classique",
+      "forme_libelle": "navette classique, 20 min",
+      "dose_min": 20,
+      "ideales": {
+       "navettes": 20.0
+      },
+      "ideale": 20.0,
+      "etapes": [
+       {
+        "etape": "Échauffement",
+        "intensite": "echauffement",
+        "duree_s": 600,
+        "cibles": {
+         "vc_pct": null,
+         "fc_s2_pct": null,
+         "rpe": 3,
+         "table": null
+        },
+        "commentaire": "en endurance, à plat"
+       },
+       {
+        "etape": "Navette",
+        "intensite": "effort",
+        "duree_s": 1200,
+        "cibles": {
+         "vc_pct": null,
+         "fc_s2_pct": null,
+         "rpe": 3,
+         "table": null
+        },
+        "commentaire": "montée et descente en endurance, sans t'arrêter",
+        "travail": true
+       },
+       {
+        "etape": "Retour au calme",
+        "intensite": "retour",
+        "duree_s": 300,
+        "cibles": {
+         "vc_pct": null,
+         "fc_s2_pct": null,
+         "rpe": 2,
+         "table": null
+        },
+        "commentaire": "très facile"
+       }
+      ],
+      "duree_min": 35,
+      "rpe": 3,
+      "excentrique": false,
+      "titre": "Mécanique · 20 min — navette classique, 20 min",
+      "texte": "Consignes : Pourquoi : Accumuler du dénivelé sans effort : des jambes qui s'habituent à monter et descendre. Comment : Après l'échauffement, enchaîne la navette dans ta plus longue côte, montée et descente en endurance, sans t'arrêter, puis le retour au calme. Aujourd'hui : échauffement 10 min, navette 20 min, retour au calme 5 min. Repères : Navette : RPE 3. On cumule du dénivelé, pas de l'effort : si tu dois pousser en montée, ralentis ou marche. Descente relâchée, en contrôle.",
+      "jour": "jeudi",
+      "id": "S1-jeudi"
+     },
+     "renfo": null
+    },
+    {
+     "jour": "vendredi",
+     "date": "2026-11-27",
+     "seance": null,
+     "renfo": null
+    },
+    {
+     "jour": "samedi",
+     "date": "2026-11-28",
+     "seance": {
+      "famille": "endurance",
+      "role": "EF",
+      "terrain": null,
+      "forme": "à plat",
+      "forme_libelle": "à plat",
+      "dose_min": 75,
+      "ideales": {},
+      "ideale": null,
+      "etapes": [
+       {
+        "etape": "Endurance",
+        "intensite": "effort",
+        "duree_s": 4500,
+        "cibles": {
+         "vc_pct": [
+          70,
+          80
+         ],
+         "fc_s2_pct": null,
+         "rpe": 3,
+         "table": null
+        },
+        "commentaire": "conversation aisée, d'un seul tenant"
+       }
+      ],
+      "duree_min": 75,
+      "rpe": 3,
+      "titre": "Endurance · 1 h 15 — à plat",
+      "texte": "",
+      "jour": "samedi",
+      "id": "S1-samedi"
+     },
+     "renfo": null
+    },
+    {
+     "jour": "dimanche",
+     "date": "2026-11-29",
+     "seance": {
+      "famille": "sl",
+      "role": "SL",
+      "terrain": null,
+      "forme": "simple",
+      "forme_libelle": "simple",
+      "dose_min": 120,
+      "ideales": {},
+      "ideale": null,
+      "etapes": [
+       {
+        "etape": "Endurance",
+        "intensite": "effort",
+        "duree_s": 7200,
+        "cibles": {
+         "vc_pct": null,
+         "fc_s2_pct": null,
+         "rpe": 3,
+         "table": null
+        },
+        "commentaire": "d'un seul tenant, sur ton terrain de trail"
+       }
+      ],
+      "duree_min": 120,
+      "rpe": 3,
+      "excentrique": false,
+      "titre": "Sortie longue · 2 h — simple",
+      "texte": "Consignes : Pourquoi : La durée en endurance : ton moteur de fond et ta tenue en fin de course. Comment : Une seule étape, d'un seul tenant sur ton terrain de trail, en endurance. Aujourd'hui : endurance 120 min. Repères : Endurance : RPE 3, une conversation aisée du début à la fin. Pars plus lentement que tu ne le voudrais : la fin doit rester aussi facile que le début. En côte, marche dès que tu ne parles plus en phrases ; descentes en contrôle. Prends à boire et à manger : ce que tu prendras en course. Ravito : 30 à 40 g de glucides par heure ; vise 60 g/h le jour J.",
+      "jour": "dimanche",
+      "id": "S1-dimanche"
+     },
+     "renfo": null
+    }
+   ],
+   "seances": [
+    {
+     "famille": "sl",
+     "role": "SL",
+     "terrain": null,
+     "forme": "simple",
+     "forme_libelle": "simple",
+     "dose_min": 120,
+     "ideales": {},
+     "ideale": null,
+     "etapes": [
+      {
+       "etape": "Endurance",
+       "intensite": "effort",
+       "duree_s": 7200,
+       "cibles": {
+        "vc_pct": null,
+        "fc_s2_pct": null,
+        "rpe": 3,
+        "table": null
+       },
+       "commentaire": "d'un seul tenant, sur ton terrain de trail"
+      }
+     ],
+     "duree_min": 120,
+     "rpe": 3,
+     "excentrique": false,
+     "titre": "Sortie longue · 2 h — simple",
+     "texte": "Consignes : Pourquoi : La durée en endurance : ton moteur de fond et ta tenue en fin de course. Comment : Une seule étape, d'un seul tenant sur ton terrain de trail, en endurance. Aujourd'hui : endurance 120 min. Repères : Endurance : RPE 3, une conversation aisée du début à la fin. Pars plus lentement que tu ne le voudrais : la fin doit rester aussi facile que le début. En côte, marche dès que tu ne parles plus en phrases ; descentes en contrôle. Prends à boire et à manger : ce que tu prendras en course. Ravito : 30 à 40 g de glucides par heure ; vise 60 g/h le jour J.",
+     "jour": "dimanche",
+     "id": "S1-dimanche"
+    },
+    {
+     "famille": "seuil1",
+     "role": "P",
+     "terrain": "plat",
+     "forme": "blocs longs",
+     "forme_libelle": "blocs longs, 4 × 10 min",
+     "dose_min": 40,
+     "dose_demandee": 40,
+     "ideale": 40.0,
+     "etapes": [
+      {
+       "etape": "Échauffement",
+       "intensite": "echauffement",
+       "duree_s": 900,
+       "cibles": {
+        "vc_pct": [
+         70,
+         80
+        ],
+        "fc_s2_pct": null,
+        "rpe": 3,
+        "table": null
+       },
+       "commentaire": "en endurance, conversation aisée"
+      },
+      {
+       "repeter": 4,
+       "etapes": [
+        {
+         "etape": "Bloc",
+         "intensite": "effort",
+         "duree_s": 600,
+         "cibles": {
+          "vc_pct": [
+           83,
+           86
+          ],
+          "fc_s2_pct": null,
+          "rpe": 5,
+          "table": null
+         },
+         "commentaire": "phrases courtes",
+         "travail": true
+        },
+        {
+         "etape": "Récupération",
+         "intensite": "recuperation",
+         "duree_s": 150,
+         "cibles": {
+          "vc_pct": null,
+          "fc_s2_pct": null,
+          "rpe": 3,
+          "table": null
+         },
+         "commentaire": "en endurance"
+        }
+       ]
+      },
+      {
+       "etape": "Retour au calme",
+       "intensite": "retour",
+       "duree_s": 600,
+       "cibles": {
+        "vc_pct": [
+         70,
+         80
+        ],
+        "fc_s2_pct": null,
+        "rpe": 3,
+        "table": null
+       },
+       "commentaire": "en endurance, très facile"
+      }
+     ],
+     "duree_min": 75,
+     "rpe": 5,
+     "titre": "Seuil 1 route · 40 min — blocs longs, 4 × 10 min",
+     "texte": "Consignes : Pourquoi : Construire ton endurance de course : du temps au Seuil 1, l'effort soutenu mais confortable de tes longues courses. Comment : Après l'échauffement, enchaîne les blocs au Seuil 1 indiqués sur les étapes, avec l'endurance entre chacun, puis le retour au calme. Aujourd'hui : échauffement 15 min, 4 × (bloc 10 min + récupération 2 min 30), retour au calme 10 min. Repères : Cible de chaque bloc sur son étape : % de ta VC à plat (un peu plus basse sur les blocs longs), 88 à 92 % de ta FC au seuil 2 en relief ; le relief fait varier l'allure, pas l'effort. RPE 4 à 5, phrases courtes. Échauffement, récupération, retour : RPE 3. Le même effort d'un bloc à l'autre, sans accélérer à la fin. Trop dur : ralentis, l'effort prime.",
+     "ideales": {
+      "seuil1": 40.0
+     },
+     "excentrique": false,
+     "longueur": "longue",
+     "jour": "mardi",
+     "id": "S1-mardi"
+    },
+    {
+     "famille": "mecanique",
+     "role": "M",
+     "terrain": null,
+     "forme": "navette classique",
+     "forme_libelle": "navette classique, 20 min",
+     "dose_min": 20,
+     "ideales": {
+      "navettes": 20.0
+     },
+     "ideale": 20.0,
+     "etapes": [
+      {
+       "etape": "Échauffement",
+       "intensite": "echauffement",
+       "duree_s": 600,
+       "cibles": {
+        "vc_pct": null,
+        "fc_s2_pct": null,
+        "rpe": 3,
+        "table": null
+       },
+       "commentaire": "en endurance, à plat"
+      },
+      {
+       "etape": "Navette",
+       "intensite": "effort",
+       "duree_s": 1200,
+       "cibles": {
+        "vc_pct": null,
+        "fc_s2_pct": null,
+        "rpe": 3,
+        "table": null
+       },
+       "commentaire": "montée et descente en endurance, sans t'arrêter",
+       "travail": true
+      },
+      {
+       "etape": "Retour au calme",
+       "intensite": "retour",
+       "duree_s": 300,
+       "cibles": {
+        "vc_pct": null,
+        "fc_s2_pct": null,
+        "rpe": 2,
+        "table": null
+       },
+       "commentaire": "très facile"
+      }
+     ],
+     "duree_min": 35,
+     "rpe": 3,
+     "excentrique": false,
+     "titre": "Mécanique · 20 min — navette classique, 20 min",
+     "texte": "Consignes : Pourquoi : Accumuler du dénivelé sans effort : des jambes qui s'habituent à monter et descendre. Comment : Après l'échauffement, enchaîne la navette dans ta plus longue côte, montée et descente en endurance, sans t'arrêter, puis le retour au calme. Aujourd'hui : échauffement 10 min, navette 20 min, retour au calme 5 min. Repères : Navette : RPE 3. On cumule du dénivelé, pas de l'effort : si tu dois pousser en montée, ralentis ou marche. Descente relâchée, en contrôle.",
+     "jour": "jeudi",
+     "id": "S1-jeudi"
+    },
+    {
+     "famille": "endurance",
+     "role": "EF",
+     "terrain": null,
+     "forme": "à plat",
+     "forme_libelle": "à plat",
+     "dose_min": 75,
+     "ideales": {},
+     "ideale": null,
+     "etapes": [
+      {
+       "etape": "Endurance",
+       "intensite": "effort",
+       "duree_s": 4500,
+       "cibles": {
+        "vc_pct": [
+         70,
+         80
+        ],
+        "fc_s2_pct": null,
+        "rpe": 3,
+        "table": null
+       },
+       "commentaire": "conversation aisée, d'un seul tenant"
+      }
+     ],
+     "duree_min": 75,
+     "rpe": 3,
+     "titre": "Endurance · 1 h 15 — à plat",
+     "texte": "",
+     "jour": "samedi",
+     "id": "S1-samedi"
+    },
+    {
+     "famille": "renfo",
+     "role": "RENFO",
+     "terrain": null,
+     "forme": "force, freiner",
+     "forme_libelle": "force, freiner",
+     "dose_min": 22,
+     "ideales": {},
+     "etapes": null,
+     "workout": [
+      {
+       "kind": "superset",
+       "rounds": 2,
+       "rest": {
+        "value": 60,
+        "unit": "s"
+       },
+       "exercises": [
+        {
+         "kind": "exercise",
+         "exercice_nom": "Pogojump",
+         "sets": [
+          {
+           "reps": 15,
+           "rest": {
+            "value": 30,
+            "unit": "s"
+           }
+          },
+          {
+           "reps": 15,
+           "rest": {
+            "value": 30,
+            "unit": "s"
+           }
+          }
+         ],
+         "comment": "rebonds pieds joints, le moins de temps possible au sol"
+        },
+        {
+         "kind": "exercise",
+         "exercice_nom": "Squat sauté",
+         "sets": [
+          {
+           "reps": 6,
+           "rest": {
+            "value": 30,
+            "unit": "s"
+           }
+          },
+          {
+           "reps": 6,
+           "rest": {
+            "value": 30,
+            "unit": "s"
+           }
+          }
+         ],
+         "comment": "réception souple et silencieuse"
+        }
+       ]
+      },
+      {
+       "kind": "superset",
+       "rounds": 2,
+       "rest": {
+        "value": 90,
+        "unit": "s"
+       },
+       "exercises": [
+        {
+         "kind": "exercise",
+         "exercice_nom": "Squat",
+         "sets": [
+          {
+           "reps": 15,
+           "rest": {
+            "value": 25,
+            "unit": "s"
+           }
+          },
+          {
+           "reps": 15,
+           "rest": {
+            "value": 25,
+            "unit": "s"
+           }
+          }
+         ],
+         "comment": "descente en 3 s"
+        },
+        {
+         "kind": "exercise",
+         "exercice_nom": "Fentes arrières",
+         "sets": [
+          {
+           "reps": 12,
+           "rest": {
+            "value": 25,
+            "unit": "s"
+           }
+          },
+          {
+           "reps": 12,
+           "rest": {
+            "value": 25,
+            "unit": "s"
+           }
+          }
+         ],
+         "comment": "par jambe, descente lente"
+        },
+        {
+         "kind": "exercise",
+         "exercice_nom": "Step down",
+         "sets": [
+          {
+           "reps": 10,
+           "rest": {
+            "value": 25,
+            "unit": "s"
+           }
+          },
+          {
+           "reps": 10,
+           "rest": {
+            "value": 25,
+            "unit": "s"
+           }
+          }
+         ],
+         "comment": "par jambe, descente en 3 s"
+        },
+        {
+         "kind": "exercise",
+         "exercice_nom": "Extension mollets avec genoux fléchis",
+         "sets": [
+          {
+           "reps": 20,
+           "rest": {
+            "value": 25,
+            "unit": "s"
+           }
+          },
+          {
+           "reps": 20,
+           "rest": {
+            "value": 25,
+            "unit": "s"
+           }
+          }
+         ],
+         "comment": "le soléaire, descente lente"
+        },
+        {
+         "kind": "exercise",
+         "exercice_nom": "Gainage latéral",
+         "sets": [
+          {
+           "duration": {
+            "value": 30,
+            "unit": "s"
+           },
+           "rest": {
+            "value": 25,
+            "unit": "s"
+           }
+          },
+          {
+           "duration": {
+            "value": 30,
+            "unit": "s"
+           },
+           "rest": {
+            "value": 25,
+            "unit": "s"
+           }
+          }
+         ],
+         "comment": "par côté"
+        }
+       ]
+      }
+     ],
+     "duree_min": 22,
+     "rpe": 5,
+     "sauts": true,
+     "bloc": "fondations",
+     "titre": "Renfo · 22 min — force, freiner",
+     "texte": "",
+     "jour": "lundi",
+     "id": "S1-lundi:renfo"
+    }
+   ],
+   "controle": {
+    "raccourci": false,
+    "non_tenu": false,
+    "reference": null,
+    "avant": 305
+   },
+   "placement": [],
+   "raison_nombre": "départ",
+   "collisions": [],
+   "plafond": 4,
+   "branche": 5
+  },
+  "note": [
+   "Pas de réponse lue à ton questionnaire de dimanche : ta semaine suit ta réponse du —. Si tu réponds avant ta première séance, elle s'ajustera."
+  ],
+  "pourquoi": [
+   {
+    "n": 1,
+    "libelle": "Cadre",
+    "texte": "semaine 1 sur 16, charge du bloc fondations (règles 2 à 4) ; course montagne, 4-8h.",
+    "manque": "pas de réponse au questionnaire de dimanche"
+   },
+   {
+    "n": 2,
+    "libelle": "Grille",
+    "texte": "gabarit G1 (Charge), branche 5 de l'adaptation ; 4 séances (départ)."
+   },
+   {
+    "n": 3,
+    "libelle": "Cap",
+    "texte": "sortie longue; Seuil 1 plat; mécanique"
+   },
+   {
+    "n": 4,
+    "libelle": "Marche",
+    "texte": "sortie longue 120 min; Seuil 1 40 min; mécanique 20 min ; volume 305 min (règles 14 à 17)."
+   },
+   {
+    "n": 5,
+    "libelle": "Forme",
+    "texte": "Seuil 1 route · 40 min — blocs longs, 4 × 10 min"
+   },
+   {
+    "n": 6,
+    "libelle": "Placement",
+    "texte": "sans écart (règle 20)."
+   },
+   {
+    "n": 7,
+    "libelle": "Contrôle",
+    "texte": "+30 % tenu, rien à corriger (règle 21)."
+   }
+  ],
+  "etat": {
+   "version": "9.0",
+   "semaines": [
+    {
+     "numero": 1,
+     "lundi": "2026-11-23",
+     "type": "charge",
+     "gabarit": "G1",
+     "bloc": "fondations",
+     "bloc_no": 1,
+     "rang": 1,
+     "n_charges": 3,
+     "wec": false,
+     "legere": false,
+     "nombre": 4,
+     "volume_min": 305,
+     "sl_min": 120,
+     "sl_rampe": 120.0,
+     "sl_filet_110": 0,
+     "ef_min": 75,
+     "ef_habituelle": 70,
+     "fatigue_cycle": false,
+     "seances": [
+      {
+       "famille": "sl",
+       "role": "SL",
+       "terrain": null,
+       "forme": "simple",
+       "forme_libelle": "simple",
+       "dose_min": 120,
+       "ideales": {},
+       "ideale": null,
+       "duree_min": 120,
+       "rpe": 3,
+       "excentrique": false,
+       "titre": "Sortie longue · 2 h — simple",
+       "jour": "dimanche",
+       "id": "S1-dimanche"
+      },
+      {
+       "famille": "seuil1",
+       "role": "P",
+       "terrain": "plat",
+       "forme": "blocs longs",
+       "forme_libelle": "blocs longs, 4 × 10 min",
+       "dose_min": 40,
+       "dose_demandee": 40,
+       "ideale": 40.0,
+       "duree_min": 75,
+       "rpe": 5,
+       "titre": "Seuil 1 route · 40 min — blocs longs, 4 × 10 min",
+       "ideales": {
+        "seuil1": 40.0
+       },
+       "excentrique": false,
+       "longueur": "longue",
+       "jour": "mardi",
+       "id": "S1-mardi"
+      },
+      {
+       "famille": "mecanique",
+       "role": "M",
+       "terrain": null,
+       "forme": "navette classique",
+       "forme_libelle": "navette classique, 20 min",
+       "dose_min": 20,
+       "ideales": {
+        "navettes": 20.0
+       },
+       "ideale": 20.0,
+       "duree_min": 35,
+       "rpe": 3,
+       "excentrique": false,
+       "titre": "Mécanique · 20 min — navette classique, 20 min",
+       "jour": "jeudi",
+       "id": "S1-jeudi"
+      },
+      {
+       "famille": "endurance",
+       "role": "EF",
+       "terrain": null,
+       "forme": "à plat",
+       "forme_libelle": "à plat",
+       "dose_min": 75,
+       "ideales": {},
+       "ideale": null,
+       "duree_min": 75,
+       "rpe": 3,
+       "titre": "Endurance · 1 h 15 — à plat",
+       "jour": "samedi",
+       "id": "S1-samedi"
+      },
+      {
+       "famille": "renfo",
+       "role": "RENFO",
+       "terrain": null,
+       "forme": "force, freiner",
+       "forme_libelle": "force, freiner",
+       "dose_min": 22,
+       "ideales": {},
+       "workout": [
+        {
+         "kind": "superset",
+         "rounds": 2,
+         "rest": {
+          "value": 60,
+          "unit": "s"
+         },
+         "exercises": [
+          {
+           "kind": "exercise",
+           "exercice_nom": "Pogojump",
+           "sets": [
+            {
+             "reps": 15,
+             "rest": {
+              "value": 30,
+              "unit": "s"
+             }
+            },
+            {
+             "reps": 15,
+             "rest": {
+              "value": 30,
+              "unit": "s"
+             }
+            }
+           ],
+           "comment": "rebonds pieds joints, le moins de temps possible au sol"
+          },
+          {
+           "kind": "exercise",
+           "exercice_nom": "Squat sauté",
+           "sets": [
+            {
+             "reps": 6,
+             "rest": {
+              "value": 30,
+              "unit": "s"
+             }
+            },
+            {
+             "reps": 6,
+             "rest": {
+              "value": 30,
+              "unit": "s"
+             }
+            }
+           ],
+           "comment": "réception souple et silencieuse"
+          }
+         ]
+        },
+        {
+         "kind": "superset",
+         "rounds": 2,
+         "rest": {
+          "value": 90,
+          "unit": "s"
+         },
+         "exercises": [
+          {
+           "kind": "exercise",
+           "exercice_nom": "Squat",
+           "sets": [
+            {
+             "reps": 15,
+             "rest": {
+              "value": 25,
+              "unit": "s"
+             }
+            },
+            {
+             "reps": 15,
+             "rest": {
+              "value": 25,
+              "unit": "s"
+             }
+            }
+           ],
+           "comment": "descente en 3 s"
+          },
+          {
+           "kind": "exercise",
+           "exercice_nom": "Fentes arrières",
+           "sets": [
+            {
+             "reps": 12,
+             "rest": {
+              "value": 25,
+              "unit": "s"
+             }
+            },
+            {
+             "reps": 12,
+             "rest": {
+              "value": 25,
+              "unit": "s"
+             }
+            }
+           ],
+           "comment": "par jambe, descente lente"
+          },
+          {
+           "kind": "exercise",
+           "exercice_nom": "Step down",
+           "sets": [
+            {
+             "reps": 10,
+             "rest": {
+              "value": 25,
+              "unit": "s"
+             }
+            },
+            {
+             "reps": 10,
+             "rest": {
+              "value": 25,
+              "unit": "s"
+             }
+            }
+           ],
+           "comment": "par jambe, descente en 3 s"
+          },
+          {
+           "kind": "exercise",
+           "exercice_nom": "Extension mollets avec genoux fléchis",
+           "sets": [
+            {
+             "reps": 20,
+             "rest": {
+              "value": 25,
+              "unit": "s"
+             }
+            },
+            {
+             "reps": 20,
+             "rest": {
+              "value": 25,
+              "unit": "s"
+             }
+            }
+           ],
+           "comment": "le soléaire, descente lente"
+          },
+          {
+           "kind": "exercise",
+           "exercice_nom": "Gainage latéral",
+           "sets": [
+            {
+             "duration": {
+              "value": 30,
+              "unit": "s"
+             },
+             "rest": {
+              "value": 25,
+              "unit": "s"
+             }
+            },
+            {
+             "duration": {
+              "value": 30,
+              "unit": "s"
+             },
+             "rest": {
+              "value": 25,
+              "unit": "s"
+             }
+            }
+           ],
+           "comment": "par côté"
+          }
+         ]
+        }
+       ],
+       "duree_min": 22,
+       "rpe": 5,
+       "sauts": true,
+       "bloc": "fondations",
+       "titre": "Renfo · 22 min — force, freiner",
+       "jour": "lundi",
+       "id": "S1-lundi:renfo"
+      }
+     ],
+     "controle": {
+      "raccourci": false,
+      "non_tenu": false,
+      "reference": null,
+      "avant": 305
+     },
+     "placement": [],
+     "raison_nombre": "départ",
+     "collisions": [],
+     "plafond": 4,
+     "branche": 5
+    }
+   ],
+   "adaptation": {},
+   "derniere_reponse": null
+  },
+  "branche": 5
+ }
+}

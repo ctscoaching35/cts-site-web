@@ -1,0 +1,465 @@
+{
+ "requete": {
+  "chemin": "/v1/trame",
+  "corps": {
+   "parametres": {
+    "nom": "Essai Fictif",
+    "format": "TM",
+    "date_course": "2027-03-14",
+    "distance_km": 42,
+    "dplus_m": 1800,
+    "temps_cible": "5h30",
+    "duree_mois": 4,
+    "jours_disponibles": [
+     "mardi",
+     "jeudi",
+     "samedi",
+     "dimanche"
+    ],
+    "jour_sl": "dimanche",
+    "freq_hebdo": 4,
+    "volume_hebdo_actuel": "5h",
+    "sortie_longue_actuelle": "2h",
+    "tapis": "non",
+    "criteres": {
+     "intensite": "parfois",
+     "mecanique": "jamais"
+    },
+    "cote_min": 8,
+    "accord_lecture": true
+   }
+  }
+ },
+ "reponse": {
+  "semaines": [
+   {
+    "numero": 1,
+    "lundi": "2026-11-23",
+    "type": "charge",
+    "bloc": "fondations",
+    "gabarit": "G1",
+    "volume_h": 5.1,
+    "sl_min": 120,
+    "week_end_choc": false,
+    "seances_cles": [
+     {
+      "jour": "dimanche",
+      "titre": "Sortie longue · 2 h — simple",
+      "famille": "sl"
+     },
+     {
+      "jour": "mardi",
+      "titre": "Seuil 1 route · 40 min — blocs longs, 4 × 10 min",
+      "famille": "seuil1"
+     },
+     {
+      "jour": "jeudi",
+      "titre": "Mécanique · 20 min — navette classique, 20 min",
+      "famille": "mecanique"
+     }
+    ]
+   },
+   {
+    "numero": 2,
+    "lundi": "2026-11-30",
+    "type": "charge",
+    "bloc": "fondations",
+    "gabarit": "G1",
+    "volume_h": 5.3,
+    "sl_min": 130,
+    "week_end_choc": false,
+    "seances_cles": [
+     {
+      "jour": "dimanche",
+      "titre": "Sortie longue · 2 h 10 — navettes en fin, 20 min",
+      "famille": "sl"
+     },
+     {
+      "jour": "mardi",
+      "titre": "Seuil 1 route · 45 min — dégressif, 22 + 15 + 8 min",
+      "famille": "seuil1"
+     },
+     {
+      "jour": "jeudi",
+      "titre": "Mécanique · 23 min — navette à montées actives, 1 × 5 min",
+      "famille": "mecanique"
+     }
+    ]
+   },
+   {
+    "numero": 3,
+    "lundi": "2026-12-07",
+    "type": "charge",
+    "bloc": "fondations",
+    "gabarit": "G1",
+    "volume_h": 5.0,
+    "sl_min": 140,
+    "week_end_choc": false,
+    "seances_cles": [
+     {
+      "jour": "dimanche",
+      "titre": "Sortie longue · 2 h 20 — navettes en fin, 22 min",
+      "famille": "sl"
+     },
+     {
+      "jour": "mardi",
+      "titre": "Seuil 2 route · 15 min — courts, 5 × 3 min",
+      "famille": "seuil2"
+     },
+     {
+      "jour": "jeudi",
+      "titre": "Mécanique · 26 min — navette classique, 26 min",
+      "famille": "mecanique"
+     }
+    ]
+   },
+   {
+    "numero": 4,
+    "lundi": "2026-12-14",
+    "type": "assimilation",
+    "bloc": "fondations",
+    "gabarit": "G2",
+    "volume_h": 4.3,
+    "sl_min": 85,
+    "week_end_choc": false,
+    "seances_cles": [
+     {
+      "jour": "dimanche",
+      "titre": "Sortie longue · 1 h 25 — simple",
+      "famille": "sl"
+     },
+     {
+      "jour": "mardi",
+      "titre": "Test — vitesse critique",
+      "famille": "test"
+     },
+     {
+      "jour": "jeudi",
+      "titre": "Mécanique · 20 min — navette classique, 20 min",
+      "famille": "mecanique"
+     }
+    ]
+   },
+   {
+    "numero": 5,
+    "lundi": "2026-12-21",
+    "type": "charge",
+    "bloc": "developpement",
+    "gabarit": "G1",
+    "volume_h": 5.3,
+    "sl_min": 150,
+    "week_end_choc": false,
+    "seances_cles": [
+     {
+      "jour": "dimanche",
+      "titre": "Sortie longue · 2 h 30 — montées engagées, 2 × 10 min",
+      "famille": "sl"
+     },
+     {
+      "jour": "mardi",
+      "titre": "Test — FC au seuil 2",
+      "famille": "test"
+     },
+     {
+      "jour": "jeudi",
+      "titre": "Mécanique · 30 min — navette classique, 30 min",
+      "famille": "mecanique"
+     }
+    ]
+   },
+   {
+    "numero": 6,
+    "lundi": "2026-12-28",
+    "type": "charge",
+    "bloc": "developpement",
+    "gabarit": "G1",
+    "volume_h": 5.6,
+    "sl_min": 165,
+    "week_end_choc": false,
+    "seances_cles": [
+     {
+      "jour": "dimanche",
+      "titre": "Sortie longue · 2 h 45 — montées engagées, 2 × 11 min",
+      "famille": "sl"
+     },
+     {
+      "jour": "mardi",
+      "titre": "Seuil 2 côte · 12 min — montées courtes, 3 × 4 min",
+      "famille": "seuil2"
+     },
+     {
+      "jour": "jeudi",
+      "titre": "Mécanique · 34 min — navette classique, 34 min",
+      "famille": "mecanique"
+     }
+    ]
+   },
+   {
+    "numero": 7,
+    "lundi": "2027-01-04",
+    "type": "charge",
+    "bloc": "developpement",
+    "gabarit": "G1",
+    "volume_h": 5.9,
+    "sl_min": 175,
+    "week_end_choc": false,
+    "seances_cles": [
+     {
+      "jour": "dimanche",
+      "titre": "Sortie longue · 2 h 55 — montées engagées, 2 × 12 min",
+      "famille": "sl"
+     },
+     {
+      "jour": "mardi",
+      "titre": "Seuil 2 côte · 15 min — montées longues, 3 × 5 min",
+      "famille": "seuil2"
+     },
+     {
+      "jour": "jeudi",
+      "titre": "Mécanique · 39 min — navette à descentes actives, 1 × 6 min",
+      "famille": "mecanique"
+     }
+    ]
+   },
+   {
+    "numero": 8,
+    "lundi": "2027-01-11",
+    "type": "assimilation",
+    "bloc": "developpement",
+    "gabarit": "G2",
+    "volume_h": 4.4,
+    "sl_min": 105,
+    "week_end_choc": false,
+    "seances_cles": [
+     {
+      "jour": "dimanche",
+      "titre": "Sortie longue · 1 h 45 — simple",
+      "famille": "sl"
+     },
+     {
+      "jour": "mardi",
+      "titre": "Seuil 2 côte · 12 min — montées courtes, 3 × 4 min",
+      "famille": "seuil2"
+     },
+     {
+      "jour": "jeudi",
+      "titre": "Mécanique · 30 min — navette classique, 30 min",
+      "famille": "mecanique"
+     }
+    ]
+   },
+   {
+    "numero": 9,
+    "lundi": "2027-01-18",
+    "type": "charge",
+    "bloc": "specifique",
+    "gabarit": "G1",
+    "volume_h": 6.7,
+    "sl_min": 190,
+    "week_end_choc": false,
+    "seances_cles": [
+     {
+      "jour": "dimanche",
+      "titre": "Sortie longue · 3 h 10 — conditions de course, 4 × 10 min",
+      "famille": "sl"
+     },
+     {
+      "jour": "mardi",
+      "titre": "Seuil 1 côte · 30 min — montées répétées, 6 × 5 min",
+      "famille": "seuil1"
+     },
+     {
+      "jour": "jeudi",
+      "titre": "Mécanique · 45 min — navette à montées actives, 1 × 7 min",
+      "famille": "mecanique"
+     }
+    ]
+   },
+   {
+    "numero": 10,
+    "lundi": "2027-01-25",
+    "type": "charge",
+    "bloc": "specifique",
+    "gabarit": "G1",
+    "volume_h": 5.8,
+    "sl_min": 150,
+    "week_end_choc": false,
+    "seances_cles": [
+     {
+      "jour": "dimanche",
+      "titre": "Sortie longue · 2 h 30 — montées engagées, 2 × 13 min",
+      "famille": "sl"
+     },
+     {
+      "jour": "mardi",
+      "titre": "Seuil 1 côte · 30 min — montées répétées, 5 × 6 min",
+      "famille": "seuil1"
+     },
+     {
+      "jour": "jeudi",
+      "titre": "VO2max vallonné · 10 min — courts, 10 × 1 min",
+      "famille": "vo2max"
+     }
+    ]
+   },
+   {
+    "numero": 11,
+    "lundi": "2027-02-01",
+    "type": "charge",
+    "bloc": "specifique",
+    "gabarit": "G1",
+    "volume_h": 6.8,
+    "sl_min": 190,
+    "week_end_choc": false,
+    "seances_cles": [
+     {
+      "jour": "dimanche",
+      "titre": "Sortie longue · 3 h 10 — conditions de course, 3 × 15 min",
+      "famille": "sl"
+     },
+     {
+      "jour": "mardi",
+      "titre": "Seuil 1 côte · 35 min — montées répétées, 7 × 5 min",
+      "famille": "seuil1"
+     },
+     {
+      "jour": "jeudi",
+      "titre": "Mécanique · 45 min — navette classique, 45 min",
+      "famille": "mecanique"
+     }
+    ]
+   },
+   {
+    "numero": 12,
+    "lundi": "2027-02-08",
+    "type": "assimilation",
+    "bloc": "specifique",
+    "gabarit": "G2",
+    "volume_h": 5.0,
+    "sl_min": 115,
+    "week_end_choc": false,
+    "seances_cles": [
+     {
+      "jour": "dimanche",
+      "titre": "Sortie longue · 1 h 55 — simple",
+      "famille": "sl"
+     },
+     {
+      "jour": "mardi",
+      "titre": "Seuil 1 côte · 30 min — montées répétées, 6 × 5 min",
+      "famille": "seuil1"
+     },
+     {
+      "jour": "jeudi",
+      "titre": "VO2max vallonné · 10 min — moyens, 5 × 2 min",
+      "famille": "vo2max"
+     }
+    ]
+   },
+   {
+    "numero": 13,
+    "lundi": "2027-02-15",
+    "type": "charge",
+    "bloc": "specifique",
+    "gabarit": "G1",
+    "volume_h": 6.0,
+    "sl_min": 150,
+    "week_end_choc": false,
+    "seances_cles": [
+     {
+      "jour": "dimanche",
+      "titre": "Sortie longue · 2 h 30 — montées engagées, 2 × 14 min",
+      "famille": "sl"
+     },
+     {
+      "jour": "mardi",
+      "titre": "Seuil 1 côte · 35 min — montées répétées, 7 × 5 min",
+      "famille": "seuil1"
+     },
+     {
+      "jour": "jeudi",
+      "titre": "VO2max vallonné · 12 min — pyramide 1′30-1-0′30, 4 tours",
+      "famille": "vo2max"
+     }
+    ]
+   },
+   {
+    "numero": 14,
+    "lundi": "2027-02-22",
+    "type": "charge",
+    "bloc": "specifique",
+    "gabarit": "G1",
+    "volume_h": 7.0,
+    "sl_min": 190,
+    "week_end_choc": false,
+    "seances_cles": [
+     {
+      "jour": "dimanche",
+      "titre": "Sortie longue · 3 h 10 — répétition générale, 3 × 17 min",
+      "famille": "sl"
+     },
+     {
+      "jour": "mardi",
+      "titre": "Seuil 1 côte · 40 min — montées répétées, 8 × 5 min",
+      "famille": "seuil1"
+     },
+     {
+      "jour": "jeudi",
+      "titre": "Mécanique · 45 min — navette à montées actives, 1 × 8 min",
+      "famille": "mecanique"
+     }
+    ]
+   },
+   {
+    "numero": 15,
+    "lundi": "2027-03-01",
+    "type": "affutage",
+    "bloc": "affutage",
+    "gabarit": "G4",
+    "volume_h": 4.2,
+    "sl_min": 90,
+    "week_end_choc": false,
+    "seances_cles": [
+     {
+      "jour": "dimanche",
+      "titre": "Sortie longue · 1 h 30 — simple",
+      "famille": "sl"
+     },
+     {
+      "jour": "mardi",
+      "titre": "Seuil 1 côte · 24 min — montées répétées, 4 × 6 min",
+      "famille": "seuil1"
+     },
+     {
+      "jour": "jeudi",
+      "titre": "Mécanique · 22 min — navette classique, 22 min",
+      "famille": "mecanique"
+     }
+    ]
+   },
+   {
+    "numero": 16,
+    "lundi": "2027-03-08",
+    "type": "course",
+    "bloc": "affutage",
+    "gabarit": "G5",
+    "volume_h": 1.4,
+    "sl_min": 0,
+    "week_end_choc": false,
+    "seances_cles": [
+     {
+      "jour": "mardi",
+      "titre": "Seuil 1 vallonné · 16 min — blocs longs, 2 × 8 min",
+      "famille": "seuil1"
+     },
+     {
+      "jour": "dimanche",
+      "titre": "Course — ta course",
+      "famille": "course"
+     }
+    ]
+   }
+  ],
+  "version_moteur": "9.0"
+ }
+}
