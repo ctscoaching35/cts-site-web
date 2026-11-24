@@ -120,12 +120,13 @@ test('« Réglages » sous la 9.x : les sections dans l’ordre de ORDRE_DES_REG
   for (const [cle, p] of positions) assert.ok(p > 0, `${cle} est dans « Réglages »`);
   const attendu = ORDRE_DES_REGLAGES_9X.filter((s) => s in marques);
   assert.deepEqual(positions.sort((x, y) => x[1] - y[1]).map(([cle]) => cle), attendu);
-  // Ce qui s'ajoute, dans l'ordre : ce qui arrive, la revue, la semaine passée, les courses dans Nolio, les courses de préparation, les objectifs passés, la demande, l'entrée.
+  // Ce qui s'ajoute, dans l'ordre : ce qui arrive, la revue, la semaine passée, les courses dans Nolio, les objectifs passés, la demande, l'entrée. (Les courses de préparation n'y sont plus :
+  // la 9.x ne les porte pas, troisième simplification, scripts/test-espace-coach-simple-3.mjs.)
   const iPlus = page.indexOf('  const sectionsEnPlus = (');
   const plus = page.slice(iPlus, page.indexOf('  return (\n    <CadreCoach', iPlus));
   const ordreEnPlus = [
     ['a_venir', '<PointsAVenir points={pointsAVenir(points)} />'], ['revue', '<section id="revue"'], ['semaine_passee', '<section id="sa-semaine-passee"'],
-    ['courses_nolio', '<section id="courses-nolio"'], ['preparations', 'TEXTES_PAGE_ATHLETE.preparations'], ['anciens_objectifs', 'TEXTES_PAGE_ATHLETE.anciensObjectifs'],
+    ['courses_nolio', '<section id="courses-nolio"'], ['anciens_objectifs', 'TEXTES_PAGE_ATHLETE.anciensObjectifs'],
     ['demande', 'Sa demande de coaching, du'], ['entree', '<CarteEntree entree={entree} plat />'],
   ].map(([cle, m]) => { assert.ok(plus.includes(m), cle); return [cle, plus.indexOf(m)]; });
   assert.deepEqual(ordreEnPlus.sort((x, y) => x[1] - y[1]).map(([cle]) => cle), ORDRE_DES_REGLAGES_9X.slice(ORDRE_DES_REGLAGES_9X.indexOf('a_venir'), ORDRE_DES_REGLAGES_9X.indexOf('retirer')));
@@ -177,8 +178,8 @@ test('chaque morceau de la 9.x est derrière `v9` : la branche, les deux section
   assert.match(page, /const manqueCoureur = v9 \? ceQuiManqueAuCoureur\(/);
   assert.match(page, /const lignesAFaire = v9 \? aFairePourLui\(points, entree, manqueCoureur\.some\(\(m\) => m\.cle === 'profil'\)\) : \[\];/);
   assert.match(page, /const \{ aVenir: objectifsAVenir, passes: objectifsPasses \} = v9 \? departagerLesObjectifs\(objectifs, jour\) : \{ aVenir: \[\], passes: \[\] \};/);
-  assert.match(page, /const saison9 = v9 && saisonEnCours \?/);
-  assert.match(page, /const preparations = v9 \? objectifs\.flatMap\(/);
+  // La saison de fond et les courses de préparation ne sont plus rendues sous la 9.x (troisième simplification) : ni leur calcul ni leur section.
+  assert.ok(!page.includes('saison9') && !/const preparations\b/.test(page));
   assert.match(page, /const zonesEtStyle = v9 && \(/);
   // La ligne du premier essai reste : les points de la page, sans ce que « Son entrée » dit déjà (étape 1).
   assert.match(page, /const pointsIci = v9 \? pointsDeSaPage\(points, entree\) : points;/);
@@ -495,7 +496,7 @@ test('les textes nouveaux : apostrophe typographique, phrases courtes, mots simp
   assert.deepEqual(textes.map(([cle]) => cle), [
     'aFaire', 'rienAFaire', 'nolio', 'accord', 'accordSous', 'depart', 'boutonAccord', 'carte', 'ilManque', 'manqueProfil', 'manqueTest', 'manqueReperes', 'remplirProfil', 'modifierProfil',
     'saisirTest', 'modifierReperes', 'ceQuIlLit', 'objectifs', 'aucunObjectif', 'complet', 'envoyeEnEntier', 'manqueCote', 'manqueIntensite', 'manqueMecanique', 'manqueTapis', 'manqueGpx',
-    'titreCote', 'titreIntensite', 'titreMecanique', 'titreTapis', 'titreGpx', 'traceDonnee', 'sansValeur', 'reglagesSous', 'ouEnEstIl', 'aVenir', 'preparations', 'anciensObjectifs',
+    'titreCote', 'titreIntensite', 'titreMecanique', 'titreTapis', 'titreGpx', 'traceDonnee', 'sansValeur', 'reglagesSous', 'ouEnEstIl', 'aVenir', 'anciensObjectifs',
   ]);
   // Les textes repris de la page d'avant sont ceux de la page d'avant, mot pour mot.
   for (const cle of ['aFaire', 'rienAFaire', 'remplirProfil', 'modifierProfil', 'saisirTest', 'modifierReperes', 'ceQuIlLit', 'objectifs', 'aucunObjectif']) {
