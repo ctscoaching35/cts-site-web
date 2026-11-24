@@ -11,7 +11,7 @@
  */
 
 export const heureDeParis = (d: Date): number =>
-  Number(new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', hourCycle: 'h23', timeZone: 'Europe/Paris' }).format(d));
+  Number(new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', hourCycle: 'h23', timeZone: 'Europe/Paris' }).formatToParts(d).find((p) => p.type === 'hour')?.value);
 export const jourDeParis = (d: Date): string => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(d);
 const estUnDimancheAParis = (d: Date): boolean => new Date(`${jourDeParis(d)}T12:00:00Z`).getUTCDay() === 0;
 
