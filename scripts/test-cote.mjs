@@ -180,8 +180,8 @@ test('fiche : sous 1 min, le profil garde 1 min (le plancher du moteur) ; « pas
 test('fiche : sans nombre lu, la phrase de ce qui manque ; les quatre cases d’avant ne sont plus lues', () => {
   const son = profilLu({});
   assert.equal(son.erreur, cote.TEXTES_COTE.illisibleSa);
-  assert.equal(profilLu({}, 'ton').erreur, cote.TEXTES_COTE.illisibleCoache);
-  assert.ok(!/pas de côte/i.test(cote.TEXTES_COTE.illisible + cote.TEXTES_COTE.illisibleCoache + cote.TEXTES_COTE.illisibleSa), 'la phrase ne renvoie plus à une case « pas de côte »');
+  assert.equal(profilLu({}, 'ton').erreur, cote.TEXTES_COTE.illisible);
+  assert.ok(!/pas de côte/i.test(cote.TEXTES_COTE.illisible + cote.TEXTES_COTE.illisibleSa), 'la phrase ne renvoie plus à une case « pas de côte »');
   for (const brut of ['douze', '-2', '300', 'aucune']) assert.ok(profilLu({ cote_min: brut }).erreur, brut);
   assert.ok(profilLu({ terrain: 'pentu' }).erreur, 'l’ancien champ seul ne suffit plus');
 });

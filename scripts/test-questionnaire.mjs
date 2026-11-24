@@ -58,7 +58,7 @@ test('repères : au-delà du plafond du format, « plus de 7h » et la fin de l�
   assert.deepEqual(r.bandes.map((b) => b.temps), ['moins de 4h30', '4h30 à 5h25', '5h25 à 6h15', '6h15 à 7h', 'plus de 7h']);
   assert.equal(r.fin, 'Au-delà de 7h, c’est hors du plafond de ce plan : un coaching individualisé est plus adapté.');
   assert.equal(reperesChrono(course('TC', '29', '2500'), CONFIG, true).fin,
-    'Au-delà de 7h, c’est hors du plafond de ce plan. Le moteur ne construit pas ce cas : à préparer toi-même, hors du parcours automatique.');
+    'Au-delà de 7h, c’est hors du plafond de ce plan. Ce cas sort du parcours habituel : il se prépare à la main.');
   // Plus loin au-delà : les bandes qui commencent après le plafond deviennent « plus de 7h », comme avant ; une borne
   // qui s'affiche au plafond (7h00) aussi : plus de « 5h50 à 7h00 » ni de « 7h00 à 7h » (le défaut du 07/11/2026).
   assert.deepEqual(reperesChrono(course('TC', '29', '4000'), CONFIG).bandes.map((b) => b.temps),
