@@ -26,7 +26,9 @@ const MOTS: [Cle, string, string][] = [
   ['allure', 'Allure de course', 'l’allure de ta course, calculée sur ton chrono visé.'],
   ['navettes', 'Navettes', 'des montées et des descentes répétées sur une même pente, pour habituer tes jambes au relief.'],
   ['myo', 'Côtes et renfo', 'de la force en côte : des montées enchaînées avec des exercices de renforcement.'],
-  ['tapis', 'Montée sur tapis', 'une montée sur tapis incliné, pour qui n’a pas de longue côte.'],
+  // Texte validé par le coach le 24/11/2026 (entrée 197) : la pente vient du moteur, qui l'écrit dans la séance ; ni « une fois par semaine » ni « séance à plat »,
+  // des règles internes, ne se disent à l'athlète. Le mot se reconnaît à tout titre qui contient « tapis ».
+  ['tapis', 'Séance sur tapis', 'ta séance faite sur ton tapis, incliné. Tout le travail se fait en montée, à la pente indiquée dans la séance ; entre les blocs, tu remets le tapis à plat et tu trottines.'],
   ['renfo', 'Renfo', 'du renforcement musculaire, à faire chez toi.'],
   ['wec', 'Week-end choc', 'des sorties longues enchaînées, pour apprendre à courir fatigué.'],
   ['rpe', 'RPE', 'ton effort ressenti, de 0 à 10 : note ton souffle, pas la douleur des jambes.'],
