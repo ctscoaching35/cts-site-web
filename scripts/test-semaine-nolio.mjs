@@ -225,6 +225,12 @@ test('la famille d’un nom et le jour d’une date', () => {
   assert.equal(familleDuNom('VO2 long · 15 min — 2 × 4′, 4 × 1′, 6 × 30″ · vallonné'), 'vo2max');
   assert.equal(familleDuNom('Navettes descentes actives'), 'mecanique');
   assert.equal(familleDuNom('Séance piste club'), null);
+  // La mécanique du moteur v1 (entrée 198 : navettes, côtes et renfo, montée continue) : son titre s'ouvre sur « Mécanique · » ; une navette au singulier aussi.
+  for (const nom of ['Mécanique · 20 min — navette classique, 20 min', 'Mécanique · 30 min — montée continue', 'Mécanique · 45 min — navette à montées actives, 1 × 7 min',
+    'Côtes et renfo · 30 min', 'Navette classique', 'Montée continue, 25 min']) assert.equal(familleDuNom(nom), 'mecanique', nom);
+  // Une séance d'une autre famille qui se fait en montée continue garde la sienne, et le renfo seul reste du renfo.
+  assert.equal(familleDuNom('Seuil 1 · 30 min — montée continue'), 'seuil1');
+  assert.equal(familleDuNom('Renfo · 20 min'), 'renfo');
   assert.equal(jourDe('2026-11-19'), 'jeudi');
   assert.equal(jourDe('2026-11-22'), 'dimanche');
 });

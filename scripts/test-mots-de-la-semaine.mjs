@@ -8,6 +8,7 @@
  *   node --test scripts/test-mots-de-la-semaine.mjs
  */
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { registerHooks } from 'node:module';
 import test from 'node:test';
 
@@ -24,6 +25,20 @@ registerHooks({
 const { motsDeLaSemaine } = await import('../lib/app/motsDeLaSemaine.ts');
 
 const mots = (noms) => motsDeLaSemaine(noms).map((m) => m.mot);
+
+test('« Montée continue » (entrée 198 du coach) : le texte validé, reconnu dans « Mécanique · 30 min — montée continue » ; ni les navettes ni le tapis ne le déclenchent', () => {
+  const sens = Object.fromEntries(motsDeLaSemaine(['Mécanique · 30 min — montée continue']).map((m) => [m.mot, m.sens]));
+  assert.deepEqual(Object.keys(sens), ['Montée continue', 'RPE']);
+  assert.equal(sens['Montée continue'], 'une seule longue montée, d’un seul tenant, en endurance.');
+  for (const titre of ['Mécanique · 30 min — Montée continue, 1 × 25 min', 'montée continue', 'Seuil 1 · 30 min — montée continue']) {
+    assert.ok(mots([titre]).includes('Montée continue'), titre);
+  }
+  // Une navette, un titre du moteur v1 de la navette (au singulier) et un tapis gardent leur mot, pas celui-ci.
+  assert.deepEqual(mots(['Mécanique · 20 min — navette classique, 20 min']), ['Navettes', 'RPE']);
+  assert.ok(!mots(['NAV 2×10′ DA', 'TAPIS 3×8′ marche 15 %']).includes('Montée continue'));
+  // Dans l'ordre : après « Côtes et renfo », avant « Séance sur tapis ».
+  assert.deepEqual(mots(['MYO 2×4 squats', 'Mécanique · 30 min — montée continue', 'Seuil 1 tapis · 30 min']), ['Seuil 1', 'Côtes et renfo', 'Montée continue', 'Séance sur tapis', 'RPE']);
+});
 
 test('une semaine de trail en codes : ses familles seulement, dans l’ordre, RPE en dernier, sans Seuil 2 ni Hooper', () => {
   assert.deepEqual(mots(['EF V', 'S1 3×10′/2′ R · Seuil 1, route', 'NAV 2×10′ DA', 'MYO 2×4 squats', 'SL D+']),
@@ -95,4 +110,10 @@ test('« Séance sur tapis » se reconnaît à tout titre qui contient « tapis 
   }
   assert.ok(!mots(['EF plate', 'Seuil 1 route · 45 min']).includes('Séance sur tapis'));
   assert.ok(!mots(['Seuil 1 tapis · 30 min']).includes('Montée sur tapis'), 'l’ancien mot n’existe plus');
+});
+
+test('l’écran des chiffres du coach dit la mécanique comme l’entrée 198 : navettes, côtes et renfo, montée continue', () => {
+  const page = readFileSync(new URL('../app/app/coach/chiffres/page.tsx', import.meta.url), 'utf8');
+  assert.ok(page.includes("mecanique: 'Mécanique (navettes, côtes et renfo, montée continue)'"));
+  assert.ok(!page.includes('Myocrossmax'), 'l’ancien nom n’est plus dit au coach');
 });
