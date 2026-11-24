@@ -48,10 +48,10 @@ const TEXTES: Record<Cle, { avant: string; v9: string }> = {
     avant: 'Le dimanche, ton appli à jour (tes séances remontées dans Nolio) et le questionnaire du samedi rempli. C’est ce qui permet d’adapter ta semaine suivante. Sans ça, elle reste au même niveau, puis se recale dès que tu actualises.',
     v9: 'Le dimanche, ton appli à jour (tes séances remontées dans Nolio) et ton point du dimanche rempli. C’est ce qui permet d’adapter ta semaine suivante. Sans ça, elle reste au même niveau, puis se recale dès que tu actualises.',
   },
-  // app/confidentialite/page.tsx : ce que la semaine suivante lit chaque dimanche. Sous la 9.0, l'arrêt et sa cause (blessure, maladie, autre) et les séances clés pas faites s'y ajoutent.
+  // app/confidentialite/page.tsx : ce que la semaine suivante lit chaque dimanche. Sous la 9.0, l'arrêt et sa durée, sa cause (blessure, maladie, autre) seulement avec l'accord de lecture (décision 209), et les séances clés pas faites s'y ajoutent.
   confidentialite: {
     avant: 'tes réponses au questionnaire du samedi (tes jours, ton jour de sortie longue, ton nombre de séances)',
-    v9: 'tes réponses à « Ton point du dimanche » (ton arrêt éventuel et sa cause, les séances clés que tu n’as pas faites, tes jours, ton nombre de séances, ton jour de sortie longue)',
+    v9: 'tes réponses à « Ton point du dimanche » (ton arrêt éventuel et sa durée, et sa cause (blessure, maladie, autre) si tu nous as donné ton accord de lecture, les séances clés que tu n’as pas faites, tes jours, ton nombre de séances, ton jour de sortie longue)',
   },
 };
 
