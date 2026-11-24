@@ -206,3 +206,8 @@ test('la trame d’un plan : sous une 9.x elle se demande avec les paramètres d
   const c = readFileSync(`${RACINE}lib/app/espaceCoach.ts`, 'utf8');
   assert.match(c, /p\.trame && trameDuBonMoteur\(p\.trame, v9\)/);
 });
+
+test('sous le moteur v1, une semaine pas encore écrite n’a pas de repli : celle du plan d’achat de la 8.x n’est pas celle que le moteur v1 écrira', () => {
+  const t = readFileSync(`${RACINE}lib/app/tableauDuPlan.ts`, 'utf8');
+  assert.match(t, /return lireLaSemaine\(data\?\.donnees\) \?\? \(\(await moteurEstV9\(\)\) \? null : duPlan\);/);
+});
