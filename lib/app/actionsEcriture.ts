@@ -15,6 +15,7 @@ import { annulerLeChoix, CORRECTIONS, CORRECTIONS_ACTIVES, garderLeChoix, RAISON
 import { coachConnecte } from './nolio';
 import { enTetesMoteur } from './cleMoteur';
 import { moteurEstV9 } from './moteurEnLigne';
+import { garderLeGpxDuPlan, lireLaTraceV9 } from './traceV9';
 import { clientServeur, clientService } from './supabase';
 import { estPlanDeDemonstration, REFUS_DEMONSTRATION } from './demonstrationPorte';
 
@@ -225,7 +226,7 @@ async function enregistrerCourse(planId: string, form: FormData, ancienne: strin
 // l'achat, elle s'ajoute ensuite depuis la fiche de course, avec le même champ que pour une course de préparation. Le
 // moteur en tire le profil, les tronçons, ses déterminants mécaniques et ses secteurs clés (POST /v1/fiche-course, rien
 // n'y est conservé) ; ils remplacent ceux du plan (plans.donnees), et le D- lu sur la trace. La préparation déjà écrite
-// ne change pas (ni les paramètres, ni la trame) ; les données refaites chaque nuit (POST /v1/donnees) gardent ce profil.
+// ne change pas (ni les paramètres, ni la trame, sauf sous la 9.x : le profil de la trace s'y ajoute, ci-dessous) ; les données refaites chaque nuit (POST /v1/donnees) gardent ce profil.
 // La trace est gardée (objectifs/<plan>.gpx), comme celle d'une course de préparation.
 export async function ajouterTraceObjectif(planId: string, _e: EtatGeste, form: FormData): Promise<EtatGeste> {
   if (estPlanDeDemonstration(planId)) return { ok: false, message: REFUS_DEMONSTRATION };
@@ -272,6 +273,13 @@ export async function ajouterTraceObjectif(planId: string, _e: EtatGeste, form: 
   }
   await service.storage.from('plans-pdf').upload(`objectifs/${planId}.gpx`, gpx, { contentType: 'application/gpx+xml', upsert: true })
     .catch(() => null);
+  // SOUS LE MOTEUR v1 (9.x ; décision du coach, règles 2 et 9 : le profil de la course choisit la forme en côte au spécifique) : la trace passe aussi par POST /v1/trace et son
+  // profil s'ajoute aux paramètres du plan (`champs.gpx`) ; rien d'autre n'y change, la semaine suivante le lit. C'est aussi ainsi que le coach redonne la trace d'un plan venu de
+  // la 8.x. Un profil que le moteur ne rend pas n'empêche rien : la fiche est faite, le moteur se replie sur la classe de la course. Sous la 8.x, rien de plus.
+  if (await moteurEstV9()) {
+    const profil = await lireLaTraceV9(gpx);
+    if (!profil || !(await garderLeGpxDuPlan(planId, profil))) console.error(`Trace de ${planId} : le profil du moteur v1 n’a pas été gardé avec le plan.`);
+  }
   revalidatePath('/app/plan/course');
   revalidatePath('/app/plan');
   return { ok: true, message: 'C’est fait : le profil et les tronçons de ta course sont dans ta fiche. Ta préparation, elle, ne change pas.' };
