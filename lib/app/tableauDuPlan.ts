@@ -9,6 +9,7 @@ import { continuiteDe, objectifAffiche, trameDuPlan, type LigneTrame, type Reali
 import { listeNolio, SPORTS_COURSE } from './nolio';
 import { semainesDeLaFiche } from './semainesNolio';
 import { ajouterJours, type CleTest, type Semaine } from './plan';
+import { moteurEstV9 } from './moteurEnLigne';
 import { lireLaSemaine, type SemaineLue } from './semaineLue';
 import { clientService } from './supabase';
 import { ajustementDuJournal, debutDeLObjectif, detailDeLaSemaine, minutesDe, trameDesDonnees, volumeDeNolio, type Ajustement, type CourseDuGraphique, type Fiche } from './tableau';
@@ -145,8 +146,9 @@ export async function semaineEcrite(ctx: Contexte, numero: string): Promise<Sema
   if (ctx.demonstration) return semaineDeDemonstration(ctx, numero);
   const duPlan = ctx.plan.semaines.find((s) => s.numero === numero) ?? null;
   const { data } = await clientService().from('semaines_ecrites').select('donnees').eq('plan_id', ctx.cle).eq('numero', numero).maybeSingle();
-  // Une semaine de la 8.x ou du moteur v1 : lue par lib/app/semaineLue.ts (décision du coach du 24/11/2026).
-  return lireLaSemaine(data?.donnees) ?? duPlan;
+  // Une semaine de la 8.x ou du moteur v1 : lue par lib/app/semaineLue.ts (décision du coach du 24/11/2026). Sous le moteur v1, une semaine pas encore écrite n'a pas
+  // de repli : celle du plan d'achat (écrit par la 8.x) n'est pas celle que le moteur v1 écrira.
+  return lireLaSemaine(data?.donnees) ?? ((await moteurEstV9()) ? null : duPlan);
 }
 
 // « Cette semaine » telle qu'elle est dans Nolio (décision coach du 20/10/2026 : « on envoie et je modifie au besoin »,
