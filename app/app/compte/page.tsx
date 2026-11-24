@@ -17,6 +17,8 @@ import { coachConnecte } from '@/lib/app/nolio';
 import { donneesTableau } from '@/lib/app/tableauDuPlan';
 import { plansVisibles } from '@/lib/legal';
 import { ECRIRE_A_CTS } from '@/lib/app/contact';
+import { moteurEstV9 } from '@/lib/app/moteurEnLigne';
+import { motsDuQuestionnaire } from '@/lib/app/motsDuQuestionnaire';
 
 export const metadata: Metadata = { title: 'Compte' };
 
@@ -33,6 +35,8 @@ const COACHS: Record<string, string> = {
 // Nolio et ses données (l'accord de lecture, T5), l'app sur l'écran d'accueil, les documents, la déconnexion, la
 // suppression ; l'avertissement santé, pour un acheteur seulement (décision coach du 19/10/2026).
 export default async function Compte({ searchParams }: { searchParams: Recherche }) {
+  // Les mots du questionnaire de la semaine : « Ta semaine prochaine » sous la 8.x, « Ton point du dimanche » sous le moteur 9.0.
+  const v9 = await moteurEstV9().catch(() => false);
   // Un compte gratuit (lot A1) : son adresse, se déconnecter, tout effacer. Un visiteur n'a pas de compte : l'accueil.
   const acces = await lireAcces();
   if (acces.cas === 'visiteur') redirect('/app');
@@ -149,12 +153,12 @@ export default async function Compte({ searchParams }: { searchParams: Recherche
                   {ctx.coache
                     ? (d.accord
                       ? 'Ton coach et l’app lisent dans Nolio tes séances faites, ton RPE, ton ressenti et ton Hooper, seulement pour ajuster ta préparation et afficher tes graphiques.'
-                      : 'Sans ton accord, ta préparation suit son plan, ton questionnaire du samedi et tes séances faites ou manquées, et tes séances ne s’affichent pas ici. Pour les voir dans l’app, réponds « oui » au message de ton coach dans Nolio.')
+                      : motsDuQuestionnaire('compteCoacheSansAccord', v9))
                     // L'accord de lecture de l'acheteur (PL7, décision coach du 04/11/2026) : facultatif, recommandé, et juste
                     // sur ce qui est lu (les séances faites et leur durée, dans tous les cas).
                     : affiche?.accord_lecture_le
                       ? `Depuis le ${dateLongue(String(affiche.accord_lecture_le).slice(0, 10), true)}, l’app lit aussi dans Nolio ton RPE, ton ressenti, ton Hooper et la trace de tes séances test, pour ajuster ton plan à ta fatigue et en tirer tes repères. Tes séances faites ou manquées et leur durée sont lues dans tous les cas.`
-                      : 'Sans accord de lecture, l’app lit seulement tes séances faites ou manquées et leur durée : ton plan suit sa trame et ton questionnaire du samedi, sans s’ajuster à ta fatigue, et tu donnes toi-même tes repères. L’accord est recommandé.'}
+                      : motsDuQuestionnaire('compteAcheteurSansAccord', v9)}
                 </p>
                 {!ctx.coache && affiche?.parametres && affiche.accord_lecture_le && <RetirerAccord planId={ctx.cle} />}
                 {!ctx.coache && affiche?.parametres && !affiche.accord_lecture_le && <DonnerAccord planId={ctx.cle} demonstration={ctx.demonstration} />}

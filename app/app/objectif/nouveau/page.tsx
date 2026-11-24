@@ -1,3 +1,4 @@
+import { moteurEstV9 } from '@/lib/app/moteurEnLigne';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { BOUTON, BOUTON_SECONDAIRE, LIEN, Surtitre, TITRE } from '@/components/app/Ui';
@@ -19,6 +20,8 @@ export const metadata: Metadata = { title: 'Nouvel objectif' };
 // prérempli des dernières réponses, la course à remplir. Un acheteur paie sa nouvelle préparation ; un coaché envoie sa
 // demande à son coach, qui la relit et lance l'objectif.
 export default async function NouvelObjectif({ searchParams }: { searchParams: Promise<{ majeur?: string; discipline?: string }> }) {
+  // Les mots du questionnaire de la semaine (lib/app/motsDuQuestionnaire.ts) : « Ta semaine prochaine » sous la 8.x, « Ton point du dimanche » sous le moteur 9.0.
+  const v9 = await moteurEstV9().catch(() => false);
   // La démonstration (développement seulement, sans Supabase) : l'aiguillage, dans la version et au jour simulés ; le
   // questionnaire, qui part vers le paiement ou chez le coach, ne s'y ouvre pas.
   if (!supabaseConfigure() && demonstrationOuverte()) return demonstration(searchParams);
@@ -103,7 +106,7 @@ export default async function NouvelObjectif({ searchParams }: { searchParams: P
               Une seule fois : ton niveau et ta semaine habituelle. Tes prochains objectifs ne demanderont plus que ta
               course et ta charge du moment. Tu le retrouves dans ton onglet Profil.
             </p>
-            <ProfilAthlete profil={await profilDeLaFiche(fiche.id)} pourMoi rafraichir />
+            <ProfilAthlete profil={await profilDeLaFiche(fiche.id)} pourMoi rafraichir pointDuDimanche={v9} />
           </div>
         ) : fiche
           ? <Questionnaire coach demande court={court} athleteId={fiche.id} initial={initial} discipline={route ? 'route' : 'trail'} noteCharge={noteCharge} />

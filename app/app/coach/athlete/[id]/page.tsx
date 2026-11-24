@@ -1,3 +1,4 @@
+import { moteurEstV9 } from '@/lib/app/moteurEnLigne';
 import Link from 'next/link';
 import { formatRouteDe } from '@/lib/app/route';
 import clsx from 'clsx';
@@ -69,6 +70,8 @@ export default async function PageAthlete({ params, searchParams }: {
 }) {
   if (!espaceCoachOuvert()) notFound();
   const coach = await exigerCoach();
+  // Les mots du questionnaire de la semaine (lib/app/motsDuQuestionnaire.ts) : « Ta semaine prochaine » sous la 8.x, « Ton point du dimanche » sous le moteur 9.0.
+  const v9 = await moteurEstV9().catch(() => false);
   const { id } = await params;
   const { apercu } = await searchParams;
   const a = await ficheAthlete(coach.compteId, id);
@@ -534,7 +537,7 @@ export default async function PageAthlete({ params, searchParams }: {
             )}
             <details className="pt-2" open={profilVide}>
               <summary className="cursor-pointer min-h-10 flex items-center text-[0.8125rem] font-bold text-teal">{profilVide ? 'Remplir son profil' : 'Modifier son profil'}</summary>
-              <div className="pt-2"><ProfilAthlete athleteId={a.id} profil={profil} /></div>
+              <div className="pt-2"><ProfilAthlete athleteId={a.id} profil={profil} pointDuDimanche={v9} /></div>
             </details>
           </Carte>
         </div>

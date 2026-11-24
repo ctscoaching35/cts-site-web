@@ -1,3 +1,4 @@
+import { moteurEstV9 } from '@/lib/app/moteurEnLigne';
 import Link from 'next/link';
 import { formatRouteDe } from '@/lib/app/route';
 import CadreCoach from '@/components/app/CadreCoach';
@@ -21,6 +22,8 @@ export const dynamic = 'force-dynamic';
 // la course se demandent. Une course de préparation s'ajoute à son objectif en cours.
 export default async function NouvelAthlete({ searchParams }: { searchParams: Recherche }) {
   const coach = await exigerCoach();
+  // Les mots du questionnaire de la semaine (lib/app/motsDuQuestionnaire.ts) : « Ta semaine prochaine » sous la 8.x, « Ton point du dimanche » sous le moteur 9.0.
+  const v9 = await moteurEstV9().catch(() => false);
   const r = await searchParams;
   const suite = typeof r.athlete === 'string' ? await questionnairePrerempli(coach.compteId, r.athlete) : null;
   // OM1 : l'objectif demandé par le coaché, ses réponses à relire ; sa trace part avec la demande.
@@ -118,13 +121,13 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
             {aModifier && <p className="pt-1 text-[0.72rem] leading-relaxed text-[#5E5C78]">À l’enregistrement de l’objectif, sa préparation reprend ce profil dès la semaine suivante.</p>}
             <details className="pt-1">
               <summary className="cursor-pointer min-h-11 flex items-center text-[0.8125rem] font-bold text-teal">Modifier son profil</summary>
-              <div className="pt-2 pb-2"><ProfilAthlete athleteId={suite.athlete.id} profil={profilFiche} rafraichir /></div>
+              <div className="pt-2 pb-2"><ProfilAthlete athleteId={suite.athlete.id} profil={profilFiche} rafraichir pointDuDimanche={v9} /></div>
             </details>
           </div>
         )}
         {achete?.demarre_le ? null : suite && !court && !aModifier ? (
           <div className="mx-2 bg-white rounded-2xl border border-indigo/[0.08] p-5">
-            <ProfilAthlete athleteId={suite.athlete.id} rafraichir
+            <ProfilAthlete athleteId={suite.athlete.id} rafraichir pointDuDimanche={v9}
               profil={demande ? Object.fromEntries(Object.entries(demande.champs).filter(([k]) => ['terrain', 'jours_disponibles', 'jour_sl', 'freq_hebdo'].includes(k))) as Record<string, string | string[]> : {}} />
           </div>
         ) : <Questionnaire key={JSON.stringify(suite?.profil ?? {})} coach court={court} emailCoach={coach.email} athleteId={suite?.athlete.id} demandeId={demande?.id}

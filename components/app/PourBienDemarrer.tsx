@@ -1,5 +1,6 @@
 'use client';
 
+import { motsDuQuestionnaire } from '@/lib/app/motsDuQuestionnaire';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { cocherMontre, masquerDemarrage } from '@/lib/app/actionsBienvenue';
@@ -33,9 +34,11 @@ type Etape = { fait: boolean; titre: string; texte?: React.ReactNode; cocher?: (
 // montre (décision coach du 07/11/2026) : l'acheteur a coché lui-même « Installe l'appli Nolio et relie ta montre », d'un
 // appui sur son rond, retenu sur cet appareil pour ce plan (un cookie, lib/app/actionsBienvenue.ts, cocherMontre) ; la
 // coche automatique, à la première séance faite remontée, reste. « Rejoins l'équipe CTS » ne se coche pas à la main.
-export default function PourBienDemarrer({ acheteur, nolio, accord, questionnaire, installer, profil = true, lienProfil = '', seanceFaite = false, montre = false, inviteLe = null, confirmer = false, demonstration = false, planId, adapte = true }: {
+export default function PourBienDemarrer({ acheteur, nolio, accord, questionnaire, installer, profil = true, lienProfil = '', seanceFaite = false, montre = false, inviteLe = null, confirmer = false, demonstration = false, planId, adapte = true, pointDuDimanche = false }: {
   acheteur: boolean; nolio: EtatNolio; accord: boolean; questionnaire: boolean; installer: string; profil?: boolean; lienProfil?: string;
   seanceFaite?: boolean; montre?: boolean; inviteLe?: string | null; confirmer?: boolean; demonstration?: boolean; planId: string; adapte?: boolean;
+  // Vrai sous le moteur 9.0 : le questionnaire de la semaine s'appelle « Ton point du dimanche » (choisi côté serveur).
+  pointDuDimanche?: boolean;
 }) {
   const [masquee, setMasquee] = useState(false);
   const [montreCochee, setMontreCochee] = useState(montre);
@@ -121,8 +124,7 @@ export default function PourBienDemarrer({ acheteur, nolio, accord, questionnair
       {/* Validé par le coach le 08/11/2026, dans les deux versions (coaché et acheteur). */}
       {adapte && (
         <p className="text-[0.8125rem] text-[#4A4866] leading-relaxed">
-          Ta préparation s’adapte chaque semaine : le samedi, un court questionnaire dans Nolio te demande tes jours et ton nombre
-          de séances ; le dimanche soir, ta semaine s’écrit d’après tes réponses et ce que tu as couru.
+          {motsDuQuestionnaire('sAdapte', pointDuDimanche)}
         </p>
       )}
       <ol>
@@ -146,8 +148,7 @@ export default function PourBienDemarrer({ acheteur, nolio, accord, questionnair
       </ol>
       {questionnaire && (
         <p className="p-3 rounded-xl bg-sand text-xs text-[#4A4866] leading-relaxed">
-          Chaque samedi à 8 h, le questionnaire « Ta semaine prochaine » t’attend dans Nolio : réponds d’ici dimanche 18 h, ta
-          semaine suivante s’écrit dimanche soir d’après tes réponses.
+          {motsDuQuestionnaire('pourBienDemarrer', pointDuDimanche)}
         </p>
       )}
       <div className="flex justify-end">

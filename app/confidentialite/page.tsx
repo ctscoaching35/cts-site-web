@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { Liste, PageLegale, Section } from '@/components/PageLegale';
 import { modeAppGratuite } from '@/lib/app/gratuitRegles';
+import { moteurEstV9 } from '@/lib/app/moteurEnLigne';
+import { motsDuQuestionnaire } from '@/lib/app/motsDuQuestionnaire';
 import { plansVisibles, vendeur, VERSION_CONFIDENTIALITE } from '@/lib/legal';
 
 // TEXTE CORRIGÉ LE 05/11/2026 d'après les audits A et B de la Préparation CTS (S3, « A » : corrigé sans juriste, relu par
@@ -24,6 +26,8 @@ export const dynamic = 'force-dynamic';
 
 export default async function Confidentialite() {
   const plans = await plansVisibles();
+  // Ce que la semaine suivante lit chaque dimanche : le questionnaire du samedi sous la 8.x, « Ton point du dimanche » sous le moteur 9.0.
+  const v9 = await moteurEstV9().catch(() => false);
   // L'app gratuite (lot A2) : ce qu'elle garde ne se dit que lorsqu'elle est ouverte (comme les plans, derrière leur porte).
   const gratuit = modeAppGratuite() !== 'coupe';
   // Les sections numérotées dans l'ordre où elles s'affichent.
@@ -181,8 +185,8 @@ export default async function Confidentialite() {
               achat, et ta première semaine s’écrit dessus (le contrat).
             </li>
             <li>
-              <strong>Chaque dimanche</strong>, ta semaine suivante s’écrit d’après tes réponses au questionnaire du samedi
-              (tes jours, ton jour de sortie longue, ton nombre de séances), et tes séances faites ou manquées et leur durée,
+              <strong>Chaque dimanche</strong>, ta semaine suivante s’écrit d’après {motsDuQuestionnaire('confidentialite', v9)},
+              et tes séances faites ou manquées et leur durée,
               que nous lisons dans Nolio (le contrat : c’est le service que tu as acheté).
             </li>
             <li>

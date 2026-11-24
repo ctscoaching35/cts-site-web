@@ -8,6 +8,7 @@ import { ANCIENNETES, ENTRAINEMENTS, niveauDesFaits } from '@/lib/app/niveau';
 import { ACCENTS } from '@/lib/app/accentFond';
 import { COTE_MAX_MIN } from '@/lib/cote';
 import { CRITERES, REPONSES_CRITERE, SANS_CRITERE, TITRE_CRITERES_FICHE } from '@/lib/criteres';
+import { motsDuQuestionnaire } from '@/lib/app/motsDuQuestionnaire';
 import { textes } from '@/lib/plan';
 
 const JOURS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
@@ -16,8 +17,9 @@ const JOURS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dim
 // lui-même dans son onglet Profil (pourMoi ; décision coach du 20/10/2026). Rempli d'abord, avant tout objectif
 // (décision coach du 23/10/2026) : rafraichir recharge la page une fois enregistré, pour passer à la course. Le niveau,
 // tiré de deux faits (lib/app/niveau.ts) ; le coach peut le choisir, et son choix l'emporte.
-export default function ProfilAthlete({ athleteId, profil, pourMoi = false, rafraichir = false }: {
-  athleteId?: string; profil: Record<string, string | string[]>; pourMoi?: boolean; rafraichir?: boolean;
+// pointDuDimanche : vrai sous le moteur 9.0 (le questionnaire de la semaine s'appelle « Ton point du dimanche »), choisi par la page, côté serveur.
+export default function ProfilAthlete({ athleteId, profil, pourMoi = false, rafraichir = false, pointDuDimanche = false }: {
+  athleteId?: string; profil: Record<string, string | string[]>; pourMoi?: boolean; rafraichir?: boolean; pointDuDimanche?: boolean;
 }) {
   const [etat, action, enCours] = useActionState<EtatCoach, FormData>(
     pourMoi || !athleteId ? modifierMonProfil : enregistrerProfil.bind(null, athleteId), null);
@@ -121,8 +123,8 @@ export default function ProfilAthlete({ athleteId, profil, pourMoi = false, rafr
         <legend className="text-[0.8125rem] font-bold text-indigo">{moi ? 'Ta semaine habituelle' : 'Sa semaine habituelle'}</legend>
         <p className="text-xs text-[#5E5C78] leading-relaxed">
           {moi
-            ? 'Ta semaine de tous les jours : ta préparation se construit dessus. Chaque samedi, le questionnaire « Ta semaine prochaine » change la semaine qui vient.'
-            : 'Sa semaine de tous les jours : sa préparation se construit dessus. Chaque samedi, son questionnaire « Ta semaine prochaine » change la semaine qui vient.'}
+            ? motsDuQuestionnaire('profilSemaineMoi', pointDuDimanche)
+            : motsDuQuestionnaire('profilSemaineSon', pointDuDimanche)}
         </p>
         <div className="text-xs font-semibold text-indigo">Jours disponibles</div>
         <div className="flex flex-wrap gap-1.5">

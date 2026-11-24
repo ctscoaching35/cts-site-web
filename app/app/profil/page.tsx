@@ -3,6 +3,8 @@ import Link from 'next/link';
 import clsx from 'clsx';
 import { TesBadges } from '@/components/app/Badges';
 import ProfilAthlete from '@/components/app/ProfilAthlete';
+import { moteurEstV9 } from '@/lib/app/moteurEnLigne';
+import { motsDuQuestionnaire } from '@/lib/app/motsDuQuestionnaire';
 import EnTeteApp from '@/components/app/EnTeteApp';
 import { Carte, Surtitre, TITRE } from '@/components/app/Ui';
 import { contexte, lien, type Recherche } from '@/lib/app/contexte';
@@ -35,6 +37,8 @@ const FICHES_TESTS: [string, string, string][] = [
 ];
 
 export default async function MonProfil({ searchParams }: { searchParams: Recherche }) {
+  // Les mots du questionnaire de la semaine : « Ta semaine prochaine » sous la 8.x, « Ton point du dimanche » sous le moteur 9.0.
+  const v9 = await moteurEstV9().catch(() => false);
   // L'app gratuite (lot A1) : le profil sans plan, un visiteur (sans rien enregistrer) ou un compte gratuit (qui l'enregistre).
   const acces = await lireAcces();
   if (estGratuit(acces)) {
@@ -195,13 +199,13 @@ export default async function MonProfil({ searchParams }: { searchParams: Recher
                   {ctx.aLaMain
                     // C47 : Validé par le coach le 05/11/2026 (1A).
                     ? 'Il sert à tes prochains objectifs ; ton coach en tient compte pour ta semaine suivante.'
-                    : 'Il sert à tes prochains objectifs. Ta semaine, elle, s’ajuste chaque week-end avec ton questionnaire du samedi.'}
+                    : motsDuQuestionnaire('profilAcheteur', v9)}
                 </p>
               </>
             )}
             <details className="pt-2" open={Object.keys(entrainement).length === 0}>
               <summary className="cursor-pointer min-h-11 flex items-center text-[0.8125rem] font-bold text-teal">{Object.keys(entrainement).length === 0 ? 'Remplir mon profil' : 'Modifier mon profil'}</summary>
-              <div className="pt-2"><ProfilAthlete profil={entrainement} pourMoi /></div>
+              <div className="pt-2"><ProfilAthlete profil={entrainement} pourMoi pointDuDimanche={v9} /></div>
             </details>
           </Carte>
         )}
