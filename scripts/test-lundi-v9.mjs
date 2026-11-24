@@ -76,5 +76,5 @@ test('la décision du lundi n’est lue par personne (préparée, pas branchée)
   try {
     lecteurs = execFileSync('grep', ['-rlE', 'from [\'"][^\'"]*lundiV9[\'"]|import\\([^)]*lundiV9', 'app', 'components', 'lib'], { cwd: RACINE, encoding: 'utf8' }).split('\n').filter(Boolean);
   } catch { /* grep ne trouve rien : code 1 */ }
-  assert.deepEqual(lecteurs, []);
+  assert.deepEqual(lecteurs.filter((f) => f !== 'lib/app/ecritureV9.ts'), [], 'seule la chaîne du moteur v1, préparée aussi, le lit');
 });

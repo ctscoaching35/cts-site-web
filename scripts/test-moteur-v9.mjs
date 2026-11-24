@@ -164,10 +164,11 @@ test('corps de /v1/nolio/seances : la semaine rendue, et le profil seulement ave
 });
 
 test('réponse de /v1/semaine : lue seulement si elle est d’une 9.0', () => {
-  const r = { semaine: { numero: 9, lundi: '2026-11-30', jours: [{ jour: 'mardi' }] }, note: 'Ta semaine…', pourquoi: [{ n: 1 }], etat: { version: '9.0', semaines: [] }, branche: 5 };
+  const r = { semaine: { numero: 9, lundi: '2026-11-30', jours: [{ jour: 'mardi' }] }, note: ['Ta semaine…', 'Deuxième ligne.'], pourquoi: [{ n: 1 }], etat: { version: '9.0', semaines: [] }, branche: 5 };
   const lu = m.lireSortieV9(r);
   assert.equal(lu.semaine.numero, 9);
-  assert.equal(lu.note, 'Ta semaine…');
+  assert.deepEqual(lu.note, ['Ta semaine…', 'Deuxième ligne.'], 'la note du moteur est une liste de lignes');
+  assert.deepEqual(m.lireSortieV9({ ...r, note: 'un texte seul' }).note, ['un texte seul']);
   assert.equal(lu.branche, 5);
   assert.strictEqual(lu.etat, r.etat, 'l’état à garder est celui du moteur, tel quel');
   // Une réponse de 8.x (ses notes, son bilan, un état sans version 9) ne se lit pas comme une 9.0.
@@ -175,6 +176,7 @@ test('réponse de /v1/semaine : lue seulement si elle est d’une 9.0', () => {
   assert.equal(m.lireSortieV9({ ...r, etat: { version: '8.474' } }), null);
   for (const x of [null, undefined, 'x', {}, { ...r, semaine: null }, { ...r, semaine: { jours: 'non' } }, { ...r, etat: [] }]) assert.equal(m.lireSortieV9(x), null, JSON.stringify(x));
   assert.equal(m.lireSortieV9({ ...r, note: undefined, pourquoi: undefined, branche: undefined }).pourquoi.length, 0);
+  assert.deepEqual(m.lireSortieV9({ ...r, note: undefined }).note, [], 'pas de note : aucune ligne');
 });
 
 test('préparé, pas branché : aucun fichier du site ne lit encore le contrat du moteur 9.0', () => {
@@ -184,5 +186,7 @@ test('préparé, pas branché : aucun fichier du site ne lit encore le contrat d
   } catch (e) {
     if (e.status !== 1) throw e;
   }
-  assert.deepEqual(lecteurs, []);
+  // Seules les pièces de la même chaîne (préparées aussi, lues par personne) le lisent.
+  const CHAINE = ['lib/app/nolioV9.ts', 'lib/app/etatMoteur.ts', 'lib/app/ecritureV9.ts', 'lib/app/stockageV9.ts'];
+  assert.deepEqual(lecteurs.filter((f) => !CHAINE.includes(f)), []);
 });
