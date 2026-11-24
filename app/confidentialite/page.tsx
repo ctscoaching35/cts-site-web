@@ -189,6 +189,12 @@ export default async function Confidentialite() {
               et tes séances faites ou manquées et leur durée,
               que nous lisons dans Nolio (le contrat : c’est le service que tu as acheté).
             </li>
+            {/* Décision 209 du coach (24/11/2026), sous le moteur 9.0 : la cause d'un arrêt est une donnée de santé, lue avec l'accord de lecture seulement. Ses mots, tels quels. */}
+            {v9 && (
+              <li>
+                Ton point du dimanche te demande si tu t’es arrêté, combien de temps et pourquoi. La cause est une donnée de santé : nous ne la lisons qu’avec ton accord de lecture, seulement pour adapter ta reprise.
+              </li>
+            )}
             <li>
               <strong>Avec ton accord de lecture</strong> (une case facultative, recommandée), nous lisons aussi ton effort
               ressenti (RPE), ton ressenti, ton Hooper (fatigue, sommeil, stress, courbatures) et la trace de tes séances
