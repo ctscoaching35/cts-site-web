@@ -990,13 +990,14 @@ export async function retirerLaTrameAuDela(): Promise<Compte[]> {
 }
 
 // Le dimanche qui vient d'un acheteur (une semaine à la fois, décision coach du 23/10/2026 ; dimanchesCoaches) : son
-// questionnaire, et le Hooper avec son accord de lecture. Un coaché a le sien sur sa fiche.
+// questionnaire, et le Hooper avec son accord de lecture. Un coaché a le sien sur sa fiche. SOUS LE MOTEUR v1 (9.x) : le Hooper seul (décision 52 du coach), « Ton point du
+// dimanche » remplaçant le questionnaire du samedi.
 async function dimancheDeLAcheteur(o: Objectif) {
   if (o.coache || !o.nolioAthlete) return;
   const { dimancheDuPlan } = await import('./dimanchesCoaches');
   const { data: p } = await clientService().from('plans').select('accord_lecture_le').eq('id', o.planId).maybeSingle();
   const c = await dimancheDuPlan({ id: o.planId, coach_id: o.coachId, nolio_athlete_id: o.nolioAthlete,
-    accord_lecture_le: (p?.accord_lecture_le as string | null) ?? null });
+    accord_lecture_le: (p?.accord_lecture_le as string | null) ?? null }, { seulementLeHooper: await moteurEstV9() });
   if (c.erreur) console.error(`Dimanche de ${o.planId} :`, c.erreur);
 }
 
@@ -1164,6 +1165,7 @@ export async function demarrerObjectif(planId: string, { prevenir = true, lundi,
     if (await moteurEstV9()) {
       const { demarrerSousLeMoteurV1 } = await import('./departV9');
       const ecrite = await demarrerSousLeMoteurV1(o, { premiere: premiere.lundi, depart, apres: apres?.q ?? null });
+      await dimancheDeLAcheteur(o); // le Hooper du dimanche qui vient (décision 52), comme sous la 8.x ; un coaché a le sien par le passage du soir
       if (!o.coache) await rangerAcheteur(o);
       return ecrite;
     }

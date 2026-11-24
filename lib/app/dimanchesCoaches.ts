@@ -18,16 +18,17 @@ import { QUESTION_OUVERTE } from './questionnaireSamedi';
 import { appelNolio, listeNolio, refusNolio } from './nolio';
 import { ajouterJours } from './plan';
 import { clientService } from './supabase';
+import { dimancheApres, posesDuPlan, suiteDeLaFiche, type DimanchesCoache } from './hooperDuDimanche';
 
 export { QUESTION_OUVERTE };
 // Sur la fiche d'un coaché : son dimanche en place (dimanche, et jusqua, sa date, pour son entrée), ses deux questionnaires,
 // le dernier mot écrit à la question ouverte.
-export type DimanchesCoache = { dimanche?: string; semaine?: string | null; hooper?: string | null; jusqua?: string; mot_le?: string | null;
-  mot_note?: string | null };
+export type { DimanchesCoache };
+// SOUS LE MOTEUR v1 (9.x, décision 52 du coach : le Hooper reste posé chaque dimanche matin) : seulementLeHooper ne pose, ne garde ni ne retire que le Hooper ; « Ta semaine prochaine »
+// du samedi, que « Ton point du dimanche » a remplacée, n'est ni posée ni retirée (celles de la 8.x restent jusqu'à ce que le coach les retire, lib/app/seriesDuSamedi.ts).
+export type OptionsDimanche = { seulementLeHooper?: boolean };
 
 const aujourdhuiParis = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
-// Le premier dimanche strictement après cette date.
-const dimancheApres = (iso: string) => ajouterJours(iso, 7 - ((new Date(`${iso}T12:00:00Z`).getUTCDay() + 6) % 7) - 1 || 7);
 const jourDe = (iso: string) => new Date(`${iso.slice(0, 10)}T12:00:00Z`).getUTCDay();
 const estDimanche = (iso: string) => jourDe(iso) === 0;
 // Le samedi (le questionnaire) ou le dimanche (le Hooper, et le questionnaire d'avant le 24/10/2026).
@@ -52,8 +53,8 @@ export type Dimanche = { dimanche: string; semaine: string | null; hooper: strin
 // Le week-end qui vient d'un athlète : ses questionnaires en place (gardés, ou posés), le reste retiré. garder : les
 // identifiants qu'il avait déjà, préférés s'ils tombent ce week-end-là. Le questionnaire va le samedi ; le samedi même
 // (passé 8 h), celui du week-end est gardé, samedi ou dimanche, et un manquant se pose le dimanche.
-export async function poserLeDimanche(usr: string, { coache, avecHooper, garder = [] }: {
-  coache: boolean; avecHooper: boolean; garder?: (string | null | undefined)[];
+export async function poserLeDimanche(usr: string, { coache, avecHooper, garder = [], seulementLeHooper = false }: {
+  coache: boolean; avecHooper: boolean; garder?: (string | null | undefined)[]; seulementLeHooper?: boolean;
 }): Promise<Dimanche> {
   const d = await destinataire(usr);
   const qui = d.moi ? '' : `athlete=${d.usr}`;
@@ -66,7 +67,7 @@ export async function poserLeDimanche(usr: string, { coache, avecHooper, garder 
   const gardes = new Set(garder.filter(Boolean));
   const res: Dimanche = { dimanche, semaine: null, hooper: null, retires: 0, soucis: [] };
   const pour = (corps: Record<string, unknown>) => (d.moi ? corps : { ...corps, athletes: [d.usr] });
-  for (const genre of ['semaine', 'hooper'] as const) {
+  for (const genre of (seulementLeHooper ? ['hooper'] : ['semaine', 'hooper']) as ('semaine' | 'hooper')[]) {
     const duGenre = tous.filter((q) => genreDu(q) === genre);
     const jours = genre === 'hooper' ? [dimanche] : samedi > aujourdhui ? [samedi] : [samedi, dimanche];
     const duJour = duGenre.filter((q) => jours.includes(q.date_start.slice(0, 10)));
@@ -104,7 +105,7 @@ export async function poserLeDimanche(usr: string, { coache, avecHooper, garder 
 // qui suivait coupés) : au-delà de budgetMs, le reste le soir suivant ; d'abord les fiches dont le week-end qui vient
 // n'est pas encore en place, les séries d'avant en tête.
 const REMIS = 'week-end remis au soir suivant';
-export async function programmerLesDimanches(budgetMs = 120_000): Promise<Compte[]> {
+export async function programmerLesDimanches(budgetMs = 120_000, { seulementLeHooper = false }: OptionsDimanche = {}): Promise<Compte[]> {
   const debut = Date.now();
   const service = clientService();
   const { data: toutes, error } = await service.from('athletes_coaches').select('*').not('nolio_athlete_id', 'is', null);
@@ -127,9 +128,8 @@ export async function programmerLesDimanches(budgetMs = 120_000): Promise<Compte
     }
     const avant = (f.questionnaires ?? null) as DimanchesCoache | null;
     try {
-      const r = await poserLeDimanche(usr, { coache: true, avecHooper: true, garder: [avant?.semaine, avant?.hooper] });
-      const suite: DimanchesCoache = { dimanche: r.dimanche, jusqua: r.semaine ? r.dimanche : avant?.jusqua, semaine: r.semaine, hooper: r.hooper,
-        mot_le: avant?.mot_le ?? null, mot_note: avant?.mot_note ?? null };
+      const r = await poserLeDimanche(usr, { coache: true, avecHooper: true, garder: [avant?.semaine, avant?.hooper], seulementLeHooper });
+      const suite: DimanchesCoache = suiteDeLaFiche(avant, r, seulementLeHooper);
       await service.from('athletes_coaches').update({ questionnaires: suite }).eq('id', f.id);
       comptes.push({ plan: '', quoi: `dimanche du ${r.dimanche} en place${r.hooper ? '' : ' (sans Hooper)'}${r.retires ? ` ; ${r.retires} en trop retiré${r.retires > 1 ? 's' : ''}` : ''}`,
         ...(r.soucis.length ? { erreur: r.soucis.join(' ; ') } : {}) });
@@ -150,7 +150,7 @@ export async function programmerLesDimanches(budgetMs = 120_000): Promise<Compte
       comptes.push({ plan: p.id as string, quoi: REMIS });
       continue;
     }
-    comptes.push(await dimancheDuPlan(p as PlanAchete));
+    comptes.push(await dimancheDuPlan(p as PlanAchete, { seulementLeHooper }));
   }
   return comptes;
 }
@@ -158,18 +158,15 @@ export async function programmerLesDimanches(budgetMs = 120_000): Promise<Compte
 // Le dimanche qui vient d'un acheteur, pour son plan (au départ, à son accord de lecture, et chaque soir) : noté dans
 // nolio_envois (« questionnaires »), pour qu'un retrait de l'objectif ou de l'accord le retrouve.
 type PlanAchete = { id: string; coach_id: string | null; nolio_athlete_id: string | null; accord_lecture_le: string | null };
-export async function dimancheDuPlan(p: PlanAchete): Promise<Compte> {
+export async function dimancheDuPlan(p: PlanAchete, { seulementLeHooper = false }: OptionsDimanche = {}): Promise<Compte> {
   const service = clientService();
   try {
     const usr = String(p.nolio_athlete_id ?? '');
     if (!/^usr_/.test(usr)) return { plan: p.id, quoi: 'dimanche non posé : pas encore dans Nolio' };
-    const { data: e } = await service.from('nolio_envois').select('seances').eq('plan_id', p.id).eq('semaine', 'questionnaires').maybeSingle();
+    const { data: e } = await service.from('nolio_envois').select('seances, envoye_le').eq('plan_id', p.id).eq('semaine', 'questionnaires').maybeSingle();
     const avant = ((e?.seances ?? []) as { nolio_id?: string | null }[]).map((x) => x.nolio_id);
-    const r = await poserLeDimanche(usr, { coache: false, avecHooper: Boolean(p.accord_lecture_le), garder: avant });
-    const poses = [
-      ...(r.semaine ? [{ jour_id: 'questionnaire:semaine', nolio_id: r.semaine, genre: 'note' }] : []),
-      ...(r.hooper ? [{ jour_id: 'questionnaire:hooper', nolio_id: r.hooper, genre: 'note' }] : []),
-    ];
+    const r = await poserLeDimanche(usr, { coache: false, avecHooper: Boolean(p.accord_lecture_le), garder: avant, seulementLeHooper });
+    const poses = posesDuPlan(r, e as Parameters<typeof posesDuPlan>[1], seulementLeHooper);
     if (p.coach_id) {
       await service.from('nolio_envois').upsert({ plan_id: p.id, semaine: 'questionnaires', coach_id: p.coach_id, seances: poses,
         envoye_le: new Date().toISOString() });
