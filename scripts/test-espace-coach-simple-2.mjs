@@ -52,6 +52,8 @@ const avantLeCorps = page.slice(0, i9);
 
 const point = (niveau, genre, extra = {}) => ({ niveau, genre, athlete: 'x', texte: `${genre} à voir.`, action: 'Voir ›', href: '#', cle: `${genre}:${niveau}`, ...extra });
 const GPX = { montees: [{ dplus_m: 300 }], dplus_par_pente: { vallonne: 120, cote_moderee: 60, cote_raide: 20 } };
+// Sa semaine habituelle comme l'objectif la garde (parametres.champs) : ses jours, sa sortie longue, son nombre de séances.
+const SEMAINE = { jours_disponibles: ['mardi', 'jeudi', 'samedi', 'dimanche'], jour_sl: 'dimanche', freq_hebdo: '4' };
 const PROFIL_COMPLET = { niveau: 'intermediaire', terrain: 'pentu', jour_sl: 'dimanche', freq_hebdo: '4', jours_disponibles: ['mardi', 'jeudi', 'samedi', 'dimanche'] };
 const ENTREE = (x = {}) => entreeDe({
   athleteId: 'a1', nolio: true, accord: true, programmation: 'auto', objectif: { plan_id: 'p1', ecrit: true, demarre: true, prevu: null },
@@ -176,7 +178,7 @@ test('chaque morceau de la 9.x est derrière `v9` : la branche, les deux section
   assert.match(page, /\{v9 && sectionEtat\}/);
   assert.match(page, /\{v9 && sectionsEnPlus\}/);
   assert.match(page, /const manqueCoureur = v9 \? ceQuiManqueAuCoureur\(/);
-  assert.match(page, /const lignesAFaire = v9 \? aFairePourLui\(points, entree, manqueCoureur\.some\(\(m\) => m\.cle === 'profil'\)\) : \[\];/);
+  assert.match(page, /const lignesAFaire = v9 \? aFairePourLui\(points, entree, manqueCoureur\.some\(\(m\) => m\.cle === 'profil'\), alertes\) : \[\];/);
   assert.match(page, /const \{ aVenir: objectifsAVenir, passes: objectifsPasses \} = v9 \? departagerLesObjectifs\(objectifs, jour\) : \{ aVenir: \[\], passes: \[\] \};/);
   // La saison de fond et les courses de préparation ne sont plus rendues sous la 9.x (troisième simplification) : ni leur calcul ni leur section.
   assert.ok(!page.includes('saison9') && !/const preparations\b/.test(page));
@@ -385,31 +387,32 @@ test('la carte lit le profil comme avant : les lignes du coach (lignesDuProfil),
 // ─── (c) Ses objectifs ────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 test('un objectif complet : sa côte, ses deux critères, son tapis, sa trace ; chacun lu comme le moteur le lit', () => {
-  const champs = { cote_min: '12', tapis: 'oui', critere_intensite: 'regulier', critere_denivele: 'parfois', gpx: GPX, format: 'TC' };
+  const champs = { cote_min: '12', tapis: 'oui', critere_intensite: 'regulier', critere_denivele: 'parfois', gpx: GPX, format: 'TC', ...SEMAINE };
   const v = verifierObjectif(champs);
   assert.equal(v.complet, true);
   assert.deepEqual(v.manque, []);
   assert.equal(v.route, false);
   assert.deepEqual(v.items.map((i) => [i.cle, i.titre, i.valeur]), [
     ['cote', 'Côte', '12 min'], ['intensite', 'Intensité', 'Régulièrement'], ['mecanique', 'Mécanique', 'De temps en temps'], ['tapis', 'Tapis', 'oui'], ['gpx', 'Trace GPX', 'donnée'],
+    ['semaine', 'Semaine', '4 séances · mar, jeu, sam, dim · sortie longue le dimanche'],
   ]);
   assert.equal(repereDeLObjectif(v), 'Complet');
   // Les titres des deux critères sont ceux de la fiche du coaché (lib/criteres.ts).
   assert.deepEqual(CRITERES.map((q) => q.fiche), [TEXTES_PAGE_ATHLETE.titreIntensite, TEXTES_PAGE_ATHLETE.titreMecanique]);
 });
 
-test('ce qui manque à un objectif : la liste, dans l’ordre (côte, intensité, mécanique, tapis, trace) ; « Il manque : … »', () => {
+test('ce qui manque à un objectif : la liste, dans l’ordre (côte, intensité, mécanique, tapis, trace, semaine) ; « Il manque : … »', () => {
   const vide = verifierObjectif({});
   assert.equal(vide.complet, false);
-  assert.deepEqual(vide.manque, ['sa côte en minutes', 'son critère d’intensité', 'son critère de mécanique', 'son tapis (oui ou non)', 'sa trace GPX']);
-  assert.equal(repereDeLObjectif(vide), 'Il manque : sa côte en minutes, son critère d’intensité, son critère de mécanique, son tapis (oui ou non), sa trace GPX');
+  assert.deepEqual(vide.manque, ['sa côte en minutes', 'son critère d’intensité', 'son critère de mécanique', 'son tapis (oui ou non)', 'sa trace GPX', 'sa semaine habituelle']);
+  assert.equal(repereDeLObjectif(vide), 'Il manque : sa côte en minutes, son critère d’intensité, son critère de mécanique, son tapis (oui ou non), sa trace GPX, sa semaine habituelle');
   assert.ok(vide.items.every((i) => i.valeur === null));
   // Un seul manque.
-  const sansTrace = verifierObjectif({ cote_min: '8', tapis: 'non', critere_intensite: 'jamais', critere_denivele: 'jamais' });
+  const sansTrace = verifierObjectif({ cote_min: '8', tapis: 'non', critere_intensite: 'jamais', critere_denivele: 'jamais', ...SEMAINE });
   assert.deepEqual(sansTrace.manque, ['sa trace GPX']);
   assert.equal(repereDeLObjectif(sansTrace), 'Il manque : sa trace GPX');
   // Rien (null, undefined) : tout manque, rien ne plante.
-  for (const rien of [null, undefined]) assert.equal(verifierObjectif(rien).manque.length, 5);
+  for (const rien of [null, undefined]) assert.equal(verifierObjectif(rien).manque.length, 6);
   // Les réponses ne sont pas modifiées.
   const champs = Object.freeze({ cote_min: '12', gpx: Object.freeze({ ...GPX }) });
   assert.doesNotThrow(() => verifierObjectif(champs, Object.freeze({ tapis: 'oui' })));
@@ -417,7 +420,7 @@ test('ce qui manque à un objectif : la liste, dans l’ordre (côte, intensité
 
 test('chaque réponse se lit comme le moteur la lit : la côte en minutes (plancher 1), le tapis oui ou non, les critères à trois réponses, la trace de la forme du contrat', () => {
   const manque = (champs, fiche) => verifierObjectif({ ...champs }, fiche).items.filter((i) => i.valeur === null).map((i) => i.cle);
-  const tout = { cote_min: '12', tapis: 'oui', critere_intensite: 'jamais', critere_denivele: 'jamais', gpx: GPX };
+  const tout = { cote_min: '12', tapis: 'oui', critere_intensite: 'jamais', critere_denivele: 'jamais', gpx: GPX, ...SEMAINE };
   // La côte : « 12 », « 12,5 », « 12 min », 0,5 (vaut 1 min) se lisent ; « douze », vide, rien non.
   for (const v of ['12', '12,5', '12 min', 12, '0,5', '0']) assert.deepEqual(manque({ ...tout, cote_min: v }), [], String(v));
   for (const v of ['douze', '', undefined, null, '500']) assert.deepEqual(manque({ ...tout, cote_min: v }), ['cote'], String(v));
@@ -438,30 +441,30 @@ test('chaque réponse se lit comme le moteur la lit : la côte en minutes (planc
 });
 
 test('les critères, la côte et le tapis sont lus sur la fiche d’abord, comme le moteur v1 ; sans réponse sur la fiche, ceux de l’objectif', () => {
-  const objectif = { cote_min: '5', tapis: 'non', critere_intensite: 'jamais', critere_denivele: 'jamais', gpx: GPX };
+  const objectif = { cote_min: '5', tapis: 'non', critere_intensite: 'jamais', critere_denivele: 'jamais', gpx: GPX, ...SEMAINE };
   const fiche = { cote_min: '12', tapis: 'oui', critere_intensite: 'regulier', critere_denivele: 'parfois' };
   const v = verifierObjectif(objectif, fiche);
-  assert.deepEqual(v.items.map((i) => i.valeur), ['12 min', 'Régulièrement', 'De temps en temps', 'oui', 'donnée']);
+  assert.deepEqual(v.items.map((i) => i.valeur), ['12 min', 'Régulièrement', 'De temps en temps', 'oui', 'donnée', '4 séances · mar, jeu, sam, dim · sortie longue le dimanche']);
   // Sans réponse sur la fiche (rien, ou vide), celle de l'objectif.
   for (const vide of [null, {}, { cote_min: '', tapis: '', critere_intensite: '', critere_denivele: '' }]) {
-    assert.deepEqual(verifierObjectif(objectif, vide).items.map((i) => i.valeur), ['5 min', 'Jamais', 'Jamais', 'non', 'donnée']);
+    assert.deepEqual(verifierObjectif(objectif, vide).items.map((i) => i.valeur), ['5 min', 'Jamais', 'Jamais', 'non', 'donnée', '4 séances · mar, jeu, sam, dim · sortie longue le dimanche']);
   }
   // Ce qui manque à l'objectif mais que la fiche donne ne manque pas ; la fiche ne donne jamais la trace.
-  assert.deepEqual(verifierObjectif({}, fiche).manque, ['sa trace GPX']);
-  assert.deepEqual(verifierObjectif({ gpx: GPX }, fiche).manque, []);
+  assert.deepEqual(verifierObjectif({}, fiche).manque, ['sa trace GPX', 'sa semaine habituelle']);
+  assert.deepEqual(verifierObjectif({ gpx: GPX, ...SEMAINE }, fiche).manque, []);
 });
 
-test('une course sur route (10 km, semi, marathon) : l’intensité seule ; ni côte, ni mécanique, ni tapis, ni trace (le questionnaire de la route ne les pose pas)', () => {
+test('une course sur route (10 km, semi, marathon) : l’intensité et la semaine ; ni côte, ni mécanique, ni tapis, ni trace (le questionnaire de la route ne les pose pas)', () => {
   for (const format of ['R10', 'R21', 'R42']) {
     const v = verifierObjectif({ format });
     assert.equal(v.route, true, format);
-    assert.deepEqual(v.items.map((i) => i.cle), ['intensite']);
-    assert.deepEqual(v.manque, ['son critère d’intensité']);
-    assert.equal(verifierObjectif({ format, critere_intensite: 'parfois' }).complet, true, 'complet avec l’intensité seule');
-    assert.equal(repereDeLObjectif(verifierObjectif({ format, critere_intensite: 'parfois' })), 'Complet');
+    assert.deepEqual(v.items.map((i) => i.cle), ['intensite', 'semaine']);
+    assert.deepEqual(v.manque, ['son critère d’intensité', 'sa semaine habituelle']);
+    assert.equal(verifierObjectif({ format, critere_intensite: 'parfois', ...SEMAINE }).complet, true, 'complet avec l’intensité et la semaine');
+    assert.equal(repereDeLObjectif(verifierObjectif({ format, critere_intensite: 'parfois', ...SEMAINE })), 'Complet');
   }
-  // Un trail : les cinq.
-  for (const format of ['TC', 'TM', 'TL', undefined]) assert.equal(verifierObjectif({ format }).items.length, 5, String(format));
+  // Un trail : les six.
+  for (const format of ['TC', 'TM', 'TL', undefined]) assert.equal(verifierObjectif({ format }).items.length, 6, String(format));
 });
 
 test('ses objectifs : ceux à venir sont vérifiés, ceux dont la course est passée vont dans « Réglages » ; la page lit les réponses de l’objectif sans nouvelle lecture', () => {
@@ -496,8 +499,8 @@ test('les textes nouveaux : apostrophe typographique, phrases courtes, mots simp
   }
   assert.deepEqual(textes.map(([cle]) => cle), [
     'aFaire', 'rienAFaire', 'nolio', 'accord', 'accordSous', 'depart', 'boutonAccord', 'carte', 'ilManque', 'manqueProfil', 'manqueTest', 'manqueReperes', 'remplirProfil', 'modifierProfil',
-    'saisirTest', 'modifierReperes', 'ceQuIlLit', 'objectifs', 'aucunObjectif', 'complet', 'envoyeEnEntier', 'manqueCote', 'manqueIntensite', 'manqueMecanique', 'manqueTapis', 'manqueGpx',
-    'titreCote', 'titreIntensite', 'titreMecanique', 'titreTapis', 'titreGpx', 'traceDonnee', 'sansValeur', 'reglagesSous', 'ouEnEstIl', 'aVenir', 'anciensObjectifs',
+    'saisirTest', 'modifierReperes', 'ceQuIlLit', 'objectifs', 'aucunObjectif', 'complet', 'envoyeEnEntier', 'manqueCote', 'manqueIntensite', 'manqueMecanique', 'manqueTapis', 'manqueGpx', 'manqueSemaine', 'gesteTrace', 'gesteObjectif',
+    'titreCote', 'titreIntensite', 'titreMecanique', 'titreTapis', 'titreGpx', 'titreSemaine', 'traceDonnee', 'sansValeur', 'reglagesSous', 'ouEnEstIl', 'aVenir', 'anciensObjectifs',
   ]);
   // Les textes repris de la page d'avant sont ceux de la page d'avant, mot pour mot.
   // (saisirTest : « Saisir son test de vitesse critique », le même mot sous les deux moteurs.)

@@ -330,7 +330,7 @@ test('messageAuCoach lit la version du moteur lui-même (moteurEstV9, sans répo
 
 test('où le coach reçoit le message après un geste : chaque site le passe par `messageAuCoach` / `soucisAuCoach`, la 8.x en garde le texte', () => {
   const c = sansCommentaires(source('lib/app/actionsCoaching.ts'));
-  assert.ok(c.includes("import { messageAuCoach, pasEncoreSonAccordAuCoach, soucisAuCoach } from './erreursDuCoach';"), 'la même importation, plus « Pas encore son accord » (scripts/test-pas-encore-son-accord.mjs)');
+  assert.ok(c.includes("import { messageAuCoach, pasEncoreSonAccordAuCoach, profilEnregistre, soucisAuCoach } from './erreursDuCoach';"), 'la même importation, plus « Pas encore son accord » (scripts/test-pas-encore-son-accord.mjs) et « Modifier son profil » (scripts/test-preparer-coaches-v1.mjs)');
   // enregistrerValeurs et enregistrerTestVc : les soucis de Nolio (« Zones Nolio : … »).
   assert.equal((c.match(/const soucis = await soucisAuCoach\(/g) ?? []).length, 2);
   assert.ok(c.includes('const soucis = await soucisAuCoach(o ? await zonesVersNolio(o) : dernier ? [] : await zonesDeLaFicheVersNolio(athleteId));'));
@@ -645,6 +645,7 @@ const ANCRES_DE_LA_PAGE_ATHLETE = {
   'semaine-qui-arrive': 'haut', // SemaineQuiArrive.tsx : « Réessayer » du dimanche soir, la revue
   'son-profil': 'haut', // CarteCoureur.tsx : « Son profil › », la revue
   'a-faire': 'haut', // PointsPourLui.tsx : la revue (« Ses messages »)
+  'geste-profil': 'haut', // CarteCoureur.tsx : « Modifier son profil » de « Ses objectifs » (ObjectifsAVerifier.tsx) ouvre le formulaire de la carte
   'son-entree': 'haut', // PointsPourLui.tsx (la ligne « accord ») ; CarteEntree.tsx dans « Réglages » quand l'entrée est faite (les deux s'excluent)
   'sa-semaine-passee': 'reglages', // la revue, quand il y a un réalisé
   'courses-nolio': 'reglages', // la revue, quand il y a des courses dans Nolio

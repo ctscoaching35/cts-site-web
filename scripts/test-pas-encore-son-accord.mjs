@@ -38,7 +38,7 @@ test('les deux gestes du coach (repères, test de vitesse critique) disent la ph
   const a = source('lib/app/actionsCoaching.ts');
   assert.equal((a.match(/message: await pasEncoreSonAccordAuCoach\(\)/g) ?? []).length, 2);
   assert.ok(!a.includes('dans le Suivi quand il a répondu oui'), 'la phrase d’avant n’est plus qu’à un endroit (lib/app/erreursDuCoach.ts)');
-  assert.match(a, /import \{ messageAuCoach, pasEncoreSonAccordAuCoach, soucisAuCoach \} from '\.\/erreursDuCoach';/);
+  assert.match(a, /import \{ messageAuCoach, pasEncoreSonAccordAuCoach, profilEnregistre, soucisAuCoach \} from '\.\/erreursDuCoach';/);
   // La garde : la version se lit sur le moteur en ligne, une 8.x sans réponse lisible.
   assert.match(source('lib/app/erreursDuCoach.ts'), /pasEncoreSonAccord\(await moteurEstV9\(\)\.catch\(\(\) => false\)\)/);
 });
