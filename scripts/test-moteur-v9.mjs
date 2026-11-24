@@ -72,16 +72,16 @@ test('parametres : côte, tapis, ce que Nolio montre, aisance, montées', () => 
   assert.ok(!('lu' in m.parametresV9(BASE, { lu: { volume_min: null, sl_min: null } })));
 });
 
-test('parametres : la côte part en minutes (cote_min), 0 pour pas de côte ; la réponse du site est lue à défaut', () => {
-  for (const [donne, minutes] of [[12, 12], ['12', 12], ['12,5', 12.5], ['aucune', 0], [1, 1], [0.5, 0.5], [240, 240]]) {
+test('parametres : la côte part en minutes (cote_min), d’au moins 1 ; la réponse du site est lue à défaut', () => {
+  for (const [donne, minutes] of [[12, 12], ['12', 12], ['12,5', 12.5], [1, 1], [0.5, 1], [0, 1], ['0,75', 1], [240, 240]]) {
     const p = m.parametresV9(BASE, { cote_min: donne });
     assert.strictEqual(p.cote_min, minutes, String(donne));
     assert.ok(!('cote_max' in p), `${donne} : cote_max n’est lu que sans cote_min`);
     assert.ok(!('terrain' in p));
   }
-  // La réponse du questionnaire, dans la base du plan : un nombre, jamais la chaîne « 12 » ni « aucune ».
+  // La réponse du questionnaire, dans la base du plan : un nombre, jamais la chaîne « 12 ».
   assert.strictEqual(m.parametresV9({ ...BASE, cote_min: '12' }).cote_min, 12);
-  assert.strictEqual(m.parametresV9({ ...BASE, cote_min: 'aucune' }).cote_min, 0);
+  assert.ok(!('cote_min' in m.parametresV9({ ...BASE, cote_min: 'aucune' })), '« pas de côte » n’est plus une réponse : jamais 0');
   assert.strictEqual(m.parametresV9({ ...BASE, cote_min: '12' }, { cote_min: 4 }).cote_min, 4, 'la fiche prime');
   // Les minutes l'emportent sur la tranche.
   const les2 = m.parametresV9({ ...BASE, terrain: 'pentu' }, { cote_min: 3, cote_max: '10+' });

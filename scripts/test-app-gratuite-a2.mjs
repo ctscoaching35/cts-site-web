@@ -61,7 +61,7 @@ const ROMAIN_COACH = { compteId: 'coach-romain', email: ROMAIN };
 // Une demande valide, telle que le navigateur l'envoie.
 const ENVOI = () => ({
   nom: 'Clara Test', naissance: '1988', ville: 'Rennes', course_depuis: '3_5', experience_trail: 'intermediaire', courses_marquantes: 'Trail de 42 km, 1 800 m D+, 5 h 40',
-  seances: '4', heures: '5,5', longue: '2 h 30', terrain: ['chemins', 'cotes_courtes'], dplus_pres: '300 m', montagne: 'quelques_we',
+  seances: '4', heures: '5,5', longue: '2 h 30', terrain: ['chemins', 'escaliers'], dplus_pres: '300 m', montagne: 'quelques_we',
   objectif: { kind: 'libre', nom: 'Trail de la Côte sauvage', date: '2027-03-14', distance_km: '18', dplus_m: '540' }, vise: 'chrono', vise_autre: '',
   jours: ['mar', 'jeu', 'sam'], temps_seance: '45_60', jour_sl: 'sam', montre: 'gps_fc', nolio: 'sais_pas', attentes: 'Un cadre.',
   telephone: '06 12 34 56 78', moments: ['lun_soir', 'mer_midi'], mot: '', consentement_sante: false, sante: 'Tendinite du genou en 2026',
