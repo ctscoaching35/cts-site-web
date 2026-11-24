@@ -57,11 +57,21 @@ const SEMAINE_UNE = { numero: 1, lundi: LUNDI_1, semaine: SEMAINE_1, reponsesLue
 const SEMAINE_DEUX = (extra = {}) => ({ numero: 2, lundi: LUNDI_2, semaine: SEMAINE_2, reponsesLues: REPONSES, questionnaire: null, ...extra });
 
 // Le contexte d'un plan, de fausses pièces qui notent ce qu'on leur demande.
-function contexte({ echanges = [], etat = etatMod.ETAT_VIDE, derniere = null, nolio = null, reponses = null, pose = null, retouchee = false, coache = true } = {}) {
-  const j = { nolio: [], lectures: [], envoyees: [], ecritures: [], etats: [], reponsesGardees: [], notes: [], quiz: [], questionnaires: [] };
-  const ports = moteurRejoue(...echanges);
+// `lu` : ce que le lecteur du départ rend (null : rien lu, le déclaré) ; `panne` : le lecteur échoue. Les corps envoyés au moteur sont notés (j.corps) ; l'échange enregistré est
+// cherché sans `lu` (le moteur réel a été enregistré sans lui) : ce qu'on prouve ici, c'est que `lu` part avec la semaine, pas ce que le moteur en fait.
+function contexte({ echanges = [], etat = etatMod.ETAT_VIDE, derniere = null, nolio = null, reponses = null, pose = null, retouchee = false, coache = true, lu = null, panne = false,
+  parametres = PARAMETRES } = {}) {
+  const j = { nolio: [], lectures: [], envoyees: [], ecritures: [], etats: [], reponsesGardees: [], notes: [], quiz: [], questionnaires: [], depart: [], lusGardes: [], corps: [] };
+  const rejoue = moteurRejoue(...echanges);
+  const ports = { appelsChemins: rejoue.appelsChemins, appeler: async (chemin, corps) => {
+    j.corps.push([chemin, corps]);
+    const { lu: _lu, ...sansLu } = corps?.parametres ?? {};
+    return rejoue.appeler(chemin, corps?.parametres ? { ...corps, parametres: sansLu } : corps);
+  } };
   const c = {
-    planId: 'p1', coache, parametres: PARAMETRES, ports, etat, derniere,
+    planId: 'p1', coache, parametres, ports, etat, derniere,
+    lireLeDepart: async (lundi) => { j.depart.push(lundi); if (panne) throw new Error('Nolio ne répond pas'); return lu; },
+    garderLu: async (x) => { j.lusGardes.push(x); },
     lireNolio: async (lundi, avec) => { j.nolio.push([lundi, avec]); return nolio; },
     lireLesReponses: async (numero, p) => { j.lectures.push([numero, p]); return reponses ? { reponses, illisibles: [] } : null; },
     questionnaireDe: async () => pose,
@@ -249,13 +259,17 @@ test('paramètres d’un coaché : ce que son coach a rempli sur sa fiche (crit�
 
 // ─── Le départ d'un objectif et « Réessayer » ───────────────────────────────────────────────────────
 
-test('le départ garde pour le moteur son entrée, la course d’avant et ce que Nolio montre de ses 4 dernières semaines ; ce qui ne se lit pas n’est pas gardé', () => {
-  const heures = (t) => { const m = /^(\d+)h(\d*)$/.exec(String(t ?? '')); return m ? Number(m[1]) + Number(m[2] || 0) / 60 : 0; };
-  assert.deepEqual(passes.entreesDuDepart({ premiere: LUNDI_2, apres: { course_date: '2026-11-22', temps_h: 4.5 }, charge: { volume: '5h30', sl: '2h' }, heures }),
-    { entree: LUNDI_2, course_precedente: { date: '2026-11-22', duree_h: 4.5 }, lu: { volume_min: 330, sl_min: 120 } });
-  assert.deepEqual(passes.entreesDuDepart({ premiere: LUNDI_1, apres: null, charge: null, heures }), { entree: LUNDI_1 });
-  assert.deepEqual(passes.entreesDuDepart({ premiere: LUNDI_1, apres: { course_date: '2026-11-22', temps_h: 0 }, charge: { volume: 'beaucoup', sl: '1h30' }, heures }),
-    { entree: LUNDI_1, lu: { sl_min: 90 } });
+test('le départ garde pour le moteur son entrée et la course d’avant ; ce qu’il court (`lu`) n’est plus lu ici, mais au premier passage du plan', () => {
+  assert.deepEqual(passes.entreesDuDepart({ premiere: LUNDI_2, apres: { course_date: '2026-11-22', temps_h: 4.5 } }),
+    { entree: LUNDI_2, course_precedente: { date: '2026-11-22', duree_h: 4.5 } });
+  assert.deepEqual(passes.entreesDuDepart({ premiere: LUNDI_1, apres: null }), { entree: LUNDI_1 });
+  assert.deepEqual(passes.entreesDuDepart({ premiere: LUNDI_1, apres: { course_date: '2026-11-22', temps_h: 0 } }), { entree: LUNDI_1 }, 'une course sans durée lisible n’est pas gardée');
+  // Un seul lecteur, un seul endroit : le départ d'un objectif n'a plus son propre calcul de la charge (chargeDepuisNolio reste celui de la 8.x).
+  const depart = readFileSync(`${RACINE}lib/app/departV9.ts`, 'utf8');
+  assert.ok(!/chargeDepuisNolio|volume_hebdo_actuel|sortie_longue_actuelle/.test(depart.replace(/\/\*[\s\S]*?\*\//, '')), 'le départ ne lit plus la charge lui-même');
+  const passages = readFileSync(`${RACINE}lib/app/passagesV9.ts`, 'utf8');
+  assert.match(passages, /import \{ lireLuAuDepart \} from '\.\/luAuDepart';/);
+  assert.equal((passages.match(/lireLuAuDepart\(/g) ?? []).length, 1, 'un seul appel du lecteur');
 });
 
 test('un coaché qui entre : son entrée et sa course d’avant passent dans les paramètres du moteur ; sans elles, rien d’inventé', () => {
@@ -279,4 +293,64 @@ test('la semaine demandée (départ, « Réessayer ») : écrite avec ses jours 
   assert.deepEqual(await passes.ecrireOuReprendre(deja.c, LUNDI_1), { statut: 'deja', numero: 1 });
   assert.deepEqual(deja.j.envoyees, []);
   assert.deepEqual(await passes.ecrireOuReprendre(contexte({ echanges: [F.trame] }).c, '2030-01-07'), { statut: 'hors_trame' });
+});
+
+// ─── Ce qu'il court au départ : lu une fois, au premier passage d'un plan sans état (entrée 203) ────────────────
+
+const LU = { volume_min: 413, sl_min: 90 };
+const corpsDe = (j, chemin) => j.corps.filter(([c]) => c === chemin).map(([, corps]) => corps);
+
+test('le premier passage d’un plan sans état lit ce qu’il court au départ, le garde avec le plan et l’envoie au moteur ; la trame, elle, ne dépend pas de lui', async () => {
+  const { c, j } = contexte({ echanges: [F.trame, F['semaine-1']], lu: LU });
+  assert.deepEqual(await passes.ecrireLaSemaineDuLundi(c, LUNDI_1), { quoi: 'S1 écrite' });
+  assert.deepEqual(j.depart, [LUNDI_1], 'lu pour le lundi que le moteur écrit, une fois');
+  assert.deepEqual(j.lusGardes, [LU]);
+  assert.deepEqual(corpsDe(j, '/v1/semaine')[0].parametres.lu, LU);
+  assert.ok(!('lu' in corpsDe(j, '/v1/trame')[0].parametres), 'la trame du numéro est lue avant : elle ne dépend pas de `lu`');
+  assert.deepEqual(c.parametres.lu, LU, 'le contexte le garde pour la suite du passage');
+});
+
+test('sans activité lue, rien n’est gardé et le moteur lit le déclaré du questionnaire', async () => {
+  const { c, j } = contexte({ echanges: [F.trame, F['semaine-1']], lu: null });
+  await passes.ecrireLaSemaineDuLundi(c, LUNDI_1);
+  assert.deepEqual(j.depart, [LUNDI_1]);
+  assert.deepEqual(j.lusGardes, []);
+  assert.ok(!('lu' in corpsDe(j, '/v1/semaine')[0].parametres));
+});
+
+test('jamais relu : un plan qui a déjà son `lu`, un plan qui a un état, une semaine hors de la trame ne lisent rien', async () => {
+  const deja = contexte({ echanges: [F.trame, F['semaine-1']], lu: { volume_min: 1 }, parametres: { ...PARAMETRES, lu: LU } });
+  await passes.ecrireLaSemaineDuLundi(deja.c, LUNDI_1);
+  assert.deepEqual([deja.j.depart, deja.j.lusGardes], [[], []]);
+  assert.deepEqual(corpsDe(deja.j, '/v1/semaine')[0].parametres.lu, LU, 'celui du plan part avec la semaine');
+  const avecEtat = contexte({ echanges: [F.trame, F['semaine-2']], etat: apres1(), derniere: SEMAINE_UNE, nolio: NOLIO_1, reponses: REPONSES, lu: LU });
+  await passes.ecrireLaSemaineDuLundi(avecEtat.c, LUNDI_2);
+  assert.deepEqual([avecEtat.j.depart, avecEtat.j.lusGardes], [[], []]);
+  const horsTrame = contexte({ echanges: [F.trame], lu: LU });
+  assert.equal(await passes.ecrireLaSemaineDuLundi(horsTrame.c, '2030-01-07'), null);
+  assert.deepEqual([horsTrame.j.depart, horsTrame.j.lusGardes], [[], []]);
+});
+
+test('le filet du lundi et la semaine demandée (départ, « Réessayer ») passent par le même lecteur', async () => {
+  const filet = contexte({ echanges: [F.trame, F['semaine-1']], lu: LU });
+  await passes.passeDuLundiSurUnPlan(filet.c, LUNDI_1);
+  assert.deepEqual([filet.j.depart, filet.j.lusGardes], [[LUNDI_1], [LU]]);
+  const depart = contexte({ echanges: [F.trame, F['semaine-1']], lu: LU });
+  assert.deepEqual(await passes.ecrireOuReprendre(depart.c, LUNDI_1, { depuis: '2026-11-25' }), { statut: 'ecrite', numero: 1 });
+  assert.deepEqual([depart.j.depart, depart.j.lusGardes], [[LUNDI_1], [LU]]);
+});
+
+test('un acheteur : le lecteur ne lit que les coachés reliés, le moteur garde le déclaré de son achat', async () => {
+  assert.match(readFileSync(`${RACINE}lib/app/passagesV9.ts`, 'utf8'), /lireLeDepart: async \(lundi\) => \(o\.coache \? lireLuAuDepart\(o\.coachId, o\.nolioAthlete, lundi\) : null\)/);
+  const { c, j } = contexte({ echanges: [F.trame, F['semaine-1']], coache: false, lu: null });
+  await passes.ecrireLaSemaineDuLundi(c, LUNDI_1);
+  assert.deepEqual(j.lusGardes, []);
+  assert.ok(!('lu' in corpsDe(j, '/v1/semaine')[0].parametres));
+});
+
+test('une lecture de Nolio qui échoue : la semaine n’est ni écrite ni envoyée ni gardée, l’erreur remonte (le passage suivant reprend)', async () => {
+  const { c, j } = contexte({ echanges: [F.trame, F['semaine-1']], panne: true });
+  await assert.rejects(() => passes.ecrireLaSemaineDuLundi(c, LUNDI_1), /Nolio ne répond pas/);
+  assert.deepEqual([j.envoyees, j.ecritures, j.lusGardes], [[], [], []]);
+  assert.deepEqual(corpsDe(j, '/v1/semaine'), [], 'le moteur n’est pas appelé sans ce qu’il court');
 });
