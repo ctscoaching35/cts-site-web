@@ -18,13 +18,13 @@ import { QUESTION_OUVERTE } from './questionnaireSamedi';
 import { appelNolio, listeNolio, refusNolio } from './nolio';
 import { ajouterJours } from './plan';
 import { clientService } from './supabase';
-import { dimancheApres, posesDuPlan, suiteDeLaFiche, type DimanchesCoache } from './hooperDuDimanche';
+import { dimancheApres, HEURE_DU_HOOPER_V9, posesDuPlan, suiteDeLaFiche, type DimanchesCoache } from './hooperDuDimanche';
 
 export { QUESTION_OUVERTE };
 // Sur la fiche d'un coaché : son dimanche en place (dimanche, et jusqua, sa date, pour son entrée), ses deux questionnaires,
 // le dernier mot écrit à la question ouverte.
 export type { DimanchesCoache };
-// SOUS LE MOTEUR v1 (9.x, décision 52 du coach : le Hooper reste posé chaque dimanche matin) : seulementLeHooper ne pose, ne garde ni ne retire que le Hooper ; « Ta semaine prochaine »
+// SOUS LE MOTEUR v1 (9.x, décision 52 du coach : le Hooper reste posé chaque dimanche, à midi depuis la décision 211) : seulementLeHooper ne pose, ne garde ni ne retire que le Hooper ; « Ta semaine prochaine »
 // du samedi, que « Ton point du dimanche » a remplacée, n'est ni posée ni retirée (celles de la 8.x restent jusqu'à ce que le coach les retire, lib/app/seriesDuSamedi.ts).
 export type OptionsDimanche = { seulementLeHooper?: boolean };
 
@@ -78,7 +78,7 @@ export async function poserLeDimanche(usr: string, { coache, avecHooper, garder 
       const cadre = genre === 'hooper' ? await leCadreHooper() : null;
       const corps: Record<string, unknown> = genre === 'semaine' ? (coache ? questionnaireCoache() : QUESTIONNAIRE_SEMAINE) : { quiz_frame: cadre };
       if (genre === 'semaine' || cadre) {
-        const r = await appelNolio('POST', 'planned/quizzes/', pour({ ...corps, date_start: jours[jours.length - 1], hour_start: '08:00' })).catch(() => null);
+        const r = await appelNolio('POST', 'planned/quizzes/', pour({ ...corps, date_start: jours[jours.length - 1], hour_start: seulementLeHooper ? HEURE_DU_HOOPER_V9 : '08:00' })).catch(() => null);
         if (r && (r.statut === 201 || r.statut === 200)) res[genre] = String(r.corps?.id ?? '');
         else res.soucis.push(r ? refusNolio(r, genre === 'semaine' ? 'le questionnaire du samedi' : 'le Hooper du dimanche') : `${genre} : Nolio injoignable`);
       }

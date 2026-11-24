@@ -36,11 +36,14 @@ export const NOM_DU_QUESTIONNAIRE = 'Ton point du dimanche';
 export const repondAuDimanche = (r: { name?: string | null; quiz_planned?: string | null }, numero: number, pose?: { nolio_id?: string | null } | null): boolean =>
   pose?.nolio_id ? r.quiz_planned === pose.nolio_id : numero === 0 && String(r.name ?? '').trim().toLowerCase() === NOM_DU_QUESTIONNAIRE.toLowerCase();
 // L'heure d'envoi, à Paris (décision du coach du 23/11/2026) : le moteur lit la semaine le matin, choisit la version, puis le site
-// envoie ; le premier passage de lecture est à 17 h UTC, soit 18 h.
+// l'envoie, visible à midi ; la semaine s'écrit le dimanche soir vers 21 h (décision 211, lib/app/heuresDePassage.ts).
 export const HEURE_D_ENVOI = '12:00';
 export const DESCRIPTION_DE_BASE = 'Une minute, d’ici dimanche 18 h : tes séances de la semaine prochaine s’écrivent dimanche soir à partir de tes réponses.';
-// La première ligne de la description, quelle que soit la version (décision 206 du coach, 24/11/2026) : elle remplace le rappel des séances non remontées.
-export const PENSE_A_SYNCHRONISER = 'Pense à synchroniser ta montre avant de répondre.';
+// La première ligne de la description, quelle que soit la version (décision 211 du coach, 24/11/2026 : les athlètes répondent après leur dernière sortie, souvent le dimanche soir) ;
+// elle remplace « Pense à synchroniser ta montre avant de répondre. » (décision 206). Deux voix : le coaché lit celle du coach (« je »), l'acheteur une voix neutre.
+export const ACCUEIL_COACHE = 'Réponds après ta dernière sortie de la semaine, une fois ta montre synchronisée : je vois ainsi toute ta semaine.';
+export const ACCUEIL_ACHETEUR = 'Réponds après ta dernière sortie de la semaine, une fois ta montre synchronisée : ta semaine suivante tiendra compte de tout ce que tu as fait.';
+export const accueilDuPoint = (coache: boolean): string => (coache ? ACCUEIL_COACHE : ACCUEIL_ACHETEUR);
 // Le nombre de séances (décision 207 du coach, 24/11/2026) : « peux-tu faire par semaine », un maximum. Les questionnaires déjà posés disent encore « veux-tu faire » : les deux se lisent.
 export const QUESTION_SEANCES = 'Combien de séances peux-tu faire par semaine ?';
 
@@ -118,7 +121,7 @@ export function questionnaireDuDimanche({ version, cles = [], premiere = false, 
   version: VersionDimanche; cles?: SeanceCle[]; premiere?: boolean; coache?: boolean; ligneEffet?: string | null; accord?: boolean;
 }): QuestionnaireDimanche {
   const ouverture = premiere ? null : ouvertureDe(version, accord);
-  const description = [PENSE_A_SYNCHRONISER, ouverture, ouverture && version === 'fatigue' ? ligneEffet : null, DESCRIPTION_DE_BASE].filter(Boolean).join('\n\n');
+  const description = [accueilDuPoint(coache), ouverture, ouverture && version === 'fatigue' ? ligneEffet : null, DESCRIPTION_DE_BASE].filter(Boolean).join('\n\n');
   const items: Question[] = [];
   if (!premiere) {
     if (version === 'fatigue') items.push(choixUnique(QUESTION_FATIGUE, CHOIX_OUI_NON, true));
