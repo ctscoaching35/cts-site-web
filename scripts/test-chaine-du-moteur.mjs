@@ -266,6 +266,6 @@ test('le Hooper d’un acheteur : le départ sous la 9.x et l’accord de lectur
 
 test('« Annuler » et l’aperçu du dimanche, que le contrat du moteur v1 ne permet pas, le disent au lieu d’échouer en 400', () => {
   const e = readFileSync(`${RACINE}lib/app/ecriture.ts`, 'utf8');
-  assert.match(e, /export async function annulerAjustements\([^\n]*\n[^\n]*\n\s+if \(await moteurEstV9\(\)\) throw new Error\('« Annuler » n’existe pas encore sous le moteur v1/);
+  assert.match(e, /export async function annulerAjustements\([^\n]*\n[^\n]*\n\s+if \(await moteurEstV9\(\)\) throw new Error\('« Annuler » n’existe pas sous le moteur v1/);
   assert.match(e, /export async function apercuDuDimanche\([^\n]*\n[^\n]*\n\s+if \(await moteurEstV9\(\)\) throw new Error\('L’aperçu du dimanche n’est pas encore porté sous le moteur v1/);
 });

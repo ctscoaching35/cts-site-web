@@ -45,9 +45,9 @@ test('sous la 8.x, les textes d’avant (samedi, « Ta semaine prochaine ») ; s
   }
 });
 
-test('« Pour bien démarrer » sous la 9.0 : le dimanche vers midi, à répondre d’ici dimanche 18 h, la semaine s’écrit dimanche soir (comme la description du questionnaire)', () => {
+test('« Pour bien démarrer » sous la 9.0 : le dimanche vers midi, à répondre d’ici dimanche 21 h (décision 211), la semaine se prépare dimanche soir ; sous la 8.x, 18 h comme avant', () => {
   const t = motsDuQuestionnaire('pourBienDemarrer', true);
-  assert.ok(t.includes('Chaque dimanche vers midi') && t.includes('« Ton point du dimanche »') && t.includes('dimanche 18 h') && t.includes('dimanche soir'));
+  assert.ok(t.includes('Chaque dimanche vers midi') && t.includes('« Ton point du dimanche »') && t.includes('dimanche 21 h') && !t.includes('18 h') && t.includes('dimanche soir'));
   assert.equal(motsDuQuestionnaire('pourBienDemarrer', false), 'Chaque samedi à 8 h, le questionnaire « Ta semaine prochaine » t’attend dans Nolio : réponds d’ici dimanche 18 h, ta semaine suivante s’écrit dimanche soir d’après tes réponses.');
 });
 
@@ -62,8 +62,8 @@ test('« Deux voix » (24/11/2026) : sous la 9.0, trois textes ont la voix du co
     assert.ok(!/s’écrit|se recale/.test(acheteur + coache), `${cle} : plus de « s’écrit » ni de « se recale »`);
     assert.equal(motsDuQuestionnaire(cle, false, true), motsDuQuestionnaire(cle, false), `${cle} : sous la 8.x, la même phrase pour les deux`);
   }
-  assert.equal(motsDuQuestionnaire('pourBienDemarrer', true, true), 'Chaque dimanche vers midi, « Ton point du dimanche » t’attend dans Nolio : réponds d’ici dimanche 18 h, je prépare ta semaine suivante dimanche soir d’après tes réponses.');
-  assert.equal(motsDuQuestionnaire('pourBienDemarrer', true), 'Chaque dimanche vers midi, « Ton point du dimanche » t’attend dans Nolio : réponds d’ici dimanche 18 h, ta semaine suivante est préparée dimanche soir d’après tes réponses.');
+  assert.equal(motsDuQuestionnaire('pourBienDemarrer', true, true), 'Chaque dimanche vers midi, « Ton point du dimanche » t’attend dans Nolio : réponds d’ici dimanche 21 h, je prépare ta semaine suivante dimanche soir d’après tes réponses.');
+  assert.equal(motsDuQuestionnaire('pourBienDemarrer', true), 'Chaque dimanche vers midi, « Ton point du dimanche » t’attend dans Nolio : réponds d’ici dimanche 21 h, ta semaine suivante est préparée dimanche soir d’après tes réponses.');
   assert.ok(motsDuQuestionnaire('sAdapte', true, true).startsWith('J’adapte ta préparation chaque semaine') && motsDuQuestionnaire('sAdapte', true, true).endsWith('je prépare ta semaine d’après tes réponses et ce que tu as couru.'));
   assert.ok(motsDuQuestionnaire('sAdapte', true).endsWith('ta semaine est préparée d’après tes réponses et ce que tu as couru.'));
   assert.ok(motsDuQuestionnaire('uneSeuleChose', true, true).endsWith('Sans ça, je garde ta semaine au même niveau, puis je la remets à jour dès que tu actualises.'));

@@ -101,8 +101,8 @@ test('versions : le mot d’ouverture de chacune, en tête de la description, et
   assert.equal(d.OUVERTURES_COACHE.aucune_seance_vue, 'On n’a vu aucune séance cette semaine. Si tu as couru sans montre, réponds « Non ». Si tu as arrêté de courir, dis-le-moi : depuis combien de temps et pourquoi.', 'avec l’accord, la phrase d’avant, sauf l’invitation (coaché)');
   assert.ok(!/dis-le-nous/.test(JSON.stringify([d.OUVERTURES, d.OUVERTURES_COACHE])), 'plus de « dis-le-nous »');
   for (const version of ['normale', 'fatigue']) assert.equal(d.OUVERTURES_COACHE[version], d.OUVERTURES[version], `${version} : la même pour les deux voix`);
-  assert.equal(d.DESCRIPTION_DE_BASE, 'Une minute, d’ici dimanche 18 h : tes séances de la semaine prochaine sont préparées dimanche soir à partir de tes réponses.');
-  assert.equal(d.DESCRIPTION_DE_BASE_COACHE, 'Une minute, d’ici dimanche 18 h : je prépare tes séances de la semaine prochaine dimanche soir à partir de tes réponses.');
+  assert.equal(d.DESCRIPTION_DE_BASE, 'Une minute, d’ici dimanche 21 h : tes séances de la semaine prochaine sont préparées dimanche soir à partir de tes réponses.');
+  assert.equal(d.DESCRIPTION_DE_BASE_COACHE, 'Une minute, d’ici dimanche 21 h : je prépare tes séances de la semaine prochaine dimanche soir à partir de tes réponses.');
   assert.equal(d.descriptionDeBase(true), d.DESCRIPTION_DE_BASE_COACHE);
   assert.equal(d.descriptionDeBase(false), d.DESCRIPTION_DE_BASE);
   const fatigue = d.questionnaireDuDimanche({ version: 'fatigue', cles: CLES });
