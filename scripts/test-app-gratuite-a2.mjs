@@ -493,7 +493,7 @@ test('Effacer le compte : le contact est supprimé chez Brevo, puis le compte', 
 // ─── Le consentement FC, « Aller plus loin », le mode « coupe » ──────────────────────────────────────────────────────────
 test('le consentement FC du lot A1 a la phrase du coach, partout', () => {
   const profil = readFileSync(`${RACINE}components/app/ProfilGratuit.tsx`, 'utf8');
-  assert.ok(profil.includes('J’accepte que City to Summit garde ces valeurs dans mon compte, seulement pour calculer mes zones et mes repères. Je peux les effacer à tout moment.'));
+  assert.ok(profil.includes('J’accepte que City to Summit garde ces valeurs dans mon compte, seulement pour établir mes zones et mes repères. Je peux les effacer à tout moment.'));
   assert.ok(!profil.includes('calibrer mes séances'));
   assert.ok(readFileSync(`${RACINE}components/app/FormulaireMeConnecter.tsx`, 'utf8').includes('CONSENTEMENT_FC'));
 });

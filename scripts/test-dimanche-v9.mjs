@@ -80,11 +80,16 @@ test('versions : le mot d’ouverture de chacune, en tête de la description, et
     assert.equal(d.questionnaireDuDimanche({ version, cles: CLES }).description.split('\n\n')[0], sync, `acheteur, ${version}`);
   }
   assert.equal(d.questionnaireDuDimanche({ version: 'normale', cles: CLES }).description, base);
+  // « Deux voix » (24/11/2026) : l'invitation à dire l'arrêt est « indique-le » pour l'acheteur (une forme sans invitation à échanger) et « dis-le-moi » pour le coaché ; le reste ne change pas.
   assert.equal(d.questionnaireDuDimanche({ version: 'aucune_seance_vue', cles: CLES, accord: true }).description,
-    `${sync}\n\nOn n’a vu aucune séance cette semaine. Si tu as couru sans montre, réponds « Non ». Si tu as arrêté de courir, dis-le-nous : depuis combien de temps et pourquoi.\n\n${d.DESCRIPTION_DE_BASE}`);
-  // Décision 209 : sans l'accord de lecture, « et pourquoi » part, « depuis combien de temps » reste ; le « dis-le-nous » n'est pas touché.
+    `${sync}\n\nOn n’a vu aucune séance cette semaine. Si tu as couru sans montre, réponds « Non ». Si tu as arrêté de courir, indique-le : depuis combien de temps et pourquoi.\n\n${d.DESCRIPTION_DE_BASE}`);
+  assert.equal(d.questionnaireDuDimanche({ version: 'aucune_seance_vue', cles: CLES, accord: true, coache: true }).description,
+    `${syncCoache}\n\nOn n’a vu aucune séance cette semaine. Si tu as couru sans montre, réponds « Non ». Si tu as arrêté de courir, dis-le-moi : depuis combien de temps et pourquoi.\n\n${d.DESCRIPTION_DE_BASE_COACHE}`);
+  // Décision 209 : sans l'accord de lecture, « et pourquoi » part, « depuis combien de temps » reste ; l'invitation (« indique-le » / « dis-le-moi ») n'est pas touchée.
   assert.equal(d.questionnaireDuDimanche({ version: 'aucune_seance_vue', cles: CLES }).description,
-    `${sync}\n\nOn n’a vu aucune séance cette semaine. Si tu as couru sans montre, réponds « Non ». Si tu as arrêté de courir, dis-le-nous : depuis combien de temps.\n\n${d.DESCRIPTION_DE_BASE}`);
+    `${sync}\n\nOn n’a vu aucune séance cette semaine. Si tu as couru sans montre, réponds « Non ». Si tu as arrêté de courir, indique-le : depuis combien de temps.\n\n${d.DESCRIPTION_DE_BASE}`);
+  assert.equal(d.questionnaireDuDimanche({ version: 'aucune_seance_vue', cles: CLES, coache: true }).description,
+    `${syncCoache}\n\nOn n’a vu aucune séance cette semaine. Si tu as couru sans montre, réponds « Non ». Si tu as arrêté de courir, dis-le-moi : depuis combien de temps.\n\n${d.DESCRIPTION_DE_BASE_COACHE}`);
   assert.equal(d.questionnaireDuDimanche({ version: 'aucune_seance_vue', cles: CLES, accord: false, coache: true }).description, d.questionnaireDuDimanche({ version: 'aucune_seance_vue', cles: CLES, coache: true }).description);
   assert.ok(!/pourquoi/.test(d.questionnaireDuDimanche({ version: 'aucune_seance_vue', cles: CLES }).description), 'aucun « pourquoi » sans accord');
   // Les autres versions n'ont pas cette phrase : leur ouverture ne change pas avec l'accord.
@@ -92,7 +97,14 @@ test('versions : le mot d’ouverture de chacune, en tête de la description, et
     assert.equal(d.ouvertureDe(version, true), d.ouvertureDe(version, false), version);
     assert.equal(d.questionnaireDuDimanche({ version, cles: CLES }).description, d.questionnaireDuDimanche({ version, cles: CLES, accord: true }).description, version);
   }
-  assert.equal(d.OUVERTURES.aucune_seance_vue, 'On n’a vu aucune séance cette semaine. Si tu as couru sans montre, réponds « Non ». Si tu as arrêté de courir, dis-le-nous : depuis combien de temps et pourquoi.', 'avec l’accord, la phrase d’avant, mot pour mot');
+  assert.equal(d.OUVERTURES.aucune_seance_vue, 'On n’a vu aucune séance cette semaine. Si tu as couru sans montre, réponds « Non ». Si tu as arrêté de courir, indique-le : depuis combien de temps et pourquoi.', 'avec l’accord, la phrase d’avant, sauf l’invitation (acheteur)');
+  assert.equal(d.OUVERTURES_COACHE.aucune_seance_vue, 'On n’a vu aucune séance cette semaine. Si tu as couru sans montre, réponds « Non ». Si tu as arrêté de courir, dis-le-moi : depuis combien de temps et pourquoi.', 'avec l’accord, la phrase d’avant, sauf l’invitation (coaché)');
+  assert.ok(!/dis-le-nous/.test(JSON.stringify([d.OUVERTURES, d.OUVERTURES_COACHE])), 'plus de « dis-le-nous »');
+  for (const version of ['normale', 'fatigue']) assert.equal(d.OUVERTURES_COACHE[version], d.OUVERTURES[version], `${version} : la même pour les deux voix`);
+  assert.equal(d.DESCRIPTION_DE_BASE, 'Une minute, d’ici dimanche 18 h : tes séances de la semaine prochaine sont préparées dimanche soir à partir de tes réponses.');
+  assert.equal(d.DESCRIPTION_DE_BASE_COACHE, 'Une minute, d’ici dimanche 18 h : je prépare tes séances de la semaine prochaine dimanche soir à partir de tes réponses.');
+  assert.equal(d.descriptionDeBase(true), d.DESCRIPTION_DE_BASE_COACHE);
+  assert.equal(d.descriptionDeBase(false), d.DESCRIPTION_DE_BASE);
   const fatigue = d.questionnaireDuDimanche({ version: 'fatigue', cles: CLES });
   assert.equal(fatigue.description.split('\n\n')[0], sync);
   assert.equal(fatigue.description.split('\n\n')[1],
@@ -113,7 +125,7 @@ test('questions : l’arrêt, les deux facultatives préfixées, la liste réell
     'As-tu arrêté de courir cette semaine ?',
     'Si tu as arrêté toute la semaine : depuis combien de semaines as-tu arrêté, en tout ?',
     'Si tu as arrêté toute la semaine : pourquoi ?',
-    'Une séance clé pas faite comme écrite ?',
+    'Une séance clé pas faite comme prévu ?',
     'Quels jours peux-tu courir la semaine prochaine ?',
     'Combien de séances peux-tu faire par semaine ?',
     'Quel jour pour ta sortie longue ?',
@@ -125,7 +137,7 @@ test('questions : l’arrêt, les deux facultatives préfixées, la liste réell
   assert.equal(semaines.is_mandatory, false, 'facultative : une réponse oubliée ne bloque pas l’envoi');
   assert.deepEqual(par['Si tu as arrêté toute la semaine : pourquoi ?'].choices.choices, ['Blessure', 'Maladie', 'Autre']);
   assert.equal(par['Si tu as arrêté toute la semaine : pourquoi ?'].is_mandatory, false);
-  const cles = par['Une séance clé pas faite comme écrite ?'];
+  const cles = par['Une séance clé pas faite comme prévu ?'];
   assert.equal(cles.type, 'multiple_choices');
   assert.deepEqual(cles.choices.choices, ['Mardi · Seuil 1', 'Jeudi · Mécanique', 'Samedi · Sortie longue']);
   assert.equal(cles.is_mandatory, false, 'une réponse vide vaut aucune');
@@ -140,7 +152,7 @@ test('le dimanche d’avant la semaine 1 : les jours, le nombre de séances et l
     const q = d.questionnaireDuDimanche({ version, cles: CLES, premiere: true });
     assert.deepEqual(questions(q), ['Quels jours peux-tu courir la semaine prochaine ?', 'Combien de séances peux-tu faire par semaine ?', 'Quel jour pour ta sortie longue ?'], version);
     assert.equal(q.description, `${d.ACCUEIL_ACHETEUR}\n\n${d.DESCRIPTION_DE_BASE}`, 'pas de mot d’ouverture : aucune semaine écoulée, mais la phrase d’accueil est là');
-    assert.equal(d.questionnaireDuDimanche({ version, cles: CLES, premiere: true, coache: true }).description, `${d.ACCUEIL_COACHE}\n\n${d.DESCRIPTION_DE_BASE}`);
+    assert.equal(d.questionnaireDuDimanche({ version, cles: CLES, premiere: true, coache: true }).description, `${d.ACCUEIL_COACHE}\n\n${d.DESCRIPTION_DE_BASE_COACHE}`);
   }
 });
 
@@ -263,6 +275,16 @@ test('le nombre de séances (décision 207) : la nouvelle question est lue, l’
   assert.equal(d.lireReponsesDimanche([item(Q.nb, 'beaucoup')], { version: 'normale' }).illisibles.join(), 'nb_seances');
 });
 
+test('les séances clés pas faites (« Deux voix », 24/11/2026) : la nouvelle question « comme prévu » est posée et lue, l’ancienne « comme écrite » (un point déjà posé) est encore lue', () => {
+  assert.equal(d.QUESTION_CLES, 'Une séance clé pas faite comme prévu ?');
+  assert.equal(d.QUESTION_CLES_AVANT, 'Une séance clé pas faite comme écrite ?');
+  assert.equal(d.QUESTION_CLES_AVANT, Q.cles, 'les points posés avant gardent leur texte');
+  const lues = (question) => d.lireReponsesDimanche([item(question, [0, 2])], { version: 'normale', cles: CLES }).reponses.cles_pas_faites;
+  assert.deepEqual(lues(d.QUESTION_CLES), ['S9-mardi', 'S9-samedi'], 'la nouvelle question');
+  assert.deepEqual(lues(Q.cles), ['S9-mardi', 'S9-samedi'], 'l’ancienne question, déjà posée');
+  assert.equal(d.lireReponsesDimanche([item(d.QUESTION_CLES, 'beaucoup')], { version: 'normale', cles: CLES }).illisibles.join(), 'cles_pas_faites');
+});
+
 // ─── La cause d'un arrêt : une donnée de santé, avec l'accord de lecture seulement (décision 209, 24/11/2026) ───────────────────────
 
 test('209 : sans accord de lecture, la question de la cause n’est pas posée ; l’arrêt et sa durée le sont toujours', () => {
@@ -271,7 +293,7 @@ test('209 : sans accord de lecture, la question de la cause n’est pas posée ;
   assert.deepEqual(questions(sans), [
     'As-tu arrêté de courir cette semaine ?',
     'Si tu as arrêté toute la semaine : depuis combien de semaines as-tu arrêté, en tout ?',
-    'Une séance clé pas faite comme écrite ?',
+    'Une séance clé pas faite comme prévu ?',
     'Quels jours peux-tu courir la semaine prochaine ?',
     'Combien de séances peux-tu faire par semaine ?',
     'Quel jour pour ta sortie longue ?',

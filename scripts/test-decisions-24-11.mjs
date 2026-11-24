@@ -69,8 +69,13 @@ test('209 : la page de confidentialité dit, sous la 9.x seulement, ce que le po
   // Aucune mention visible « plus de question d'arrêt » : seul un commentaire d'historique la garde.
   const visible = page.replace(/\{\/\*[\s\S]*?\*\/\}/g, '').split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
   assert.ok(!/plus de question d(’|')arrêt/i.test(visible));
-  // La phrase « personne ne la relit avant qu'elle parte » n'est pas touchée (revue avec le lot des deux voix).
-  assert.ok(page.includes('personne ne la relit avant qu’elle parte'));
+  // « Deux voix » (24/11/2026) : la phrase « personne ne la relit avant qu'elle parte » est remplacée, pour tous, par une phrase factuelle ; le coaché lit en plus, dans sa section, que Romain suit sa semaine.
+  assert.ok(!page.includes('personne ne la relit'));
+  assert.ok(page.includes('<strong>Une semaine décidée par des règles.</strong> Ta semaine suivante est préparée par les règles de la méthode CTS.'));
+  assert.ok(page.includes('Tu peux demander qu’un coach la revoie, donner ton point de vue et contester une décision'), 'la suite est gardée telle quelle');
+  assert.equal(page.split('Romain la suit et la corrige dans Nolio.').length - 1, 1, 'une fois, mot pour mot');
+  const coache = page.slice(page.indexOf('Si tu es coaché par CTS sur Nolio'), page.indexOf('Qui y a accès'));
+  assert.ok(coache.includes('Romain la suit et la corrige dans Nolio.'), 'dans la section du coaché');
 });
 
 test('209 : la page de confidentialité (9.x) dit l’arrêt, sa durée, et sa cause seulement avec l’accord de lecture ; le texte de la 8.x ne change pas', async () => {

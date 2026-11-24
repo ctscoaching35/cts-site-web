@@ -51,6 +51,27 @@ test('« Pour bien démarrer » sous la 9.0 : le dimanche vers midi, à répondr
   assert.equal(motsDuQuestionnaire('pourBienDemarrer', false), 'Chaque samedi à 8 h, le questionnaire « Ta semaine prochaine » t’attend dans Nolio : réponds d’ici dimanche 18 h, ta semaine suivante s’écrit dimanche soir d’après tes réponses.');
 });
 
+test('« Deux voix » (24/11/2026) : sous la 9.0, trois textes ont la voix du coach pour un coaché (« je ») et une voix neutre pour un acheteur ; sous la 8.x, rien ne change', () => {
+  for (const cle of ['pourBienDemarrer', 'sAdapte', 'uneSeuleChose']) {
+    const acheteur = motsDuQuestionnaire(cle, true);
+    const coache = motsDuQuestionnaire(cle, true, true);
+    assert.notEqual(coache, acheteur, cle);
+    assert.equal(motsDuQuestionnaire(cle, true, false), acheteur, `${cle} : l’acheteur est la voix par défaut`);
+    assert.ok(/\bje\b|\bJ’adapte/.test(coache), `${cle} : le coaché lit la voix du coach`);
+    assert.ok(!/\bje\b|\bj’/i.test(acheteur), `${cle} : l’acheteur ne lit aucun « je »`);
+    assert.ok(!/s’écrit|se recale/.test(acheteur + coache), `${cle} : plus de « s’écrit » ni de « se recale »`);
+    assert.equal(motsDuQuestionnaire(cle, false, true), motsDuQuestionnaire(cle, false), `${cle} : sous la 8.x, la même phrase pour les deux`);
+  }
+  assert.equal(motsDuQuestionnaire('pourBienDemarrer', true, true), 'Chaque dimanche vers midi, « Ton point du dimanche » t’attend dans Nolio : réponds d’ici dimanche 18 h, je prépare ta semaine suivante dimanche soir d’après tes réponses.');
+  assert.equal(motsDuQuestionnaire('pourBienDemarrer', true), 'Chaque dimanche vers midi, « Ton point du dimanche » t’attend dans Nolio : réponds d’ici dimanche 18 h, ta semaine suivante est préparée dimanche soir d’après tes réponses.');
+  assert.ok(motsDuQuestionnaire('sAdapte', true, true).startsWith('J’adapte ta préparation chaque semaine') && motsDuQuestionnaire('sAdapte', true, true).endsWith('je prépare ta semaine d’après tes réponses et ce que tu as couru.'));
+  assert.ok(motsDuQuestionnaire('sAdapte', true).endsWith('ta semaine est préparée d’après tes réponses et ce que tu as couru.'));
+  assert.ok(motsDuQuestionnaire('uneSeuleChose', true, true).endsWith('Sans ça, je garde ta semaine au même niveau, puis je la remets à jour dès que tu actualises.'));
+  assert.ok(motsDuQuestionnaire('uneSeuleChose', true).endsWith('Sans ça, elle reste au même niveau, puis est remise à jour dès que tu actualises.'));
+  // Les autres textes n'ont qu'une voix.
+  for (const cle of ['profilSemaineMoi', 'profilSemaineSon', 'profilAcheteur', 'compteCoacheSansAccord', 'compteAcheteurSansAccord', 'confidentialite']) assert.equal(motsDuQuestionnaire(cle, true, true), motsDuQuestionnaire(cle, true), cle);
+});
+
 test('la vie privée dit ce que « Ton point du dimanche » lit : l’arrêt et sa cause, les séances clés pas faites, les jours, le nombre, la sortie longue', () => {
   const t = motsDuQuestionnaire('confidentialite', true);
   for (const mot of ['arrêt', 'sa cause', 'séances clés', 'tes jours', 'ton nombre de séances', 'sortie longue']) assert.ok(t.includes(mot), mot);

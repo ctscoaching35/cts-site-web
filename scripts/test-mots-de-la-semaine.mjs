@@ -61,7 +61,7 @@ test('l’allure : le mot exact de la séance s’il n’y en a qu’une, « All
   assert.deepEqual(mots(['EF R', 'A10 8×1km/2′']), ['EF', 'Allure 10 km', 'RPE']);
   assert.deepEqual(mots(['AM 40′ prog', 'SL + 2×20′ AM']), ['SL', 'Allure marathon', 'RPE']);
   assert.deepEqual(mots(['AS 3×2km/2′ test', 'SL + 2×20′ AM']), ['SL', 'Allure de course', 'RPE']);
-  assert.equal(motsDeLaSemaine(['AS 4×1km/1′'])[0].sens, 'l’allure de ta course, calculée sur ton chrono visé.');
+  assert.equal(motsDeLaSemaine(['AS 4×1km/1′'])[0].sens, 'l’allure de ta course, d’après ton chrono visé.');
 });
 
 test('une endurance ou une sortie longue qui porte un bloc : ses deux familles', () => {
