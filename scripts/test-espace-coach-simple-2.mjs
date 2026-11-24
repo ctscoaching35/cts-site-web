@@ -178,7 +178,7 @@ test('chaque morceau de la 9.x est derrière `v9` : la branche, les deux section
   assert.match(page, /\{v9 && sectionEtat\}/);
   assert.match(page, /\{v9 && sectionsEnPlus\}/);
   assert.match(page, /const manqueCoureur = v9 \? ceQuiManqueAuCoureur\(/);
-  assert.match(page, /const lignesAFaire = v9 \? aFairePourLui\(points, entree, manqueCoureur\.some\(\(m\) => m\.cle === 'profil'\), alertes\) : \[\];/);
+  assert.match(page, /const lignesAFaire = v9 \? aFairePourLui\(points, entree, manqueCoureur\.some\(\(m\) => m\.cle === 'profil'\), alertes, testsAFaire\) : \[\];/);
   assert.match(page, /const \{ aVenir: objectifsAVenir, passes: objectifsPasses \} = v9 \? departagerLesObjectifs\(objectifs, jour\) : \{ aVenir: \[\], passes: \[\] \};/);
   // La saison de fond et les courses de préparation ne sont plus rendues sous la 9.x (troisième simplification) : ni leur calcul ni leur section.
   assert.ok(!page.includes('saison9') && !/const preparations\b/.test(page));
@@ -500,7 +500,7 @@ test('les textes nouveaux : apostrophe typographique, phrases courtes, mots simp
   assert.deepEqual(textes.map(([cle]) => cle), [
     'aFaire', 'rienAFaire', 'nolio', 'accord', 'accordSous', 'depart', 'boutonAccord', 'carte', 'ilManque', 'manqueProfil', 'manqueTest', 'manqueReperes', 'remplirProfil', 'modifierProfil',
     'saisirTest', 'modifierReperes', 'ceQuIlLit', 'objectifs', 'aucunObjectif', 'complet', 'envoyeEnEntier', 'manqueCote', 'manqueIntensite', 'manqueMecanique', 'manqueTapis', 'manqueGpx', 'manqueSemaine', 'gesteTrace', 'gesteObjectif',
-    'titreCote', 'titreIntensite', 'titreMecanique', 'titreTapis', 'titreGpx', 'titreSemaine', 'traceDonnee', 'sansValeur', 'reglagesSous', 'ouEnEstIl', 'aVenir', 'anciensObjectifs',
+    'titreCote', 'titreIntensite', 'titreMecanique', 'titreTapis', 'titreGpx', 'titreSemaine', 'coursesDePreparation', 'aucuneCourse', 'ajouterUneCourse', 'traceDonnee', 'sansValeur', 'reglagesSous', 'ouEnEstIl', 'aVenir', 'anciensObjectifs',
   ]);
   // Les textes repris de la page d'avant sont ceux de la page d'avant, mot pour mot.
   // (saisirTest : « Saisir son test de vitesse critique », le même mot sous les deux moteurs.)
@@ -519,7 +519,7 @@ test('les textes nouveaux : apostrophe typographique, phrases courtes, mots simp
 test('aucun texte nouveau n’est lu par un athlète : le fichier et les trois composants ne sont lus que par l’espace coach', () => {
   const grep = (motif, ...dossiers) => execFileSync('grep', ['-rlE', motif, ...dossiers], { cwd: RACINE, encoding: 'utf8' }).split('\n').filter(Boolean).sort();
   assert.deepEqual(grep("from '[^']*pageAthleteSimple'", 'app', 'components', 'lib'), [
-    PAGE, 'components/app/CarteCoureur.tsx', 'components/app/ObjectifsAVerifier.tsx', 'components/app/PointsPourLui.tsx',
+    PAGE, 'components/app/CarteCoureur.tsx', 'components/app/CoursesDePreparation.tsx', 'components/app/ObjectifsAVerifier.tsx', 'components/app/PointsPourLui.tsx',
   ].sort());
   for (const nom of ['CarteCoureur', 'ObjectifsAVerifier', 'PointsPourLui']) {
     const lecteurs = grep(`components/app/${nom}'`, 'app', 'components', 'lib');

@@ -68,7 +68,9 @@ test('sous une 9.x, le site ne rappelle plus /v1/realise, /v1/fatigue, /v1/veto 
   // Les signaux du coach (lus avant la garde de la fatigue) se gardent comme avant.
   assert.ok(e.indexOf('await garderLesSignauxDuSoir(o, lecture.lu, aujourdhui)') < e.indexOf('if (await moteurEstV9()) return null;'));
   const a = lire('lib/app/actionsEcriture.ts');
-  assert.match(a, /if \(await moteurEstV9\(\)\) return \{ ok: false, message: MESSAGE_COURSE_DE_PREPARATION_FERMEE \};\n\s*const reelles/);
+  // Sous la 9.x (25/11/2026, C5) : un acheteur est refusé, un coaché ajoute sa course sans le moteur ; l'appel à la route retirée n'est fait que sous la 8.x.
+  assert.match(a, /if \(v9 && !o\.coache\) return \{ ok: false, message: MESSAGE_COURSE_DE_PREPARATION_FERMEE \};/);
+  assert.match(a, /if \(!v9\) \{\n\s*const reelles[^]*?\/v1\/course-secondaire`/, 'l’appel est dans la branche de la 8.x');
   assert.ok(a.indexOf('MESSAGE_COURSE_DE_PREPARATION_FERMEE };') < a.indexOf('/v1/course-secondaire`'), 'la garde passe avant l’appel');
   // Un fichier « use server » n'exporte que des fonctions : le message n'est pas exporté.
   assert.ok(!/export const MESSAGE_COURSE_DE_PREPARATION_FERMEE/.test(a));

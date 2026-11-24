@@ -459,6 +459,8 @@ test('branché seulement derrière la garde de version : hors de la chaîne du m
     } catch (e) {
       if (e.status !== 1) throw e;
     }
-    assert.deepEqual(lecteurs.filter((f) => !famille.includes(f)), [], nom);
+    // La page de l'athlète du coach lit les semaines que la v1 a écrites (stockageV9, lireLesSemainesRecentes) pour « Saisir le résultat de son test » (25/11/2026, lib/app/testsASaisir.ts), derrière `v9`.
+    const autorises = nom === 'stockageV9' ? [...famille, 'app/app/coach/athlete/[id]/page.tsx'] : famille;
+    assert.deepEqual(lecteurs.filter((f) => !autorises.includes(f)), [], nom);
   }
 });

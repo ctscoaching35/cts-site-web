@@ -646,6 +646,8 @@ const ANCRES_DE_LA_PAGE_ATHLETE = {
   'son-profil': 'haut', // CarteCoureur.tsx : « Son profil › », la revue
   'a-faire': 'haut', // PointsPourLui.tsx : la revue (« Ses messages »)
   'geste-profil': 'haut', // CarteCoureur.tsx : « Modifier son profil » de « Ses objectifs » (ObjectifsAVerifier.tsx) ouvre le formulaire de la carte
+  'geste-test-vc': 'haut', // CarteCoureur.tsx : « Saisir le résultat de son test de vitesse critique » (À faire pour lui, lib/app/testsASaisir.ts)
+  'geste-reperes': 'haut', // CarteCoureur.tsx : « Saisir le résultat de son test de fréquence cardiaque »
   'son-entree': 'haut', // PointsPourLui.tsx (la ligne « accord ») ; CarteEntree.tsx dans « Réglages » quand l'entrée est faite (les deux s'excluent)
   'sa-semaine-passee': 'reglages', // la revue, quand il y a un réalisé
   'courses-nolio': 'reglages', // la revue, quand il y a des courses dans Nolio

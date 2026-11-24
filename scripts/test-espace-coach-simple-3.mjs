@@ -102,7 +102,7 @@ const JOURNAL = [
   ['Mes athlètes', 'les filtres (une saison se compte « Sans objectif »)', TABLEAU,
     /function categorie\(e: EtatAthlete, jour: string, v9: boolean\)[^\n]*\n\s*const o = objectifSansSaison\(e\.a\.objectif, v9\);/, [TABLEAU, 'Sans objectif']],
   ['Page d’un athlète', 'son nom de saison sous son nom', ATHLETE, /: saisonEnCours && !v9 \? `\$\{saisonEnCours\.course_nom\} · jusqu’au/, [ATHLETE, 'en cours']],
-  ['Page d’un athlète › Ses objectifs (9.x)', 'le lien « … · en cours » vers la saison', OBJECTIFS, /export default function ObjectifsAVerifier\(\{ athleteId, lignes \}: \{ athleteId: string; lignes: LigneObjectif\[\] \}\)/,
+  ['Page d’un athlète › Ses objectifs (9.x)', 'le lien « … · en cours » vers la saison', OBJECTIFS, /export default function ObjectifsAVerifier\(\{ athleteId, lignes, jour \}: \{ athleteId: string; lignes: LigneObjectif\[\]; jour: string \}\)/,
     [ATHLETE, '{saisonEnCours && (']],
   ['Page d’un athlète › Ses 7 jours', 'la mention « ou une saison » (rien de lu)', ATHLETE, /\{v9 \? TEXTES_CACHES\.septJoursVide : 'Rien de lu pour l’instant\./, [ATHLETE, 'dès qu’un objectif ou une saison a démarré']],
   // (d) les tests lus
@@ -297,7 +297,7 @@ test('une course de Nolio qui n’avait que « En préparation » pour geste n�
   assert.match(athlete, /const courseA = coursesPosees\.find\(\(c\) => c\.type === 'a'\) \?\? null;/, 'la course A (« Créer l’objectif ») ne dépend pas du filtre');
 });
 
-test('les courses de préparation : aucune section, aucun geste, aucun lien vers leur formulaire sous la 9.x', () => {
+test('les courses de préparation : la section de la page de l’objectif, ses liens et l’onglet restent cachés sous la 9.x ; leur saisie est dans « Ses objectifs » (C5, 25/11/2026)', () => {
   assert.equal(preparationsDisponibles(false), true);
   assert.equal(preparationsDisponibles(true), false);
   // Page de l'athlète : plus de section « Ses courses de préparation » sous la 9.x, ni de texte, ni de calcul ; l'ordre de « Réglages » ne la porte plus.
@@ -313,8 +313,8 @@ test('les courses de préparation : aucune section, aucun geste, aucun lien vers
   assert.deepEqual(grep('#ajouter-course', 'app/app/coach', 'components/app/SemaineQuiArrive.tsx', 'components/app/TableauAthletes.tsx', 'components/app/AFaire.tsx', 'components/app/PointsPourLui.tsx'), [ATHLETE, NOUVEAU].sort());
   assert.ok(plan.includes('<Carte id="ajouter-course"'), 'la carte est la cible de ces deux liens, sous la 8.x');
   assert.match(source(NOUVEAU), /\{court && !aModifier && !demande && preparationsDisponibles\(v9\) && \(\s*<div role="group" aria-label="Genre d’objectif"[^]*?Course de préparation[^]*?<\/div>\s*\)\}/);
-  // Le serveur refuse déjà, et refuse toujours (scripts/test-routes-retirees.mjs) : une seconde porte, jamais la seule.
-  assert.match(source('lib/app/actionsEcriture.ts'), /if \(await moteurEstV9\(\)\) return \{ ok: false, message: MESSAGE_COURSE_DE_PREPARATION_FERMEE \};/);
+  // Le serveur : sous la 9.x, un acheteur n'a pas de course de préparation (refusée) ; un coaché l'ajoute, sans le moteur de la 8.x (scripts/test-routes-retirees.mjs, scripts/test-courses-mineures.mjs).
+  assert.match(source('lib/app/actionsEcriture.ts'), /if \(v9 && !o\.coache\) return \{ ok: false, message: MESSAGE_COURSE_DE_PREPARATION_FERMEE \};/);
 });
 
 // ─── (c) la saison de fond ────────────────────────────────────────────────────────────────────────────────────────────────────────────────

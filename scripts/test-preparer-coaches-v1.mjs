@@ -156,7 +156,7 @@ test('les gestes sont sur la page : « Modifier son profil » ouvre le formulair
   // Le formulaire de la carte porte cette adresse, au bandeau comme sous le profil (un seul des deux est rendu).
   const c = sansCommentaires(source('components/app/CarteCoureur.tsx'));
   assert.equal((c.match(/id="geste-profil"/g) ?? []).length, 1);
-  assert.match(c, /id=\{m\.cle === 'profil' \? 'geste-profil' : undefined\}/);
+  assert.match(c, /id=\{m\.cle === 'profil' \? 'geste-profil' : m\.cle === 'test_vc' \? 'geste-test-vc' : 'geste-reperes'\}/);
   assert.match(c, /<details id=\{id\} open=\{ouvert\}/);
   // La page suit l'ancre et ouvre le `details` : le même mécanisme que « Réglages ».
   const ouvert = { tagName: 'DETAILS', open: false, parentElement: null };
