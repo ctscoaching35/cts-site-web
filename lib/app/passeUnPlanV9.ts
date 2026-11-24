@@ -32,6 +32,9 @@ export type ContextePlan = {
   // ou aucune activité), le moteur garde le déclaré. Une lecture qui échoue remonte. garderLu : le garde avec le plan (`parametres.champs.lu`), pour ne plus jamais le relire.
   lireLeDepart: (lundi: string) => Promise<LuAuDepart | null>;
   garderLu: (lu: LuAuDepart) => Promise<void>;
+  // Le point du dimanche de la semaine `numero` (0 : celui d'avant la première) a-t-il une réponse dans Nolio ? Une lecture qui échoue REMONTE (jamais « sans réponse » sur une
+  // lecture manquée : le rappel du dimanche ne rappelle personne à tort).
+  reponduAuPoint: (numero: number, pose: QuestionnairePoseV9 | null) => Promise<boolean>;
   // Les réponses au questionnaire posé à la fin de la semaine `numero` (0 : celui d'avant la première), lues dans Nolio ; null si aucune n'est revenue.
   lireLesReponses: (numero: number, pose: QuestionnairePoseV9 | null) => Promise<{ reponses: ReponsesDimanche; illisibles: string[] } | null>;
   // Le questionnaire posé à la fin de la semaine `numero` (gardé avec elle), ou null.
@@ -129,6 +132,20 @@ export async function passeDuLundiSurUnPlan(c: ContextePlan, lundi: string): Pro
   await c.envoyer(suite.ecrite);
   await c.garderEcriture(suite.ecrite, suite.etat);
   return { quoi: `S${derniere.numero} réécrite` };
+}
+
+// ─── Le dimanche après-midi : le rappel ─────────────────────────────────────────────────────────────
+
+// Faut-il rappeler cet athlète (décision 206) : le point du dimanche posé ce matin n'a pas de réponse. Même cas que le questionnaire du matin : la semaine écrite cette semaine
+// (son point porte l'identifiant que le matin a gardé), ou le dimanche d'avant la première semaine (un plan sans semaine écrite dont la semaine 1 commence demain). Un point
+// qui n'a pas pu être posé (pas d'identifiant gardé) ne se rappelle pas. Rien n'est écrit.
+export async function pointSansReponse(c: ContextePlan, jour: string): Promise<boolean> {
+  const derniere = c.derniere && c.derniere.lundi === ajouterJours(jour, -6) ? c.derniere : null;
+  if (!derniere && c.etat.ecrites.length) return false;
+  if (derniere && !derniere.questionnaire?.nolio_id) return false;
+  const trame = await lireLaTrame(c.ports, c.parametres);
+  if (numeroDeLaSemaine(trame, ajouterJours(jour, 1)) === null) return false;
+  return !(await c.reponduAuPoint(derniere?.numero ?? 0, derniere?.questionnaire ?? null));
 }
 
 // ─── Le dimanche matin : le questionnaire ───────────────────────────────────────────────────────────

@@ -39,6 +39,10 @@ export const repondAuDimanche = (r: { name?: string | null; quiz_planned?: strin
 // envoie ; le premier passage de lecture est à 17 h UTC, soit 18 h.
 export const HEURE_D_ENVOI = '12:00';
 export const DESCRIPTION_DE_BASE = 'Une minute, d’ici dimanche 18 h : tes séances de la semaine prochaine s’écrivent dimanche soir à partir de tes réponses.';
+// La première ligne de la description, quelle que soit la version (décision 206 du coach, 24/11/2026) : elle remplace le rappel des séances non remontées.
+export const PENSE_A_SYNCHRONISER = 'Pense à synchroniser ta montre avant de répondre.';
+// Le nombre de séances (décision 207 du coach, 24/11/2026) : « peux-tu faire par semaine », un maximum. Les questionnaires déjà posés disent encore « veux-tu faire » : les deux se lisent.
+export const QUESTION_SEANCES = 'Combien de séances peux-tu faire par semaine ?';
 
 // Le mot d'ouverture de chaque version, en tête de la description.
 export const OUVERTURES: Record<VersionDimanche, string | null> = {
@@ -107,7 +111,7 @@ export function questionnaireDuDimanche({ version, cles = [], premiere = false, 
   version: VersionDimanche; cles?: SeanceCle[]; premiere?: boolean; coache?: boolean; ligneEffet?: string | null;
 }): QuestionnaireDimanche {
   const ouverture = premiere ? null : OUVERTURES[version];
-  const description = [ouverture, ouverture && version === 'fatigue' ? ligneEffet : null, DESCRIPTION_DE_BASE].filter(Boolean).join('\n\n');
+  const description = [PENSE_A_SYNCHRONISER, ouverture, ouverture && version === 'fatigue' ? ligneEffet : null, DESCRIPTION_DE_BASE].filter(Boolean).join('\n\n');
   const items: Question[] = [];
   if (!premiere) {
     if (version === 'fatigue') items.push(choixUnique(QUESTION_FATIGUE, CHOIX_OUI_NON, true));
@@ -117,7 +121,7 @@ export function questionnaireDuDimanche({ version, cles = [], premiere = false, 
     if (cles.length) items.push({ question: QUESTION_CLES, type: 'multiple_choices', is_mandatory: false, choices: { choices: cles.map((c) => c.libelle) } });
   }
   items.push({ question: QUESTION_JOURS, type: 'multiple_choices', is_mandatory: true, choices: { choices: LIBELLES_JOURS } });
-  items.push({ question: QUESTION_NB, type: 'number', is_mandatory: true, unit: 'séances' });
+  items.push({ question: QUESTION_SEANCES, type: 'number', is_mandatory: true, unit: 'séances' });
   items.push(choixUnique(QUESTION_SL_AVANT, LIBELLES_JOURS, true));
   if (coache) items.push({ question: QUESTION_OUVERTE, type: 'long_text', is_mandatory: false });
   return { name: NOM_DU_QUESTIONNAIRE, description, items };
@@ -154,11 +158,11 @@ const choix = (v: unknown, libelles: string[]): number | null => (typeof v === '
 export function lireReponsesDimanche(items: ItemRepondu[], { version, cles = [] }: { version: VersionDimanche; cles?: SeanceCle[] }):
   { reponses: ReponsesDimanche; illisibles: ChampDimanche[] } {
   const parTexte = new Map(items.map((i) => [normaliser(i.question), i]));
-  const de = (question: string) => parTexte.get(normaliser(question));
+  const de = (...questions: string[]) => questions.map((q) => parTexte.get(normaliser(q))).find(Boolean);
   const reponses: ReponsesDimanche = { version };
   const illisibles: ChampDimanche[] = [];
-  const lire = <T>(champ: ChampDimanche, question: string, lecteur: (v: unknown) => T | null, poser: (x: T) => void) => {
-    const item = de(question);
+  const lire = <T>(champ: ChampDimanche, question: string | string[], lecteur: (v: unknown) => T | null, poser: (x: T) => void) => {
+    const item = de(...(Array.isArray(question) ? question : [question]));
     if (!item || vide(item.value)) return;
     const x = lecteur(item.value);
     if (x === null) illisibles.push(champ);
@@ -187,7 +191,7 @@ export function lireReponsesDimanche(items: ItemRepondu[], { version, cles = [] 
   }, (x) => { reponses.cles_pas_faites = x; });
 
   lire('jours', QUESTION_JOURS, lireJours, (x) => { reponses.jours = x; });
-  lire('nb_seances', QUESTION_NB, lireNombre, (x) => { reponses.nb_seances = x; });
+  lire('nb_seances', [QUESTION_SEANCES, QUESTION_NB], lireNombre, (x) => { reponses.nb_seances = x; });
   lire('jour_sl', QUESTION_SL_AVANT, lireJourSl, (x) => { reponses.jour_sl = x; });
   return { reponses, illisibles };
 }
