@@ -1,0 +1,11 @@
+{
+  "note": "ÉCHANGE FICTIF, écrit à la main d'après la forme annoncée par le moteur v1 le 24/11/2026 (règles 2 et 9, C1), pas enregistré du moteur réel : POST /v1/trace rend `gpx`. À refaire sur le moteur quand /v1/trace le rend ; si la forme diffère, ajuster lib/app/gpxV9.ts.",
+  "requete": { "chemin": "/v1/trace", "corps": { "gpx": "trace.gpx" } },
+  "reponse": {
+    "message": "",
+    "gpx": {
+      "montees": [{ "dplus_m": 420 }, { "dplus_m": 310 }, { "dplus_m": 150 }],
+      "dplus_par_pente": { "vallonne": 640, "cote_moderee": 520, "cote_raide": 120 }
+    }
+  }
+}

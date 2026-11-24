@@ -46,7 +46,7 @@ registerHooks({
   },
 });
 const { luAuDepart, fenetreDuDepart } = await import(pathToFileURL(`${RACINE}lib/app/charge.ts`).href);
-const { lireLuAuDepart } = await import(pathToFileURL(`${RACINE}lib/app/luAuDepart.ts`).href);
+const { lireLuAuDepart, lireLaDureeCourue } = await import(pathToFileURL(`${RACINE}lib/app/luAuDepart.ts`).href);
 
 // Le lundi de la semaine que le moteur va écrire. Les 8 semaines lues : lundis 05/10, 12/10, 19/10, 26/10 | 02/11, 09/11, 16/11, 23/11 ; les 4 dernières : de 02/11 à 29/11.
 const LUNDI = '2026-11-30';
@@ -157,4 +157,47 @@ test('le lecteur : une lecture de Nolio qui échoue remonte, jamais un `lu` calc
     assert.equal(r.erreur, 'Nolio ne répond pas', panne);
     assert.equal(r.lu, undefined, panne);
   }
+});
+
+// ─── La durée COURUE de la course d'avant (course_precedente.duree_h) ───────────────────────────────
+
+const JOUR_DE_COURSE = '2026-11-22';
+const duree = async ({ usr = 'usr_1', moi = 'usr_coach', nolio = {}, accord = true, configure = true, panne = null } = {}) => {
+  globalThis.__lectures = []; globalThis.__bases = []; globalThis.__nolio = nolio; globalThis.__moi = moi; globalThis.__accord = accord; globalThis.__configure = configure; globalThis.__panne = panne;
+  try {
+    return { heures: await lireLaDureeCourue('coach_1', usr, JOUR_DE_COURSE), lectures: globalThis.__lectures };
+  } catch (e) {
+    return { erreur: e.message, lectures: globalThis.__lectures };
+  }
+};
+
+test('la durée courue : l’activité de course du jour de la course (la plus longue : l’échauffement n’est pas la course), en heures au centième', async () => {
+  const r = await duree({ nolio: { 'real/trainings/': [reel(JOUR_DE_COURSE, 25), reel(JOUR_DE_COURSE, 390), reel(JOUR_DE_COURSE, 600, 'spt_velo'), reel('2026-11-21', 700)] } });
+  assert.equal(r.heures, 6.5, 'six heures et demie : le vélo et la veille ne comptent pas');
+  assert.deepEqual(r.lectures, [`real/trainings/?date_from=${JOUR_DE_COURSE}&date_to=${JOUR_DE_COURSE}&fields=id,date_start,duration,distance,sport&athlete=usr_1`], 'un seul jour lu, de son athlète');
+  assert.equal((await duree({ nolio: { 'real/trainings/': [reel(JOUR_DE_COURSE, 100, 'spt_trail')] } })).heures, 1.67);
+  assert.equal((await duree({ nolio: { 'real/trainings/': [reel(JOUR_DE_COURSE, 80, 'spt_tapis')] } })).heures, 1.33);
+});
+
+test('une course abandonnée compte comme courue : sa durée, si courte soit-elle', async () => {
+  assert.equal((await duree({ nolio: { 'real/trainings/': [reel(JOUR_DE_COURSE, 70)] } })).heures, 1.17);
+  assert.equal((await duree({ nolio: { 'real/trainings/': [reel(JOUR_DE_COURSE, 10)] } })).heures, 0.17);
+});
+
+test('la durée courue non lisible : rien (le temps visé reste) ; sans Nolio relié, sans accord de lecture ou non configuré, rien n’est lu', async () => {
+  for (const nolio of [{}, { 'real/trainings/': [] }, { 'real/trainings/': [reel(JOUR_DE_COURSE, 600, 'spt_velo')] }, { 'real/trainings/': [reel('2026-11-23', 90)] },
+    { 'real/trainings/': [{ id: 'r1', date_start: `${JOUR_DE_COURSE}T07:00:00`, sport: 'spt_course', duration: null }] }]) {
+    assert.equal((await duree({ nolio })).heures, null, JSON.stringify(nolio));
+  }
+  for (const cas of [{ usr: null }, { configure: false }, { accord: false }]) {
+    const r = await duree({ nolio: { 'real/trainings/': [reel(JOUR_DE_COURSE, 390)] }, ...cas });
+    assert.equal(r.heures, null, JSON.stringify(cas));
+    assert.deepEqual(r.lectures, [], JSON.stringify(cas));
+  }
+  assert.ok((await duree({ usr: 'usr_coach', nolio: { 'real/trainings/': [reel(JOUR_DE_COURSE, 120)] } })).lectures.every((l) => !l.includes('athlete=')), 'le coach lui-même : pas de paramètre d’athlète');
+});
+
+test('une lecture de Nolio qui échoue remonte au lecteur ; c’est le départ qui garde alors le temps visé', async () => {
+  const r = await duree({ nolio: { 'real/trainings/': [reel(JOUR_DE_COURSE, 390)] }, panne: 'real/trainings/' });
+  assert.equal(r.erreur, 'Nolio ne répond pas');
 });

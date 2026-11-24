@@ -57,7 +57,7 @@ const SEMAINE_UNE = { numero: 1, lundi: LUNDI_1, semaine: SEMAINE_1, reponsesLue
 const SEMAINE_DEUX = (extra = {}) => ({ numero: 2, lundi: LUNDI_2, semaine: SEMAINE_2, reponsesLues: REPONSES, questionnaire: null, ...extra });
 
 // Le contexte d'un plan, de fausses pièces qui notent ce qu'on leur demande.
-// `lu` : ce que le lecteur du départ rend (null : rien lu, le déclaré) ; `panne` : le lecteur échoue. Les corps envoyés au moteur sont notés (j.corps) ; l'échange enregistré est
+// `lu` et `gpx` ne sont pas dans les échanges enregistrés : ils sont écartés pour chercher l'échange. `lu` : ce que le lecteur du départ rend (null : rien lu, le déclaré) ; `panne` : le lecteur échoue. Les corps envoyés au moteur sont notés (j.corps) ; l'échange enregistré est
 // cherché sans `lu` (le moteur réel a été enregistré sans lui) : ce qu'on prouve ici, c'est que `lu` part avec la semaine, pas ce que le moteur en fait.
 function contexte({ echanges = [], etat = etatMod.ETAT_VIDE, derniere = null, nolio = null, reponses = null, pose = null, retouchee = false, coache = true, lu = null, panne = false,
   parametres = PARAMETRES } = {}) {
@@ -65,7 +65,7 @@ function contexte({ echanges = [], etat = etatMod.ETAT_VIDE, derniere = null, no
   const rejoue = moteurRejoue(...echanges);
   const ports = { appelsChemins: rejoue.appelsChemins, appeler: async (chemin, corps) => {
     j.corps.push([chemin, corps]);
-    const { lu: _lu, ...sansLu } = corps?.parametres ?? {};
+    const { lu: _lu, gpx: _gpx, ...sansLu } = corps?.parametres ?? {};
     return rejoue.appeler(chemin, corps?.parametres ? { ...corps, parametres: sansLu } : corps);
   } };
   const c = {
@@ -353,4 +353,36 @@ test('une lecture de Nolio qui échoue : la semaine n’est ni écrite ni envoy�
   await assert.rejects(() => passes.ecrireLaSemaineDuLundi(c, LUNDI_1), /Nolio ne répond pas/);
   assert.deepEqual([j.envoyees, j.ecritures, j.lusGardes], [[], [], []]);
   assert.deepEqual(corpsDe(j, '/v1/semaine'), [], 'le moteur n’est pas appelé sans ce qu’il court');
+});
+
+// ─── Le GPX et la durée courue (24/11/2026) ─────────────────────────────────────────────────────────
+
+const GPX_FICTIF = fixture('trace').reponse.gpx;
+
+test('le profil de la trace gardé avec le plan part à chaque appel du moteur dans `parametres.gpx` ; sans trace, rien ne part', async () => {
+  // Les paramètres d'un plan portent le `gpx` de ses réponses (essayé dans test-gpx-v9.mjs) ; ici, ce que le passage envoie avec eux.
+  const p = passes.parametresDuPlanV9({ parametres: { champs: { ...CHAMPS, gpx: GPX_FICTIF } }, profil: {}, coache: true, accordLecture: true, premierLundi: LUNDI_1 }, FICHE);
+  assert.deepEqual(p.gpx, GPX_FICTIF);
+  const { c, j } = contexte({ echanges: [F.trame, F['semaine-1']], parametres: { ...PARAMETRES, gpx: GPX_FICTIF } });
+  await passes.ecrireLaSemaineDuLundi(c, LUNDI_1);
+  assert.deepEqual(corpsDe(j, '/v1/trame')[0].parametres.gpx, GPX_FICTIF, 'la trame le reçoit aussi');
+  assert.deepEqual(corpsDe(j, '/v1/semaine')[0].parametres.gpx, GPX_FICTIF);
+  const sans = contexte({ echanges: [F.trame, F['semaine-1']] });
+  await passes.ecrireLaSemaineDuLundi(sans.c, LUNDI_1);
+  assert.ok(!('gpx' in corpsDe(sans.j, '/v1/semaine')[0].parametres));
+});
+
+test('la durée de la course d’avant : celle qu’il a COURUE, sinon le temps visé de l’objectif', () => {
+  const apres = { course_date: '2026-11-22', temps_h: 5.5 };
+  assert.deepEqual(passes.entreesDuDepart({ premiere: LUNDI_2, apres, dureeCourue: 6.5 }).course_precedente, { date: '2026-11-22', duree_h: 6.5 });
+  assert.equal(passes.entreesDuDepart({ premiere: LUNDI_2, apres, dureeCourue: 1.17 }).course_precedente.duree_h, 1.17, 'une course abandonnée compte comme courue');
+  for (const illisible of [null, undefined, 0, -1, Number.NaN]) {
+    assert.equal(passes.entreesDuDepart({ premiere: LUNDI_2, apres, dureeCourue: illisible }).course_precedente.duree_h, 5.5, `non lisible (${illisible}) : le temps visé`);
+  }
+  assert.deepEqual(passes.entreesDuDepart({ premiere: LUNDI_2, apres, dureeCourue: undefined }), passes.entreesDuDepart({ premiere: LUNDI_2, apres }), 'sans lecture, comme avant');
+  assert.deepEqual(passes.entreesDuDepart({ premiere: LUNDI_2, apres: null, dureeCourue: 6.5 }), { entree: LUNDI_2 }, 'pas de course d’avant : rien à garder');
+  assert.deepEqual(passes.entreesDuDepart({ premiere: LUNDI_2, apres: { course_date: '2026-11-22', temps_h: 0 }, dureeCourue: 6.5 }).course_precedente, { date: '2026-11-22', duree_h: 6.5 }, 'sans temps visé lisible, la durée courue suffit');
+  const depart = readFileSync(`${RACINE}lib/app/departV9.ts`, 'utf8');
+  assert.match(depart, /const dureeCourue = apres && o\.coache \? await lireLaDureeCourue\(o\.coachId, o\.nolioAthlete, apres\.course_date\)\.catch\(\(\) => null\) : null;/);
+  assert.match(depart, /entreesDuDepart\(\{ premiere, apres, dureeCourue \}\)/);
 });
