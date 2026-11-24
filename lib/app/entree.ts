@@ -10,6 +10,9 @@ import { dateLongue } from './plan';
 export type EtapeEntree = { cle: string; titre: string; fait: boolean; detail?: string; action?: { texte: string; href: string } };
 export type Entree = { etapes: EtapeEntree[]; faites: number; total: number; complete: boolean };
 
+// Le rappel qui va avec le départ (sous la carte « Son entrée » ; sous la 9.x, sous « Démarrer » dans « À faire pour lui », lib/app/pageAthleteSimple.ts) : un seul texte.
+export const NOTE_AVANT_DE_DEMARRER = 'Avant de démarrer, retire de son Nolio tes anciennes séries de questionnaire et de Hooper : les siennes partent désormais d’ici.';
+
 // objectif : son prochain objectif, à venir ; ecrit, écrit semaine par semaine (un objectif envoyé en entier n'a rien
 // à démarrer) ; prevu, son départ programmé. courseA : sa course A dans Nolio, pas encore dans CTS
 // (lib/app/coursesNolio.ts) ; son objectif se crée alors déjà rempli.

@@ -4,9 +4,12 @@ import { formatRouteDe } from '@/lib/app/route';
 import clsx from 'clsx';
 import { notFound } from 'next/navigation';
 import CadreCoach from '@/components/app/CadreCoach';
+import CarteCoureur from '@/components/app/CarteCoureur';
 import CarteEntree from '@/components/app/CarteEntree';
 import FormulaireValeurs from '@/components/app/FormulaireValeurs';
 import InvitationApp from '@/components/app/InvitationApp';
+import ObjectifsAVerifier, { type LigneObjectif } from '@/components/app/ObjectifsAVerifier';
+import PointsPourLui, { PointsAVenir } from '@/components/app/PointsPourLui';
 import ProfilAthlete from '@/components/app/ProfilAthlete';
 import SemainesQuiArrivent from '@/components/app/SemaineQuiArrive';
 import { Geste, Regle } from '@/components/app/PointsCoach';
@@ -21,6 +24,9 @@ import { ficheAthlete } from '@/lib/app/coaching';
 import { demandeDeLAthlete } from '@/lib/app/demandesCoaching';
 import { initiales } from '@/lib/app/contexte';
 import { entreeDe } from '@/lib/app/entree';
+import {
+  aFairePourLui, ceQuiManqueAuCoureur, departagerLesObjectifs, entreeDansLesReglages, pointsAVenir, TEXTES_PAGE_ATHLETE, verifierObjectif,
+} from '@/lib/app/pageAthleteSimple';
 import { coursesDansNolio, pasEncoreIci } from '@/lib/app/coursesNolio';
 import { espaceDuCoach } from '@/lib/app/mesAthletes';
 import { montrerLInfra, pointsDeSaPage, semainesDansSesPoints, TEXTES_A_FAIRE } from '@/lib/app/espaceCoachSimple';
@@ -31,7 +37,7 @@ import { athletesNolio, ErreurNolio, exigerCoach, nolioConfigure, type AthleteNo
 import { ajouterJours, dateAbregee, dateLongue, jMoins, type Zones } from '@/lib/app/plan';
 import { allureDepuisVitesse } from '@/lib/app/allureCoach';
 import { enHeures } from '@/lib/app/tableau';
-import { PROFIL_VIDE, type Profil } from '@/lib/app/zones';
+import { PROFIL_VIDE, profilCoureur, type Profil } from '@/lib/app/zones';
 import { reperesDeBase } from '@/lib/app/reperes';
 import { demonstrationCoachOuverte } from '@/lib/app/demonstrationCoach';
 import { modeAppGratuite } from '@/lib/app/gratuitRegles';
@@ -70,7 +76,13 @@ const TENDANCE = { hausse: 'en hausse', baisse: 'en baisse', stable: 'stable' } 
 // SOUS LA 9.x SEULEMENT (décision 220 du coach, 24/11/2026 : « un seul endroit pour ce qui est à faire », première simplification) : « Urgent » n'existe plus,
 // ses points sont dans « À faire » de « Mes athlètes » ; sur cette page, ses points à lui ne sont dits qu'une fois (« À faire pour lui » ne redit ni ce que
 // « Son entrée » porte déjà, ni le bouton « Réessayer » de « Sa semaine qui arrive »), et plus de message pour le développeur (la clé de l'API Nolio, la
-// migration de Supabase) : il reste au journal du serveur. Le reste de la page ne change pas. Sous la 8.x, rien ne change.
+// migration de Supabase) : il reste au journal du serveur. Sous la 8.x, rien ne change.
+// DEUXIÈME SIMPLIFICATION, « une page athlète courte » (même décision 220, 24/11/2026 ; reports/Application coach — revue de simplicité, 24-11.md, proposition 2) : sous la 9.x,
+// la page tient en quatre blocs, dans cet ordre : (a) « À faire pour lui » (ses alertes et ce qui manque, dont les étapes de « Son entrée » que le coach fait lui-même),
+// (b) sa carte de coureur (ses repères, son profil, ses zones et son style en une carte, ce qui manque en tête avec son geste), (c) ses objectifs (la course, la date et de quoi
+// vérifier que tout est rempli), (d) sa semaine qui arrive ; puis « Réglages », replié, où va tout le reste (sa revue du dimanche, sa semaine passée et ses 7 jours,
+// ses courses dans Nolio, ses courses de préparation, ce qui arrive, son entrée complète…). Rien ne disparaît. L'ordre et ce qui manque se calculent dans
+// lib/app/pageAthleteSimple.ts. Sous la 8.x, les treize blocs d'avant, dans leur ordre : le rendu est celui d'avant.
 export default async function PageAthlete({ params, searchParams }: {
   params: Promise<{ id: string }>; searchParams: Promise<{ apercu?: string }>;
 }) {
@@ -229,6 +241,227 @@ export default async function PageAthlete({ params, searchParams }: {
   // Sous la 9.x, « la migration du 04/11/2026 est à passer » n'est plus dite au coach : pas de « Ses 7 jours » vide, une ligne au journal.
   const septJoursVisibles = !(gardesManquent && !montrerLInfra(v9, 'Ses signaux ne sont pas encore gardés : la migration du 04/11/2026 est à passer dans Supabase.'));
   const prenomDe = (nom: string) => nom.split(' ')[0];
+  // SOUS LA 9.x (décision 220 du coach, 24/11/2026 : une page athlète courte ; lib/app/pageAthleteSimple.ts) : ce qui est à faire pour lui (ses points, puis les étapes de son entrée que le
+  // coach fait lui-même), ce qui manque à sa carte de coureur, ce que chaque objectif à venir a de rempli, ce qui arrive. Rien n'est lu de plus : les mêmes données que la 8.x. Sous la 8.x, rien.
+  const donnerLAccord = a.nolio_athlete_id && !accord ? accordRecu.bind(null, a.nolio_athlete_id, a.nom) : undefined;
+  const manqueCoureur = v9 ? ceQuiManqueAuCoureur({ profil, vcMs: a.vc_ms, fc1: a.fc_seuil1, fc2: a.fc_seuil2, vs1: a.v_seuil1_ms }) : [];
+  const lignesAFaire = v9 ? aFairePourLui(points, entree, manqueCoureur.some((m) => m.cle === 'profil')) : [];
+  const { aVenir: objectifsAVenir, passes: objectifsPasses } = v9 ? departagerLesObjectifs(objectifs, jour) : { aVenir: [], passes: [] };
+  // Les réponses de l'objectif (parametres.champs), lues avec celles de la fiche comme le moteur v1 les lit ; un objectif envoyé en entier n'a pas de réponses à vérifier.
+  const lignesObjectifs: LigneObjectif[] = objectifsAVenir.map((o) => {
+    const parametres = parPlan.get(o.plan_id)?.parametres as { champs?: Record<string, unknown> } | null | undefined;
+    return { planId: o.plan_id, nom: o.course_nom, date: o.course_date, principal: o.plan_id === prochain,
+      verif: parametres ? verifierObjectif(parametres.champs ?? {}, a.profil) : null };
+  });
+  const saison9 = v9 && saisonEnCours ? { planId: saisonEnCours.plan_id, nom: saisonEnCours.course_nom, jusquau: dateLongue(saisonEnCours.course_date, true) } : null;
+  const preparations = v9 ? objectifs.flatMap((o) => (((parPlan.get(o.plan_id)?.parametres as Record<string, unknown> | null)?.courses_secondaires ?? []) as CourseSecondaire[])
+    .filter((c) => c.date >= jour).sort((x, y) => x.date.localeCompare(y.date))) : [];
+  // Ses zones et son style, repliés dans sa carte : seulement ce qu'il y a à lire.
+  const zonesEtStyle = v9 && ((zones && lignesZones.length > 0) || profilCoureur(profilZones)) ? (
+    <>
+      {zones && lignesZones.length > 0 && <TableauZones zones={zones} lignes={lignesZones} profil={profilZones} titre="Ses zones" plat />}
+      <StyleCoureur profil={profilZones} titre="Son style de coureur" plat />
+    </>
+  ) : null;
+  const lesPastilles = pastilles.map(([texte, bien]) => (
+    <span key={texte} className={clsx('text-[0.72rem] font-bold px-2.5 py-1 rounded-xl',
+      bien ? 'bg-[#E3EFE9] text-teal' : 'bg-[#F6ECD8] text-[#7A520D]')}>{texte}</span>
+  ));
+  const contenuRevue = (
+    <>
+      <p className="text-xs font-bold text-[#5E5C78]">Sa revue du dimanche</p>
+      <ul className="mt-2 flex flex-wrap gap-2">
+        {revue.map((x) => {
+          const contenu = (
+            <>
+              <span aria-hidden className={clsx('inline-flex w-[18px] h-[18px] rounded-full items-center justify-center text-[0.6875rem] font-extrabold text-white',
+                x.ok ? 'bg-teal' : 'bg-[#C8952E]')}>{x.ok ? '✓' : '!'}</span>
+              {x.texte}
+            </>
+          );
+          const classe = 'inline-flex items-center gap-1.5 min-h-8 px-2.5 rounded-[10px] bg-sand text-[0.78rem] font-semibold text-[#3B3957]';
+          return <li key={x.ancre}>{x.ok ? <span className={classe}>{contenu}</span> : <a href={x.ancre} className={clsx(classe, 'hover:underline')}>{contenu}</a>}</li>;
+        })}
+      </ul>
+    </>
+  );
+  const semaine = (
+    <SemainesQuiArrivent semaines={semaines} prevision={etat?.prevision ?? { niveau: 'rien', pourquoi: '', prevoit: '' }} aLaMain={aLaMain}
+      vers={objectifApres ? { date: objectifApres.course_date, nom: objectifApres.course_nom } : null}
+      v9={v9} dansSesPoints={v9 ? semainesDansSesPoints(pointsIci) : []} />
+  );
+  const contenuSemainePassee = (
+    <div className="flex flex-wrap gap-x-8 gap-y-5">
+      <div className="flex-[1_1_300px] min-w-0 space-y-3">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <Surtitre>Sa semaine passée</Surtitre>
+          <span className="text-xs text-[#5E5C78]">{periode}</span>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          <div className="rounded-[12px] bg-sand p-3">
+            <div className="text-xl font-extrabold">{s ? `${s.faites} / ${s.prevues}` : '—'}</div>
+            <div className="text-[0.72rem] text-[#5E5C78]">séances</div>
+          </div>
+          <div className="rounded-[12px] bg-sand p-3">
+            <div className="text-xl font-extrabold">{s?.sansRpe ? 'sans RPE' : s && s.tenue !== null ? `${s.tenue} %` : '—'}</div>
+            <div className="text-[0.72rem] text-[#5E5C78]">charge tenue</div>
+            {s && !s.sansRpe && s.tenue !== null && (
+              <span aria-hidden className="mt-1.5 block w-full h-1.5 rounded-full bg-indigo/10 overflow-hidden">
+                <span className={clsx('block h-full rounded-full', s.tenue >= 85 ? 'bg-teal' : s.tenue >= 65 ? 'bg-[#C8952E]' : 'bg-[#B4513F]')}
+                  style={{ width: `${Math.min(100, s.tenue)}%` }} />
+              </span>
+            )}
+          </div>
+          <div className="rounded-[12px] bg-sand p-3">
+            <div className="text-xl font-extrabold">{hooper ? hooper.valeur : '—'}</div>
+            <div className="text-[0.72rem] text-[#5E5C78]">Hooper{hooper?.tendance ? ` · ${TENDANCE[hooper.tendance]}` : ''}</div>
+          </div>
+        </div>
+        {sousLaSemaine && <p className="text-sm text-[#3B3957]">{sousLaSemaine.charAt(0).toUpperCase()}{sousLaSemaine.slice(1)}.</p>}
+      </div>
+
+      {accord && a.nolio_athlete_id && septJoursVisibles && (
+        <div className="flex-[1_1_300px] min-w-0 space-y-3">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <Surtitre>Ses 7 jours</Surtitre>
+            {septJours && (
+              <span className="text-xs text-[#5E5C78]">
+                Lus le {new Date(septJours.calcule_le).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', weekday: 'long', hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+          </div>
+          {gardesManquent ? (
+            <p className="text-sm text-[#4A4866]">Ses signaux ne sont pas encore gardés : la migration du 04/11/2026 est à passer.</p>
+          ) : !septJours ? (
+            // « Ses 7 jours » vide : validé par le coach le 08/11/2026 (la continuité entre deux objectifs, 1e).
+            <p className="text-sm text-[#4A4866]">Rien de lu pour l’instant. Ses séances et son Hooper des 7 derniers jours se lisent dans Nolio chaque soir, dès qu’un objectif ou une saison a démarré. « Relire maintenant » les lit tout de suite.</p>
+          ) : (
+            <>
+              <p className="text-sm text-[#3B3957]">
+                {septJours.faites} séance{septJours.faites > 1 ? 's' : ''} faite{septJours.faites > 1 ? 's' : ''} sur {septJours.prevues}
+                {/* La moyenne à la française, « 8,8 » (défaut relevé sur la maquette du 08/11/2026). */}
+                {septJours.hooper ? ` · Hooper ${septJours.hooper.valeur}${septJours.hooper.moyenne !== null ? ` (moyenne ${decimale(septJours.hooper.moyenne)})` : ''}` : ''}
+                {septJours.derniere_activite ? ` · dernière activité le ${dateLongue(septJours.derniere_activite, true)}` : ''}
+              </p>
+              {septJours.signaux.length === 0 ? <p className="text-sm text-teal font-semibold">Aucun signal.</p> : (
+                <ul className="space-y-1.5 text-sm">
+                  {septJours.signaux.map((x, i) => (
+                    <li key={i} className="flex flex-wrap gap-x-2">
+                      <span className="font-semibold">{SIGNAL_EN_CLAIR[x.genre] ?? x.genre}</span>
+                      <span className="text-[#4A4866]">{dateLongue(x.jour.slice(0, 10), true)} · {virgule(x.detail)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
+          )}
+          {/* Une séance allégée en cours de semaine (Q6, venue de « Le moteur s'en est chargé »). */}
+          {allegees.map(({ planId, j }) => (
+            <p key={`${planId}-${j.id}`} className="text-sm text-[#4A4866]">
+              {j.nom} allégée en EF (fatigue franche) ·{' '}
+              <Link href={`/app/garder?plan=${planId}&seance=${encodeURIComponent(j.id)}`} className="font-semibold text-teal">Garder la séance d’origine</Link>
+            </p>
+          ))}
+          {!gardesManquent && (
+            <form action={relireMaintenant.bind(null, a.nolio_athlete_id)}>
+              <button type="submit" className="min-h-10 px-3 rounded-[10px] border border-teal text-teal text-[0.8125rem] font-bold">Relire maintenant</button>
+            </form>
+          )}
+        </div>
+      )}
+    </div>
+  );
+  const contenuCoursesNolio = (
+    <>
+      <Surtitre>Ses courses dans Nolio</Surtitre>
+      <p className="text-[0.8125rem] leading-relaxed text-[#4A4866]">Celles que tu as posées dans Nolio et qui ne sont pas encore ici.</p>
+      {coursesNolio.map((c) => {
+        const preparation = c.type === 'b' && prochain && pp?.parametres && c.date >= lundiProchain && c.date < dateProchain;
+        return (
+          <div key={c.id} className="flex flex-wrap items-center gap-3 p-3 rounded-xl border border-indigo/[0.12]">
+            <PastilleDate iso={c.date} />
+            <span className="flex-[1_1_180px] min-w-0">
+              <span className="block text-sm font-bold">{c.nom}</span>
+              <span className="block text-xs text-[#5E5C78]">
+                {[c.type === 'a' ? 'objectif A' : c.type === 'b' ? 'course B' : null,
+                  c.distance_km ? `${c.distance_km} km` : 'distance à saisir', c.dplus_m ? `${c.dplus_m} m D+` : null].filter(Boolean).join(' · ')}
+              </span>
+            </span>
+            <Link href={preparation ? `/app/coach/plan/${prochain}?course=${c.id}#ajouter-course` : `/app/coach/nouveau?athlete=${a.id}&course=${c.id}${formatRouteDe(c.distance_km, c.dplus_m) ? '&discipline=route' : ''}`}
+              className="inline-flex items-center min-h-10 px-3 rounded-[10px] border border-teal text-teal text-[0.8125rem] font-bold whitespace-nowrap">
+              {preparation ? 'En préparation ›' : 'Créer l’objectif ›'}
+            </Link>
+          </div>
+        );
+      })}
+    </>
+  );
+  const contenuTest = (
+    <>
+      <p className="mb-3 text-[0.8125rem] leading-relaxed text-[#4A4866]">
+        S’il ne l’a pas fait dans l’app, ou si sa lecture dans Nolio n’a pas abouti : ses deux efforts donnent sa vitesse
+        critique et son profil de coureur. Un test écrit dans ses semaines et pas encore lu est alors marqué lu.
+      </p>
+      <TestVcCoach athleteId={a.id} aujourdhui={jour} />
+    </>
+  );
+  const contenuReperes = (
+    <>
+      <p className="mb-3 text-[0.8125rem] leading-relaxed text-[#4A4866]">
+        Avec eux, les séances partent avec une allure sur le plat ou une FC, puis le RPE ; sans eux, au RPE, et le test
+        s’écrit à la place d’une séance. Gardés seulement avec son accord de lecture.
+      </p>
+      <FormulaireValeurs athleteId={a.id} fc1={a.fc_seuil1} vs1Allure={a.v_seuil1_ms ? allureDepuisVitesse(a.v_seuil1_ms) : null}
+        vcAllure={a.vc_ms ? allureDepuisVitesse(a.vc_ms) : null} fc2={a.fc_seuil2} />
+    </>
+  );
+  const contenuProfil = <div className="pt-2"><ProfilAthlete athleteId={a.id} profil={profil} pointDuDimanche={v9} /></div>;
+  // Ce que « Réglages » montre de plus sous la 9.x (ORDRE_DES_REGLAGES_9X) : où il en est, puis, avant « Retirer cet athlète », ce qui a quitté le haut de la page.
+  const sectionEtat = (
+    <section className="py-4 space-y-3">
+      <h3 className="text-sm font-bold">{TEXTES_PAGE_ATHLETE.ouEnEstIl}</h3>
+      <div className="flex flex-wrap gap-2">{lesPastilles}</div>
+    </section>
+  );
+  const sectionsEnPlus = (
+    <>
+      <PointsAVenir points={pointsAVenir(points)} />
+      <section id="revue" className="py-4">{contenuRevue}</section>
+      <section id="sa-semaine-passee" className="py-4 scroll-mt-6">{contenuSemainePassee}</section>
+      {coursesNolio.length > 0 && <section id="courses-nolio" className="py-4 space-y-3 scroll-mt-6">{contenuCoursesNolio}</section>}
+      {preparations.length > 0 && (
+        <section className="py-4 space-y-2">
+          <h3 className="text-sm font-bold">{TEXTES_PAGE_ATHLETE.preparations}</h3>
+          {preparations.map((c) => (
+            <div key={`${c.date}-${c.nom}`} className="flex items-center gap-3 p-3 rounded-xl border border-indigo/[0.12]">
+              <PastilleDate iso={c.date} />
+              <span className="text-[0.84rem]"><strong>{c.nom}</strong> · préparation · {c.distance_km} km{c.dplus_m ? ` · ${c.dplus_m} m D+` : ''}</span>
+            </div>
+          ))}
+        </section>
+      )}
+      {objectifsPasses.length > 0 && (
+        <section className="py-4 space-y-2">
+          <h3 className="text-sm font-bold">{TEXTES_PAGE_ATHLETE.anciensObjectifs}</h3>
+          {objectifsPasses.map((o) => (
+            <Link key={o.plan_id} href={`/app/coach/plan/${o.plan_id}`} className="flex items-center gap-3.5 p-3 rounded-xl border border-indigo/[0.12] text-indigo">
+              <PastilleDate iso={o.course_date} />
+              <span className="flex-1 min-w-0 text-[0.9375rem] font-bold">{o.course_nom}</span>
+              <span aria-hidden>›</span>
+            </Link>
+          ))}
+        </section>
+      )}
+      {demandeFiche && (
+        <section className="py-4">
+          <Link href={`/app/coach/demandes/${demandeFiche.id}`} className="inline-flex items-center min-h-11 text-[0.8125rem] font-bold text-teal">
+            Sa demande de coaching, du {dateLongue(demandeFiche.envoyee_le.slice(0, 10), true)} ›
+          </Link>
+        </section>
+      )}
+      {entreeDansLesReglages(entree) && <CarteEntree entree={entree} plat />}
+    </>
+  );
   return (
     <CadreCoach actif="athletes" urgents={espace.urgents}>
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -255,322 +488,212 @@ export default async function PageAthlete({ params, searchParams }: {
                 <span aria-hidden className={clsx('w-2 h-2 rounded-full', POINT_COULEUR[couleur])} />{etat.raison}
               </span>
             )}
-            {pastilles.map(([texte, bien]) => (
-              <span key={texte} className={clsx('text-[0.72rem] font-bold px-2.5 py-1 rounded-xl',
-                bien ? 'bg-[#E3EFE9] text-teal' : 'bg-[#F6ECD8] text-[#7A520D]')}>{texte}</span>
-            ))}
+            {!v9 && lesPastilles}
           </div>
         </div>
       </div>
 
-      {/* Lot A2 de l'app gratuite : la demande de coaching qui a ouvert cette fiche reste lisible ici. */}
-      {demandeFiche && (
-        <Link href={`/app/coach/demandes/${demandeFiche.id}`} className="flex items-center justify-between gap-3 min-h-12 px-5 py-3 rounded-2xl bg-white border border-indigo/[0.08] text-sm font-bold text-teal">
-          <span>Sa demande de coaching, du {dateLongue(demandeFiche.envoyee_le.slice(0, 10), true)}</span><span aria-hidden>›</span>
-        </Link>
-      )}
-
-      {!entree.complete && (
-        <CarteEntree entree={entree} accordRecu={a.nolio_athlete_id && !accord ? accordRecu.bind(null, a.nolio_athlete_id, a.nom) : undefined} />
-      )}
-
-      {/* « À faire pour lui » (venu de « Cette semaine ») et sa revue du dimanche (Q3). */}
-      <Carte id="a-faire" className="!p-5 space-y-3 scroll-mt-6">
-        <Surtitre>À faire pour lui</Surtitre>
-        {pointsIci.length === 0 ? <p className="text-sm text-teal font-semibold">Rien à faire pour lui pour l’instant.</p> : (
-          <ul>
-            {pointsIci.map((p) => (
-              <li key={p.cle} className="flex flex-wrap items-center justify-between gap-3 py-3 border-t first:border-t-0 border-indigo/[0.07]">
-                <div className="min-w-0 flex-[1_1_280px] flex flex-wrap items-start gap-x-2 gap-y-1 text-sm text-[#4A4866] leading-snug">
-                  <span className={clsx('text-[0.6875rem] font-bold px-2 py-0.5 rounded-full mt-0.5', PASTILLE_RAISON[p.niveau])}>{RAISON[p.niveau]}</span>
-                  <span className="min-w-0 flex-[1_1_200px]">
-                    {p.texte.charAt(0).toUpperCase()}{p.texte.slice(1)}
-                    {p.sous && <span className="block mt-0.5 text-xs text-[#5E5C78]">{p.sous}</span>}
-                  </span>
-                </div>
-                {!p.sansGeste && (
-                  <div className="flex items-center gap-2">
-                    <Geste r={p} />
-                    <Regle cles={[p.cle]} />
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className="pt-3 border-t border-indigo/[0.07]">
-          <p className="text-xs font-bold text-[#5E5C78]">Sa revue du dimanche</p>
-          <ul className="mt-2 flex flex-wrap gap-2">
-            {revue.map((x) => {
-              const contenu = (
-                <>
-                  <span aria-hidden className={clsx('inline-flex w-[18px] h-[18px] rounded-full items-center justify-center text-[0.6875rem] font-extrabold text-white',
-                    x.ok ? 'bg-teal' : 'bg-[#C8952E]')}>{x.ok ? '✓' : '!'}</span>
-                  {x.texte}
-                </>
-              );
-              const classe = 'inline-flex items-center gap-1.5 min-h-8 px-2.5 rounded-[10px] bg-sand text-[0.78rem] font-semibold text-[#3B3957]';
-              return <li key={x.ancre}>{x.ok ? <span className={classe}>{contenu}</span> : <a href={x.ancre} className={clsx(classe, 'hover:underline')}>{contenu}</a>}</li>;
-            })}
-          </ul>
-        </div>
-      </Carte>
-
-      <SemainesQuiArrivent semaines={semaines} prevision={etat?.prevision ?? { niveau: 'rien', pourquoi: '', prevoit: '' }} aLaMain={aLaMain}
-        vers={objectifApres ? { date: objectifApres.course_date, nom: objectifApres.course_nom } : null}
-        v9={v9} dansSesPoints={v9 ? semainesDansSesPoints(pointsIci) : []} />
-
-      {/* Sa semaine passée et ses 7 jours, en une carte (Q5 « A ») : la semaine finie, puis les signaux des 7 derniers jours. */}
-      <Carte id="sa-semaine-passee" className="!p-5 scroll-mt-6">
-        <div className="flex flex-wrap gap-x-8 gap-y-5">
-          <div className="flex-[1_1_300px] min-w-0 space-y-3">
-            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <Surtitre>Sa semaine passée</Surtitre>
-              <span className="text-xs text-[#5E5C78]">{periode}</span>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              <div className="rounded-[12px] bg-sand p-3">
-                <div className="text-xl font-extrabold">{s ? `${s.faites} / ${s.prevues}` : '—'}</div>
-                <div className="text-[0.72rem] text-[#5E5C78]">séances</div>
-              </div>
-              <div className="rounded-[12px] bg-sand p-3">
-                <div className="text-xl font-extrabold">{s?.sansRpe ? 'sans RPE' : s && s.tenue !== null ? `${s.tenue} %` : '—'}</div>
-                <div className="text-[0.72rem] text-[#5E5C78]">charge tenue</div>
-                {s && !s.sansRpe && s.tenue !== null && (
-                  <span aria-hidden className="mt-1.5 block w-full h-1.5 rounded-full bg-indigo/10 overflow-hidden">
-                    <span className={clsx('block h-full rounded-full', s.tenue >= 85 ? 'bg-teal' : s.tenue >= 65 ? 'bg-[#C8952E]' : 'bg-[#B4513F]')}
-                      style={{ width: `${Math.min(100, s.tenue)}%` }} />
-                  </span>
-                )}
-              </div>
-              <div className="rounded-[12px] bg-sand p-3">
-                <div className="text-xl font-extrabold">{hooper ? hooper.valeur : '—'}</div>
-                <div className="text-[0.72rem] text-[#5E5C78]">Hooper{hooper?.tendance ? ` · ${TENDANCE[hooper.tendance]}` : ''}</div>
-              </div>
-            </div>
-            {sousLaSemaine && <p className="text-sm text-[#3B3957]">{sousLaSemaine.charAt(0).toUpperCase()}{sousLaSemaine.slice(1)}.</p>}
-          </div>
-
-          {accord && a.nolio_athlete_id && septJoursVisibles && (
-            <div className="flex-[1_1_300px] min-w-0 space-y-3">
-              <div className="flex flex-wrap items-baseline justify-between gap-3">
-                <Surtitre>Ses 7 jours</Surtitre>
-                {septJours && (
-                  <span className="text-xs text-[#5E5C78]">
-                    Lus le {new Date(septJours.calcule_le).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', weekday: 'long', hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                )}
-              </div>
-              {gardesManquent ? (
-                <p className="text-sm text-[#4A4866]">Ses signaux ne sont pas encore gardés : la migration du 04/11/2026 est à passer.</p>
-              ) : !septJours ? (
-                // « Ses 7 jours » vide : validé par le coach le 08/11/2026 (la continuité entre deux objectifs, 1e).
-                <p className="text-sm text-[#4A4866]">Rien de lu pour l’instant. Ses séances et son Hooper des 7 derniers jours se lisent dans Nolio chaque soir, dès qu’un objectif ou une saison a démarré. « Relire maintenant » les lit tout de suite.</p>
-              ) : (
-                <>
-                  <p className="text-sm text-[#3B3957]">
-                    {septJours.faites} séance{septJours.faites > 1 ? 's' : ''} faite{septJours.faites > 1 ? 's' : ''} sur {septJours.prevues}
-                    {/* La moyenne à la française, « 8,8 » (défaut relevé sur la maquette du 08/11/2026). */}
-                    {septJours.hooper ? ` · Hooper ${septJours.hooper.valeur}${septJours.hooper.moyenne !== null ? ` (moyenne ${decimale(septJours.hooper.moyenne)})` : ''}` : ''}
-                    {septJours.derniere_activite ? ` · dernière activité le ${dateLongue(septJours.derniere_activite, true)}` : ''}
-                  </p>
-                  {septJours.signaux.length === 0 ? <p className="text-sm text-teal font-semibold">Aucun signal.</p> : (
-                    <ul className="space-y-1.5 text-sm">
-                      {septJours.signaux.map((x, i) => (
-                        <li key={i} className="flex flex-wrap gap-x-2">
-                          <span className="font-semibold">{SIGNAL_EN_CLAIR[x.genre] ?? x.genre}</span>
-                          <span className="text-[#4A4866]">{dateLongue(x.jour.slice(0, 10), true)} · {virgule(x.detail)}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </>
-              )}
-              {/* Une séance allégée en cours de semaine (Q6, venue de « Le moteur s'en est chargé »). */}
-              {allegees.map(({ planId, j }) => (
-                <p key={`${planId}-${j.id}`} className="text-sm text-[#4A4866]">
-                  {j.nom} allégée en EF (fatigue franche) ·{' '}
-                  <Link href={`/app/garder?plan=${planId}&seance=${encodeURIComponent(j.id)}`} className="font-semibold text-teal">Garder la séance d’origine</Link>
-                </p>
-              ))}
-              {!gardesManquent && (
-                <form action={relireMaintenant.bind(null, a.nolio_athlete_id)}>
-                  <button type="submit" className="min-h-10 px-3 rounded-[10px] border border-teal text-teal text-[0.8125rem] font-bold">Relire maintenant</button>
-                </form>
-              )}
-            </div>
+      {v9 ? (
+        <>
+          {/* (a) Ses alertes et ce qui est à faire pour lui ; (b) sa carte de coureur, ce qui manque en tête ; (c) ses objectifs, de quoi vérifier que tout est rempli ; (d) sa semaine
+              qui arrive. Le reste est dans « Réglages » (lib/app/pageAthleteSimple.ts : ORDRE_9X). */}
+          <PointsPourLui lignes={lignesAFaire} accordRecu={donnerLAccord} />
+          <CarteCoureur lignesProfil={profilVide ? [] : lignesProfil} reperes={reperes} manque={manqueCoureur} profilVide={profilVide}
+            formulaires={{ profil: contenuProfil, test_vc: contenuTest, reperes: contenuReperes }} zonesEtStyle={zonesEtStyle} />
+          <ObjectifsAVerifier athleteId={a.id} lignes={lignesObjectifs} saison={saison9} />
+          {semaine}
+        </>
+      ) : (
+        <>
+          {/* Lot A2 de l'app gratuite : la demande de coaching qui a ouvert cette fiche reste lisible ici. */}
+          {demandeFiche && (
+            <Link href={`/app/coach/demandes/${demandeFiche.id}`} className="flex items-center justify-between gap-3 min-h-12 px-5 py-3 rounded-2xl bg-white border border-indigo/[0.08] text-sm font-bold text-teal">
+              <span>Sa demande de coaching, du {dateLongue(demandeFiche.envoyee_le.slice(0, 10), true)}</span><span aria-hidden>›</span>
+            </Link>
           )}
-        </div>
-      </Carte>
 
-      {/* Deux colonnes sur ordinateur (ses objectifs, ses repères, son profil | ses zones, son style) ; une seule sur
-          téléphone, dans l'ordre de la maquette : objectifs, repères, zones et style, profil. */}
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
-        <div className="contents lg:flex lg:flex-col lg:gap-5 lg:flex-[1_1_380px] lg:min-w-0">
-          <Carte className="!p-5 space-y-3 order-1">
-            <div className="flex justify-between items-center gap-3">
-              <Surtitre>Ses objectifs</Surtitre>
-              {/* Deux entrées (décision coach du 23/10/2026) : le trail ou la route (10 km, semi, marathon). */}
-              <Link href={`/app/coach/nouveau?athlete=${a.id}&discipline=route`} className="inline-flex items-center min-h-10 px-3.5 rounded-[10px] border border-teal text-teal text-[0.8125rem] font-bold">
-                + Objectif route
-              </Link>
-              <Link href={`/app/coach/nouveau?athlete=${a.id}`} className="inline-flex items-center min-h-10 px-3.5 rounded-[10px] bg-teal text-white text-[0.8125rem] font-bold">
-                + Objectif trail
-              </Link>
-            </div>
-            {saisonEnCours && (
-              <Link href={`/app/coach/plan/${saisonEnCours.plan_id}`} className="flex items-center gap-3.5 p-3.5 rounded-xl bg-[#E1EFEA] text-[#0B4A40]">
-                <span className="flex-1 min-w-0">
-                  <span className="block text-[0.9375rem] font-bold">{saisonEnCours.course_nom} · en cours</span>
-                  <span className="block text-[0.78rem]">Jusqu’au {dateLongue(saisonEnCours.course_date, true)} · le moteur écrit ses semaines ; un objectif qui arrive prend la suite.</span>
-                </span>
-                <span aria-hidden>›</span>
-              </Link>
-            )}
-            {objectifs.length === 0 && <p className="text-sm text-[#4A4866]">Aucun pour l’instant.</p>}
-            {objectifs.map((o) => {
-              const p = parPlan.get(o.plan_id);
-              const principal = o.plan_id === prochain;
-              const preps = (((p?.parametres as Record<string, unknown> | null)?.courses_secondaires ?? []) as CourseSecondaire[])
-                .slice().sort((x, y) => x.date.localeCompare(y.date));
-              const statut = o.course_date < jour ? 'couru'
-                : !p?.parametres ? 'envoyé en entier'
-                  : aLaMain ? 'programmé à la main'
-                  : p.demarre_le ? `en route dans Nolio depuis le ${dateLongue(String(p.demarre_le).slice(0, 10), true)}`
-                    : p.depart_prevu ? `démarre le ${dateLongue(String(p.depart_prevu), true)}` : 'pas encore démarré';
-              const distance = p?.distance_km ? `${Math.round(Number(p.distance_km))} km` : null;
-              const dplus = p?.dplus_m ? `${Number(p.dplus_m).toLocaleString('fr-FR')} m D+` : null;
-              return (
-                <div key={o.plan_id} className="space-y-2">
-                  <Link href={`/app/coach/plan/${o.plan_id}`}
-                    className={clsx('flex items-center gap-3.5 p-3.5 rounded-xl', principal ? 'bg-indigo text-white' : 'border border-indigo/[0.12] text-indigo')}>
-                    <PastilleDate iso={o.course_date} sombre={principal} />
-                    <span className="flex-1 min-w-0">
-                      <span className="block text-[0.9375rem] font-bold">{o.course_nom}{principal ? ' · objectif principal' : ''}</span>
-                      <span className={clsx('block text-[0.78rem]', principal ? 'text-[#D6D5E6]' : 'text-[#5E5C78]')}>
-                        {[distance, dplus, statut].filter(Boolean).join(' · ')}
+          {!entree.complete && (
+            <CarteEntree entree={entree} accordRecu={donnerLAccord} />
+          )}
+
+          {/* « À faire pour lui » (venu de « Cette semaine ») et sa revue du dimanche (Q3). */}
+          <Carte id="a-faire" className="!p-5 space-y-3 scroll-mt-6">
+            <Surtitre>À faire pour lui</Surtitre>
+            {pointsIci.length === 0 ? <p className="text-sm text-teal font-semibold">Rien à faire pour lui pour l’instant.</p> : (
+              <ul>
+                {pointsIci.map((p) => (
+                  <li key={p.cle} className="flex flex-wrap items-center justify-between gap-3 py-3 border-t first:border-t-0 border-indigo/[0.07]">
+                    <div className="min-w-0 flex-[1_1_280px] flex flex-wrap items-start gap-x-2 gap-y-1 text-sm text-[#4A4866] leading-snug">
+                      <span className={clsx('text-[0.6875rem] font-bold px-2 py-0.5 rounded-full mt-0.5', PASTILLE_RAISON[p.niveau])}>{RAISON[p.niveau]}</span>
+                      <span className="min-w-0 flex-[1_1_200px]">
+                        {p.texte.charAt(0).toUpperCase()}{p.texte.slice(1)}
+                        {p.sous && <span className="block mt-0.5 text-xs text-[#5E5C78]">{p.sous}</span>}
                       </span>
+                    </div>
+                    {!p.sansGeste && (
+                      <div className="flex items-center gap-2">
+                        <Geste r={p} />
+                        <Regle cles={[p.cle]} />
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="pt-3 border-t border-indigo/[0.07]">
+              {contenuRevue}
+            </div>
+          </Carte>
+
+          {semaine}
+
+          {/* Sa semaine passée et ses 7 jours, en une carte (Q5 « A ») : la semaine finie, puis les signaux des 7 derniers jours. */}
+          <Carte id="sa-semaine-passee" className="!p-5 scroll-mt-6">
+            {contenuSemainePassee}
+          </Carte>
+
+          {/* Deux colonnes sur ordinateur (ses objectifs, ses repères, son profil | ses zones, son style) ; une seule sur
+              téléphone, dans l'ordre de la maquette : objectifs, repères, zones et style, profil. */}
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
+            <div className="contents lg:flex lg:flex-col lg:gap-5 lg:flex-[1_1_380px] lg:min-w-0">
+              <Carte className="!p-5 space-y-3 order-1">
+                <div className="flex justify-between items-center gap-3">
+                  <Surtitre>Ses objectifs</Surtitre>
+                  {/* Deux entrées (décision coach du 23/10/2026) : le trail ou la route (10 km, semi, marathon). */}
+                  <Link href={`/app/coach/nouveau?athlete=${a.id}&discipline=route`} className="inline-flex items-center min-h-10 px-3.5 rounded-[10px] border border-teal text-teal text-[0.8125rem] font-bold">
+                    + Objectif route
+                  </Link>
+                  <Link href={`/app/coach/nouveau?athlete=${a.id}`} className="inline-flex items-center min-h-10 px-3.5 rounded-[10px] bg-teal text-white text-[0.8125rem] font-bold">
+                    + Objectif trail
+                  </Link>
+                </div>
+                {saisonEnCours && (
+                  <Link href={`/app/coach/plan/${saisonEnCours.plan_id}`} className="flex items-center gap-3.5 p-3.5 rounded-xl bg-[#E1EFEA] text-[#0B4A40]">
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-[0.9375rem] font-bold">{saisonEnCours.course_nom} · en cours</span>
+                      <span className="block text-[0.78rem]">Jusqu’au {dateLongue(saisonEnCours.course_date, true)} · le moteur écrit ses semaines ; un objectif qui arrive prend la suite.</span>
                     </span>
                     <span aria-hidden>›</span>
                   </Link>
-                  {preps.filter((c) => c.date >= jour).map((c) => (
-                    <div key={`${c.date}-${c.nom}`} className="ml-4 flex items-center gap-3 p-3 rounded-xl border border-indigo/[0.12]">
-                      <PastilleDate iso={c.date} />
-                      <span className="text-[0.84rem]"><strong>{c.nom}</strong> · préparation · {c.distance_km} km{c.dplus_m ? ` · ${c.dplus_m} m D+` : ''}</span>
+                )}
+                {objectifs.length === 0 && <p className="text-sm text-[#4A4866]">Aucun pour l’instant.</p>}
+                {objectifs.map((o) => {
+                  const p = parPlan.get(o.plan_id);
+                  const principal = o.plan_id === prochain;
+                  const preps = (((p?.parametres as Record<string, unknown> | null)?.courses_secondaires ?? []) as CourseSecondaire[])
+                    .slice().sort((x, y) => x.date.localeCompare(y.date));
+                  const statut = o.course_date < jour ? 'couru'
+                    : !p?.parametres ? 'envoyé en entier'
+                      : aLaMain ? 'programmé à la main'
+                      : p.demarre_le ? `en route dans Nolio depuis le ${dateLongue(String(p.demarre_le).slice(0, 10), true)}`
+                        : p.depart_prevu ? `démarre le ${dateLongue(String(p.depart_prevu), true)}` : 'pas encore démarré';
+                  const distance = p?.distance_km ? `${Math.round(Number(p.distance_km))} km` : null;
+                  const dplus = p?.dplus_m ? `${Number(p.dplus_m).toLocaleString('fr-FR')} m D+` : null;
+                  return (
+                    <div key={o.plan_id} className="space-y-2">
+                      <Link href={`/app/coach/plan/${o.plan_id}`}
+                        className={clsx('flex items-center gap-3.5 p-3.5 rounded-xl', principal ? 'bg-indigo text-white' : 'border border-indigo/[0.12] text-indigo')}>
+                        <PastilleDate iso={o.course_date} sombre={principal} />
+                        <span className="flex-1 min-w-0">
+                          <span className="block text-[0.9375rem] font-bold">{o.course_nom}{principal ? ' · objectif principal' : ''}</span>
+                          <span className={clsx('block text-[0.78rem]', principal ? 'text-[#D6D5E6]' : 'text-[#5E5C78]')}>
+                            {[distance, dplus, statut].filter(Boolean).join(' · ')}
+                          </span>
+                        </span>
+                        <span aria-hidden>›</span>
+                      </Link>
+                      {preps.filter((c) => c.date >= jour).map((c) => (
+                        <div key={`${c.date}-${c.nom}`} className="ml-4 flex items-center gap-3 p-3 rounded-xl border border-indigo/[0.12]">
+                          <PastilleDate iso={c.date} />
+                          <span className="text-[0.84rem]"><strong>{c.nom}</strong> · préparation · {c.distance_km} km{c.dplus_m ? ` · ${c.dplus_m} m D+` : ''}</span>
+                        </div>
+                      ))}
+                      {principal && !aLaMain && Boolean(p?.parametres) && !p?.demarre_le && !p?.depart_prevu && (
+                        <div className="flex flex-wrap items-center gap-3 p-3.5 rounded-xl bg-[#E1EFEA]">
+                          <span className="flex-[1_1_240px] text-[0.8125rem] leading-relaxed text-[#0B4A40]">Pas encore démarré dans Nolio : la trame, ses questionnaires et sa semaine partent au départ.</span>
+                          <Link href={`/app/coach/plan/${o.plan_id}`} className="inline-flex items-center min-h-11 px-4 rounded-[10px] bg-teal text-white text-[0.8125rem] font-bold">Démarrer dans Nolio</Link>
+                        </div>
+                      )}
                     </div>
+                  );
+                })}
+              </Carte>
+
+              {coursesNolio.length > 0 && (
+                <Carte id="courses-nolio" className="!p-5 space-y-3 order-2 scroll-mt-6">
+                  {contenuCoursesNolio}
+                </Carte>
+              )}
+
+              <Carte className="!p-5 space-y-1 order-3">
+                <Surtitre>Ses repères</Surtitre>
+                <ul className="pt-1.5">
+                  {reperes.map(([titre, valeur, d]) => (
+                    <li key={titre} className="flex justify-between items-center gap-3 min-h-12 border-b last:border-b-0 border-indigo/[0.06]">
+                      <span><span className="block text-sm font-bold">{titre}</span>
+                        <span className="block text-[0.72rem] text-[#5E5C78]">{valeur ? d ?? 'sur sa fiche' : 'le test s’écrira à la place d’une séance'}</span></span>
+                      <span className={clsx('font-extrabold', valeur ? 'text-[0.9375rem]' : 'text-[0.8125rem] text-[#8A5E10]')}>{valeur ?? 'à tester'}</span>
+                    </li>
                   ))}
-                  {principal && !aLaMain && Boolean(p?.parametres) && !p?.demarre_le && !p?.depart_prevu && (
-                    <div className="flex flex-wrap items-center gap-3 p-3.5 rounded-xl bg-[#E1EFEA]">
-                      <span className="flex-[1_1_240px] text-[0.8125rem] leading-relaxed text-[#0B4A40]">Pas encore démarré dans Nolio : la trame, ses questionnaires et sa semaine partent au départ.</span>
-                      <Link href={`/app/coach/plan/${o.plan_id}`} className="inline-flex items-center min-h-11 px-4 rounded-[10px] bg-teal text-white text-[0.8125rem] font-bold">Démarrer dans Nolio</Link>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </Carte>
+                </ul>
+                <details className="pt-2">
+                  <summary className="cursor-pointer min-h-10 flex items-center text-[0.8125rem] font-bold text-teal">Saisir son test de vitesse critique</summary>
+                  {contenuTest}
+                </details>
+                <details className="pt-1">
+                  <summary className="cursor-pointer min-h-10 flex items-center text-[0.8125rem] font-bold text-teal">Modifier ses repères</summary>
+                  {contenuReperes}
+                </details>
+              </Carte>
 
-          {coursesNolio.length > 0 && (
-            <Carte id="courses-nolio" className="!p-5 space-y-3 order-2 scroll-mt-6">
-              <Surtitre>Ses courses dans Nolio</Surtitre>
-              <p className="text-[0.8125rem] leading-relaxed text-[#4A4866]">Celles que tu as posées dans Nolio et qui ne sont pas encore ici.</p>
-              {coursesNolio.map((c) => {
-                const preparation = c.type === 'b' && prochain && pp?.parametres && c.date >= lundiProchain && c.date < dateProchain;
-                return (
-                  <div key={c.id} className="flex flex-wrap items-center gap-3 p-3 rounded-xl border border-indigo/[0.12]">
-                    <PastilleDate iso={c.date} />
-                    <span className="flex-[1_1_180px] min-w-0">
-                      <span className="block text-sm font-bold">{c.nom}</span>
-                      <span className="block text-xs text-[#5E5C78]">
-                        {[c.type === 'a' ? 'objectif A' : c.type === 'b' ? 'course B' : null,
-                          c.distance_km ? `${c.distance_km} km` : 'distance à saisir', c.dplus_m ? `${c.dplus_m} m D+` : null].filter(Boolean).join(' · ')}
-                      </span>
-                    </span>
-                    <Link href={preparation ? `/app/coach/plan/${prochain}?course=${c.id}#ajouter-course` : `/app/coach/nouveau?athlete=${a.id}&course=${c.id}${formatRouteDe(c.distance_km, c.dplus_m) ? '&discipline=route' : ''}`}
-                      className="inline-flex items-center min-h-10 px-3 rounded-[10px] border border-teal text-teal text-[0.8125rem] font-bold whitespace-nowrap">
-                      {preparation ? 'En préparation ›' : 'Créer l’objectif ›'}
-                    </Link>
-                  </div>
-                );
-              })}
-            </Carte>
-          )}
+              {/* Son profil de coureur, rempli d'abord, avant son premier objectif (décision coach du 23/10/2026). */}
+              <Carte id="son-profil" className="!p-5 space-y-1 scroll-mt-6 order-6">
+                <Surtitre>Son profil de coureur</Surtitre>
+                {profilVide ? (
+                  <p className="pt-1 text-[0.8125rem] leading-relaxed text-[#4A4866]">
+                    À remplir avant son premier objectif : son niveau et sa semaine habituelle. Ses objectifs ne demanderont
+                    ensuite que sa course et sa charge du moment. Invité dans l’app, il peut aussi le remplir lui-même.
+                  </p>
+                ) : (
+                  <>
+                    <dl className="pt-1.5">
+                      {lignesProfil.map(([cle, valeur]) => (
+                        <div key={cle} className="grid grid-cols-[112px_1fr] gap-x-3 py-2.5 border-b last:border-b-0 border-indigo/[0.06] text-[0.84rem]">
+                          <dt className="font-semibold text-[#5E5C78]">{cle}</dt><dd>{valeur}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                    <p className="pt-1 text-[0.72rem] leading-relaxed text-[#5E5C78]">Rempli une fois. Les disponibilités de chaque semaine viennent ensuite de son questionnaire du samedi.</p>
+                  </>
+                )}
+                <details className="pt-2" open={profilVide}>
+                  <summary className="cursor-pointer min-h-10 flex items-center text-[0.8125rem] font-bold text-teal">{profilVide ? 'Remplir son profil' : 'Modifier son profil'}</summary>
+                  {contenuProfil}
+                </details>
+              </Carte>
+            </div>
 
-          <Carte className="!p-5 space-y-1 order-3">
-            <Surtitre>Ses repères</Surtitre>
-            <ul className="pt-1.5">
-              {reperes.map(([titre, valeur, d]) => (
-                <li key={titre} className="flex justify-between items-center gap-3 min-h-12 border-b last:border-b-0 border-indigo/[0.06]">
-                  <span><span className="block text-sm font-bold">{titre}</span>
-                    <span className="block text-[0.72rem] text-[#5E5C78]">{valeur ? d ?? 'sur sa fiche' : 'le test s’écrira à la place d’une séance'}</span></span>
-                  <span className={clsx('font-extrabold', valeur ? 'text-[0.9375rem]' : 'text-[0.8125rem] text-[#8A5E10]')}>{valeur ?? 'à tester'}</span>
-                </li>
-              ))}
-            </ul>
-            <details className="pt-2">
-              <summary className="cursor-pointer min-h-10 flex items-center text-[0.8125rem] font-bold text-teal">Saisir son test de vitesse critique</summary>
-              <p className="mb-3 text-[0.8125rem] leading-relaxed text-[#4A4866]">
-                S’il ne l’a pas fait dans l’app, ou si sa lecture dans Nolio n’a pas abouti : ses deux efforts donnent sa vitesse
-                critique et son profil de coureur. Un test écrit dans ses semaines et pas encore lu est alors marqué lu.
-              </p>
-              <TestVcCoach athleteId={a.id} aujourdhui={jour} />
-            </details>
-            <details className="pt-1">
-              <summary className="cursor-pointer min-h-10 flex items-center text-[0.8125rem] font-bold text-teal">Modifier ses repères</summary>
-              <p className="mb-3 text-[0.8125rem] leading-relaxed text-[#4A4866]">
-                Avec eux, les séances partent avec une allure sur le plat ou une FC, puis le RPE ; sans eux, au RPE, et le test
-                s’écrit à la place d’une séance. Gardés seulement avec son accord de lecture.
-              </p>
-              <FormulaireValeurs athleteId={a.id} fc1={a.fc_seuil1} vs1Allure={a.v_seuil1_ms ? allureDepuisVitesse(a.v_seuil1_ms) : null}
-                vcAllure={a.vc_ms ? allureDepuisVitesse(a.vc_ms) : null} fc2={a.fc_seuil2} />
-            </details>
-          </Carte>
-
-          {/* Son profil de coureur, rempli d'abord, avant son premier objectif (décision coach du 23/10/2026). */}
-          <Carte id="son-profil" className="!p-5 space-y-1 scroll-mt-6 order-6">
-            <Surtitre>Son profil de coureur</Surtitre>
-            {profilVide ? (
-              <p className="pt-1 text-[0.8125rem] leading-relaxed text-[#4A4866]">
-                À remplir avant son premier objectif : son niveau et sa semaine habituelle. Ses objectifs ne demanderont
-                ensuite que sa course et sa charge du moment. Invité dans l’app, il peut aussi le remplir lui-même.
-              </p>
-            ) : (
-              <>
-                <dl className="pt-1.5">
-                  {lignesProfil.map(([cle, valeur]) => (
-                    <div key={cle} className="grid grid-cols-[112px_1fr] gap-x-3 py-2.5 border-b last:border-b-0 border-indigo/[0.06] text-[0.84rem]">
-                      <dt className="font-semibold text-[#5E5C78]">{cle}</dt><dd>{valeur}</dd>
-                    </div>
-                  ))}
-                </dl>
-                <p className="pt-1 text-[0.72rem] leading-relaxed text-[#5E5C78]">Rempli une fois. Les disponibilités de chaque semaine viennent ensuite de son questionnaire du samedi.</p>
-              </>
-            )}
-            <details className="pt-2" open={profilVide}>
-              <summary className="cursor-pointer min-h-10 flex items-center text-[0.8125rem] font-bold text-teal">{profilVide ? 'Remplir son profil' : 'Modifier son profil'}</summary>
-              <div className="pt-2"><ProfilAthlete athleteId={a.id} profil={profil} pointDuDimanche={v9} /></div>
-            </details>
-          </Carte>
-        </div>
-
-        {/* Ses zones et son style de coureur, tels qu'il les lit dans son app (Q9 « A », décision coach du 08/11/2026 :
-            « réutilisé tel quel », textes au « tu »). */}
-        <div className="contents lg:flex lg:flex-col lg:gap-5 lg:flex-[1_1_320px] lg:min-w-0">
-          <p className="order-4 -mb-2 lg:mb-0 text-xs font-bold text-[#5E5C78]">Ce qu’il lit dans son app</p>
-          {zones && lignesZones.length > 0 && (
-            <div className="order-4"><TableauZones zones={zones} lignes={lignesZones} profil={profilZones} titre="Ses zones" /></div>
-          )}
-          <div className="order-5 space-y-5"><StyleCoureur profil={profilZones} titre="Son style de coureur" /></div>
-        </div>
-      </div>
+            {/* Ses zones et son style de coureur, tels qu'il les lit dans son app (Q9 « A », décision coach du 08/11/2026 :
+                « réutilisé tel quel », textes au « tu »). */}
+            <div className="contents lg:flex lg:flex-col lg:gap-5 lg:flex-[1_1_320px] lg:min-w-0">
+              <p className="order-4 -mb-2 lg:mb-0 text-xs font-bold text-[#5E5C78]">Ce qu’il lit dans son app</p>
+              {zones && lignesZones.length > 0 && (
+                <div className="order-4"><TableauZones zones={zones} lignes={lignesZones} profil={profilZones} titre="Ses zones" /></div>
+              )}
+              <div className="order-5 space-y-5"><StyleCoureur profil={profilZones} titre="Son style de coureur" /></div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* « Réglages », replié (décision coach du 04/11/2026) : ce qui se règle une fois. */}
       <details id="reglages" open={reglagesOuverts} className="group bg-white rounded-2xl border border-indigo/[0.08] scroll-mt-6">
         <summary className="cursor-pointer list-none min-h-14 px-5 flex items-center justify-between gap-3">
           <span className="text-[0.6875rem] font-bold tracking-[0.14em] uppercase text-teal">Réglages</span>
-          <span className="text-xs text-[#5E5C78]">sa programmation, l’app, son compte Nolio, son accord <span aria-hidden className="inline-block group-open:rotate-90">›</span></span>
+          <span className="text-xs text-[#5E5C78]">{v9 ? `${TEXTES_PAGE_ATHLETE.reglagesSous} ` : 'sa programmation, l’app, son compte Nolio, son accord '}<span aria-hidden className="inline-block group-open:rotate-90">›</span></span>
         </summary>
         <div className="px-5 pb-5 divide-y divide-indigo/[0.07]">
+          {v9 && sectionEtat}
           <section className="py-4 space-y-3">
             <h3 className="text-sm font-bold">Sa programmation</h3>
             <p className="text-sm leading-relaxed text-[#4A4866]">
@@ -662,6 +785,7 @@ export default async function PageAthlete({ params, searchParams }: {
             </section>
           )}
 
+          {v9 && sectionsEnPlus}
           <section id="retirer" className="py-4 scroll-mt-6">
             <details open={horsEquipe} className="text-[0.8125rem] text-[#5E5C78]">
               <summary className="cursor-pointer inline-flex items-center min-h-10 font-bold text-indigo">Retirer cet athlète</summary>

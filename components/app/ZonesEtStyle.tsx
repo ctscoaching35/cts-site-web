@@ -26,14 +26,17 @@ export const NOTE_SEUIL2 = 'En relief, ta FC guide les blocs longs, de 6 à 15 m
 export const estSeuil2 = (nom: string) => /seuil 2/i.test(nom);
 
 // zones : celles du plan (Plan.zones) ; lignes : ses zones et leur RPE (Plan.mode_emploi.effort.zones, sans l'en-tête).
-export function TableauZones({ zones, lignes, profil, titre, saisie = null }: {
-  zones: Pick<Zones, 'tableau' | 'recoupement'>; lignes: string[][]; profil: Profil; titre: string; saisie?: string | null;
+// plat : sous la 9.x (décision 220 du coach, 24/11/2026), « Ses zones » est un morceau de la carte de coureur du coach (components/app/CarteCoureur.tsx) : le même tableau, sans
+// cadre à lui. Sans lui, la carte d'avant (l'app de l'athlète et la 8.x n'y changent rien).
+export function TableauZones({ zones, lignes, profil, titre, saisie = null, plat = false }: {
+  zones: Pick<Zones, 'tableau' | 'recoupement'>; lignes: string[][]; profil: Profil; titre: string; saisie?: string | null; plat?: boolean;
 }) {
   const decalage = decalageSeuil1(profil, zones);
   // Q6-e (décision coach du 05/11/2026 au soir, « A ») : sans aucun repère, le tableau se réduit aux zones et à leur RPE.
   const aucunRepere = profil.fc_seuil1 === null && profil.vc_ms === null && profil.fc_seuil2 === null && profil.v_seuil1_ms === null;
+  const Cadre = plat ? Plat : Carte;
   return (
-    <Carte className="!pb-2.5">
+    <Cadre className={plat ? '' : '!pb-2.5'}>
       <Surtitre>{titre}</Surtitre>
       {/* C39 : des colonnes en proportions (en 768, elles collaient à droite) ; Q6-e : sans repère, la zone et son RPE. */}
       {!aucunRepere && (
@@ -76,14 +79,40 @@ export function TableauZones({ zones, lignes, profil, titre, saisie = null }: {
           Les allures valent sur le plat ; en côte, la FC et le RPE ; en descente, le RPE seul. Le RPE prime toujours.
         </p>
       )}
-    </Carte>
+    </Cadre>
   );
+}
+
+// Le même contenu sans la carte (plat).
+function Plat({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <div className={className}>{children}</div>;
 }
 
 // Le style de coureur (la règle du calculateur « Ton profil de traileur », tirée du test de vitesse critique) et ce que la
 // préparation en fait ; sans test complet, la phrase C38.
-export function StyleCoureur({ profil, titre }: { profil: Pick<Profil, 'vc_ms' | 'd_prime_m'>; titre: string }) {
+// plat : sous la 9.x, le style est un morceau de la carte de coureur du coach, sur fond clair et sans cadre à lui ; sans test complet, rien (la carte dit déjà que le test manque).
+// Sans lui, les cartes d'avant (l'app de l'athlète et la 8.x n'y changent rien).
+export function StyleCoureur({ profil, titre, plat = false }: { profil: Pick<Profil, 'vc_ms' | 'd_prime_m'>; titre: string; plat?: boolean }) {
   const coureur = profilCoureur(profil);
+  if (plat) {
+    if (!coureur) return null;
+    return (
+      <div className="space-y-3">
+        <Surtitre as="h3">{titre}</Surtitre>
+        <p className="text-lg font-extrabold">{coureur.nom}</p>
+        <div className="relative h-2.5 rounded-full bg-gradient-to-r from-[#8FD1C3] to-[#2BB39B]" aria-hidden>
+          <span className="absolute top-[-3px] w-0.5 h-4 bg-indigo/40" style={{ left: '50%' }} />
+          <span className="absolute top-[-5px] w-5 h-5 -ml-2.5 rounded-full bg-white border-[3px] border-indigo"
+            style={{ left: `${Math.max(0, Math.min(100, ((coureur.coefficient - 0.8) / 0.2) * 100))}%` }} />
+        </div>
+        <div className="flex justify-between text-[0.6875rem] text-[#5E5C78]"><span>plutôt rapide</span><span>plutôt endurant</span></div>
+        <p className="text-[0.8125rem] leading-relaxed text-[#4A4866]">{coureur.texte}</p>
+        <Conseil titre="Loin de ton objectif · ton point faible" texte={coureur.loin} ton="faible" />
+        <Conseil titre="Près de ton objectif · ton point fort" texte={coureur.pres} ton="fort" />
+        <p className="text-[0.72rem] text-[#5E5C78] leading-relaxed">{coureur.note}</p>
+      </div>
+    );
+  }
   if (!coureur) {
     return (
       <Carte className="space-y-1.5">

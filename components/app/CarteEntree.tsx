@@ -1,14 +1,22 @@
 import Link from 'next/link';
-import type { Entree } from '@/lib/app/entree';
+import { NOTE_AVANT_DE_DEMARRER, type Entree } from '@/lib/app/entree';
 import { Carte, Surtitre } from './Ui';
+
+// Une section de « Réglages » (9.x) : le même contenu, sans la carte.
+function Section({ children, className, id }: { children: React.ReactNode; className?: string; id?: string }) {
+  return <section id={id} className={className}>{children}</section>;
+}
 
 // « Son entrée » (décision coach du 22/10/2026) : en tête de sa fiche tant qu'elle n'est pas complète, les étapes dans
 // l'ordre, cochées d'elles-mêmes (lib/app/entree.ts), chacune avec son geste ; le rappel de ses anciennes séries.
 // accordRecu : « Accord reçu », le geste de son accord de lecture (il vivait dans le Suivi des 7 jours, supprimé le
 // 04/11/2026) ; sans compte Nolio associé, pas encore.
-export default function CarteEntree({ entree, accordRecu }: { entree: Entree; accordRecu?: () => Promise<void> }) {
+// plat : sous la 9.x, la carte, une fois les étapes du coach faites, est une section de « Réglages » (sans cadre à elle, et sans le rappel du départ quand l'entrée est complète) ; sans lui, la carte d'avant
+// (la 8.x ne montre jamais une entrée complète : rien n'y change).
+export default function CarteEntree({ entree, accordRecu, plat = false }: { entree: Entree; accordRecu?: () => Promise<void>; plat?: boolean }) {
+  const Cadre = plat ? Section : Carte;
   return (
-    <Carte id="son-entree" className="!p-5 space-y-3 scroll-mt-6">
+    <Cadre id="son-entree" className={plat ? 'py-4 space-y-3 scroll-mt-6' : '!p-5 space-y-3 scroll-mt-6'}>
       <div className="flex justify-between items-baseline gap-3">
         <Surtitre>Son entrée</Surtitre>
         <span className="text-[0.8125rem] font-bold text-[#7A520D]">{entree.faites}/{entree.total}</span>
@@ -43,10 +51,7 @@ export default function CarteEntree({ entree, accordRecu }: { entree: Entree; ac
           </li>
         ))}
       </ol>
-      <p className="p-3 rounded-xl bg-sand text-xs text-[#4A4866] leading-relaxed">
-        Avant de démarrer, retire de son Nolio tes anciennes séries de questionnaire et de Hooper : les siennes partent
-        désormais d’ici.
-      </p>
-    </Carte>
+      {!entree.complete && <p className="p-3 rounded-xl bg-sand text-xs text-[#4A4866] leading-relaxed">{NOTE_AVANT_DE_DEMARRER}</p>}
+    </Cadre>
   );
 }
