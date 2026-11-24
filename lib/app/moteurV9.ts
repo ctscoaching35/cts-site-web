@@ -144,18 +144,73 @@ export function corpsNolioSeances(semaine: Record<string, unknown>, profil?: { v
   return Object.keys(p).length ? { semaine, profil: p } : { semaine };
 }
 
-// La réponse de `POST /v1/semaine`, vérifiée : la semaine, sa note, son pourquoi, l'état à garder et la branche. null si elle n'a pas cette
-// forme : l'état d'une 9.0 porte sa version (`etat.version`, « 9.0 »), ce que ne fait pas la réponse d'une 8.x, jamais lue comme une 9.0.
+// La note du lundi que rend le moteur : une LISTE de 3 à 5 lignes au plus (moteur/note.py ; elle peut être vide), pas un texte. Un texte seul
+// (une version d'avant) se lit comme une ligne ; tout le reste est ignoré, jamais deviné.
+export function lireNote(note: unknown): string[] {
+  if (typeof note === 'string') return note.trim() ? [note.trim()] : [];
+  return Array.isArray(note) ? note.filter((l): l is string => typeof l === 'string' && l.trim() !== '').map((l) => l.trim()) : [];
+}
+// Les lignes d'une note, en un texte pour Nolio.
+export const noteEnTexte = (lignes: string[]): string => lignes.join('\n');
+
+// La réponse de `POST /v1/semaine`, vérifiée : la semaine, sa note (des lignes), son pourquoi, l'état à garder et la branche. null si elle n'a
+// pas cette forme : l'état d'une 9.0 porte sa version (`etat.version`, « 9.0 »), ce que ne fait pas la réponse d'une 8.x, jamais lue comme une 9.0.
 export type SortieV9 = {
-  semaine: { numero?: number; lundi?: string; jours?: unknown[] } & Record<string, unknown>; note: string | null; pourquoi: unknown[]; etat: Etat; branche: number | null;
+  semaine: { numero?: number; lundi?: string; jours?: unknown[] } & Record<string, unknown>; note: string[]; pourquoi: unknown[]; etat: Etat; branche: number | null;
 };
 export function lireSortieV9(r: unknown): SortieV9 | null {
   const o = r as Record<string, unknown> | null;
   if (!o || typeof o !== 'object') return null;
   if (!o.semaine || typeof o.semaine !== 'object' || !Array.isArray((o.semaine as { jours?: unknown }).jours)) return null;
-  if (!o.etat || typeof o.etat !== 'object' || Array.isArray(o.etat) || !estMoteurV9((o.etat as Etat).version)) return null;
+  if (!etatV9(o.etat)) return null;
   return {
-    semaine: o.semaine as SortieV9['semaine'], note: typeof o.note === 'string' ? o.note : null,
+    semaine: o.semaine as SortieV9['semaine'], note: lireNote(o.note),
     pourquoi: Array.isArray(o.pourquoi) ? o.pourquoi : [], etat: o.etat as Etat, branche: typeof o.branche === 'number' ? o.branche : null,
   };
+}
+
+// Un état que le moteur v1 a rendu : un objet qui porte sa version (9.x) et ses semaines. Celui d'une 8.x, ou rien d'autre, n'en est pas un.
+export function etatV9(e: unknown): e is Etat {
+  return Boolean(e) && typeof e === 'object' && !Array.isArray(e) && estMoteurV9((e as Etat).version) && Array.isArray((e as Etat).semaines);
+}
+
+// ─── La trame : le numéro d'une semaine est son rang ────────────────────────────────────────────────
+
+export type LigneDeTrame = { numero: number; lundi: string; type: string } & Record<string, unknown>;
+export type TrameV9 = { semaines: LigneDeTrame[]; version_moteur: string };
+const JOUR_ISO = /^\d{4}-\d{2}-\d{2}$/;
+
+// La réponse de `POST /v1/trame`, vérifiée : une 9.x, des semaines dont le numéro est le rang (1, 2, 3…) et le lundi une date. null sinon :
+// un numéro qui ne serait pas le rang, le contrat le dit autrement, et le site ne le devine pas.
+export function lireTrame(r: unknown): TrameV9 | null {
+  const o = r as { semaines?: unknown; version_moteur?: unknown } | null;
+  if (!o || !Array.isArray(o.semaines) || !o.semaines.length || !estMoteurV9(o.version_moteur)) return null;
+  const lignes = o.semaines as LigneDeTrame[];
+  const lisible = lignes.every((l, i) => l && typeof l === 'object' && l.numero === i + 1 && typeof l.lundi === 'string' && JOUR_ISO.test(l.lundi));
+  return lisible ? { semaines: lignes, version_moteur: String(o.version_moteur) } : null;
+}
+
+// Le numéro de la semaine qui commence ce lundi ; null si aucune ne commence ce jour-là.
+export const numeroDeLaSemaine = (trame: TrameV9, lundi: string): number | null => trame.semaines.find((l) => l.lundi === lundi)?.numero ?? null;
+
+// ─── Les réponses des deux autres appels ────────────────────────────────────────────────────────────
+
+// `POST /v1/reponse-tardive` : { note: [lignes], etat, semaine_reecrite: false }. Une réponse qui dirait avoir réécrit la semaine n'est pas lue.
+export type ReponseTardiveV9 = { note: string[]; etat: Etat };
+export function lireReponseTardive(r: unknown): ReponseTardiveV9 | null {
+  const o = r as Record<string, unknown> | null;
+  if (!o || typeof o !== 'object' || !etatV9(o.etat) || o.semaine_reecrite !== false) return null;
+  return { note: lireNote(o.note), etat: o.etat };
+}
+
+// `POST /v1/nolio/seances` : { seances: [{ id, famille, nolio: {…} | null }], cycle: {…} | null }. `nolio` est null pour la course.
+export type SeancesNolioV9 = { seances: { id: string; famille: string; nolio: Record<string, unknown> | null }[]; cycle: Record<string, unknown> | null };
+export function lireSeancesNolio(r: unknown): SeancesNolioV9 | null {
+  const o = r as Record<string, unknown> | null;
+  if (!o || !Array.isArray(o.seances)) return null;
+  const objet = (x: unknown) => Boolean(x) && typeof x === 'object' && !Array.isArray(x);
+  const bonnes = o.seances.every((x) => objet(x) && typeof (x as { id?: unknown }).id === 'string' && (x as { nolio?: unknown }).nolio !== undefined
+    && ((x as { nolio?: unknown }).nolio === null || objet((x as { nolio?: unknown }).nolio)));
+  if (!bonnes || !(o.cycle === null || o.cycle === undefined || objet(o.cycle))) return null;
+  return { seances: o.seances as SeancesNolioV9['seances'], cycle: (o.cycle ?? null) as SeancesNolioV9['cycle'] };
 }
