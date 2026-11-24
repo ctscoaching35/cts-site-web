@@ -51,6 +51,11 @@ export const OUVERTURES: Record<VersionDimanche, string | null> = {
   fatigue: 'Cette semaine, ton ressenti, ton RPE ou ton Hooper sortent de tes habitudes. Ça peut traduire de la fatigue. Pour que tu récupères et repartes bien, on peut alléger ta semaine prochaine.',
 };
 
+// L'ouverture d'une version. « Aucune séance vue » invite à dire depuis combien de temps on s'est arrêté et pourquoi ; sans l'accord de lecture, la cause (donnée de santé, décision 209)
+// n'est plus demandée : « et pourquoi » part, « depuis combien de temps » reste (le « dis-le-nous » n'est pas touché, il est revu avec le lot des deux voix).
+export const ouvertureDe = (version: VersionDimanche, accord: boolean): string | null =>
+  accord || version !== 'aucune_seance_vue' ? OUVERTURES[version] : (OUVERTURES[version] as string).replace(' et pourquoi.', '.');
+
 const PREFIXE_ARRET_SEMAINE = 'Si tu as arrêté toute la semaine : ';
 export const QUESTION_ARRET = 'As-tu arrêté de courir cette semaine ?';
 export const CHOIX_ARRET = ['Non', 'Quelques jours', 'Oui, toute la semaine'];
@@ -112,7 +117,7 @@ const choixUnique = (question: string, choix: string[], obligatoire: boolean): Q
 export function questionnaireDuDimanche({ version, cles = [], premiere = false, coache = false, ligneEffet = null, accord = false }: {
   version: VersionDimanche; cles?: SeanceCle[]; premiere?: boolean; coache?: boolean; ligneEffet?: string | null; accord?: boolean;
 }): QuestionnaireDimanche {
-  const ouverture = premiere ? null : OUVERTURES[version];
+  const ouverture = premiere ? null : ouvertureDe(version, accord);
   const description = [PENSE_A_SYNCHRONISER, ouverture, ouverture && version === 'fatigue' ? ligneEffet : null, DESCRIPTION_DE_BASE].filter(Boolean).join('\n\n');
   const items: Question[] = [];
   if (!premiere) {
