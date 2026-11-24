@@ -7,6 +7,7 @@
  *   node --test scripts/test-courses-mineures.mjs
  */
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { registerHooks } from 'node:module';
 import { pathToFileURL } from 'node:url';
@@ -87,7 +88,8 @@ test('un objectif majeur n’est pas une course mineure : l’objectif du plan n
 test('le serveur : sous la 9.x un coaché ajoute sa course sans le moteur de la 8.x, un acheteur est refusé ; la course tombe avant l’objectif ; la trame se refait', () => {
   const a = sansCommentaires(source('lib/app/actionsEcriture.ts'));
   assert.match(a, /const v9 = await moteurEstV9\(\);\n\s*if \(v9 && !o\.coache\) return \{ ok: false, message: MESSAGE_COURSE_DE_PREPARATION_FERMEE \};/);
-  assert.match(a, /if \(v9 && date >= o\.plan\.course\.date\) return \{ ok: false, message: 'Ta course doit tomber avant ton objectif\.' \};/);
+  assert.match(a, /if \(v9 && date >= o\.plan\.course\.date\) return \{ ok: false, message: 'Choisis une date avant celle de ton objectif\.' \};/);
+  assert.ok(!a.includes('Ta course doit tomber avant ton objectif'), 'la phrase dit quoi faire (décision 236)');
   // La route retirée n'est appelée que sous la 8.x, une seule fois.
   assert.equal((a.match(/\/v1\/course-secondaire/g) ?? []).length, 1);
   assert.match(a, /if \(!v9\) \{\n\s*const reelles[^]*?\/v1\/course-secondaire[^]*?\n  \}\n/);
@@ -129,4 +131,34 @@ test('dans son app, le coaché ajoute sa course sans « Comment tu la cours ? »
   assert.match(p, /\{d\.ecrit && !plan\.fond && \(!v9 \|\| ctx\.coache\) && \(/);
   assert.match(p, /<ModifierCourse planId=\{ctx\.cle\} course=\{c\} sansMode=\{v9\} \/>/);
   assert.match(p, /<AjouterCourse planId=\{ctx\.cle\} sansMode=\{v9\} \/>/);
+});
+
+// ─── Une seule course dans Nolio ──────────────────────────────────────────────────────────────────
+
+// Ce que la v1 rend pour la semaine d'une course de préparation (CONTRAT_API_CTS.md : « la course comme une séance `famille: "course"`, sans étapes » ; `POST /v1/nolio/seances` : « `nolio` est `null` pour la course »).
+const SEMAINE_G8 = {
+  cycle: { name: 'S4', date_start: '2026-12-14', date_end: '2026-12-20', color: '#123456' },
+  seances: [
+    { id: 'S4-mardi', famille: 'endurance', nolio: { name: 'EF', date_start: '2026-12-15' } },
+    { id: 'S4-samedi', famille: 'course', nolio: null },
+    { id: 'S4-dimanche', famille: 'sl', nolio: null },
+  ],
+};
+
+test('un seul objet dans Nolio pour une course de préparation : la compétition que le site pose ; la séance « course » de la v1 n’y part pas', async () => {
+  const ecriture = await charge('lib/app/ecritureV9.ts');
+  const creations = [];
+  const port = { creer: async (id, corps, genre) => { creations.push([genre, id]); return { jour_id: id, nolio_id: `n-${id}` }; }, poserLaNote: async () => {}, garder: async () => {} };
+  const r = await ecriture.envoyerLaSemaine(port, { numero: 4, lundi: '2026-12-14', seances: SEMAINE_G8, note: ['Une ligne.'] });
+  assert.deepEqual(creations, [['cycle', 'semaine'], ['seance', 'S4-mardi']], 'la séance « course » (nolio null) ne part pas');
+  assert.equal(r.seances, 1);
+  // Du côté du site : la seule création d'une course dans le calendrier de Nolio est `poserCourse` (lib/app/ecriture.ts), une fois par date, jamais par-dessus une compétition déjà posée ce jour-là.
+  const lecteurs = (motif) => execFileSync('grep', ['-rlE', motif, 'app', 'components', 'lib'], { cwd: RACINE, encoding: 'utf8' }).split('\n').filter(Boolean).sort();
+  assert.deepEqual(lecteurs("'POST', 'planned/competitions/'"), ['lib/app/ecriture.ts'], 'une seule porte pour poser une compétition');
+  const e = source('lib/app/ecriture.ts');
+  assert.match(e, /export async function poserCourse\(o: Objectif, c: Course, principale: boolean\) \{\n  const cle = `course:\$\{c\.date\}`;\n  if \(!o\.nolioAthlete \|\| o\.envois\.some\(\(e\) => e\.semaine === cle\)\) return;/, 'une course déjà posée par le site : rien');
+  assert.match(e, /if \(deja\.length\) return;/, 'une compétition déjà posée ce jour-là, par le coach ou l’athlète : rien');
+  // La chaîne de la v1 ne pose jamais de compétition : ni elle, ni son écriture, ni son départ ne l'appellent hors de poserCourse.
+  for (const f of ['lib/app/ecritureV9.ts', 'lib/app/passagesV9.ts', 'lib/app/passeUnPlanV9.ts', 'lib/app/nolioV9.ts']) assert.ok(!/planned\/competitions/.test(source(f)), f);
+  assert.ok(!/famille === 'course'|famille: 'course'/.test(sansCommentaires(source('lib/app/passagesV9.ts'))), 'la chaîne n’invente pas de séance « course »');
 });
