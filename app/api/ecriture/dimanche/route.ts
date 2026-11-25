@@ -30,7 +30,7 @@ export async function GET(request: Request) {
   // Les saisons de fond du lundi qui vient d'abord (25/10/2026 : créées par le passage du soir, lancé à 21 h 16, elles
   // n'avaient que la dernière reprise) : elles s'écrivent avec les départs, les reprises en secours. Rien en double : une
   // saison déjà là couvre son lundi.
-  // Sous le moteur v1 (9.x), la semaine s'écrit par lib/app/passagesV9.ts, vers 21 h et 22 h (heure de Paris) ; la saison de fond de la 8.x n'est pas portée. Sous la 8.x, rien ne change.
+  // Sous le moteur v1 (9.x), la semaine s'écrit par lib/app/passagesV9.ts, vers 21 h et 22 h (heure de Paris), les saisons de fond encore en cours comprises (C8) ; elle n'en crée pas. Sous la 8.x, rien ne change.
   const passage = await selonLeMoteur<{ comptes: Compte[]; derniere: boolean } | null>({
     v1: async () => (planif && !ecritureDuDimancheV9(maintenant)
       ? null : { comptes: await passageDuDimancheV9(240_000), derniere: !planif || derniereEcritureDuDimancheV9(maintenant) }),

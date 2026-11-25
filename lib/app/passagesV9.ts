@@ -4,7 +4,8 @@
  * scripts/test-passes-v9.mjs). Les routes (app/api/ecriture/*) ne l'appellent que sous une 9.x (lib/app/chaineDuMoteur.ts) : sous la 8.474, rien ne change.
  *
  * PAS PORTÉ sous le moteur v1 (la liste de la mise en ligne ; le départ d'un objectif l'est, lib/app/departV9.ts) : « Réessayer » et « Annuler », l'aperçu du
- * dimanche, le rattrapage, la saison de fond, les corrections du coach, les tests lus (VC, FC), les fiches de préparation et les courses de préparation.
+ * dimanche, le rattrapage, la création d'une saison de fond, les corrections du coach, les tests lus (VC, FC), les fiches de préparation et les courses de préparation.
+ * Une saison de fond encore en cours s'écrit par la v1 (C8) ; chaque semaine écrite la prolonge de quatre semaines (elle est sans fin), et une préparation qui prend la semaine l'arrête, comme sous la 8.x.
  */
 import { clientService } from './supabase';
 import { appelNolio, listeNolio, refusNolio, SPORTS_COURSE } from './nolio';
@@ -18,6 +19,7 @@ import { lireEtatDuPlan, garderLEtat, garderLeQuestionnairePose, garderLesRepons
 import { noteEnTexte } from './moteurV9';
 import { completerLesEtapes, estEnvoyee, lundisALire, lundisDuDepart, nolioDepuisNolio, vueDuDepart, type HooperLu, type NoeudPlanifie, type PlanifieeLue, type ReelleLue } from './nolioV9';
 import { parametresDuObjectifV9 } from './parametresPlanV9';
+import { estUneSaisonDeFond } from './reessayerDeSaison';
 import {
   ecrireLaSemaineDuLundi, ecrireOuReprendre, passeDuLundiSurUnPlan, pointSansReponse, poserLeQuestionnaireDuDimanche, type ContextePlan, type Resultat, type SortDeLaSemaine,
 } from './passeUnPlanV9';
@@ -32,8 +34,10 @@ const jourDeLaSemaine = (iso: string) => new Date(`${iso}T12:00:00Z`).getUTCDay(
 async function contextePlan(planId: string): Promise<{ c: ContextePlan; o: Objectif } | null> {
   const o = await objectifEcrit(planId);
   if (!o?.nolioAthlete) return null;
-  // La saison de fond d'un coaché (décisions du coach du 24/10/2026) n'est pas portée sous le moteur v1 : le contrat n'a ni sa route ni sa trame.
-  if ((o.parametres as { fond?: unknown }).fond) return null;
+  // Une saison de fond remplacée par la suivante, ou d'un ancien athlète : plus rien à écrire ni à demander (lib/app/fond.ts, saisonEcartee).
+  // Le lundi visé : aujourd'hui un lundi, sinon le suivant.
+  const lundiVise = ajouterJours(aujourdhuiParis(), (8 - jourDeLaSemaine(aujourdhuiParis())) % 7);
+  if (estUneSaisonDeFond(o.parametres) && await (await import('./fond')).saisonEcartee(planId, lundiVise)) return null;
   const service = clientService();
   const [etat, derniere] = await Promise.all([lireEtatDuPlan(service, planId), lireLaDerniereSemaine(service, planId)]);
   const premierLundi = o.plan.semaines.find((s) => s.lundi)?.lundi ?? null;
@@ -132,7 +136,10 @@ async function contextePlan(planId: string): Promise<{ c: ContextePlan; o: Objec
       const texte = noteEnTexte(ecrite.note);
       if (texte && ecrite.lundi) await noteDeLaSemaine(o, numero, ecrite.lundi, texte);
     },
-    garderEcriture: (ecrite, apres) => garderUneEcriture(service, planId, ecrite, apres),
+    garderEcriture: async (ecrite, apres) => {
+      await garderUneEcriture(service, planId, ecrite, apres);
+      if (estUneSaisonDeFond(o.parametres) && ecrite.lundi) await prolongerLaSaison(planId, ecrite.lundi);
+    },
     garderEtat: (etatRendu) => garderLEtat(service, planId, etatRendu),
     garderReponsesLues: (numero, reponses) => garderLesReponsesLues(service, planId, numero, reponses),
 
@@ -165,7 +172,24 @@ async function contextePlan(planId: string): Promise<{ c: ContextePlan; o: Objec
 // Les plans à passer : ceux en route et ceux en récupération (la récupération est une semaine de la trame du moteur v1), sans doublon.
 const plansAPasser = async () => [...new Set([...await plansActifs(), ...await plansEnRecuperation()])];
 
-async function passer(budgetMs: number, quoi: string, faire: (c: ContextePlan) => Promise<Resultat>): Promise<Compte[]> {
+// Une saison de fond n'a pas de fin sous le moteur v1 : sa date (celle d'après laquelle les passages ne la regardent plus) avance avec chaque semaine écrite, quatre semaines devant. Jamais reculée.
+async function prolongerLaSaison(planId: string, lundi: string): Promise<void> {
+  const au = ajouterJours(lundi, 27);
+  const { error } = await clientService().from('plans').update({ course_date: au }).eq('id', planId).lt('course_date', au);
+  if (error) throw new Error(`saison non prolongée : ${error.message}`);
+}
+
+// Une préparation a pris la semaine `lundi` d'une saison de fond (en route, ou qui part) : la saison s'arrête la veille et rien ne s'y écrit, comme sous la 8.x (lib/app/fond.ts).
+async function saisonPrise(o: Objectif, lundi: string): Promise<boolean> {
+  if (!estUneSaisonDeFond(o.parametres)) return false;
+  const { arreterLaSaison, semainePriseParUnObjectif } = await import('./fond');
+  const athlete = await semainePriseParUnObjectif(o.planId, lundi);
+  if (athlete) await arreterLaSaison(athlete, lundi);
+  return Boolean(athlete);
+}
+const ARRETEE = { quoi: 'saison de fond arrêtée, une préparation prend la suite' };
+
+async function passer(budgetMs: number, quoi: string, faire: (c: ContextePlan, o: Objectif) => Promise<Resultat>): Promise<Compte[]> {
   const debut = Date.now();
   const comptes: Compte[] = [];
   for (const planId of await plansAPasser()) {
@@ -176,7 +200,7 @@ async function passer(budgetMs: number, quoi: string, faire: (c: ContextePlan) =
     try {
       const cx = await contextePlan(planId);
       if (!cx) continue;
-      const r = await faire(cx.c);
+      const r = await faire(cx.c, cx.o);
       if (r) comptes.push({ plan: planId, quoi: r.quoi, coache: cx.o.coache });
     } catch (e) {
       comptes.push({ plan: planId, quoi, erreur: e instanceof Error ? e.message : String(e) });
@@ -187,11 +211,11 @@ async function passer(budgetMs: number, quoi: string, faire: (c: ContextePlan) =
 
 // Le dimanche soir (17 h, 19 h, 21 h UTC) : la semaine du lundi qui vient ; un lundi déjà écrit est sauté.
 export const passageDuDimancheV9 = (budgetMs = 240_000, jour = aujourdhuiParis()): Promise<Compte[]> =>
-  passer(budgetMs, 'semaine non écrite', (c) => ecrireLaSemaineDuLundi(c, ajouterJours(jour, 1)));
+  passer(budgetMs, 'semaine non écrite', async (c, o) => (await saisonPrise(o, ajouterJours(jour, 1)) ? ARRETEE : ecrireLaSemaineDuLundi(c, ajouterJours(jour, 1))));
 
 // Le lundi, de 5 h à 21 h UTC : le filet d'une semaine pas écrite, puis la réponse arrivée tard. Ni un autre jour.
 export const passageDuLundiV9 = (budgetMs = 240_000, jour = aujourdhuiParis()): Promise<Compte[]> =>
-  jourDeLaSemaine(jour) === 1 ? passer(budgetMs, 'passe du lundi en échec', (c) => passeDuLundiSurUnPlan(c, jour)) : Promise.resolve([]);
+  jourDeLaSemaine(jour) === 1 ? passer(budgetMs, 'passe du lundi en échec', async (c, o) => (await saisonPrise(o, jour) ? ARRETEE : passeDuLundiSurUnPlan(c, jour))) : Promise.resolve([]);
 
 // Le dimanche matin : le questionnaire de la semaine écrite, posé dans Nolio pour 12 h. Ni un autre jour.
 export const questionnaireDuMatinV9 = (budgetMs = 120_000, jour = aujourdhuiParis()): Promise<Compte[]> =>
@@ -248,6 +272,7 @@ export async function rappelDuDimancheV9(budgetMs = 240_000, maintenant = new Da
 export async function ecrireLaSemaineDemandee(planId: string, lundi: string, options: { depuis?: string } = {}): Promise<{ numero: string; sort: SortDeLaSemaine }> {
   const cx = await contextePlan(planId);
   if (!cx) throw new Error('Ce plan ne s’écrit pas semaine par semaine (pas de Nolio relié, ou saison de fond, pas portée sous le moteur v1).');
+  if (await saisonPrise(cx.o, lundi)) throw new Error('Une préparation a pris cette semaine : la saison de fond est arrêtée.');
   const sort = await ecrireOuReprendre(cx.c, lundi, options);
   if (sort.statut === 'hors_trame') throw new Error(`Le moteur ne place aucune semaine de ce plan au lundi ${lundi} : son plan d’achat et la trame du moteur v1 ne tombent pas sur les mêmes semaines.`);
   return { numero: `S${sort.numero}`, sort };

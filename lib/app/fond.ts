@@ -19,6 +19,7 @@ import { clientService } from './supabase';
 import { coefficientRiegel } from './zones';
 import { ACCENTS } from './accentFond';
 import { estAncien } from './anciens';
+import { remplaceeParLaSuivante } from './saisonRemplacee';
 
 // Ce que le moteur rend d'une saison (POST /v1/trame).
 export type InfosFond = { saison: number; themes: string[]; debut: string; fin: string; tests_le: string; tests_les?: string[] };
@@ -237,6 +238,21 @@ export async function arreterLaSaison(athleteId: string, lundi: string): Promise
     arretees.push(p.id as string);
   }
   return arretees;
+}
+
+// SOUS LE MOTEUR v1, une saison encore en cours est sans fin (lib/app/passagesV9.ts) : sans ce garde-fou, deux saisons du même coaché s'écriraient côte à côte, et celle d'un ancien athlète sans fin.
+export async function saisonEcartee(planId: string, lundi: string): Promise<boolean> {
+  const service = clientService();
+  const { data: lien } = await service.from('coaching').select('athlete_id').eq('plan_id', planId).maybeSingle();
+  if (!lien) return false;
+  const { data: fiche } = await service.from('athletes_coaches').select('*').eq('id', lien.athlete_id).maybeSingle();
+  if (fiche && estAncien(fiche)) return true;
+  const { data: liens } = await service.from('coaching').select('plan_id').eq('athlete_id', lien.athlete_id);
+  const ids = (liens ?? []).map((l) => l.plan_id as string);
+  const { data: plans } = await service.from('plans').select('id, parametres').in('id', ids);
+  const debutDe = (p: { parametres: unknown }) => saisonDe(p.parametres)?.debut ?? '';
+  const moi = (plans ?? []).find((p) => p.id === planId);
+  return Boolean(moi) && remplaceeParLaSuivante(debutDe(moi as { parametres: unknown }), (plans ?? []).filter((p) => p.id !== planId && estFond(p.parametres)).map(debutDe), lundi);
 }
 
 // La semaine `lundi` d'une saison est-elle prise par une préparation du même coaché (en route, ou qui part) ?

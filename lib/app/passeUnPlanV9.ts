@@ -193,6 +193,8 @@ function testDeVc(vc: unknown, repere: { le?: string; source?: string } | undefi
  * Un acheteur n'a pas de fiche : ses critères manquent (le moteur lit « jamais » et le dit), sa côte vient de l'ancien terrain (la tranche).
  * `entree` : le lundi où un coaché entre (la première semaine de son plan) ; `course_precedente` n'est pas donnée (à brancher avec l'objectif mineur).
  * `reperesSources`, `dPrime` : de la fiche d'un coaché ; avec eux, son test de vitesse critique à deux efforts part (`d_prime_m`, `date_test_vc` : testDeVc).
+ * UNE SAISON DE FOND ENCORE EN COURS (`parametres.fond`, créée sous la 8.x ; C8 : au passage, tout coaché passe au nouveau moteur) : `saison_de_fond: true`, sans date de course ni rien de la course d'où ses
+ * réponses venaient (aucune course à lire, 218, 219) ; son entrée est le début de la saison.
  */
 export function parametresDuPlanV9({ parametres, profil, coache, accordLecture, premierLundi, glucides = null, reperesSources, dPrime = null }: {
   parametres: Record<string, unknown>; profil: Record<string, number | null | undefined>; coache: boolean; accordLecture: boolean;
@@ -202,8 +204,10 @@ export function parametresDuPlanV9({ parametres, profil, coache, accordLecture, 
   const champs = (parametres.champs ?? {}) as Record<string, unknown>;
   const tests = Object.fromEntries(['vc_ms', 'fc_seuil1', 'fc_seuil2'].flatMap((k) => (typeof profil[k] === 'number' && (profil[k] as number) > 0 ? [[k, profil[k]]] : [])));
   const unTexte = (v: unknown) => (typeof v === 'string' ? v : undefined);
-  const entree = coache ? (typeof champs.entree === 'string' ? champs.entree : premierLundi) : null;
-  return parametresV9({ ...champs, ...tests }, {
+  const saison = (parametres.fond ?? null) as { debut?: string } | null;
+  const reponses = saison ? Object.fromEntries(Object.entries(champs).filter(([k]) => !DE_LA_COURSE.includes(k))) : champs;
+  const entree = coache ? (saison ? saison.debut ?? premierLundi : typeof champs.entree === 'string' ? champs.entree : premierLundi) : null;
+  const sortie = parametresV9({ ...reponses, ...tests }, {
     criteres: { intensite: categorie(fiche?.critere_intensite), mecanique: categorie(fiche?.critere_denivele) },
     cote_min: unTexte(fiche?.cote_min), tapis: fiche?.tapis === 'oui' ? 'oui' : fiche?.tapis === 'non' ? 'non' : undefined,
     // L'entrée gardée au départ (entreesDuDepart) l'emporte sur le premier lundi du plan d'achat : un plan lancé plus tard n'entre pas à sa première semaine.
@@ -213,7 +217,11 @@ export function parametresDuPlanV9({ parametres, profil, coache, accordLecture, 
     test_vc: coache ? testDeVc(tests.vc_ms, reperesSources?.vc_ms, dPrime) : null,
     glucides, accord_lecture: accordLecture,
   });
+  return saison ? { ...sortie, saison_de_fond: true } : sortie;
 }
+
+// Ce qu'une saison de fond sans objectif daté n'envoie pas : la course de référence de ses réponses, et l'entrée ou la course d'avant d'un autre objectif.
+const DE_LA_COURSE = ['date_course', 'distance_km', 'dplus_m', 'dmoins_m', 'temps_cible', 'course_nom', 'gpx', 'montees', 'entree', 'course_precedente'];
 
 // ─── Le départ d'un objectif ────────────────────────────────────────────────────────────────────────
 
