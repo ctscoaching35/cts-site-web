@@ -406,10 +406,10 @@ test('ce que la règle ne touche pas, par choix : `refusNolio`, `ErreurNolio` et
 });
 
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════
-// (iii) LE « RÉESSAYER » D'UNE ANCIENNE SAISON DE FOND
+// (iii) LE « RÉESSAYER » D'UNE ANCIENNE SAISON DE FOND (depuis que la v1 les écrit, C8 : plus rien de caché)
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
-test('une saison de fond se reconnaît à ses paramètres (`fond`) comme `estFond` ; « Réessayer » ne se propose pas pour elle sous la 9.x, et se propose partout sous la 8.x', () => {
+test('une saison de fond se reconnaît à ses paramètres (`fond`) comme `estFond` ; depuis que la v1 l’écrit, « Réessayer » se propose partout, sous les deux moteurs', () => {
   assert.equal(saison.estUneSaisonDeFond({ fond: { saison: 2, debut: '2026-11-02' } }), true);
   assert.equal(saison.estUneSaisonDeFond({ champs: { format: 'trail' } }), false);
   assert.equal(saison.estUneSaisonDeFond(null), false);
@@ -421,13 +421,13 @@ test('une saison de fond se reconnaît à ses paramètres (`fond`) comme `estFon
   assert.ok(!/^import /m.test(source('lib/app/reessayerDeSaison.ts')), 'fonctions pures : ni lecture ni import');
   for (const s of [true, false]) assert.equal(saison.reessayerPossible(false, s), true, 'la 8.x : toujours');
   assert.equal(saison.reessayerPossible(true, false), true);
-  assert.equal(saison.reessayerPossible(true, true), false);
+  assert.equal(saison.reessayerPossible(true, true), true);
 });
 
-test('« Sa semaine qui arrive » : sous la 9.x, la semaine pas partie d’une saison de fond s’en va, les autres états et les autres plans restent ; sous la 8.x, toutes', () => {
+test('« Sa semaine qui arrive » : la semaine pas partie d’une saison de fond reste dite, sous les deux moteurs', () => {
   const s = (etat, fond, planId = 'p') => ({ etat, fond, planId });
   const toutes = [s('pas_partie', true, 'a'), s('pas_partie', false, 'b'), s('ecrite', true, 'c'), s('avant', true, 'd'), s('ecrite', false, 'e')];
-  assert.deepEqual(saison.semainesSansSaisonPasPartie(toutes, true).map((x) => x.planId), ['b', 'c', 'd', 'e']);
+  assert.deepEqual(saison.semainesSansSaisonPasPartie(toutes, true), toutes);
   assert.deepEqual(saison.semainesSansSaisonPasPartie(toutes, false), toutes);
   assert.deepEqual(saison.semainesSansSaisonPasPartie([], true), []);
 });
@@ -462,7 +462,8 @@ test('« Sa semaine qui arrive », sur la page de l’athlète : les semaines pa
   assert.ok(carte.includes('<ReessayerSemaine planId={s.planId} />'));
   assert.ok(!/reessayerDeSaison/.test(carte));
   // Pas de lecture de plus : le fichier est pur.
-  assert.ok(source('lib/app/passagesV9.ts').includes('if ((o.parametres as { fond?: unknown }).fond) return null;'), 'ce que `contextePlan` fait d’un plan de fond : null, donc « Réessayer » échoue');
+  const passages = source('lib/app/passagesV9.ts');
+  assert.ok(!passages.includes('if ((o.parametres as { fond?: unknown }).fond) return null;'), '`contextePlan` ne saute plus un plan de fond (C8) : « Réessayer » peut réussir');
 });
 
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════
