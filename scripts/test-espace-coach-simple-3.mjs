@@ -102,7 +102,7 @@ const JOURNAL = [
   ['Mes athlètes', 'les filtres (une saison se compte « Sans objectif »)', TABLEAU,
     /function categorie\(e: EtatAthlete, jour: string, v9: boolean\)[^\n]*\n\s*const o = objectifSansSaison\(e\.a\.objectif, v9\);/, [TABLEAU, 'Sans objectif']],
   ['Page d’un athlète', 'son nom de saison sous son nom', ATHLETE, /: saisonEnCours && !v9 \? `\$\{saisonEnCours\.course_nom\} · jusqu’au/, [ATHLETE, 'en cours']],
-  ['Page d’un athlète › Ses objectifs (9.x)', 'le lien « … · en cours » vers la saison', OBJECTIFS, /export default function ObjectifsAVerifier\(\{ athleteId, lignes, jour \}: \{ athleteId: string; lignes: LigneObjectif\[\]; jour: string \}\)/,
+  ['Page d’un athlète › Ses objectifs (9.x)', 'le lien « … · en cours » vers la saison', OBJECTIFS, /export default function ObjectifsAVerifier\(\{ athleteId, lignes, jour, plat = false \}: \{ athleteId: string; lignes: LigneObjectif\[\]; jour: string; plat\?: boolean \}\)/,
     [ATHLETE, '{saisonEnCours && (']],
   ['Page d’un athlète › Ses 7 jours', 'la mention « ou une saison » (rien de lu)', ATHLETE, /\{v9 \? TEXTES_CACHES\.septJoursVide : 'Rien de lu pour l’instant\./, [ATHLETE, 'dès qu’un objectif ou une saison a démarré']],
   // (d) les tests lus

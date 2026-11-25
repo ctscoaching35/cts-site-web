@@ -94,13 +94,14 @@ test('rien ne disparaît : chaque bloc d’avant a sa place sous la 9.x, en haut
 });
 
 test('la page 9.x suit cet ordre : (a), (b), (c), (d), puis « Réglages » ; rien d’autre en tête', () => {
-  const ordre = [...branche9.matchAll(/<(PointsPourLui|CarteSavoir|LancerSaPreparation|ObjectifsAVerifier)\b|\{(semaine)\}/g)].map((m) => m[1] ?? m[2]);
-  assert.deepEqual(ordre, ['PointsPourLui', 'CarteSavoir', 'LancerSaPreparation', 'ObjectifsAVerifier', 'semaine']);
+  // « La vue d'ensemble » (241) en tête, en lecture ; « Ses courses » sont dans la carte (ObjectifsAVerifier en `plat`), puis « Lancer sa préparation ».
+  const ordre = [...branche9.matchAll(/<(VueDEnsemble|PointsPourLui|CarteSavoir|LancerSaPreparation|ObjectifsAVerifier)\b|\{(semaine)\}/g)].map((m) => m[1] ?? m[2]);
+  assert.deepEqual(ordre, ['VueDEnsemble', 'PointsPourLui', 'CarteSavoir', 'ObjectifsAVerifier', 'LancerSaPreparation', 'semaine']);
   // La carte et son bouton « Lancer sa préparation » sont un seul bloc.
   const sesNoms = { PointsPourLui: 'a_faire', CarteSavoir: 'carte', LancerSaPreparation: 'carte', ObjectifsAVerifier: 'objectifs', semaine: 'semaine_qui_arrive' };
-  assert.deepEqual([...new Set(ordre.map((o) => sesNoms[o]))], ORDRE_9X.slice(0, 4));
+  assert.deepEqual([...new Set(ordre.filter((o) => o !== 'VueDEnsemble').map((o) => sesNoms[o]))], ORDRE_9X.slice(0, 4));
   // Aucun autre bloc dans la branche : pas de carte à part, pas de revue, pas de semaine passée, pas d'entrée.
-  assert.deepEqual([...branche9.matchAll(/<([A-Z][A-Za-z]*)\b/g)].map((m) => m[1]), ['PointsPourLui', 'CarteSavoir', 'LancerSaPreparation', 'ObjectifsAVerifier']);
+  assert.deepEqual([...branche9.matchAll(/<([A-Z][A-Za-z]*)\b/g)].map((m) => m[1]), ['VueDEnsemble', 'PointsPourLui', 'CarteSavoir', 'ObjectifsAVerifier', 'LancerSaPreparation']);
   for (const interdit of ['Carte ', 'CarteEntree', 'TableauZones', 'StyleCoureur', 'ProfilAthlete', 'contenuRevue', 'contenuSemainePassee', 'contenuCoursesNolio']) {
     assert.ok(!branche9.includes(interdit), `${interdit} n’est pas en tête sous la 9.x`);
   }
@@ -109,7 +110,7 @@ test('la page 9.x suit cet ordre : (a), (b), (c), (d), puis « Réglages » ; ri
   assert.ok(page.indexOf('<details id="reglages"') > i8);
   assert.ok(page.indexOf('aria-label="Athlète suivant"') > page.indexOf('<details id="reglages"'));
   // Un seul formulaire, celui de la carte : aucun des trois formulaires d'avant n'y est ; ses zones et son style y sont repliés.
-  assert.match(branche9, /\{carte && <CarteSavoir key=\{`\$\{a\.id\}:\$\{carte\.lancer\.planId\}`\} \{\.\.\.carte\.savoir\} zonesEtStyle=\{zonesEtStyle\} \/>\}/);
+  assert.match(branche9, /\{carte && <CarteSavoir key=\{`\$\{a\.id\}:\$\{carte\.lancer\.planId\}`\} \{\.\.\.carte\.savoir\} zonesEtStyle=\{zonesEtStyle\}\n\s+courses=\{<ObjectifsAVerifier athleteId=\{a\.id\} lignes=\{lignesObjectifs\} jour=\{jour\} plat \/>\} \/>\}/);
   assert.match(branche9, /\{carte && <LancerSaPreparation \{\.\.\.carte\.lancer\} \/>\}/);
   assert.ok(!/contenuProfil|contenuTest|contenuReperes/.test(branche9));
 });
@@ -190,8 +191,8 @@ test('chaque morceau de la 9.x est derrière `v9` : la branche, les deux section
   // Les composants posés plats ne le sont que sous la 9.x ; les cartes d'avant (l'app de l'athlète) ne les reçoivent jamais.
   for (const f of ['app/app/profil/page.tsx', 'app/app/objectif/nouveau/page.tsx', 'app/app/compte/page.tsx']) assert.ok(!/\bplat\b/.test(source(f)), f);
   const plats = page.split('\n').filter((x) => / plat \/>/.test(x));
-  assert.equal(plats.length, 3, 'zones, style, entrée : trois, tous sous la 9.x');
-  assert.ok(plats.some((l) => l.includes('<TableauZones')) && plats.some((l) => l.includes('<StyleCoureur')) && plats.some((l) => l.includes('entreeDansLesReglages(entree) && <CarteEntree entree={entree} plat />')));
+  assert.equal(plats.length, 4, 'zones, style, entrée, « Ses courses » (241) : quatre, tous sous la 9.x');
+  assert.ok(plats.some((l) => l.includes('<TableauZones')) && plats.some((l) => l.includes('<StyleCoureur')) && plats.some((l) => l.includes('entreeDansLesReglages(entree) && <CarteEntree entree={entree} plat />')) && plats.some((l) => l.includes('<ObjectifsAVerifier')));
   // Les deux premiers sont dans `zonesEtStyle`, calculé derrière `v9` ; le troisième est dans `sectionsEnPlus`, rendu derrière `v9`.
   assert.ok(page.indexOf('const zonesEtStyle = v9 &&') < page.indexOf('<TableauZones zones={zones} lignes={lignesZones} profil={profilZones} titre="Ses zones" plat />'));
 });
@@ -468,8 +469,8 @@ test('ses objectifs : ceux à venir sont vérifiés, ceux dont la course est pas
   assert.deepEqual(aVenir.map((o) => o.n), [2, 3], 'le jour de la course compte encore à venir (comme « prochain »)');
   assert.deepEqual(passes.map((o) => o.n), [1]);
   assert.deepEqual(departagerLesObjectifs([], '2026-11-24'), { aVenir: [], passes: [] });
-  assert.match(page, /verif: parametres \? verifierObjectif\(parametres\.champs \?\? \{\}, a\.profil\) : null/, 'un objectif envoyé en entier n’a pas de réponses à vérifier');
-  assert.match(page, /const parametres = parPlan\.get\(o\.plan_id\)\?\.parametres as/);
+  assert.match(page, /verif: o\.parametres \? verifierObjectif\(o\.parametres\.champs \?\? \{\}, a\.profil\) : null/, 'un objectif envoyé en entier n’a pas de réponses à vérifier');
+  assert.match(page, /const parametres = \(p\?\.parametres \?\? null\) as/);
   // Aucune lecture de plus : la requête des plans est celle d'avant.
   assert.equal((page.match(/from\('plans'\)/g) ?? []).length, 2, 'la requête des plans et celle de l’intake, comme avant');
   const c = source('components/app/ObjectifsAVerifier.tsx');

@@ -117,8 +117,8 @@ test('« Ses courses de préparation » : sous chaque objectif de « Ses objecti
   assert.match(o, /\{o\.courses && <CoursesDePreparation planId=\{o\.planId\} courses=\{o\.courses\} jour=\{jour\} \/>\}/);
   assert.match(o, /courses\?: CourseDePreparation\[\] \| null/);
   const page = sansCommentaires(source('app/app/coach/athlete/[id]/page.tsx'));
-  assert.match(page, /courses: parametres \? \(\(parametres as \{ courses_secondaires\?: CourseDePreparation\[\] \}\)\.courses_secondaires \?\? \[\]\) : null/);
-  assert.match(page, /<ObjectifsAVerifier athleteId=\{a\.id\} lignes=\{lignesObjectifs\} jour=\{jour\} \/>/);
+  assert.match(page, /courses: o\.parametres \? \(o\.parametres\.courses_secondaires \?\? \[\]\) : null/);
+  assert.match(page, /<ObjectifsAVerifier athleteId=\{a\.id\} lignes=\{lignesObjectifs\} jour=\{jour\} plat \/>/);
   // Les textes sont ceux du coach, dans le fichier des textes de la page ; la page de l'objectif garde sa section cachée sous la 9.x.
   const t = source('lib/app/pageAthleteSimple.ts');
   for (const m of ["coursesDePreparation: 'Ses courses de préparation'", "aucuneCourse: 'Aucune pour l’instant.'", "ajouterUneCourse: 'Ajouter une course de préparation'"]) assert.ok(t.includes(m), m);
