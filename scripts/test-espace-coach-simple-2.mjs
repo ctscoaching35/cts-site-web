@@ -319,7 +319,7 @@ test('« À faire pour lui » sous la 9.x : les mêmes gestes et le même « Ré
 
 // ─── (b) « Ce que j'ai besoin de savoir » ──────────────────────────────────────────────────────────────────────────────────────
 
-test('ce qui manque à la carte : le repère de son objectif en cours, le même que « Ses objectifs » ; sans objectif, son profil de coureur et son objectif', () => {
+test('ce qui manque à la carte : le repère de son objectif en cours, le même que « Ses objectifs » ; sans objectif, son profil de coureur et sa semaine (sa saison de fond)', () => {
   const champs = { cote_min: '12', gpx: GPX, ...SEMAINE };
   const e = etatDeLaCarte({ champs }, { tapis: 'oui' });
   assert.deepEqual(e.manquants, ['intensite', 'mecanique']);
@@ -328,12 +328,14 @@ test('ce qui manque à la carte : le repère de son objectif en cours, le même 
   assert.equal(e.complet, false);
   const plein = etatDeLaCarte({ champs: { ...champs, tapis: 'non', critere_intensite: 'jamais', critere_denivele: 'jamais' } });
   assert.deepEqual(plein, { repere: 'Complet', complet: true, manquants: [] });
-  // Sans objectif à venir : sa côte, ses critères, son tapis, puis son objectif ; ni trace ni semaine à surligner.
+  // Sans objectif à venir, il est en saison de fond (C6) : sa côte, ses critères, son tapis et sa semaine, lue sur sa fiche ; ni trace, ni objectif qui manque.
   const sans = etatDeLaCarte(null, {});
-  assert.deepEqual(sans.manquants, ['cote', 'intensite', 'mecanique', 'tapis']);
-  assert.equal(sans.repere, 'Il manque : sa côte en minutes, son critère d’intensité, son critère de mécanique, son tapis (oui ou non), son objectif');
+  assert.deepEqual(sans.manquants, ['cote', 'intensite', 'mecanique', 'tapis', 'semaine']);
+  assert.equal(sans.repere, 'Il manque : sa côte en minutes, son critère d’intensité, son critère de mécanique, son tapis (oui ou non), sa semaine habituelle');
   assert.equal(sans.complet, false);
-  assert.equal(etatDeLaCarte(null, { cote_min: '5', tapis: 'oui', critere_intensite: 'jamais', critere_denivele: 'jamais' }).repere, 'Il manque : son objectif');
+  const fiche = { cote_min: '5', tapis: 'oui', critere_intensite: 'jamais', critere_denivele: 'jamais' };
+  assert.equal(etatDeLaCarte(null, fiche).repere, 'Il manque : sa semaine habituelle');
+  assert.deepEqual(etatDeLaCarte(null, { ...fiche, ...SEMAINE }), { repere: 'Complet', complet: true, manquants: [] });
   // Un objectif envoyé en entier : rien à vérifier, rien à surligner.
   assert.deepEqual(etatDeLaCarte({ champs: null }, {}), { repere: TEXTES_PAGE_ATHLETE.envoyeEnEntier, complet: false, manquants: [] });
   // Les cinq réponses de la règle de « Profil à remplir » (lib/app/espaceCoach.ts), comme avant.

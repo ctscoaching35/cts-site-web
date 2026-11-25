@@ -159,7 +159,7 @@ test('les gestes sont sur la page : « Modifier son profil » mène aux champs d
   assert.match(c, /<div id="geste-profil" className="space-y-3 scroll-mt-6">\s*<label className=\{clsx\(LIBELLE, manque\('cote'\)\)\}>/);
   const avant = c.slice(0, c.indexOf('id="geste-reperes"'));
   assert.equal((avant.match(/<details/g) ?? []).length, 1, 'le repli de la carte, et lui seul');
-  assert.match(avant, /<details open=\{ouverte \|\| !complet\}/);
+  assert.match(avant, /<details open=\{ouverte \|\| !complet \|\| !objectif\}/);
   // La page suit l'ancre et ouvre le `details` s'il y en a un : le même mécanisme que « Réglages ».
   const ouvert = { tagName: 'DETAILS', open: false, parentElement: null };
   assert.equal(ancres.ouvrirLaCible({ getElementById: (id) => (id === 'geste-profil' ? ouvert : null) }, 'geste-profil', false), true);

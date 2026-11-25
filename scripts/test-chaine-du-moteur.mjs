@@ -24,7 +24,7 @@ export const nomsDesPlans = async () => new Map(); export const REMIS = 'remis';
   '/lib/app/passagesV9.ts': `export const passageDuDimancheV9 = async (...a) => { globalThis.__appels.push(['passagesV9.passageDuDimancheV9', a[0]]); return [{ plan: 'b', quoi: 'v1', ...(globalThis.__echec ? { erreur: 'boum' } : {}) }]; };
 ${fonctions('passagesV9', { passageDuLundiV9: [{ plan: 'b', quoi: 'v1' }], questionnaireDuMatinV9: [{ plan: 'b', quoi: 'v1' }], rappelDuDimancheV9: { actif: true, texteValide: true, comptes: [{ plan: 'b', quoi: 'rappel v1' }] } })}`,
   '/lib/app/rappelDuDimanche.ts': fonctions('rappelDuDimanche', { rappelerLeDimanche: { actif: true, texteValide: true, comptes: [{ plan: 'a', quoi: 'rappel avant' }] } }),
-  '/lib/app/fond.ts': fonctions('fond', { saisonsDuJour: [{ plan: 's', quoi: 'saison' }] }),
+  '/lib/app/fond.ts': fonctions('fond', { saisonsDuJour: [{ plan: 's', quoi: 'saison' }], saisonsDuV1: [{ plan: 'sv', quoi: 'saison v1' }] }),
   // Les dimanches notent aussi leurs options (le Hooper seul sous la 9.x) : globalThis.__options, le deuxième argument.
   '/lib/app/dimanchesCoaches.ts': `export const programmerLesDimanches = async (...a) => { globalThis.__appels.push(['dimanchesCoaches.programmerLesDimanches', a[0]]); globalThis.__options = a[1] ?? null; return [{ plan: 'd', quoi: 'dimanches' }]; };`,
   '/lib/app/comptesInactifs.ts': fonctions('comptesInactifs', { passerComptesInactifs: [] }),
@@ -73,7 +73,7 @@ test('le passage du dimanche soir : sous la 8.x, les saisons de fond puis le pas
   assert.ok(budget >= 180_000 && budget <= 240_000, `le temps qui reste, comme avant (${budget})`);
   assert.deepEqual(avant.corps.semaines, [{ plan: 'a', quoi: 'avant', erreur: null }]);
   const v1 = await appeler('ecriture/dimanche', { v9: true });
-  assert.deepEqual(v1.appels, ['passagesV9.passageDuDimancheV9']);
+  assert.deepEqual(v1.appels, ['fond.saisonsDuV1', 'passagesV9.passageDuDimancheV9'], 'les saisons qui manquent d’abord, puis l’écriture');
   assert.deepEqual(v1.corps.semaines, [{ plan: 'b', quoi: 'v1', erreur: null }]);
 });
 
@@ -92,7 +92,7 @@ test('le questionnaire du dimanche matin : sous la 8.x, RIEN (le questionnaire d
   assert.deepEqual(v1.appels, ['passagesV9.questionnaireDuMatinV9']);
 });
 
-test('le passage quotidien : sous la 8.x, les saisons de fond et les dimanches du samedi comme avant ; sous la 9.x, ni saison de fond ni questionnaire du samedi, mais le Hooper du dimanche (décision 52), le reste inchangé', async () => {
+test('le passage quotidien : sous la 8.x, les saisons de fond et les dimanches du samedi comme avant ; sous la 9.x, les saisons de fond de la v1, ni questionnaire du samedi, mais le Hooper du dimanche (décision 52), le reste inchangé', async () => {
   const avant = await appeler('relance/envoyer', { v9: false });
   for (const nom of ['relance.envoyerRelancesDues', 'ecriture.passageQuotidienLeger', 'fond.saisonsDuJour', 'dimanchesCoaches.programmerLesDimanches', 'ecriture.retirerLaTrameAuDela', 'ecriture.passageQuotidienLong'])
     assert.ok(avant.appels.includes(nom), nom);
@@ -100,6 +100,7 @@ test('le passage quotidien : sous la 8.x, les saisons de fond et les dimanches d
   assert.equal(avant.options, null, 'sous la 8.x, aucune option : le questionnaire du samedi et le Hooper, comme avant');
   const v1 = await appeler('relance/envoyer', { v9: true });
   assert.ok(!v1.appels.includes('fond.saisonsDuJour'));
+  assert.ok(v1.appels.includes('fond.saisonsDuV1'), 'sous la v1, un coaché n’est jamais sans semaine');
   assert.ok(v1.appels.includes('dimanchesCoaches.programmerLesDimanches'), 'le Hooper du dimanche reste posé sous la 9.x');
   assert.deepEqual(v1.options, { seulementLeHooper: true }, 'le Hooper seul : le questionnaire du samedi n’est ni posé ni retiré');
   for (const nom of ['relance.envoyerRelancesDues', 'ecriture.passageQuotidienLeger', 'ecriture.retirerLaTrameAuDela', 'ecriture.passageQuotidienLong', 'comptesInactifs.passerComptesInactifs'])

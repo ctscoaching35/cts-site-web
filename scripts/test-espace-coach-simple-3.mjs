@@ -101,7 +101,7 @@ const JOURNAL = [
     /function Ligne\(\{ e, jour, v9 \}[^\n]*\n[^\n]*\n\s*const o = objectifSansSaison\(a\.objectif, v9\);/, [TABLEAU, 'jusqu’au']],
   ['Mes athlètes', 'les filtres (une saison se compte « Sans objectif »)', TABLEAU,
     /function categorie\(e: EtatAthlete, jour: string, v9: boolean\)[^\n]*\n\s*const o = objectifSansSaison\(e\.a\.objectif, v9\);/, [TABLEAU, 'Sans objectif']],
-  ['Page d’un athlète', 'son nom de saison sous son nom', ATHLETE, /: saisonEnCours && !v9 \? `\$\{saisonEnCours\.course_nom\} · jusqu’au/, [ATHLETE, 'en cours']],
+  ['Page d’un athlète', 'son nom de saison et sa date sous son nom (sous la 9.x, « Saison de fond » seul)', ATHLETE, /: saisonEnCours \? v9 \? TEXTES_UN_MOT\.saison : `\$\{saisonEnCours\.course_nom\} · jusqu’au/, [ATHLETE, 'en cours']],
   ['Page d’un athlète › Ses objectifs (9.x)', 'le lien « … · en cours » vers la saison', OBJECTIFS, /export default function ObjectifsAVerifier\(\{ athleteId, lignes, jour, plat = false \}: \{ athleteId: string; lignes: LigneObjectif\[\]; jour: string; plat\?: boolean \}\)/,
     [ATHLETE, '{saisonEnCours && (']],
   ['Page d’un athlète › Ses 7 jours', 'la mention « ou une saison » (rien de lu)', ATHLETE, /\{v9 \? TEXTES_CACHES\.septJoursVide : 'Rien de lu pour l’instant\./, [ATHLETE, 'dès qu’un objectif ou une saison a démarré']],
@@ -116,7 +116,7 @@ const JOURNAL = [
   ['Page d’un objectif', '« Ajustements annulés. » sous une semaine', PLAN, /\{ajustementsAnnulesVisibles\(v9\) && w\.sans_ajustement && <p/, [PLAN, 'Ajustements annulés.']],
   ['Page d’un objectif', '« Annuler les ajustements » (décision 213, déjà caché)', PLAN, /\{!v9 && ajuste && w\.numero === ecritesTriees\.find\([^\n]*<AnnulerSemaine planId=\{id\} numero=\{w\.numero\} \/>\}/, [GESTES, 'Annuler les ajustements']],
   // Les points, sur « Mes athlètes › À faire », « À faire pour lui » et la colonne « Ce qui l’attend »
-  ['Mes athlètes, À faire, page d’un athlète', 'les points « course de préparation », « test à revoir », « saison de fond refusée », « profil à remplir (saison de fond) », « passe du lundi à voir »', 'lib/app/mesAthletes.ts',
+  ['Mes athlètes, À faire, page d’un athlète', 'les points « course de préparation », « test à revoir », « passe du lundi à voir »', 'lib/app/mesAthletes.ts',
     /const dits = pointsSousLaV1\(vue\.aRegarder, v9\);/, ['lib/app/espaceCoach.ts', 'genre: \'preparation\'']],
 ];
 
@@ -131,41 +131,42 @@ test('le journal : chaque élément caché l’est derrière `v9` dans le source
 // ─── Les points que la 9.x ne porte pas ──────────────────────────────────────────────────────────────────────────────────────────────────
 
 test('les points d’une fonction que la 9.x ne fait pas encore ne sont gardés sur aucun écran ; sous la 8.x, ils le sont tous', () => {
-  const niveaux = { preparation: 'arrive', test: 'arrive', saison: 'bloque', profil: 'bloque', lundi: 'arrive' };
+  // « saison » et « profil » ne sont plus cachés : la v1 écrit les saisons de fond (25/11/2026).
+  const niveaux = { preparation: 'arrive', test: 'arrive', lundi: 'arrive' };
   assert.deepEqual(Object.keys(GENRES_CACHES_9X).sort(), Object.keys(niveaux).sort());
   const tous = [
     ...Object.entries(niveaux).map(([genre, niveau]) => point(niveau, genre)),
     // Ce qui reste : ce que la 9.x porte (et, après vérification, « course Nolio » et « prérequis du marathon »).
     point('bloque', 'nolio'), point('bloque', 'accord'), point('bloque', 'demarrer'), point('bloque', 'semaine'), point('sante', 'sensations'), point('sante', 'commentaire'),
     point('arrive', 'course_nolio'), point('arrive', 'prerequis'), point('arrive', 'suite'), point('arrive', 'chrono_route'), point('arrive', 'week_end_choc'), point('arrive', 'courses_proches'),
+    point('bloque', 'saison'), point('bloque', 'profil'),
   ];
   const genres = (v9) => pointsSousLaV1(tous, v9).map((p) => p.genre);
   assert.deepEqual(genres(false), tous.map((p) => p.genre), 'sous la 8.x, rien n’est ôté');
   assert.equal(pointsSousLaV1(tous, false), tous, 'la même liste');
-  assert.deepEqual(genres(true), ['nolio', 'accord', 'demarrer', 'semaine', 'sensations', 'commentaire', 'course_nolio', 'prerequis', 'suite', 'chrono_route', 'week_end_choc', 'courses_proches']);
+  assert.deepEqual(genres(true), ['nolio', 'accord', 'demarrer', 'semaine', 'sensations', 'commentaire', 'course_nolio', 'prerequis', 'suite', 'chrono_route', 'week_end_choc', 'courses_proches', 'saison', 'profil']);
   for (const g of Object.keys(GENRES_CACHES_9X)) assert.ok(g in SIGNAL, `${g} avait bien son étiquette sous la 8.x`);
   for (const g of ['course_nolio', 'prerequis']) assert.ok(!(g in GENRES_CACHES_9X), `${g} n’est pas caché`);
   assert.deepEqual(pointsSousLaV1([], true), []);
 });
 
-test('une fois ôtés, ni l’étiquette, ni la ligne de « À faire », ni la pastille du menu ne les disent plus', () => {
+test('une fois ôtés, ni l’étiquette, ni la ligne de « À faire », ni la pastille du menu ne les disent plus ; une saison refusée et un profil à remplir restent dits', () => {
   const points = [point('arrive', 'preparation'), point('arrive', 'test'), point('bloque', 'saison'), point('bloque', 'profil'), point('arrive', 'lundi'), point('sante', 'sensations')];
   const avant = etiquettes(points, null).map((e) => e.texte);
   for (const t of ['Course de préparation', 'Test à revoir', 'Saison de fond refusée', 'Profil à remplir', 'Passe du lundi à voir']) assert.ok(avant.includes(t), `la 8.x dit « ${t} »`);
   const gardes = pointsSousLaV1(points, true);
-  assert.deepEqual(etiquettes(gardes, null).map((e) => e.texte), ['Mauvaises sensations']);
-  // « À faire » : un athlète qui n'a que ces points n'a plus aucune ligne, ni de pastille (athletesUrgents).
-  const seuls = [{ id: 'a1', nom: 'A', points: pointsSousLaV1([point('bloque', 'saison'), point('bloque', 'profil')], true) }, { id: 'a2', nom: 'B', points: gardes }];
+  assert.deepEqual(etiquettes(gardes, null).map((e) => e.texte), ['Saison de fond refusée', 'Profil à remplir', 'Mauvaises sensations']);
+  // « À faire » : un athlète qui n'a que des points cachés n'a plus aucune ligne, ni de pastille (athletesUrgents).
+  const seuls = [{ id: 'a1', nom: 'A', points: pointsSousLaV1([point('arrive', 'preparation'), point('arrive', 'lundi')], true) }, { id: 'a2', nom: 'B', points: gardes }];
   const urgent = urgentDe(seuls);
-  assert.deepEqual(aFaireDe(urgent).map((l) => l.point.genre), ['sensations']);
+  assert.deepEqual(aFaireDe(urgent).map((l) => l.point.genre).sort(), ['profil', 'saison', 'sensations']);
   assert.equal(athletesUrgents(urgent), 1);
-  assert.ok(!urgent.some((g) => g.cle === 'bloque'), 'ni « Objectif bloqué » vide');
   // La colonne « Ce qui l'attend » : sans eux, le tiret (aucune étiquette) plutôt qu'une ligne vide.
   assert.deepEqual(etiquettesSansAFaire(pointsSousLaV1([point('arrive', 'preparation')], true), null), etiquettes([], null), 'sans point, « Rien à signaler » comme avant');
-  // La page de l'athlète : « À faire pour lui » ne les redit pas, la carte de coureur dit le profil.
+  // La page de l'athlète : « À faire pour lui » ne redit pas le profil, la carte de coureur le dit ; la saison refusée y reste.
   const entree = entreeDe({ athleteId: 'a1', nolio: true, accord: true, programmation: 'auto', objectif: { plan_id: 'p', ecrit: true, demarre: true, prevu: null }, dimanchesJusqua: '2026-12-01', aujourdhui: '2026-11-24' });
-  assert.deepEqual(aFairePourLui(pointsSousLaV1(points, true), entree, true).map((l) => l.point.genre), ['sensations']);
-  for (const g of ['saison', 'profil']) assert.equal(groupeUrgent({ niveau: 'bloque', genre: g }), 'bloque', `${g} était dans « Objectif bloqué »`);
+  assert.deepEqual(aFairePourLui(pointsSousLaV1(points, true), entree, true).map((l) => l.point.genre).sort(), ['saison', 'sensations']);
+  for (const g of ['saison', 'profil']) assert.equal(groupeUrgent({ niveau: 'bloque', genre: g }), 'bloque', `${g} est dans « Objectif bloqué »`);
 });
 
 test('« Mes athlètes » lit ses points et ses ajustements une seule fois, au même endroit, derrière `v9`', () => {
@@ -334,14 +335,14 @@ test('la saison de fond : sous la 9.x, la ligne d’un athlète dont le prochain
   for (const m of ['Saison de fond', 'Bloc ${o.fond.theme}', 'tests dans ${o.fond.tests_dans} sem.', 'semaine de tests']) assert.ok(t.includes(m), `${m} : la 8.x garde ses étiquettes`);
 });
 
-test('la saison de fond : ni son lien, ni son nom, ni ses points sous la 9.x ; la 8.x garde son lien « en cours »', () => {
+test('la saison de fond : ni son lien ni sa date de fin sous la 9.x (ses mots seuls) ; ses points sont dits ; la 8.x garde son lien « en cours »', () => {
   const o = sansCommentaires(source(OBJECTIFS));
   assert.ok(!/saison|Saison|en cours/.test(o), 'ObjectifsAVerifier ne sait plus rien de la saison');
   assert.ok(!/saison9|saisonEnCours/.test(sansCommentaires(source('app/app/coach/athlete/[id]/page.tsx').split('{v9 ? (')[1].split('      ) : (')[0])), 'la branche 9.x non plus');
   assert.ok(athlete.includes('{saisonEnCours && ('), 'la 8.x garde son lien');
   assert.ok(athlete.includes('<span className="block text-[0.9375rem] font-bold">{saisonEnCours.course_nom} · en cours</span>'));
-  // Les points : « Saison de fond refusée » et « Profil à remplir » (le profil pour sa saison de fond) ne sont plus dits ; la carte « Ce que j'ai besoin de savoir » dit toujours ce qui manque de lui.
-  assert.ok('saison' in GENRES_CACHES_9X && 'profil' in GENRES_CACHES_9X);
+  // Les points : la v1 écrit les saisons, « Saison de fond refusée » et « Profil à remplir » sont dits ; la carte « Ce que j'ai besoin de savoir » dit ce qui manque de lui.
+  assert.ok(!('saison' in GENRES_CACHES_9X) && !('profil' in GENRES_CACHES_9X));
   assert.ok(source('components/app/CarteSavoir.tsx').includes('<span>{repere}</span>') && source(ATHLETE).includes('const etatCarte = etatDeLaCarte('));
   // Ses 7 jours, rien de lu : la phrase de la 9.x est celle de la 8.x sans « ou une saison » (étape 5 : et sans « Hooper », « sa fatigue déclarée » à la place).
   assert.equal(TEXTES_CACHES.septJoursVide, 'Rien de lu pour l’instant. Ses séances et sa fatigue déclarée des 7 derniers jours se lisent dans Nolio chaque soir, dès qu’un objectif a démarré. « Relire maintenant » les lit tout de suite.');
