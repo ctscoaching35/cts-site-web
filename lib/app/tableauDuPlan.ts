@@ -65,7 +65,9 @@ export async function donneesTableau(ctx: Contexte): Promise<DonneesTableau> {
     ? Boolean((await service.from('plans').select('arretee_le').eq('id', ctx.cle).maybeSingle().then((r) => r.data, () => null))?.arretee_le)
     : false;
   return {
-    trame: trame?.semaines ?? trameDesDonnees(ctx.plan), realises, fiches: trame?.fiches ?? [],
+    // Une saison de fond du moteur v1 est sans fin (sa trame déplie un an) : les graphiques s'arrêtent douze semaines devant.
+    trame: (ctx.plan.fond && trame?.moteur === '9.0' ? trame.semaines.filter((l) => l.lundi <= ajouterJours(ctx.jour, 84)) : trame?.semaines) ?? trameDesDonnees(ctx.plan),
+    realises, fiches: trame?.fiches ?? [],
     nolio: ctx.coache ? 'coache' : arretee ? 'arrete' : (p.nolio_statut ?? null) as EtatNolio, accord: ctx.coache ? accordCoache : Boolean(p.accord_lecture_le),
     ecrit: true,
     courses: (((p.parametres as Record<string, unknown>).courses_secondaires ?? []) as CourseSecondaire[])

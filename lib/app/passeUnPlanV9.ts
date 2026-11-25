@@ -204,7 +204,7 @@ export function parametresDuPlanV9({ parametres, profil, coache, accordLecture, 
   const champs = (parametres.champs ?? {}) as Record<string, unknown>;
   const tests = Object.fromEntries(['vc_ms', 'fc_seuil1', 'fc_seuil2'].flatMap((k) => (typeof profil[k] === 'number' && (profil[k] as number) > 0 ? [[k, profil[k]]] : [])));
   const unTexte = (v: unknown) => (typeof v === 'string' ? v : undefined);
-  const saison = (parametres.fond ?? null) as { debut?: string } | null;
+  const saison = (parametres.fond ?? null) as { debut?: string; course_precedente?: { date: string; duree_h: number } } | null;
   const reponses = saison ? Object.fromEntries(Object.entries(champs).filter(([k]) => !DE_LA_COURSE.includes(k))) : champs;
   const entree = coache ? (saison ? saison.debut ?? premierLundi : typeof champs.entree === 'string' ? champs.entree : premierLundi) : null;
   const sortie = parametresV9({ ...reponses, ...tests }, {
@@ -212,6 +212,8 @@ export function parametresDuPlanV9({ parametres, profil, coache, accordLecture, 
     cote_min: unTexte(fiche?.cote_min), tapis: fiche?.tapis === 'oui' ? 'oui' : fiche?.tapis === 'non' ? 'non' : undefined,
     // L'entrée gardée au départ (entreesDuDepart) l'emporte sur le premier lundi du plan d'achat : un plan lancé plus tard n'entre pas à sa première semaine.
     coaching: coache, entree,
+    // Une saison de fond qui suit une course (C3) : le moteur écrit sa récupération d'abord.
+    ...(saison?.course_precedente ? { course_precedente: saison.course_precedente } : {}),
     // Ses courses de préparation (C5) : le chrono visé en est la durée ; d'un coaché seulement.
     courses_mineures: coache ? coursesMineuresDe(parametres.courses_secondaires, entree) : null,
     test_vc: coache ? testDeVc(tests.vc_ms, reperesSources?.vc_ms, dPrime) : null,

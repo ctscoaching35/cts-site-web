@@ -19,7 +19,10 @@ import { clientService } from './supabase';
 import { coefficientRiegel } from './zones';
 import { ACCENTS } from './accentFond';
 import { estAncien } from './anciens';
-import { remplaceeParLaSuivante } from './saisonRemplacee';
+import { terrainDeLaCote } from '@/lib/cote';
+import { lireLaDureeCourue } from './luAuDepart';
+import { moteurEstV9 } from './moteurEnLigne';
+import { couvertV1, remplaceeParLaSuivante } from './saisonRemplacee';
 
 // Ce que le moteur rend d'une saison (POST /v1/trame).
 export type InfosFond = { saison: number; themes: string[]; debut: string; fin: string; tests_le: string; tests_les?: string[] };
@@ -88,8 +91,20 @@ function testsPerimes(sources: Record<string, { le?: string } | undefined>, debu
   return perime('fc_seuil1') || (!debutant && perime('vc_ms'));
 }
 
+// La course qu'il vient de courir avant ce lundi (42 jours au plus, la fenêtre de la récupération) : sa date et sa durée en heures, celle qu'il a courue (lue dans Nolio), sinon son temps visé.
+async function courseDAvant(fiche: Record<string, unknown>, plans: PlanFiche[], lundi: string): Promise<{ date: string; duree_h: number } | null> {
+  const p = plans.filter((x) => x.parametres && !estFond(x.parametres) && x.demarre_le && x.course_date < lundi && joursEntre(x.course_date, lundi) <= 42)
+    .sort((a, b) => b.course_date.localeCompare(a.course_date))[0];
+  if (!p) return null;
+  const courue = await lireLaDureeCourue(String(fiche.coach_id), (fiche.nolio_athlete_id as string | null) ?? null, p.course_date).catch(() => null);
+  const visee = lireTemps(String(((p.parametres as { champs?: Record<string, unknown> }).champs ?? {}).temps_cible ?? ''));
+  return { date: p.course_date, duree_h: courue && courue > 0 ? courue : visee || 2 };
+}
+
 // La saison d'un coaché qui commence ce lundi : rangée comme un objectif de coaching, déjà en route.
-async function creerSaison(fiche: Record<string, unknown>, plans: PlanFiche[], lundi: string): Promise<string> {
+// v1 : sous le moteur v1, la saison est sans fin (sa date avance avec chaque semaine écrite, lib/app/passagesV9.ts), la trame se demande à la demande (lib/app/ecriture.ts, trameDuPlan) et non à la création ;
+// null sans ses jours, le jour de sa sortie longue et son nombre de séances, que le moteur v1 ne sait pas deviner (la carte et « Profil à remplir » le disent au coach).
+async function creerSaison(fiche: Record<string, unknown>, plans: PlanFiche[], lundi: string, v1 = false): Promise<string | null> {
   const service = clientService();
   const objectifs = plans.filter((p) => p.parametres && !estFond(p.parametres)).sort((a, b) => a.course_date.localeCompare(b.course_date));
   const prochain = objectifs.find((p) => p.course_date >= lundi);
@@ -118,6 +133,13 @@ async function creerSaison(fiche: Record<string, unknown>, plans: PlanFiche[], l
     ...(charge?.champs?.coupure ? { coupure: charge.champs.coupure } : {}),
     ...(habituel ? { volume_hebdo_actuel: dureeTexte(habituel.volume_min), sortie_longue_actuelle: dureeTexte(habituel.sl_min) } : {}),
   };
+  if (v1) {
+    if (!(champs.jours_disponibles as unknown[] | undefined)?.length || !champs.jour_sl || !champs.freq_hebdo) return null;
+    // Le contenu du plan (POST /v1/donnees) demande un niveau et un terrain ; le moteur v1 ne les lit pas.
+    champs.niveau = champs.niveau ?? 'intermediaire';
+    champs.terrain = champs.terrain ?? terrainDeLaCote((profil as Record<string, unknown>).cote_min) ?? 'vallonne';
+  }
+  const avant = v1 ? await courseDAvant(fiche, plans, lundi) : null;
   const niveau = String(champs.niveau ?? 'intermediaire');
   const vc = fiche.vc_ms as number | null;
   const dPrime = fiche.d_prime_m as number | null;
@@ -132,15 +154,17 @@ async function creerSaison(fiche: Record<string, unknown>, plans: PlanFiche[], l
       entree: testsPerimes((fiche.reperes_sources ?? {}) as Record<string, { le?: string }>, niveau === 'debutant', lundi),
       ...(await references(dernier)),
       accent: ACCENTS.some(([cle]) => cle === accent) ? accent : null,
+      ...(avant ? { course_precedente: avant } : {}),
     },
   };
-  const trame = await moteur<Trame & { fond: InfosFond }>('/v1/trame', { parametres });
+  const trame = v1 ? null : await moteur<Trame & { fond: InfosFond }>('/v1/trame', { parametres });
+  const infos: InfosFond = trame ? trame.fond : { saison, themes: [], debut: lundi, fin: ajouterJours(lundi, 27), tests_le: '' };
   const donneesBrutes = await moteur<Plan>('/v1/donnees', { parametres, donnees_avant: null });
   const nom = `Saison de fond ${saison}`;
-  const donnees = { ...donneesBrutes, course: { ...donneesBrutes.course, nom, date: trame.fond.fin, date_debut_plan: trame.fond.debut },
-    athlete: { ...donneesBrutes.athlete, nom: String(fiche.nom) }, fond: trame.fond } as Plan;
+  const donnees = { ...donneesBrutes, course: { ...donneesBrutes.course, nom, date: infos.fin, date_debut_plan: infos.debut },
+    athlete: { ...donneesBrutes.athlete, nom: String(fiche.nom) }, fond: infos } as Plan;
   const { data: plan, error } = await service.from('plans').insert({
-    compte_id: fiche.coach_id, course_nom: nom, course_date: trame.fond.fin, debut_plan: trame.fond.debut,
+    compte_id: fiche.coach_id, course_nom: nom, course_date: infos.fin, debut_plan: infos.debut,
     schema: donnees.schema, version_moteur: donnees.version_moteur, donnees, intake: {}, parametres, trame,
     coach_id: fiche.coach_id, demarre_le: lundi,
   }).select('id').single();
@@ -158,6 +182,15 @@ async function creerSaison(fiche: Record<string, unknown>, plans: PlanFiche[], l
 // Chaque soir (le passage quotidien) : la saison de chaque coaché en programmation automatique, relié à Nolio et en
 // mode coaching, dont le lundi qui vient n'est pris par rien. Ce qui n'est pas fait l'est le soir suivant.
 export async function saisonsDuJour(budgetMs = 90_000): Promise<Compte[]> {
+  return creerLesSaisons(budgetMs, false);
+}
+
+// La même sous le moteur v1 (C6, C3), le soir et avant l'écriture du dimanche (couvertV1 ; creerSaison) ; sous la 8.x : rien.
+export async function saisonsDuV1(budgetMs = 60_000): Promise<Compte[]> {
+  return (await moteurEstV9()) ? creerLesSaisons(budgetMs, true) : [];
+}
+
+async function creerLesSaisons(budgetMs: number, v1: boolean): Promise<Compte[]> {
   const debut = Date.now();
   const service = clientService();
   const lundi = lundiApres(aujourdhuiParis());
@@ -174,7 +207,7 @@ export async function saisonsDuJour(budgetMs = 90_000): Promise<Compte[]> {
   const comptes: Compte[] = [];
   for (const f of fiches) {
     const siens = ((plans ?? []) as PlanFiche[]).filter((p) => (liens ?? []).some((l) => l.plan_id === p.id && l.athlete_id === f.id));
-    if (couvert(siens, lundi)) {
+    if (v1 ? couvertV1(siens, lundi) : couvert(siens, lundi)) {
       if (f.saison_refusee) await noterLeRefus(String(f.id), null);
       continue;
     }
@@ -183,7 +216,8 @@ export async function saisonsDuJour(budgetMs = 90_000): Promise<Compte[]> {
       continue;
     }
     try {
-      const planId = await creerSaison(f, siens, lundi);
+      const planId = await creerSaison(f, siens, lundi, v1);
+      if (!planId) continue;
       comptes.push({ plan: planId, quoi: `saison de fond du ${lundi} créée`, coache: true });
       if (f.saison_refusee) await noterLeRefus(String(f.id), null);
     } catch (e) {

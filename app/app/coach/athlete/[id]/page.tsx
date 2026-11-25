@@ -57,7 +57,7 @@ import { reperesDeBase } from '@/lib/app/reperes';
 import { demonstrationCoachOuverte } from '@/lib/app/demonstrationCoach';
 import { recuperationAEcrire } from '@/lib/app/ecriture';
 import { deQui } from '@/lib/app/elision';
-import { attendLeCoach } from '@/lib/app/unMot';
+import { attendLeCoach, TEXTES_UN_MOT } from '@/lib/app/unMot';
 import { modeAppGratuite } from '@/lib/app/gratuitRegles';
 import { clientService, espaceCoachOuvert } from '@/lib/app/supabase';
 import type { CourseSecondaire } from '@/lib/app/tableauDuPlan';
@@ -272,7 +272,8 @@ export default async function PageAthlete({ params, searchParams }: {
   ].filter((x) => aUneSemaine || x.ancre !== '#sa-semaine-passee');
   // Son prochain objectif, sous son nom ; sinon sa saison en cours.
   const sousLeNom = objectifApres ? `${objectifApres.course_nom} · ${dateLongue(objectifApres.course_date, true)} · ${jMoins(jour, objectifApres.course_date)}`
-    : saisonEnCours && !v9 ? `${saisonEnCours.course_nom} · jusqu’au ${dateLongue(saisonEnCours.course_date, true)}` : null;
+    // Sous la 9.x, la saison de fond de la v1 est sans fin : ses mots seuls.
+    : saisonEnCours ? v9 ? TEXTES_UN_MOT.saison : `${saisonEnCours.course_nom} · jusqu’au ${dateLongue(saisonEnCours.course_date, true)}` : null;
   const couleur = etat?.prevision.niveau ?? 'rien';
   // Sous la 9.x, « la migration du 04/11/2026 est à passer » n'est plus dite au coach : pas de « Ses 7 jours » vide, une ligne au journal.
   const septJoursVisibles = !(gardesManquent && !montrerLInfra(v9, 'Ses signaux ne sont pas encore gardés : la migration du 04/11/2026 est à passer dans Supabase.'));

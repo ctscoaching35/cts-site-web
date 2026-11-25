@@ -116,8 +116,8 @@ export default function CarteSavoir({
     const dits: Ligne[] = [];
     const enregistres: Cle[] = [];
     let reussi = false;
-    // L'objectif, seulement s'il a changé ou qu'une trace est donnée ; ses jours ne se recopient sur sa fiche que s'il les a bien.
-    let semaineAJour = Boolean(modifiable);
+    // L'objectif, seulement s'il a changé ou qu'une trace est donnée ; ses jours ne se recopient sur sa fiche que s'il les a bien. Sans objectif, ils vont droit sur sa fiche.
+    let semaineAJour = Boolean(modifiable) || !objectif;
     let traceEnvoyee = false;
     // Rien à renvoyer : un champ vidé reprend ce qu'il avait.
     if (!modifiable || (!objectifChange(valeurs, apres) && !gpx)) enregistres.push(...CLES_DE_L_OBJECTIF);
@@ -197,6 +197,35 @@ export default function CarteSavoir({
     </label>
   );
 
+  // Sa semaine : ses jours, sa sortie longue, son nombre de séances ; ceux de son objectif, ou, sans objectif, ceux de sa fiche (sa saison de fond les lit).
+  const blocSemaine = (
+    <div id="champ-semaine" className={clsx('space-y-2.5 scroll-mt-6', manque('semaine'))}>
+      <div role="group" aria-label={t.jours}>
+        <div className={LIBELLE}>{t.jours}</div>
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          {JOURS_DE_LA_SEMAINE.map((j) => (
+            <label key={j} className={PUCE}>
+              <input type="checkbox" checked={v.jours_disponibles.includes(j)} className="sr-only"
+                onChange={(e) => maj('jours_disponibles', e.target.checked ? [...v.jours_disponibles, j] : v.jours_disponibles.filter((x) => x !== j))} />
+              {majuscule(j.slice(0, 3))}.
+            </label>
+          ))}
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2.5 items-end">
+        <label className={LIBELLE}>{t.sortieLongue}
+          <select value={v.jour_sl} onChange={(e) => maj('jour_sl', e.target.value)} className={CHAMP}>
+            <option value="" disabled>{t.choisis}</option>
+            {JOURS_DE_LA_SEMAINE.map((j) => <option key={j} value={j}>{majuscule(j)}</option>)}
+          </select>
+        </label>
+        <label className={LIBELLE}>{t.seances}
+          <input value={v.freq_hebdo} onChange={(e) => maj('freq_hebdo', e.target.value)} inputMode="numeric" className={CHAMP} />
+        </label>
+      </div>
+    </div>
+  );
+
   return (
     // « son-profil » : l'adresse que prennent « Son profil › » et la revue du dimanche.
     <Carte id="son-profil" className="!p-5 space-y-4 scroll-mt-6">
@@ -206,7 +235,8 @@ export default function CarteSavoir({
         <span>{repere}</span>
       </p>
 
-      <details open={ouverte || !complet} onToggle={(e) => setOuverte(e.currentTarget.open)}>
+      {/* Sans objectif, la carte reste ouverte : « + Objectif » est dedans. */}
+      <details open={ouverte || !complet || !objectif} onToggle={(e) => setOuverte(e.currentTarget.open)}>
         <summary className={complet ? 'cursor-pointer min-h-10 flex items-center text-[0.8125rem] font-bold text-teal' : 'hidden'}>{t.voirEtModifier}</summary>
         <div className="pt-1 space-y-4">
           <form onSubmit={enregistrer} noValidate className="space-y-5">
@@ -241,6 +271,8 @@ export default function CarteSavoir({
               </div>
 
               <ChoixPointsTrail titre={TEXTES_TRAIL.son} valeurs={v} onChange={maj} />
+
+              {!objectif && blocSemaine}
 
               <div id="geste-test-vc" className="space-y-2.5 pt-3 border-t border-indigo/[0.07] scroll-mt-6">
                 <h4 className="text-[0.8125rem] font-bold text-indigo">{t.test}</h4>
@@ -309,31 +341,7 @@ export default function CarteSavoir({
                       {objectif.traceDonnee && <p className={AIDE}>{t.traceGardee}</p>}
                     </div>
                   )}
-                  <div id="champ-semaine" className={clsx('space-y-2.5 scroll-mt-6', manque('semaine'))}>
-                    <div role="group" aria-label={t.jours}>
-                      <div className={LIBELLE}>{t.jours}</div>
-                      <div className="mt-1.5 flex flex-wrap gap-1.5">
-                        {JOURS_DE_LA_SEMAINE.map((j) => (
-                          <label key={j} className={PUCE}>
-                            <input type="checkbox" checked={v.jours_disponibles.includes(j)} className="sr-only"
-                              onChange={(e) => maj('jours_disponibles', e.target.checked ? [...v.jours_disponibles, j] : v.jours_disponibles.filter((x) => x !== j))} />
-                            {majuscule(j.slice(0, 3))}.
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2.5 items-end">
-                      <label className={LIBELLE}>{t.sortieLongue}
-                        <select value={v.jour_sl} onChange={(e) => maj('jour_sl', e.target.value)} className={CHAMP}>
-                          <option value="" disabled>{t.choisis}</option>
-                          {JOURS_DE_LA_SEMAINE.map((j) => <option key={j} value={j}>{majuscule(j)}</option>)}
-                        </select>
-                      </label>
-                      <label className={LIBELLE}>{t.seances}
-                        <input value={v.freq_hebdo} onChange={(e) => maj('freq_hebdo', e.target.value)} inputMode="numeric" className={CHAMP} />
-                      </label>
-                    </div>
-                  </div>
+                  {blocSemaine}
                 </>
               )}
             </div>

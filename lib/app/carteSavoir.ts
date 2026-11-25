@@ -116,9 +116,10 @@ export function valeursDeLaCarte({ fiche, intake, champs, courseDate, fc1, fc2, 
     distance_km: texte(base.distance_km),
     dplus_m: texte(base.dplus_m),
     temps_cible: texte(base.temps_cible),
-    jours_disponibles: liste(champs?.jours_disponibles),
-    jour_sl: texte(champs?.jour_sl),
-    freq_hebdo: texte(champs?.freq_hebdo),
+    // Sans objectif (champs absent), ceux de sa fiche : sa saison de fond les lit.
+    jours_disponibles: liste((champs ?? fiche)?.jours_disponibles),
+    jour_sl: texte((champs ?? fiche)?.jour_sl),
+    freq_hebdo: texte((champs ?? fiche)?.freq_hebdo),
   };
 }
 

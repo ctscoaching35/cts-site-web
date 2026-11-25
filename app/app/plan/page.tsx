@@ -91,8 +91,10 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
           <div className="-mt-1">
             <Surtitre as="div">Ta saison de fond</Surtitre>
             <h1 className="mt-1.5 text-[1.75rem] font-extrabold text-indigo tracking-tight leading-tight">Saison {plan.fond.saison}</h1>
+            {/* Sous la 9.x, la saison est sans fin et ses tests suivent leur propre calendrier (C6, 248). TEXTE : BROUILLON, à valider par le coach. */}
             <p className="mt-1.5 text-[0.8125rem] text-[#5E5C78]">
-              Du {dateLongue(plan.fond.debut, true)} au {dateLongue(plan.fond.fin, true)} · tes tests la semaine du {dateLongue(plan.fond.tests_le, true)}
+              {v9 ? `Depuis le ${dateLongue(plan.fond.debut, true)} : des blocs de quatre semaines, la dernière allégée. Je prépare tes séances chaque dimanche dans Nolio.`
+                : `Du ${dateLongue(plan.fond.debut, true)} au ${dateLongue(plan.fond.fin, true)} · tes tests la semaine du ${dateLongue(plan.fond.tests_le, true)}`}
             </p>
           </div>
         ) : (
@@ -132,7 +134,7 @@ export default async function Objectif({ searchParams }: { searchParams: Recherc
           <Carte className="text-sm text-indigo"><p role="status">Ta demande m’est bien arrivée : je la relis et je lance ta préparation.</p></Carte>
         )}
 
-        {plan.fond && <BlocsDeLaSaison trame={d.trame} jour={jour} />}
+        {plan.fond && !v9 && <BlocsDeLaSaison trame={d.trame} jour={jour} />}
 
         {/* Ta semaine, avant les blocs (maquette du 16/11/2026) ; S16 (décision coach du 05/11/2026) : la trame semaine par semaine que promettent les CGV ; pour les deux versions
             depuis le 07/11/2026. */}

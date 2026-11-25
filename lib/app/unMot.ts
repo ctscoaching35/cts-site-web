@@ -28,6 +28,8 @@ export const TEXTES_UN_MOT = {
   partie: 'Partie',
   main: 'À la main',
   rien: 'Rien à faire',
+  // Un coaché en saison de fond, quand rien d'autre n'attend (25/11/2026 : la v1 les écrit ; ses mots, une ligne).
+  saison: 'Saison de fond',
 } as const;
 
 export type TonDuMot = 'ko' | 'warn' | 'ok' | 'neutre';
@@ -43,6 +45,8 @@ export type DeQuoiDireUnMot = {
   gesteDuManque: 'profil' | 'trace' | 'semaine' | null;
   test: Pick<TestASaisir, 'geste'> | null;
   sansReponse: boolean;
+  // En saison de fond, sans objectif daté.
+  saison?: boolean;
 };
 
 const SANTE_MESSAGE = ['mot', 'commentaire'];
@@ -62,7 +66,8 @@ export function unMot(a: DeQuoiDireUnMot): UnMot {
   // Les autres signaux de santé (fatigue, effort plus dur, sensations, Hooper, sous le prévu).
   const sante = a.points.find((p) => p.niveau === 'sante');
   if (sante) return dit(3, t.fatigue, sante.href, 'warn', sante.externe);
-  const semaine = point((g) => g === 'semaine');
+  // Une saison refusée par le moteur : sa semaine ne partira pas.
+  const semaine = point((g) => g === 'semaine' || g === 'saison');
   if (semaine) return dit(4, t.semaine, semaine.href, 'ko', semaine.externe);
   const demande = point((g) => g === 'demande');
   if (demande) return dit(5, t.demande, demande.href, 'warn', demande.externe);
@@ -74,11 +79,12 @@ export function unMot(a: DeQuoiDireUnMot): UnMot {
     const ancre = { profil: '#geste-profil', trace: '#champ-gpx', semaine: '#champ-semaine' } as const;
     return dit(8, t.manque(a.manque), a.gesteDuManque ? `${page}${ancre[a.gesteDuManque]}` : page, 'warn');
   }
-  if (!a.objectif) return dit(9, t.sansObjectif, `/app/coach/nouveau?athlete=${a.id}`, 'neutre');
-  if (!a.objectif.demarre && !a.objectif.prevu) return dit(10, t.lancer, `${page}#lancer-sa-preparation`, 'warn');
+  if (!a.objectif && !a.saison) return dit(9, t.sansObjectif, `/app/coach/nouveau?athlete=${a.id}`, 'neutre');
+  if (a.objectif && !a.objectif.demarre && !a.objectif.prevu) return dit(10, t.lancer, `${page}#lancer-sa-preparation`, 'warn');
   if (a.test) return dit(11, t.test, `${page}#geste-${a.test.geste === 'test_vc' ? 'test-vc' : 'reperes'}`, 'warn');
   if (a.sansReponse) return dit(12, t.sansReponse, page, 'neutre');
-  const partie = a.objectif.suivante?.partie === true || a.objectif.partie === true;
+  if (a.saison) return dit(13, t.saison, page, 'neutre');
+  const partie = a.objectif?.suivante?.partie === true || a.objectif?.partie === true;
   return partie ? dit(15, t.partie, page, 'ok') : dit(13, t.rien, page, 'neutre');
 }
 

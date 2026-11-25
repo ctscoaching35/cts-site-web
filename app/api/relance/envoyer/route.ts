@@ -2,7 +2,7 @@ import { passerComptesInactifs } from '@/lib/app/comptesInactifs';
 import { effacerLesDemandesEchues } from '@/lib/app/demandesCoaching';
 import { programmerLesDimanches } from '@/lib/app/dimanchesCoaches';
 import { selonLeMoteur } from '@/lib/app/chaineDuMoteur';
-import { saisonsDuJour } from '@/lib/app/fond';
+import { saisonsDuJour, saisonsDuV1 } from '@/lib/app/fond';
 import { passageQuotidienLeger, passageQuotidienLong, retirerLaTrameAuDela } from '@/lib/app/ecriture';
 import { envoyerRelancesDues } from '@/lib/app/relance';
 import { effacerLesAchatsEchus, renvoyerLesConfirmations } from '@/lib/app/rangement';
@@ -39,10 +39,10 @@ export async function GET(request: Request) {
   const demandesEchues = await effacerLesDemandesEchues().catch(() => 0);
   // La saison de fond (décisions coach du 24/10/2026) : celle de chaque coaché sans objectif à préparer, pour le lundi qui
   // vient ; le passage du dimanche l'écrit. D'abord : le dimanche soir, ses reprises de 21 h et 23 h l'attendent.
-  // Sous le moteur v1 (9.x), pas la saison de fond de la 8.x (pas portée) ; le questionnaire du dimanche se pose par app/api/ecriture/questionnaire, le Hooper plus bas.
+  // Sous le moteur v1 (9.x), la saison de fond est la sienne (saisonsDuV1 : un coaché n'est jamais sans semaine, C6, C3) ; le questionnaire du dimanche se pose par app/api/ecriture/questionnaire, le Hooper plus bas.
   // Sous la 8.x, rien ne change.
-  const sansLaChaineV1 = async <T>(f: () => Promise<T[]>) => selonLeMoteur<T[]>({ avant: f, v1: async () => [] });
-  const saisons = await sansLaChaineV1(() => saisonsDuJour()).catch((e) => [{ plan: '', quoi: 'saisons de fond en échec', erreur: e instanceof Error ? e.message : String(e) }]);
+  const saisons = await selonLeMoteur<{ plan: string; quoi: string; erreur?: string }[]>({ avant: () => saisonsDuJour(), v1: () => saisonsDuV1() })
+    .catch((e) => [{ plan: '', quoi: 'saisons de fond en échec', erreur: e instanceof Error ? e.message : String(e) }]);
   // Le week-end de chaque coaché (décision coach du 21/10/2026), en temps compté : le reste, le soir suivant. Sous la 9.x, le Hooper seul (décision 52 du coach, 20/11/2026 : sans lui
   // l'alerte fatigue ne part jamais) : « Ton point du dimanche » remplace le questionnaire du samedi, pas le Hooper du dimanche 8 h.
   const dimanches = await selonLeMoteur({ avant: () => programmerLesDimanches(), v1: () => programmerLesDimanches(120_000, { seulementLeHooper: true }) }).catch((e) => [{ plan: '', quoi: 'dimanches en échec', erreur: e instanceof Error ? e.message : String(e) }]);

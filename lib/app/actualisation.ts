@@ -49,8 +49,11 @@ export async function actualiserPlans(): Promise<Actualisation[]> {
       const o = await objectifEcrit(p.id as string);
       const nolio = o && !aLaMain.has(p.id as string)
         ? await realignerTrame({ ...o, plan: donnees }, TRAME, aujourdhuiIso()) : { changes: 0, gardees: 0 };
+      // Sous le moteur v1, une saison de fond garde son nom et ses dates (`course`, `fond`) : POST /v1/donnees ne les rend pas.
+      const saison = version.startsWith('9.') ? (p.donnees as Plan | null)?.fond : undefined;
+      const aGarder = saison ? { ...donnees, course: (p.donnees as Plan).course, fond: saison } : donnees;
       const { error: e } = await service.from('plans')
-        .update({ donnees, version_moteur: donnees.version_moteur, schema: donnees.schema, trame: null }).eq('id', p.id);
+        .update({ donnees: aGarder, version_moteur: donnees.version_moteur, schema: donnees.schema, trame: null }).eq('id', p.id);
       if (e) throw new Error(e.message);
       comptes.push({ plan: p.id as string, quoi: `refait en ${donnees.version_moteur} ; Nolio : ${nolio.changes} changé(s), ${nolio.gardees} gardé(s) tel(s) quel(s)` });
     } catch (e) {

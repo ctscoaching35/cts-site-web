@@ -9,8 +9,8 @@
  *       la 8.x, /v1/semaine/lundi, n'existe plus) ;
  *   (b) les courses de préparation : leur section, le lien « En préparation » d'une course de Nolio, le point « course de préparation dans … jours », l'onglet « Course de
  *       préparation » de « Nouvel objectif » (/v1/course-secondaire est retirée ; `ajouterCourse` refuse déjà) ;
- *   (c) la saison de fond : son lien et ses étiquettes (« Saison de fond », « Bloc … », « tests dans … »), les points « Saison de fond refusée » et « Profil à remplir » (le profil pour
- *       sa saison de fond) ;
+ *   (c) la saison de fond : son lien et ses étiquettes de la 8.x (« Bloc … », « tests dans … », « jusqu'au … »). Depuis le 25/11/2026, la v1 les écrit : « Saison de fond » est dit (la page d'un athlète,
+ *       « Mes athlètes »), et les points « Saison de fond refusée » et « Profil à remplir » aussi ;
  *   (d) les tests lus (ce que la préparation lit comme test de vitesse critique ou de FC dans Nolio) : leurs lignes, « Ses cibles et ses zones ont suivi », le point « Test à
  *       revoir ». Le geste « Saisir son test de vitesse critique » et le test sur la carte restent : ils ne dépendent pas de cette lecture ;
  *   (e) les séances allégées en EF et « Garder la séance d'origine » (/v1/fatigue et /v1/veto sont retirées), et ce qui parle d'« Ajustements annulés » (« Annuler » est abandonné,
@@ -66,7 +66,7 @@ export function coursesNolioVisibles<T>(courses: T[], enPreparation: (c: T) => b
 
 // ─── (c) La saison de fond ────────────────────────────────────────────────────────────────────────────────────────────────
 
-// Une saison de fond n'est pas un objectif sous la 9.x (le moteur v1 n'en écrit pas) : la ligne d'un athlète dont le prochain « objectif » est une saison se lit comme celle d'un
+// Une saison de fond n'est pas un objectif sous la 9.x (la v1 les écrit depuis le 25/11/2026 : elles sont dites « Saison de fond », jamais comme un objectif) : la ligne d'un athlète dont le prochain « objectif » est une saison se lit comme celle d'un
 // athlète sans objectif. `fond` : ce que la 8.x lit de la trame (lib/app/espaceCoach.ts, LigneAthlete.objectif.fond).
 export function objectifSansSaison<T extends { fond?: unknown }>(o: T | null, v9: boolean): T | null {
   return v9 && o?.fond ? null : o;
@@ -85,8 +85,6 @@ export const testsLusDisponibles = (v9: boolean): boolean => !v9;
 export const GENRES_CACHES_9X: Record<string, string> = {
   preparation: 'une course de préparation dans les 14 jours : la course de préparation n’est pas portée (b)',
   test: 'un test illisible, sans réponse ou pas fait : la lecture des tests n’est pas portée (d)',
-  saison: 'sa saison de fond refusée : la saison de fond n’existe pas sous la 9.x (c)',
-  profil: 'le profil à remplir pour que sa saison de fond parte : la saison de fond n’existe pas sous la 9.x (c) ; la carte « Ce que j’ai besoin de savoir » dit déjà ce qui manque',
   lundi: 'la passe du lundi n’a pas réécrit sa semaine : la passe du lundi de la 8.x n’existe plus (a)',
 };
 

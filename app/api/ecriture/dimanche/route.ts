@@ -3,7 +3,7 @@ import { selonLeMoteur } from '@/lib/app/chaineDuMoteur';
 import { passageDuDimancheV9 } from '@/lib/app/passagesV9';
 import { moteurEstV9 } from '@/lib/app/moteurEnLigne';
 import { TEXTES_A_FAIRE } from '@/lib/app/espaceCoachSimple';
-import { saisonsDuJour } from '@/lib/app/fond';
+import { saisonsDuJour, saisonsDuV1 } from '@/lib/app/fond';
 import { DERNIERE_ECRITURE_DU_DIMANCHE_8X, derniereEcritureDuDimancheV9, ecritureDuDimancheV9, ECRITURE_DU_DIMANCHE_8X, estUnLancementDe8x } from '@/lib/app/heuresDePassage';
 import { site } from '@/lib/content';
 import { supabaseConfigure } from '@/lib/app/supabase';
@@ -30,10 +30,14 @@ export async function GET(request: Request) {
   // Les saisons de fond du lundi qui vient d'abord (25/10/2026 : créées par le passage du soir, lancé à 21 h 16, elles
   // n'avaient que la dernière reprise) : elles s'écrivent avec les départs, les reprises en secours. Rien en double : une
   // saison déjà là couvre son lundi.
-  // Sous le moteur v1 (9.x), la semaine s'écrit par lib/app/passagesV9.ts, vers 21 h et 22 h (heure de Paris), les saisons de fond encore en cours comprises (C8) ; elle n'en crée pas. Sous la 8.x, rien ne change.
+  // Sous le moteur v1 (9.x), la semaine s'écrit par lib/app/passagesV9.ts, vers 21 h et 22 h (heure de Paris), les saisons de fond comprises (C8 ; celles qui manquent se créent d'abord). Sous la 8.x, rien ne change.
   const passage = await selonLeMoteur<{ comptes: Compte[]; derniere: boolean } | null>({
-    v1: async () => (planif && !ecritureDuDimancheV9(maintenant)
-      ? null : { comptes: await passageDuDimancheV9(240_000), derniere: !planif || derniereEcritureDuDimancheV9(maintenant) }),
+    v1: async () => {
+      if (planif && !ecritureDuDimancheV9(maintenant)) return null;
+      // Les saisons de fond du lundi qui vient d'abord (un coaché saisi dans la journée) : elles s'écrivent avec les autres plans. Rien en double : une saison déjà là couvre son lundi.
+      const saisons = await saisonsDuV1(40_000).catch((e) => [{ plan: '', quoi: 'saisons de fond en échec', erreur: e instanceof Error ? e.message : String(e) }]);
+      return { comptes: [...saisons.filter((c) => c.erreur), ...await passageDuDimancheV9(240_000)], derniere: !planif || derniereEcritureDuDimancheV9(maintenant) };
+    },
     avant: async () => {
       if (!estUnLancementDe8x(planif, ECRITURE_DU_DIMANCHE_8X)) return null;
       const debut = Date.now();

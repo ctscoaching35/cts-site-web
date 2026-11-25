@@ -384,7 +384,9 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     }
     // La semaine en cours pas partie dans Nolio (le passage du dimanche en échec, même après ses reprises). La première
     // d'une saison de fond aussi (25/10/2026 : sans semaine écrite avant, elle passait inaperçue).
-    const premiereDeSaison = Boolean(infosFond && p?.demarre_le && String(p.demarre_le) <= lundi);
+    // Sous la 9.x, la trame du moteur v1 ne dit pas la saison : ses paramètres la disent.
+    const enSaison = Boolean(infosFond) || (v9 && estUneSaisonDeFond(p?.parametres));
+    const premiereDeSaison = Boolean(enSaison && p?.demarre_le && String(p.demarre_le) <= lundi);
     // Sous la 9.x (décision 220 du coach, 24/11/2026, suite ; lib/app/reessayerDeSaison.ts) : une ancienne saison de fond de la 8.x n'a pas de « Réessayer » (le moteur v1 ne l'écrit pas : il ne pourrait pas
     // réussir). Reconnue par ses paramètres (`fond`) ou par la trame que le moteur lui rend (`infosFond`). Sous la 8.x, rien ne change.
     const saisonDeFond = Boolean(infosFond) || estUneSaisonDeFond(p?.parametres);
@@ -398,13 +400,13 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
     }
     // La route (décision 5 du 10 km, 23/10/2026) : un chrono visé totalement incohérent avec sa VC, à en parler avec lui.
     const champsPlan = ((p?.parametres as { champs?: Record<string, unknown> } | null)?.champs) ?? {};
-    const chronoRoute = o && avenir ? alerteChronoRoute(champsPlan.format, champsPlan.temps_cible, a.vc_ms) : null;
+    const chronoRoute = o && avenir && !(v9 && enSaison) ? alerteChronoRoute(champsPlan.format, champsPlan.temps_cible, a.vc_ms) : null;
     if (chronoRoute) {
       aRegarder.push({ niveau: 'arrive', genre: 'chrono_route', cle: `chrono_route:${o!.plan_id}:${champsPlan.temps_cible}:${a.vc_ms}`, athlete: a.nom, action: 'Lui écrire ›', href: lienNolioAthlete(a.nolio_athlete_id), externe: true,
         texte: `${o!.course_nom} : ${chronoRoute}` });
     }
     // Les prérequis du marathon (décision 5 du marathon) : la préparation qu'il lui reste, du lundi qui vient à la course.
-    const prerequis = o && avenir ? prerequisMarathon(champsPlan, Math.floor(joursEntre(jour, o.course_date) / 7)) : null;
+    const prerequis = o && avenir && !(v9 && enSaison) ? prerequisMarathon(champsPlan, Math.floor(joursEntre(jour, o.course_date) / 7)) : null;
     if (prerequis) {
       aRegarder.push({ niveau: 'arrive', genre: 'prerequis', cle: `prerequis:${o!.plan_id}:${o!.course_date}`, athlete: a.nom, action: 'Voir ›', href: hrefPlan,
         texte: `${o!.course_nom} : ${prerequis}` });
@@ -418,7 +420,7 @@ export async function vueDuCoach(coachId: string, membres: Set<string> | null = 
         texte: `${c.nom}, le ${dateLongue(c.date, true)}, est dans Nolio sans objectif ici.` });
     }
     // Ce qui arrive : une course de préparation dans les 14 jours, un objectif dans les 21 jours sans suite, un test raté.
-    if (o && avenir && !infosFond) {
+    if (o && avenir && !enSaison) {
       for (const c of (((p?.parametres as { courses_secondaires?: { nom?: string; date?: string }[] } | null)?.courses_secondaires) ?? [])) {
         const dans = c.date ? joursEntre(jour, c.date) : -1;
         if (dans >= 0 && dans <= 14) aRegarder.push({ niveau: 'arrive', genre: 'preparation', cle: `preparation:${o.plan_id}:${c.date}`, athlete: a.nom, action: 'Voir ›', href: hrefPlan,

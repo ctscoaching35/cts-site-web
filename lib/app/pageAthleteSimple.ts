@@ -258,10 +258,11 @@ export const repereDeLObjectif = (v: VerifObjectif): string => (v.complet ? TEXT
 export type EtatDeLaCarte = { repere: string; complet: boolean; manquants: ItemObjectif['cle'][] };
 export function etatDeLaCarte(objectif: { champs: Reponses } | null, fiche: Reponses = null): EtatDeLaCarte {
   if (objectif && !objectif.champs) return { repere: TEXTES_PAGE_ATHLETE.envoyeEnEntier, complet: false, manquants: [] };
-  const v = verifierObjectif(objectif?.champs ?? {}, fiche);
-  const manquants = v.items.filter((i) => i.valeur === null && (objectif !== null || (i.cle !== 'gpx' && i.cle !== 'semaine')));
+  // Sans objectif daté, il est en saison de fond (C6) : sa semaine est celle de sa fiche, et rien ne manque d'un objectif.
+  const v = verifierObjectif(objectif ? objectif.champs ?? {} : fiche ?? {}, fiche);
+  const manquants = v.items.filter((i) => i.valeur === null && (objectif !== null || i.cle !== 'gpx'));
   const cles = manquants.map((i) => i.cle);
-  if (!objectif) return { repere: TEXTES_PAGE_ATHLETE.ilManque([...manquants.map((i) => i.manque), TEXTES_PAGE_ATHLETE.manqueObjectif]), complet: false, manquants: cles };
+  if (!objectif) return { repere: manquants.length ? TEXTES_PAGE_ATHLETE.ilManque(manquants.map((i) => i.manque)) : TEXTES_PAGE_ATHLETE.complet, complet: manquants.length === 0, manquants: cles };
   return { repere: repereDeLObjectif(v), complet: v.complet, manquants: cles };
 }
 
