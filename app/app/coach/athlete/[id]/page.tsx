@@ -288,7 +288,7 @@ export default async function PageAthlete({ params, searchParams }: {
     if (!p?.parametres || p.demarre_le) return [];
     return [{ planId: o.plan_id, nom: o.course_nom, parametres: parametresDuPlanV9({
       parametres: p.parametres as Record<string, unknown>, profil: { vc_ms: a.vc_ms, fc_seuil1: a.fc_seuil1, fc_seuil2: a.fc_seuil2 }, coache: true, accordLecture: Boolean(accord),
-      premierLundi: (p.depart_prevu as string | null) ?? prochainLundi(jour),
+      premierLundi: (p.depart_prevu as string | null) ?? prochainLundi(jour), reperesSources: a.reperes_sources, dPrime: a.d_prime_m,
     }, a.profil) }];
   }), lirePrerequisDuMoteur)).map((x) => ({ ...x, href: `/app/coach/nouveau?athlete=${a.id}&modifier=${x.planId}` })) : [];
   // Les tests que la v1 a écrits dans ses semaines et dont le résultat n'est pas saisi (lib/app/testsASaisir.ts) : « Saisir le résultat de son test de … », avec le geste qui mène à sa partie de la carte. La v1 ne les relit

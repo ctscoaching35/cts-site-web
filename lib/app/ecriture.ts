@@ -71,7 +71,7 @@ export type Etat = Record<string, unknown>;
 // reperesSources : la date de chaque repère d'un coaché (sa fiche), pour refaire ses tests tous les 6 mois.
 export type Objectif = Cible & {
   compteId: string; parametres: Record<string, unknown>; etat: Etat | null; accordLecture: boolean; coache: boolean;
-  compteAthlete: string | null; tempsH: number; reperesSources?: Record<string, { le?: string } | undefined>;
+  compteAthlete: string | null; tempsH: number; reperesSources?: Record<string, { le?: string; source?: string } | undefined>;
   dPrime?: number | null;
 };
 export type RetourSeance = {

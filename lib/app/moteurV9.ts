@@ -67,6 +67,9 @@ export type EntreesAthlete = {
   coaching?: boolean; entree?: string | null; course_precedente?: { date: string; duree_h: number } | null;
   // Ses courses de préparation (C5) : d'un coaché seulement ; vide, rien ne part.
   courses_mineures?: CourseMineure[] | null;
+  // Son dernier test de vitesse critique à deux efforts, d'un coaché (CONTRAT_API_CTS.md, 217 et 248) : sa D′ en mètres (`d_prime_m`) et sa date (`date_test_vc`), ensemble ou pas du tout. Avec `vc_ms`, le moteur en tire
+  // le profil rapide / endurant de la saison de fond et le moment du prochain test (26 semaines) ; absent, il fait comme sans test.
+  test_vc?: { date: string; d_prime_m: number } | null;
   // La cible du calculateur de l'app : une fourchette [bas, haut] ou un nombre, en g/h ; le moteur lit UN nombre (absent : 60).
   glucides?: [number, number] | number | null;
   accord_lecture?: boolean;
@@ -76,7 +79,7 @@ export type EntreesAthlete = {
 // l'intake d'avant la 9.1 (ils deviennent `criteres`).
 const RETIRES = ['niveau', 'habitude', 'terrain', 'critere_intensite', 'critere_denivele', 'strategie', 'glucides_cible'];
 // Ce que `parametresV9` écrit lui-même : la réponse du site, « 12 », ne passe pas telle quelle (le moteur lit un nombre).
-const REECRITS = [...RETIRES, 'cote_min', 'gpx'];
+const REECRITS = [...RETIRES, 'cote_min', 'gpx', 'd_prime_m', 'date_test_vc'];
 const CATEGORIES: Categorie[] = ['jamais', 'parfois', 'regulier'];
 const categorie = (v: unknown): Categorie | null => (CATEGORIES as unknown[]).includes(v) ? (v as Categorie) : null;
 
@@ -105,6 +108,10 @@ export function parametresV9(base: Record<string, unknown>, e: EntreesAthlete = 
   if (e.lu && (e.lu.volume_min || e.lu.sl_min)) sortie.lu = { ...(e.lu.volume_min ? { volume_min: e.lu.volume_min } : {}), ...(e.lu.sl_min ? { sl_min: e.lu.sl_min } : {}) };
   if (e.aisance) sortie.aisance = e.aisance;
   if (e.montees) sortie.montees = e.montees;
+  if (e.test_vc) {
+    sortie.d_prime_m = e.test_vc.d_prime_m;
+    sortie.date_test_vc = e.test_vc.date;
+  }
   const gpx = lireGpx(e.gpx ?? base.gpx);
   if (gpx) sortie.gpx = gpx;
   if (e.coaching) {

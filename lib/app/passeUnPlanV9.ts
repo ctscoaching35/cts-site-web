@@ -176,15 +176,28 @@ export async function poserLeQuestionnaireDuDimanche(c: ContextePlan, jour: stri
 const CATEGORIES = ['jamais', 'parfois', 'regulier'] as const;
 const categorie = (v: unknown) => ((CATEGORIES as readonly unknown[]).includes(v) ? (v as (typeof CATEGORIES)[number]) : undefined);
 
+// Les sources d'une vitesse critique mesurée par deux efforts : un test lu dans Nolio (`test`), saisi par son coach (`test_coach`) ou par l'athlète (`athlete`). Une allure tapée par son coach (`coach`) ou une métrique
+// reprise de Nolio (`nolio`) n'en est pas une.
+const A_DEUX_EFFORTS = ['test', 'test_coach', 'athlete'];
+
+// Le test de vitesse critique qui part au moteur : sa D′ et sa date, quand la VC envoyée vient d'un test à deux efforts ; sinon ni l'une ni l'autre, même avec une D′ gardée d'un test d'avant.
+function testDeVc(vc: unknown, repere: { le?: string; source?: string } | undefined, dPrime: unknown): { date: string; d_prime_m: number } | null {
+  const date = String(repere?.le ?? '').slice(0, 10);
+  if (typeof vc !== 'number' || !A_DEUX_EFFORTS.includes(repere?.source ?? '') || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  return typeof dPrime === 'number' && dPrime > 0 ? { date, d_prime_m: dPrime } : null;
+}
+
 /**
  * Les `parametres` de POST /v1/semaine pour un plan (CONTRAT_API_CTS.md, « MOTEUR v1 ») : les réponses du questionnaire d'achat (`parametres.champs`),
  * les tests de l'athlète tels que Nolio les a, et, d'un coaché, ce que son coach a rempli sur sa fiche (les deux critères, sa côte en minutes, le tapis).
  * Un acheteur n'a pas de fiche : ses critères manquent (le moteur lit « jamais » et le dit), sa côte vient de l'ancien terrain (la tranche).
  * `entree` : le lundi où un coaché entre (la première semaine de son plan) ; `course_precedente` n'est pas donnée (à brancher avec l'objectif mineur).
+ * `reperesSources`, `dPrime` : de la fiche d'un coaché ; avec eux, son test de vitesse critique à deux efforts part (`d_prime_m`, `date_test_vc` : testDeVc).
  */
-export function parametresDuPlanV9({ parametres, profil, coache, accordLecture, premierLundi, glucides = null }: {
+export function parametresDuPlanV9({ parametres, profil, coache, accordLecture, premierLundi, glucides = null, reperesSources, dPrime = null }: {
   parametres: Record<string, unknown>; profil: Record<string, number | null | undefined>; coache: boolean; accordLecture: boolean;
   premierLundi: string | null; glucides?: number | [number, number] | null;
+  reperesSources?: Record<string, { le?: string; source?: string } | undefined>; dPrime?: number | null;
 }, fiche: Record<string, string | string[]> | null): Record<string, unknown> {
   const champs = (parametres.champs ?? {}) as Record<string, unknown>;
   const tests = Object.fromEntries(['vc_ms', 'fc_seuil1', 'fc_seuil2'].flatMap((k) => (typeof profil[k] === 'number' && (profil[k] as number) > 0 ? [[k, profil[k]]] : [])));
@@ -197,6 +210,7 @@ export function parametresDuPlanV9({ parametres, profil, coache, accordLecture, 
     coaching: coache, entree,
     // Ses courses de préparation (C5) : le chrono visé en est la durée ; d'un coaché seulement.
     courses_mineures: coache ? coursesMineuresDe(parametres.courses_secondaires, entree) : null,
+    test_vc: coache ? testDeVc(tests.vc_ms, reperesSources?.vc_ms, dPrime) : null,
     glucides, accord_lecture: accordLecture,
   });
 }

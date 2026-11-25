@@ -41,5 +41,6 @@ export async function parametresDuObjectifV9(o: Objectif): Promise<Record<string
   const strategie = await strategieDeLaCourse(o.planId).catch(() => null);
   const glucides = (parametresAvecLaStrategie(o.parametres, strategie) as { glucides_cible?: unknown }).glucides_cible;
   return parametresDuPlanV9({ parametres, profil: o.profil as Record<string, number>, coache: o.coache, accordLecture: o.accordLecture,
-    premierLundi: o.plan.semaines.find((s) => s.lundi)?.lundi ?? null, glucides: typeof glucides === 'number' ? glucides : null }, fiche);
+    premierLundi: o.plan.semaines.find((s) => s.lundi)?.lundi ?? null, glucides: typeof glucides === 'number' ? glucides : null,
+    reperesSources: o.reperesSources, dPrime: o.dPrime }, fiche);
 }
