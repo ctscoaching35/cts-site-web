@@ -1,4 +1,5 @@
 import { refaireLesResumes } from '@/lib/app/ecriture';
+import { resumerLesSemainesDuV1 } from '@/lib/app/realiseDuV1';
 import { reperesDeNolio } from '@/lib/app/reperesNolio';
 import { resumerSemaines } from '@/lib/app/semainesNolio';
 import { supabaseConfigure } from '@/lib/app/supabase';
@@ -6,8 +7,9 @@ import { supabaseConfigure } from '@/lib/app/supabase';
 // La nuit (vercel.json, crons ; décisions coach du 20/10/2026, « tableau de bord complet » et « oui, chaque nuit ») : les
 // semaines que le moteur n'a pas écrites, résumées depuis Nolio pour chaque coaché qui a donné son accord
 // (lib/app/semainesNolio.ts), puis les deux dernières semaines écrites par le moteur, résumées à nouveau avec les
-// retours tardifs (refaireLesResumes). Vercel l'appelle avec le secret CRON_SECRET ; sans lui, rien ne bouge. Ce qui
-// n'est pas fait l'est la nuit suivante.
+// retours tardifs (refaireLesResumes). Sous le moteur v1 (9.x), les deux dernières semaines qu'il a écrites se résument
+// depuis Nolio (resumerLesSemainesDuV1 ; décisions 198 et 199). Vercel l'appelle avec le secret CRON_SECRET ; sans lui,
+// rien ne bouge. Ce qui n'est pas fait l'est la nuit suivante.
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
@@ -23,7 +25,9 @@ export async function GET(request: Request) {
   const echecs = comptes.filter((c) => c.erreur);
   // Sans l'athlète en clair : son identifiant Nolio, ou l'objectif, suffit à le retrouver.
   if (echecs.length) console.error('Semaines résumées :', echecs.map((c) => `${c.athlete} — ${c.erreur}`).join(' ; '));
-  const refaits = await refaireLesResumes(120_000).catch((e) => [{ plan: '', quoi: 'non refaits', erreur: e instanceof Error ? e.message : String(e) }]);
+  // L'un des deux rend une liste vide aussitôt, selon le moteur en ligne.
+  const nonRefaits = (e: unknown) => [{ plan: '', quoi: 'non refaits', erreur: e instanceof Error ? e.message : String(e) }];
+  const refaits = [...await refaireLesResumes(120_000).catch(nonRefaits), ...await resumerLesSemainesDuV1(120_000).catch(nonRefaits)];
   const echecsRefaits = refaits.filter((c) => c.erreur);
   if (echecsRefaits.length) console.error('Résumés refaits :', echecsRefaits.map((c) => `${c.plan} — ${c.erreur}`).join(' ; '));
   return Response.json({ athletes: comptes.length, echecs: echecs.length, refaits: refaits.length, echecs_refaits: echecsRefaits.length,

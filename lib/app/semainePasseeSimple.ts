@@ -5,10 +5,8 @@
  * ce que les écrans montraient avant.
  *
  * D'OÙ VIENT LE « RÉALISÉ » D'UNE SEMAINE (vérifié dans le code, 24/11/2026) :
- *   - `semaines_ecrites.realise` : écrit à un seul endroit, lib/app/ecriture.ts (`envoyerEtRanger`, `sortie.realise`, rendu par `POST /v1/semaine` de la 8.x), et rafraîchi chaque nuit par
- *     `refaireLesResumes` (`POST /v1/realise`). Sous le moteur v1 (9.x), `/v1/realise` est retirée (404) et `refaireLesResumes` rend [] ; la chaîne de la 9.x (lib/app/ecritureV9.ts,
- *     stockageV9.ts `garderUneEcriture`, passagesV9.ts) écrit la semaine, son état, son « pourquoi » et ses réponses, jamais `realise` ; `SortieV9` n'en a pas. Les deux seules autres
- *     écritures de la colonne la vident (retrait de l'accord : actionsSuivi.ts, ecriture.ts). Une semaine écrite par le moteur v1 n'a donc JAMAIS de réalisé ; ceux d'avant la 9.x restent.
+ *   - `semaines_ecrites.realise` : sous la 8.x, rendu par `POST /v1/semaine` (lib/app/ecriture.ts, `envoyerEtRanger`) et rafraîchi chaque nuit (`refaireLesResumes`) ; sous le moteur v1 (9.x), le moteur n'en rend plus,
+ *     et la nuit le tire de Nolio pour les semaines qu'il a écrites (lib/app/realiseDuV1.ts, décisions 198 et 199), avec l'accord de lecture, une fois la semaine finie. La semaine elle-même s'écrit sans (stockageV9.ts).
  *   - `semaines_athlete.realise` : écrit par `resumerSemaines` (lib/app/semainesNolio.ts, la nuit), pour les semaines que le moteur n'a PAS écrites (`lundisEcrits` saute celles de
  *     `semaines_ecrites`, la 9.x comprise : son `donnees.lundi` y est). C'est le cas de l'athlète programmé à la main et des semaines d'entre deux objectifs : leur réalisé existe encore
  *     sous la 9.x.
