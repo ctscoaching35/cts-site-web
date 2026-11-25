@@ -176,8 +176,8 @@ export function aFairePourLui(points: Point[], entree: Pick<Entree, 'etapes'>, p
     .map(({ point }) => point);
   return [...aFaire.map((point): LigneAFaire => ({ type: 'point', point })), ...alertes.map((alerte): LigneAFaire => ({ type: 'alerte', alerte })),
     ...tests.map((test): LigneAFaire => ({ type: 'test', test })),
-    // Sous la 9.x (décision 241), le départ se fait par « Lancer sa préparation », sur sa page : la ligne y mène (et non à la page de l'objectif).
-    ...lignes.map((ligne): LigneAFaire => ({ type: 'entree', ligne: ligne.cle === 'depart' && ligne.action ? { ...ligne, action: { ...ligne.action, href: '#lancer-sa-preparation' } } : ligne }))];
+    // Sous la 9.x (décision 241), le départ se fait par « Lancer sa préparation », sur sa page : la ligne en prend le nom et y mène (et non à la page de l'objectif).
+    ...lignes.map((ligne): LigneAFaire => ({ type: 'entree', ligne: ligne.cle === 'depart' && ligne.action ? { ...ligne, action: { texte: `${TEXTES_PAGE_ATHLETE.lancer} ›`, href: '#lancer-sa-preparation' } } : ligne }))];
 }
 
 // Ce qui arrive (niveau « À venir » : une course A dans Nolio, rien après l'objectif… ; plus de course de préparation, la 9.x ne la porte pas) : il quitte le haut de la page et va dans « Réglages ».
