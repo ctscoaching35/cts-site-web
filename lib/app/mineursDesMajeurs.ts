@@ -1,8 +1,9 @@
 // Aucun réseau ni base : les courses d'un coaché qui tombent dans la récupération d'une autre (scripts/test-mineurs-des-majeurs.mjs).
 /**
  * UNE COURSE 2 DANS LA RÉCUPÉRATION DE LA COURSE 1 EST UN OBJECTIF MINEUR (décision 241 du coach, 25/11/2026 ; doctrine C3, tranchée avec le moteur). « Dans la récupération » : sa date tombe avant le lundi de reprise que
- * le site calcule après la course 1 (lib/app/jonction.ts, debutApres : le `depart_prevu` qu'il lui donnerait). Sous la 9.x, elle ne se lance pas comme un majeur : le site l'envoie dans `courses_mineures` du plan de la
- * course 1 (sa durée : son chrono visé), et l'écran du coach le dit sous elle. Une course mineure n'ouvre pas sa propre récupération : la suivante se juge contre le dernier majeur.
+ * le site calcule après la course 1 (lib/app/jonction.ts, debutApres). Sous la 9.x, elle ne se lance pas comme un majeur, et l'écran du coach le dit sous elle. Une course part à l'appel qui écrit sa semaine (contrat du
+ * 25/11/2026) : le plan de la course 1 s'arrête à sa course, c'est donc LE PLAN SUIVANT, qui écrit cette récupération, qui la porte dans `courses_mineures` (sa durée : son chrono visé). Sans plan suivant, aucun appel ne
+ * l'écrit. Une course mineure n'ouvre pas sa propre récupération : la suivante se juge contre le dernier majeur.
  */
 import { debutApres } from './jonction';
 
@@ -29,8 +30,13 @@ export function majeurQuiCouvre<T extends MajeurDuCoache>(id: string, courses: T
   return classerLesCourses(courses).find((x) => x.course.id === id)?.mineureDe ?? null;
 }
 
-// Les courses qui tombent dans la récupération du majeur `id`, sous la forme des courses de préparation du site (`courses_secondaires` : date, chrono visé en heures, nom).
-export function mineursDuMajeur<T extends MajeurDuCoache>(id: string, courses: T[]): { date: string; temps_h: number | null; nom: string }[] {
-  return classerLesCourses(courses).filter((x) => x.mineureDe?.id === id)
+// Les courses que le plan `id` écrit sans être les siennes : celles qui tombent dans la récupération du majeur qui le précède, sous la forme des courses de préparation du site (`courses_secondaires` : date, chrono visé en heures, nom).
+export function mineursRecus<T extends MajeurDuCoache>(id: string, courses: T[]): { date: string; temps_h: number | null; nom: string }[] {
+  const rangees = classerLesCourses(courses);
+  const i = rangees.findIndex((x) => x.course.id === id);
+  if (i < 0 || rangees[i].mineureDe) return [];
+  const avant = rangees.slice(0, i);
+  const precedent = [...avant].reverse().find((x) => !x.mineureDe)?.course.id;
+  return avant.filter((x) => x.mineureDe && x.mineureDe.id === precedent)
     .map((x) => ({ date: x.course.course_date, temps_h: x.course.temps_h > 0 ? x.course.temps_h : null, nom: x.course.course_nom }));
 }

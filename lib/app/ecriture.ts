@@ -60,7 +60,7 @@ export { QUESTIONNAIRE_SEMAINE, type Questionnaire };
 import { seuilsSuivi } from './suivi';
 import type { FamilleLue, ProfilLu } from './classement';
 import { messageDoublon, objectifQuiCouvre } from './departs';
-import { debutApres, departCalcule, dureeTexte, enReprise, heuresDuTemps as heures, lundiDuRythme, partApres, partEnSuite,
+import { debutApres, departCalcule, dureeTexte, enReprise, heuresDuTemps as heures, lundiApresLaCourse, lundiDuRythme, partApres, partEnSuite,
   precedentDuDepart, saisonEnReprise, slApresCourse, enUneLigne, texteDeLaSuite, texteDepartLundiApres, type ObjectifVoisin } from './jonction';
 
 export { debutApres };
@@ -1015,7 +1015,7 @@ export const aujourdhuiParis = () => new Intl.DateTimeFormat('en-CA', { timeZone
 // première), et pour un acheteur sa place dans le groupe « Plans CTS » et sa sortie programmée (P2, P3).
 // prevu : le départ programmé, après la récupération d'un autre objectif (OM4) ou après les séances que le coach a déjà
 // posées à la main (PC1) ; apres : la course, ou la date de la dernière de ces séances.
-export type Depart = { numero: string } | { prevu: string; apres: string; raison: 'recuperation' | 'seances' | 'preparation' };
+export type Depart = { numero: string } | { prevu: string; apres: string; raison: 'recuperation' | 'seances' | 'preparation' | 'apres_la_course' };
 
 // PC1 (décision coach du 19/10/2026) : un coaché à qui le coach a déjà posé des séances à la main ; rien n'est écrasé,
 // l'écriture commence le lundi qui suit la dernière d'entre elles. null : rien de posé d'ici la course (hors ce que
@@ -1042,6 +1042,16 @@ export async function seancesDejaPosees(o: Objectif, aujourdhui: string, jusqua 
   if (!derniere) return null;
   const rang = (new Date(`${derniere}T12:00:00Z`).getUTCDay() + 6) % 7;
   return { derniere, lundi: ajouterJours(derniere, 7 - rang) };
+}
+
+// SOUS LE MOTEUR v1, d'un coaché : la course d'avant dont la récupération n'est pas finie, et le lundi qui la suit — ce plan y partira et l'écrira (departCalcule, « apres_la_course »), avant la première semaine de
+// son plan d'achat : les écrans ne disent alors pas « au plus tôt » d'après celle-ci. null sinon (et sous la 8.x).
+export async function recuperationAEcrire(planId: string): Promise<{ lundi: string; course: string } | null> {
+  const o = await objectifEcrit(planId);
+  if (!o?.coache || !(await moteurEstV9())) return null;
+  const aujourdhui = aujourdhuiParis();
+  const apres = precedentDuDepart(o.plan.course.date, await autresObjectifs(o), aujourdhui);
+  return apres && apres.lundi > aujourdhui ? { lundi: lundiApresLaCourse(apres.q.course_date), course: apres.q.course_nom } : null;
 }
 
 // Ce que le bouton « Démarrer dans Nolio » annonce avant le clic (PC1) : la date où l'écriture commencera.
@@ -1101,8 +1111,10 @@ export async function demarrerObjectif(planId: string, { prevenir = true, lundi,
   // le départ se programme au premier lundi de sa préparation (la veille au soir, comme les autres). Après la course d'un
   // autre objectif aussi, quand sa semaine 1 commence plus d'une semaine après la reprise (décision 12 du 07/11/2026,
   // « A », lib/app/jonction.ts) : la saison de fond tourne entre-temps.
+  // Sous le moteur v1, la récupération de la course d'avant est écrite par CE plan : il part le lundi qui suit cette course, et non à la reprise (lib/app/jonction.ts, departCalcule).
+  const sousLaV1 = o.coache && (await moteurEstV9());
   const calcule = departCalcule({ aujourdhui, debut: debut.lundi, premierJour, lundi, posees,
-    apres: apres ? { lundi: apres.lundi, nom: apres.q.course_nom } : null });
+    apres: apres ? { lundi: apres.lundi, nom: apres.q.course_nom, ...(sousLaV1 ? { recuperation: lundiApresLaCourse(apres.q.course_date) } : {}) } : null });
   // LE DÉPART CHOISI PAR LE COACH (décision coach du 22/10/2026 : « en coaching individuel, il faut plus de liberté ») :
   // un lundi plus tard que le premier possible, par exemple après un objectif qu'il prépare à la main. Plus tôt, le
   // premier possible l'emporte : la préparation n'a pas de semaine avant, ses séances posées et la récupération d'un
@@ -1123,7 +1135,10 @@ export async function demarrerObjectif(planId: string, { prevenir = true, lundi,
   }
   // La première semaine : celle d'aujourd'hui, ou, partie la veille, la première à partir du lundi qui vient.
   const debutReel = o.plan.semaines.find((s) => s.lundi && ajouterJours(s.lundi, 6) >= jourDeDepart) ?? debut;
-  const premiere = prevu ? o.plan.semaines.find((s) => s.lundi && ajouterJours(s.lundi, 6) >= prevu.prevu) : debutReel;
+  // Un départ pendant cette récupération (v1) : sa première semaine est celle du départ, même avant la première semaine de son plan d'achat (la trame du moteur la place depuis `entree` et `course_precedente`).
+  const lundiDeRecuperation = sousLaV1 && apres && lundiDe(prevu?.prevu ?? jourDeDepart) < apres.lundi ? lundiDe(prevu?.prevu ?? jourDeDepart) : null;
+  const duPlan = prevu ? o.plan.semaines.find((s) => s.lundi && ajouterJours(s.lundi, 6) >= prevu.prevu) : debutReel;
+  const premiere = lundiDeRecuperation ? { ...(duPlan ?? debut), lundi: lundiDeRecuperation } : duPlan;
   if (!premiere?.lundi) throw new Error('La course est passée.');
   const depart = prevu ? prevu.prevu : jourDeDepart;
   // LE GARDE-FOU DES DÉPARTS EN DOUBLE (05/11/2026 au soir, lib/app/departs.ts) : un autre objectif du même athlète déjà

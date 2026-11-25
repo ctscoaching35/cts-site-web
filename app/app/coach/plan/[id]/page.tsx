@@ -14,7 +14,7 @@ import { garderObjectif, retirerObjectif } from '@/lib/app/actionsCoaching';
 import { objectifCoache, verifierEnvois } from '@/lib/app/coaching';
 import { courseNolio } from '@/lib/app/coursesNolio';
 import { demandesDuCoach } from '@/lib/app/demandes';
-import { annonceDepart, continuiteDe, PAS_UN_AJUSTEMENT, trameDuPlan, type Realise } from '@/lib/app/ecriture';
+import { annonceDepart, continuiteDe, PAS_UN_AJUSTEMENT, recuperationAEcrire, trameDuPlan, type Realise } from '@/lib/app/ecriture';
 import { texteProgrammeApres } from '@/lib/app/jonction';
 import { moteurEstV9 } from '@/lib/app/moteurEnLigne';
 import { motsDuCoach } from '@/lib/app/motsDuCoach';
@@ -91,7 +91,9 @@ export default async function ObjectifCoache({ params, searchParams }: {
   const annonce = ecriture?.parametres && !ecriture.demarre_le && !ecriture.depart_prevu && nolio ? await annonceDepart(id) : null;
   // Un objectif lointain (décision coach du 22/10/2026) : sa préparation commence plus tard, le départ s'y programme.
   const debutPrepa = o.plan.semaines.find((s) => s.lundi && ajouterJours(s.lundi, 6) >= jour)?.lundi ?? null;
-  const lointain = Boolean(ecriture?.parametres && !ecriture.demarre_le && !ecriture.depart_prevu && debutPrepa
+  // Sous le moteur v1, un objectif qui suit une course dont la récupération n'est pas finie partira le lundi d'après cette course : pas de « au plus tôt » d'après son plan d'achat.
+  const surRecuperation = v9 && ecriture?.parametres && !ecriture.demarre_le && !ecriture.depart_prevu ? await recuperationAEcrire(id).catch(() => null) : null;
+  const lointain = Boolean(!surRecuperation && ecriture?.parametres && !ecriture.demarre_le && !ecriture.depart_prevu && debutPrepa
     && debutPrepa > ajouterJours(jour, 1) && (!annonce || annonce.lundi <= debutPrepa));
   // Le lundi du départ, au choix du coach (décision coach du 22/10/2026) : du premier possible à celui de la semaine de
   // course ; affiché, celui qui s'appliquerait.

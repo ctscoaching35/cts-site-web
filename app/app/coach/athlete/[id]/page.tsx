@@ -55,6 +55,7 @@ import { enHeures } from '@/lib/app/tableau';
 import { PROFIL_VIDE, profilCoureur, type Profil } from '@/lib/app/zones';
 import { reperesDeBase } from '@/lib/app/reperes';
 import { demonstrationCoachOuverte } from '@/lib/app/demonstrationCoach';
+import { recuperationAEcrire } from '@/lib/app/ecriture';
 import { modeAppGratuite } from '@/lib/app/gratuitRegles';
 import { clientService, espaceCoachOuvert } from '@/lib/app/supabase';
 import type { CourseSecondaire } from '@/lib/app/tableauDuPlan';
@@ -322,6 +323,10 @@ export default async function PageAthlete({ params, searchParams }: {
   ) : null;
   // « CE QUE J'AI BESOIN DE SAVOIR » (décision 241 du coach, 25/11/2026, moment 2) : le coureur et son objectif en cours (le prochain à venir), puis « Lancer sa préparation » s'il n'a pas démarré. Les mêmes
   // données que le reste de la page : sa fiche, et de cet objectif ses réponses (`parametres.champs`, ce que la v1 lit) par-dessus celles de son achat.
+  // Un objectif à lancer qui suit une course dont la récupération n'est pas finie (v1) : il partira le lundi d'après cette course, et non au début de son plan d'achat.
+  const aLancer = v9 ? objectifsAVenir[0] : undefined;
+  const planALancer = aLancer ? parPlan.get(aLancer.plan_id) : undefined;
+  const surRecuperation = aLancer && planALancer?.parametres && !planALancer.demarre_le ? await recuperationAEcrire(aLancer.plan_id).catch(() => null) : null;
   const carte = ((): { savoir: Omit<React.ComponentProps<typeof CarteSavoir>, 'zonesEtStyle'>; lancer: React.ComponentProps<typeof LancerSaPreparation> } | null => {
     if (!v9) return null;
     const o = objectifsAVenir[0] ?? null;
@@ -351,7 +356,7 @@ export default async function PageAthlete({ params, searchParams }: {
           complet: etatCarte.complet, nolio: Boolean(a.nolio_athlete_id), accord: Boolean(accord), aLaMain,
         }),
         alertes: alertes.filter((x) => x.planId === o?.plan_id).flatMap((x) => x.phrases),
-        premier: lundiProchain, dernier: lundiDeSaCourse, plusTot: auPlusTot(p?.debut_plan as string | null | undefined, jour),
+        premier: lundiProchain, dernier: lundiDeSaCourse, plusTot: surRecuperation ? (surRecuperation.lundi > jour ? surRecuperation.lundi : null) : auPlusTot(p?.debut_plan as string | null | undefined, jour),
       },
     };
   })();

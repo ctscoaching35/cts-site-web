@@ -52,6 +52,10 @@ export async function demarrerDansNolio(planId: string, _e: EtatGeste, formulair
       if (depart.raison === 'preparation') {
         return { ok: true, message: `Programmé : sa préparation commence le lundi ${le(depart.prevu)}. Sa première semaine partira toute seule la veille, le dimanche soir, calée sur ce qu’il court alors ; d’ici là, rien ne s’écrit pour cet objectif.` };
       }
+      // Sous le moteur v1, il part le lundi qui suit la course d'avant et écrit lui-même sa récupération (departCalcule, « apres_la_course »).
+      if (depart.raison === 'apres_la_course') {
+        return { ok: true, message: `Programmé : un objectif à la fois. Il démarrera tout seul le ${le(depart.prevu)}, le lundi après ${depart.apres}, et commencera par sa récupération.` };
+      }
       return { ok: true, message: depart.raison === 'seances'
         ? `Programmé : tes séances déjà posées vont jusqu’au ${le(depart.apres)}. Sa première semaine partira toute seule la veille du lundi ${le(depart.prevu)}, le dimanche soir ; rien n’est écrasé.`
         : `Programmé : un objectif à la fois. Il démarrera tout seul le ${le(depart.prevu)}, après la récupération de ${depart.apres}.` };

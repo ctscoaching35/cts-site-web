@@ -17,6 +17,9 @@ export function debutApres(q: { course_date: string; temps_h: number; format?: s
   return ajouterJours(fin, 7 - rangDuJour(fin));
 }
 
+// Le lundi qui suit la semaine d'une course : le premier de sa récupération.
+export const lundiApresLaCourse = (courseDate: string) => ajouterJours(lundiDe(courseDate), 7);
+
 // La reprise allégée : la première semaine écrite suit de près la récupération, au plus une semaine après le lundi de
 // reprise (pas une préparation qui commence des semaines plus tard, QD2).
 export const enReprise = (lundiReprise: string, premier: string) => lundiReprise >= ajouterJours(premier, -7);
@@ -31,12 +34,21 @@ export const preparationLointaine = (debutPreparation: string, lundiReprise: str
 // (OM4), sauf une préparation lointaine ; après les séances que le coach a déjà posées (PC1) ; au premier lundi d'une
 // préparation qui commence plus tard (décision coach du 22/10/2026) ; au lundi programmé. null : il part maintenant.
 // debut : le lundi de la première semaine pas encore finie du plan ; premierJour : le jour où sa première semaine partirait.
-export type Programme = { prevu: string; apres: string; raison: 'recuperation' | 'seances' | 'preparation' };
+// apres.recuperation : SOUS LE MOTEUR v1 seulement (contrat du 25/11/2026), le lundi qui suit la course d'avant. Le plan suivant écrit lui-même cette récupération (`course_precedente`) et les courses qui y tombent
+// (`courses_mineures`) : tant qu'elle n'est pas finie (avant apres.lundi, la reprise), il part ce lundi-là, préparation lointaine comprise (le moteur comble l'écart), après les séances que le coach a posées.
+export type Programme = { prevu: string; apres: string; raison: 'recuperation' | 'seances' | 'preparation' | 'apres_la_course' };
 export function departCalcule(x: {
   aujourdhui: string; debut: string; premierJour: string; lundi?: string;
-  apres: { lundi: string; nom: string } | null; posees: { lundi: string; derniere: string } | null;
+  apres: { lundi: string; nom: string; recuperation?: string } | null; posees: { lundi: string; derniere: string } | null;
 }): Programme | null {
   const { aujourdhui, debut, premierJour, lundi, apres, posees } = x;
+  if (apres?.recuperation && apres.lundi > aujourdhui) {
+    // Sa première semaine partirait ce jour-là (la semaine 1 de son plan d'achat ne compte pas ici).
+    const departLe = apres.recuperation > aujourdhui ? apres.recuperation : aujourdhui;
+    if (posees && posees.lundi > departLe) return { prevu: posees.lundi, apres: posees.derniere, raison: 'seances' };
+    if (apres.recuperation > aujourdhui) return { prevu: apres.recuperation, apres: apres.nom, raison: 'apres_la_course' };
+    return lundi && lundi > aujourdhui ? { prevu: lundi, apres: aujourdhui, raison: 'seances' } : null;
+  }
   if (apres && apres.lundi > aujourdhui && (!posees || apres.lundi >= posees.lundi) && !preparationLointaine(debut, apres.lundi)) {
     return { prevu: apres.lundi, apres: apres.nom, raison: 'recuperation' };
   }

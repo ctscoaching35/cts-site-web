@@ -5,13 +5,13 @@
 import { clientService } from './supabase';
 import type { Objectif } from './ecriture';
 import { heuresDuTemps } from './jonction';
-import { mineursDuMajeur, type MajeurDuCoache } from './mineursDesMajeurs';
+import { mineursRecus, type MajeurDuCoache } from './mineursDesMajeurs';
 import { parametresDuPlanV9 } from './passeUnPlanV9';
 import { profilDeLaFiche } from './profilEntrainement';
 import { strategieDeLaCourse } from './strategie';
 import { parametresAvecLaStrategie } from './strategieMoteur';
 
-// Les autres courses d'un coaché qui tombent dans la récupération de celle de ce plan (241, C3) : elles partent avec ses courses de préparation (`courses_mineures`). Une lecture qui échoue n'en ajoute pas.
+// Les courses d'un coaché qui tombent dans la récupération de son objectif d'avant (241, C3) : ce plan écrit cette récupération, elles partent avec ses courses de préparation (`courses_mineures`). Une lecture qui échoue n'en ajoute pas.
 async function mineursDeCePlan(athleteId: string): Promise<(planId: string) => { date: string; temps_h: number | null; nom: string }[]> {
   const service = clientService();
   const { data: liens } = await service.from('coaching').select('plan_id').eq('athlete_id', athleteId);
@@ -23,12 +23,12 @@ async function mineursDeCePlan(athleteId: string): Promise<(planId: string) => {
     return { id: p.id as string, course_nom: p.course_nom as string, course_date: p.course_date as string, temps_h: heuresDuTemps(champs.temps_cible),
       format: String(champs.format ?? ''), fond: Boolean((p.parametres as { fond?: unknown } | null)?.fond) };
   });
-  return (planId) => mineursDuMajeur(planId, courses);
+  return (planId) => mineursRecus(planId, courses);
 }
 
 export async function parametresDuObjectifV9(o: Objectif): Promise<Record<string, unknown>> {
   let fiche: Record<string, string | string[]> | null = null;
-  // Les courses de préparation du plan, et, d'un coaché, ses autres courses qui tombent dans la récupération de celle-ci (une course gardée avec le plan passe avant : même date, une seule fois).
+  // Les courses de préparation du plan, et, d'un coaché, ses autres courses qui tombent dans la récupération que ce plan écrit (une course gardée avec le plan passe avant : même date, une seule fois).
   let parametres = o.parametres;
   if (o.coache) {
     const { data } = await clientService().from('coaching').select('athlete_id').eq('plan_id', o.planId).maybeSingle();
