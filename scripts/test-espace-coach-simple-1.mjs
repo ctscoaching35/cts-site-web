@@ -132,12 +132,13 @@ test('« À faire » garde le geste et le « Réglé » d’« Urgent » : les m
   assert.ok(!/\bUrgent\b/.test(c.split('\n').filter((l) => !l.startsWith('//')).join('\n')));
 });
 
-test('« Mes athlètes » sous la 9.x : « À faire » est avant la liste, sur les mêmes données qu’« Urgent » ; sous la 8.x, rien ne s’y ajoute', () => {
+test('« Mes athlètes » sous la 9.x : une liste, un mot par coaché (241) ; les séries du samedi restent dites tant qu’il y en a ; sous la 8.x, le tableau d’avant', () => {
   const p = source('app/app/coach/page.tsx');
   assert.match(p, /const v9 = await moteurEstV9\(\)\.catch\(\(\) => false\);/);
-  assert.match(p, /\{v9 && <AFaire lignes=\{aFaireDe\(espace\.urgent\)\} series=\{series\} \/>\}/);
-  assert.ok(p.indexOf('<AFaire') > -1 && p.indexOf('<AFaire') < p.indexOf('<TableauAthletes'), '« À faire » est avant la liste des athlètes');
-  assert.ok(p.indexOf('<CarteDemandes />') < p.indexOf('<AFaire'), 'en tête, juste après la demande de coaching qui attend');
+  assert.match(p, /\{v9 \? <ListeSimple lignes=\{mots\} \/> : <TableauAthletes lignes=\{lignes\} jour=\{jour\} passee=\{vue\.semainePassee\} filtre=\{filtre\} v9=\{v9\} \/>\}/);
+  assert.match(p, /const mots = v9 \? await lireLesMots\(clientService\(\), coach\.compteId, espace\.lignes, jour\) : \[\];/);
+  assert.match(p, /\{v9 && series > 0 && <AFaire lignes=\{\[\]\} series=\{series\} \/>\}/);
+  assert.ok(p.indexOf('<CarteDemandes />') < p.indexOf('<ListeSimple'), 'après la demande de coaching qui attend');
   assert.match(p, /const series = await lesSeriesAFaire\(coach\.compteId, v9\);/);
   assert.equal((p.match(/<AFaire/g) ?? []).length, 1);
   // Le lien des séries du samedi passe par « À faire » : la page ne lit pas le module des séries elle-même (scripts/test-series-du-samedi.mjs).
@@ -213,8 +214,8 @@ test('le bandeau du dimanche : sous la 9.x, ce qui est parti seulement ; ni les 
   assert.match(p, /\{bilan && !v9 && \(\s*<Link href="\/app\/coach\/urgent" className="flex items-center justify-between gap-3 bg-indigo text-white rounded-\[14px\] p-4">/);
   assert.match(p, /texteBilan\(bilan\.parties, bilan\.pasParties, espace\.urgents\)/);
   assert.match(p, /<span className="text-xs text-\[#D6D5E6\] whitespace-nowrap">Urgent ›<\/span>/);
-  assert.match(p, /const bilanV9 = v9 && bilan \? texteBilanV9\(bilan\.parties\) : null;/);
-  assert.match(p, /\{bilanV9 && bilan && \(\s*<div className="bg-indigo text-white rounded-\[14px\] p-4 text-sm">/, 'sous la 9.x, un bandeau qui n’est pas un lien');
+  // Sous la 9.x, plus de bandeau du tout (241 : « rien d'autre sur la page ») : le mot de chaque coaché le dit.
+  assert.ok(!/bilanV9|texteBilanV9/.test(p));
 });
 
 test('le sous-titre de « Mes athlètes » : celui d’avant sous la 8.x, « ce qui t’attend, puis tes athlètes » sous la 9.x', () => {

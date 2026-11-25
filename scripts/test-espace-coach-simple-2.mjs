@@ -518,8 +518,9 @@ test('les textes nouveaux : apostrophe typographique, phrases courtes, mots simp
 
 test('aucun texte nouveau n’est lu par un athlète : le fichier et les trois composants ne sont lus que par l’espace coach', () => {
   const grep = (motif, ...dossiers) => execFileSync('grep', ['-rlE', motif, ...dossiers], { cwd: RACINE, encoding: 'utf8' }).split('\n').filter(Boolean).sort();
-  assert.deepEqual(grep("from '[^']*pageAthleteSimple'", 'app', 'components', 'lib'), [
-    PAGE, 'components/app/CarteCoureur.tsx', 'components/app/CoursesDePreparation.tsx', 'components/app/ObjectifsAVerifier.tsx', 'components/app/PointsPourLui.tsx',
+  // « Mes athlètes » (un mot par coaché, 241) en lit la vérification de l'objectif (lib/app/motsDesCoaches.ts), pour le coach seul.
+  assert.deepEqual(grep("from '[^']*pageAthleteSimple'", 'app', 'components', 'lib').concat(grep("from '\\./pageAthleteSimple'", 'lib')).sort().filter((f, i, a) => a.indexOf(f) === i), [
+    PAGE, 'components/app/CarteCoureur.tsx', 'lib/app/motsDesCoaches.ts', 'components/app/CoursesDePreparation.tsx', 'components/app/ObjectifsAVerifier.tsx', 'components/app/PointsPourLui.tsx',
   ].sort());
   for (const nom of ['CarteCoureur', 'ObjectifsAVerifier', 'PointsPourLui']) {
     const lecteurs = grep(`components/app/${nom}'`, 'app', 'components', 'lib');
