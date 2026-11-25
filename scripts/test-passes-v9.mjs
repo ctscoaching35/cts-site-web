@@ -72,7 +72,7 @@ function contexte({ echanges = [], etat = etatMod.ETAT_VIDE, derniere = null, no
     planId: 'p1', coache, accordLecture, parametres, ports, etat, derniere,
     lireLeDepart: async (lundi) => { j.depart.push(lundi); if (panne) throw new Error('Nolio ne répond pas'); return lu; },
     garderLu: async (x) => { j.lusGardes.push(x); },
-    lireNolio: async (lundi, avec) => { j.nolio.push([lundi, avec]); return nolio; },
+    lireNolio: async (lundi, avec, depart) => { j.nolio.push(depart ? [lundi, avec, true] : [lundi, avec]); return nolio; },
     lireLesReponses: async (numero, p) => { j.lectures.push([numero, p]); return reponses ? { reponses, illisibles: [] } : null; },
     questionnaireDe: async () => pose,
     envoyer: async (e) => { j.envoyees.push(e.numero); },
@@ -89,7 +89,7 @@ function contexte({ echanges = [], etat = etatMod.ETAT_VIDE, derniere = null, no
 
 // ─── Le dimanche soir ───────────────────────────────────────────────────────────────────────────────
 
-test('dimanche soir, la première semaine : sans état ni Nolio ; les réponses d’avant la première se cherchent par leur nom', async () => {
+test('dimanche soir, la première semaine : sans état ; ses séances prévues d’avant son entrée se lisent (240) ; les réponses d’avant la première se cherchent par leur nom', async () => {
   const { c, j, ports } = contexte({ echanges: [F.trame, F['semaine-1']] });
   const r = await passes.ecrireLaSemaineDuLundi(c, LUNDI_1);
   assert.deepEqual(r, { quoi: 'S1 écrite' });
@@ -98,7 +98,7 @@ test('dimanche soir, la première semaine : sans état ni Nolio ; les réponses 
   assert.equal(j.ecritures[0][0], 1);
   assert.deepEqual(j.ecritures[0][1].ecrites, [{ numero: 1, etatAvant: null }]);
   assert.deepEqual(j.lectures, [[0, null]]);
-  assert.deepEqual(j.nolio, [], 'rien à lire de Nolio avant la première semaine');
+  assert.deepEqual(j.nolio, [[LUNDI_1, false, true]], 'le premier passage lit les semaines d’avant l’entrée (240)');
 });
 
 test('dimanche soir, la deuxième : Nolio lu jusqu’à la semaine écoulée, la réponse du dimanche, l’état rendu ; envoyée puis gardée, dans cet ordre', async () => {
