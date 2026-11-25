@@ -467,9 +467,12 @@ export function CetteSemaine({ semaine, ligne, nolio = null, arrivee = null, dep
     nom: nomPourLAthlete(x.nom), duree: x.minutes !== null ? enHeures(x.minutes) : null });
   const ligneJour = (j: JourLu) => ligneDeSemaine({ cle: j.id, date: j.date_iso, jourTexte: j.jour, couleur: couleurDuJour(j),
     nom: nomPourLAthlete(j.nom ?? j.seance), duree: j.duree || null });
+  // Le renfo qui partage le jour d'une séance a sa propre ligne, à la même date, comme lu dans Nolio.
+  const ligneRenfo = (j: JourLu) => (j.renfoDuJour ? ligneDeSemaine({ cle: `${j.id}:renfo`, date: j.date_iso, jourTexte: j.jour, couleur: couleurDuJour({ ...j, famille: 'ef', couleur: undefined }),
+    nom: nomPourLAthlete(j.renfoDuJour.nom), duree: j.renfoDuJour.duree !== '—' ? j.renfoDuJour.duree : null }) : null);
   const note = (texte: string) => <p className="mt-2.5 p-3 rounded-xl bg-sand text-xs text-[#4A4866] leading-relaxed">{texte}</p>;
   // Les noms des séances affichées, dans le même ordre que les branches ci-dessous (sans accord de lecture : aucune).
-  const affichees = sansAccord ? [] : nolio ? nolio.map((x) => x.nom) : jours.length ? jours.map((j) => j.nom ?? j.seance)
+  const affichees = sansAccord ? [] : nolio ? nolio.map((x) => x.nom) : jours.length ? jours.flatMap((j) => [j.nom ?? j.seance, ...(j.renfoDuJour ? [j.renfoDuJour.nom] : [])])
     : ligne ? ligne.seances_cles.map((c) => c.nom ?? c.seance) : [];
   const lexique = motsDeLaSemaine(affichees);
   return (
@@ -507,7 +510,7 @@ export function CetteSemaine({ semaine, ligne, nolio = null, arrivee = null, dep
           {nolio.map(ligneNolio)}
         </ul>
       ) : jours.length > 0 ? (
-        <ul>{jours.map(ligneJour)}</ul>
+        <ul>{jours.flatMap((j) => [ligneJour(j), ligneRenfo(j)])}</ul>
       ) : !ligne ? null : (
         <div className="space-y-1">
           <p className="text-sm text-indigo">{enHeures(Math.round(ligne.volume_h * 60))} de volume prévu{ligne.week_end_choc ? ' · week-end choc' : ''}</p>

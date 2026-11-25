@@ -14,7 +14,9 @@ import { enHeures } from './tableau';
 
 // Ce que les écrans lisent d'un jour ; une `Jour` de la 8.x l'a (c'est un sous-ensemble de ses champs), un jour du moteur v1 aussi.
 export type JourLu = Pick<Jour, 'id' | 'jour' | 'date' | 'date_iso' | 'seance' | 'duree' | 'rpe' | 'famille'>
-  & Partial<Pick<Jour, 'nom' | 'couleur' | 'terrain' | 'reperes' | 'placement' | 'ajuste' | 'adaptation'>>;
+  & Partial<Pick<Jour, 'nom' | 'couleur' | 'terrain' | 'reperes' | 'placement' | 'ajuste' | 'adaptation'>>
+  // Moteur v1 : le renfo qui partage le jour d'une séance (244), à montrer en seconde ligne, comme dans Nolio. Un jour qui n'a que lui est lui-même le renfo.
+  & { renfoDuJour?: { nom: string; duree: string; rpe: string } };
 export type SemaineLue = Pick<Semaine, 'numero' | 'numero_int' | 'type' | 'bloc' | 'volume' | 'seances' | 'dates' | 'progression' | 'passee' | 'lundi'>
   & Partial<Pick<Semaine, 'theme' | 'reprise_apres_course' | 'reprise_arret' | 'pourquoi'>> & { jours: JourLu[]; moteur?: string };
 
@@ -53,15 +55,18 @@ const ajouterJours = (iso: string, n: number) => new Date(Date.parse(`${iso}T12:
 function jourLuV9(numero: number, j: JourV9): JourLu {
   const jour = String(j.jour ?? '').toLowerCase();
   // Un jour sans autre séance qui porte un renfo (244 : il peut tomber un jour non donné pour courir) : c'est le renfo qu'on lit, pas « Repos ». L'identifiant reste celui du jour (« S9-jeudi »),
-  // que la comparaison avec Nolio retrouve depuis « S9-jeudi:renfo ». Un jour qui a une séance la montre seule, comme avant.
+  // que la comparaison avec Nolio retrouve depuis « S9-jeudi:renfo ». Un jour qui a aussi une séance : la séance, puis le renfo (renfoDuJour).
   const s = j.seance ?? (j.renfo?.titre ? j.renfo : null);
   const iso = typeof j.date === 'string' ? j.date : null;
-  const minutes = s ? Math.round(s.duree_min ?? s.dose_min ?? 0) : 0;
+  const minutesDeLa = (x: SeanceV9) => Math.round(x.duree_min ?? x.dose_min ?? 0);
+  const minutes = s ? minutesDeLa(s) : 0;
+  const r = j.seance && j.renfo?.titre ? j.renfo : null;
   return {
     id: j.seance?.id ?? `S${numero}-${jour}`, jour: jour ? jour[0].toUpperCase() + jour.slice(1) : '', date_iso: iso,
     date: iso ? `${JOURS_COURTS[jour] ?? ''} ${jjmm(iso)}`.trim() : '', seance: s ? String(s.titre ?? '') : 'Repos', nom: s ? String(s.titre ?? '') : undefined,
     duree: s && minutes ? enHeures(minutes) : '—', rpe: s && typeof s.rpe === 'number' ? String(s.rpe) : '—',
     famille: s ? FAMILLE[String(s.famille)] ?? 'ef' : 'repos', terrain: s?.terrain ? String(s.terrain) : '',
+    ...(r ? { renfoDuJour: { nom: String(r.titre), duree: minutesDeLa(r) ? enHeures(minutesDeLa(r)) : '—', rpe: typeof r.rpe === 'number' ? String(r.rpe) : '—' } } : {}),
   };
 }
 

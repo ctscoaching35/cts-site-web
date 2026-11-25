@@ -15,6 +15,13 @@ export function JoursEcrits({ semaine, effortVise }: { semaine: Pick<SemaineLue,
           <span className={j.famille === 'repos' ? 'text-indigo/40' : 'text-indigo font-semibold'}>
             {j.nom ?? j.seance}
             {j.famille !== 'repos' && j.duree !== '—' && <span className="font-normal text-indigo/55"> · {j.duree}{j.rpe !== '—' ? ` · ${effortVise ? effortVise(j.rpe) : `RPE ${j.rpe}`}` : ''}</span>}
+            {/* Le renfo du même jour (244), après sa séance, comme dans Nolio. */}
+            {j.renfoDuJour && (
+              <span className="block mt-0.5">
+                {j.renfoDuJour.nom}
+                <span className="font-normal text-indigo/55"> · {j.renfoDuJour.duree}{j.renfoDuJour.rpe !== '—' ? ` · ${effortVise ? effortVise(j.renfoDuJour.rpe) : `RPE ${j.renfoDuJour.rpe}`}` : ''}</span>
+              </span>
+            )}
           </span>
         </li>
       ))}

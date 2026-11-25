@@ -235,8 +235,10 @@ export async function semainesDetaillees(ctx: Contexte, trame: LigneTrame[], jou
     else if (lueEnCours.raison === 'sans_accord') encours = 'dans_nolio';
     else {
       const jours = ((await semaineEcrite(ctx, enCours.numero).catch(() => null))?.jours ?? []).filter((j) => j.famille !== 'repos' && j.seance);
-      encours = jours.length ? { seances: jours.map((j) => ({ cle: j.id, date: j.date_iso ?? null, jour: j.jour, nom: j.seance,
-        minutes: minutesDe(j.duree ?? '') || null })) } : null;
+      // Le renfo qui partage le jour d'une séance est une ligne de plus, comme lu dans Nolio.
+      encours = jours.length ? { seances: jours.flatMap((j) => [{ cle: j.id, date: j.date_iso ?? null, jour: j.jour, nom: j.seance,
+        minutes: minutesDe(j.duree ?? '') || null }, ...(j.renfoDuJour ? [{ cle: `${j.id}:renfo`, date: j.date_iso ?? null, jour: j.jour, nom: j.renfoDuJour.nom,
+        minutes: minutesDe(j.renfoDuJour.duree) || null }] : [])]) } : null;
     }
   }
   const ecrite: SemaineDetaillee = !lueSuivante ? null : lueSuivante.seances ? deNolio(lueSuivante.seances)
