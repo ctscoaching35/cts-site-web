@@ -71,7 +71,8 @@ export default async function MesAthletes({ searchParams }: { searchParams: Prom
           {/* Maquette validée par le coach le 08/11/2026 */}
           <p className="mt-1.5 text-sm text-[#5E5C78] first-letter:uppercase">{dateLongue(jour)} · {v9 ? TEXTES_A_FAIRE.sousTitre : 'tes athlètes un par un, ceux qui t’attendent en tête'}</p>
         </div>
-        <Link href="/app/coach/nouveau" className="inline-flex items-center min-h-12 px-5 rounded-xl bg-teal text-white text-sm font-bold">
+        {/* Sous la 9.x (décision 241, moment 1), « Nouveau coaché » est un seul écran ; sous la 8.x, le questionnaire d'avant. */}
+        <Link href={v9 ? '/app/coach/nouveau-coache' : '/app/coach/nouveau'} className="inline-flex items-center min-h-12 px-5 rounded-xl bg-teal text-white text-sm font-bold">
           + Ajouter un athlète
         </Link>
       </div>

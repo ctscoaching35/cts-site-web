@@ -13,6 +13,7 @@ import { athletesNolio, coachConnecte } from './nolio';
 import { usrAcheteurs } from './acheteurs';
 import { retirerFiche, supprimerPlans } from './retrait';
 import { lireAllure } from './allureCoach';
+import { lireNouveauCoache } from './messageAccord';
 import { messageAuCoach, pasEncoreSonAccordAuCoach, profilEnregistre, soucisAuCoach } from './erreursDuCoach';
 import { moteurEstV9 } from './moteurEnLigne';
 import { clientService } from './supabase';
@@ -70,6 +71,38 @@ export async function creerFicheDepuisNolio(nolioId: string): Promise<void> {
       return;
     }
     id = data.id as string;
+  }
+  revalidatePath('/app/coach');
+  redirect(`/app/coach/athlete/${id}`);
+}
+
+// « Nouveau coaché », sous la 9.x (décision 241 du coach, 25/11/2026, moment 1) : un seul écran. Sa fiche (prénom et nom), son compte Nolio (une fiche déjà créée d'elle-même depuis l'équipe est reprise, pas doublée),
+// et, si le coach donne son e-mail, son accès à l'app (ouvrirEspace : l'app lui envoie son lien). Le coach envoie ensuite lui-même le message d'accord dans Nolio. Redirige vers sa page.
+export async function creerCoache(_e: EtatCoach, form: FormData): Promise<EtatCoach> {
+  const coach = await coachConnecte();
+  if (!coach) return { ok: false, message: 'Ta session a expiré : reconnecte-toi.' };
+  const lu = lireNouveauCoache(form);
+  if ('erreur' in lu) return { ok: false, message: lu.erreur };
+  const { prenom, nom, email, nolioId } = lu.coache;
+  if (nolioId && (await usrAcheteurs(coach.compteId)).has(nolioId)) return { ok: false, message: 'Ce compte Nolio est celui d’un acheteur de plan.' };
+  const service = clientService();
+  const complet = `${prenom} ${nom}`;
+  const { data: deja } = nolioId ? await service.from('athletes_coaches').select('id').eq('coach_id', coach.compteId).eq('nolio_athlete_id', nolioId).maybeSingle() : { data: null };
+  let id = deja?.id as string | undefined;
+  if (id) {
+    await service.from('athletes_coaches').update({ nom: complet }).eq('id', id).eq('coach_id', coach.compteId);
+  } else {
+    const { data, error } = await service.from('athletes_coaches').insert({ coach_id: coach.compteId, nom: complet, ...(nolioId ? { nolio_athlete_id: nolioId } : {}) }).select('id').single();
+    if (error || !data) return { ok: false, message: await messageAuCoach(`Sa fiche n’a pas pu être créée : ${error?.message ?? 'sans fiche'}`) };
+    id = data.id as string;
+  }
+  if (email) {
+    try {
+      await ouvrirEspace(coach.compteId, { id, nom: complet }, email);
+    } catch (e) {
+      revalidatePath('/app/coach');
+      return { ok: false, message: await messageAuCoach(`Sa fiche est créée, mais son lien n’est pas parti : ${e instanceof Error ? e.message : String(e)} Invite-le depuis sa page, « Réglages ».`) };
+    }
   }
   revalidatePath('/app/coach');
   redirect(`/app/coach/athlete/${id}`);
