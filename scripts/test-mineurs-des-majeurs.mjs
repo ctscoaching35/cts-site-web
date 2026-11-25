@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * UNE COURSE 2 DANS LA RÉCUPÉRATION DE LA COURSE 1 EST UN OBJECTIF MINEUR (décision 241 du coach, 25/11/2026 ; doctrine C3) : « dans la récupération » = sa date tombe avant le lundi de reprise que le site calcule après la
- * course 1 (lib/app/jonction.ts, debutApres). Sous la 9.x, elle ne se lance pas comme un majeur : elle part dans `courses_mineures` du plan de la course 1. Des cas fictifs, sans réseau ni base.
+ * course 1 (lib/app/jonction.ts, debutApres). Sous la 9.x, elle ne se lance pas comme un majeur : elle part dans `courses_mineures` de l’appel qui écrit cette récupération, celui du plan suivant (contrat du 25/11/2026 :
+ * une course se transmet à l’appel qui écrit sa semaine ; le plan de la course 1 s’arrête à sa course). Des cas fictifs, sans réseau ni base.
  *
  *   node --test scripts/test-mineurs-des-majeurs.mjs
  */
@@ -24,7 +25,7 @@ registerHooks({
 });
 const charge = (f) => import(pathToFileURL(`${RACINE}lib/app/${f}.ts`).href);
 const M = await charge('mineursDesMajeurs');
-const { debutApres } = await charge('jonction');
+const { debutApres, lundiApresLaCourse } = await charge('jonction');
 const moteur = await charge('moteurV9');
 const source = (f) => readFileSync(`${RACINE}${f}`, 'utf8');
 
@@ -55,24 +56,35 @@ test('les courses classées dans l’ordre des dates : chacune majeure ou mineur
   assert.equal(M.majeurQuiCouvre('inconnue', [UNE]), null);
 });
 
-test('les mineures d’un majeur : leur date, leur chrono visé (sans chrono, sans durée), leur nom ; la forme des courses de préparation du site, puis du contrat', () => {
+test('les courses d’une récupération vont au plan suivant, qui l’écrit : leur date, leur chrono visé (sans chrono, sans durée), leur nom ; la forme des courses de préparation du site, puis du contrat', () => {
   const deux = C('b', jour(UNE.course_date, 3), 1.5);
   const sans = C('e', jour(UNE.course_date, 4), 0);
-  const m = M.mineursDuMajeur('a', [UNE, deux, sans, C('c', jour(REPRISE, 2))]);
+  const suivante = C('c', jour(REPRISE, 60));
+  const toutes = [UNE, deux, sans, suivante];
+  const m = M.mineursRecus('c', toutes);
   assert.deepEqual(m, [{ date: deux.course_date, temps_h: 1.5, nom: 'Course b' }, { date: sans.course_date, temps_h: null, nom: 'Course e' }]);
   assert.deepEqual(moteur.coursesMineuresDe(m), [{ date: deux.course_date, duree_h: 1.5, nom: 'Course b' }, { date: sans.course_date, nom: 'Course e' }]);
-  assert.deepEqual(M.mineursDuMajeur('c', [UNE, deux, C('c', jour(REPRISE, 2))]), []);
+  // Le plan de la course 1 s’arrête à sa course : il ne les porte pas. Une mineure ne reçoit rien ; sans plan suivant, personne.
+  assert.deepEqual(M.mineursRecus('a', toutes), []);
+  assert.deepEqual(M.mineursRecus('b', toutes), []);
+  assert.deepEqual(M.mineursRecus('a', [UNE, deux]), []);
+  // Seulement celles de la récupération d’avant, pas d’une plus ancienne.
+  const apresEncore = C('f', jour(suivante.course_date, 120));
+  assert.deepEqual(M.mineursRecus('f', [...toutes, apresEncore]), []);
+  // La première écriture les garde : son entrée est le lundi qui suit la course 1, avant leur date.
+  assert.equal(moteur.coursesMineuresDe(m, lundiApresLaCourse(UNE.course_date)).length, 2);
 });
 
 test('la ligne dite sous la course', () => {
   assert.equal(M.TEXTE_DANS_LA_RECUPERATION('Trail du Mont'), 'Elle tombe pendant sa récupération après Trail du Mont : elle se prépare comme une course de préparation.');
 });
 
-test('sous la 9.x : les paramètres du plan de la course 1 portent ses mineures ; la course 2 ne se lance pas ; la 8.x ne change pas', () => {
+test('sous la 9.x : les paramètres du plan suivant portent les courses de la récupération ; la course 2 ne se lance pas ; la 8.x ne change pas', () => {
   const p = source('lib/app/parametresPlanV9.ts');
   assert.match(p, /const dans = await mineursDeCePlan\(String\(data\.athlete_id\)\)\.then\(\(f\) => f\(o\.planId\), \(\) => \[\]\);/);
   assert.match(p, /if \(dans\.length\) parametres = \{ \.\.\.o\.parametres, courses_secondaires: \[\.\.\.\(\(o\.parametres\.courses_secondaires \?\? \[\]\) as unknown\[\]\), \.\.\.dans\] \};/);
   assert.match(p, /return parametresDuPlanV9\(\{ parametres,/);
+  assert.ok(p.includes('return (planId) => mineursRecus(planId, courses);'));
   const e = source('lib/app/ecriture.ts');
   const d = e.slice(e.indexOf('export async function demarrerObjectif'), e.indexOf('const fini = ajouterJours(debutApres'));
   assert.match(d, /if \(o\.coache && \(await moteurEstV9\(\)\)\) \{\n\s+const couvre = majeurQuiCouvre\(o\.planId, \[\.\.\.autres, \{ id: o\.planId,/);

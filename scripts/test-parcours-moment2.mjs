@@ -266,7 +266,11 @@ test('une préparation qui commence plus tard dit son premier lundi sous le cham
   assert.ok(l.includes('premier={plusTot ?? premier}'), 'pas de lundi plus tôt à choisir');
   assert.ok(/classe="[^"]*rounded-xl bg-teal[^"]*"/.test(l) && !/classe="[^"]*\bbtn\b/.test(l), 'la forme d’« Enregistrer », sans capitales');
   const p = source('app/app/coach/athlete/[id]/page.tsx');
-  assert.ok(p.includes('plusTot: auPlusTot(p?.debut_plan as string | null | undefined, jour)') && p.includes('demarre_le, depart_prevu, debut_plan, '));
+  assert.ok(p.includes(': auPlusTot(p?.debut_plan as string | null | undefined, jour),') && p.includes('demarre_le, depart_prevu, debut_plan, '));
+  // Sur la récupération d'une course d'avant (v1) : le lundi qui la suit, s'il est à venir ; commencée, dès que possible.
+  assert.ok(p.includes('plusTot: surRecuperation ? (surRecuperation.lundi > jour ? surRecuperation.lundi : null) :'));
+  assert.ok(source('app/app/coach/plan/[id]/page.tsx').includes('const lointain = Boolean(!surRecuperation && '));
+  assert.match(source('lib/app/ecriture.ts'), /if \(!o\?\.coache \|\| !\(await moteurEstV9\(\)\)\) return null;/);
 });
 
 test('la date du test reste vide tant qu’aucun effort n’est entré', () => {

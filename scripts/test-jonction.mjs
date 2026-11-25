@@ -11,6 +11,7 @@
  */
 import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 // Les imports du site n'ont pas d'extension (« ./plan ») : on la leur donne.
@@ -28,7 +29,7 @@ const { joursRecuperation } = await import('../lib/plan.ts');
 const { ajouterJours } = await import('../lib/app/plan.ts');
 const { debutApres, departCalcule, dureeTexte, enReprise, lundiDuRythme, preparationLointaine, saisonEnReprise, slApresCourse,
   heuresDuTemps, precedentDuDepart, recuperationFinie, partApres, partEnSuite, texteDeLaSuite, enUneLigne, texteProgrammeApres,
-  texteDepartLundiApres } = await import('../lib/app/jonction.ts');
+  texteDepartLundiApres, lundiApresLaCourse } = await import('../lib/app/jonction.ts');
 
 // L'objectif 1 de la mesure du coach (06/11/2026) : un trail marathon de 5h30, couru le dimanche 18/04/2027.
 const COURSE_1 = '2027-04-18';
@@ -219,4 +220,36 @@ test('continuité : les textes validés le 08/11/2026', () => {
     'Programmé : il démarre tout seul le lundi 9 novembre 2026, après la récupération de son Semi de la Rance : une semaine de reprise allégée, puis le rythme et la sortie longue repris de ses semaines d’avant cette course.');
   assert.equal(texteDepartLundiApres('Semi de la Rance'),
     'Départ lundi, après la récupération de son Semi de la Rance : sa première semaine, une reprise allégée, part avec son départ dimanche soir.');
+});
+
+test('moteur v1 (contrat du 25/11/2026) : le plan suivant écrit la récupération, il part le lundi qui suit la course d’avant, préparation lointaine comprise ; la 8.x garde la reprise', () => {
+  const recuperation = lundiApresLaCourse(COURSE_1);
+  assert.equal(recuperation, '2027-04-19', 'la course est un dimanche : le lundi d’après');
+  assert.equal(lundiApresLaCourse('2027-04-14'), '2027-04-19', 'en semaine : le lundi de la semaine suivante');
+  const apres = { lundi: REPRISE, nom: 'Trail marathon' };
+  const cas = { aujourdhui: '2027-04-01', debut: '2027-05-03', premierJour: '2027-05-03', posees: null };
+  const v1 = { ...cas, apres: { ...apres, recuperation } };
+  assert.deepEqual(departCalcule(v1), { prevu: recuperation, apres: 'Trail marathon', raison: 'apres_la_course' });
+  // Une préparation lointaine : de même, le moteur comble l'écart.
+  assert.deepEqual(departCalcule({ ...v1, debut: '2027-07-05', premierJour: '2027-07-05' }), { prevu: recuperation, apres: 'Trail marathon', raison: 'apres_la_course' });
+  // La récupération commencée, pas finie : il part maintenant (ou au lundi programmé qui vient).
+  assert.equal(departCalcule({ ...v1, aujourdhui: '2027-04-22', premierJour: '2027-04-22' }), null);
+  assert.deepEqual(departCalcule({ ...v1, aujourdhui: '2027-04-22', premierJour: '2027-04-22', lundi: '2027-04-26' }), { prevu: '2027-04-26', apres: '2027-04-22', raison: 'seances' });
+  // Les séances que le coach a posées restent.
+  assert.deepEqual(departCalcule({ ...v1, posees: { lundi: '2027-04-26', derniere: '2027-04-24' } }), { prevu: '2027-04-26', apres: '2027-04-24', raison: 'seances' });
+  // La récupération finie : les règles d'avant.
+  const fini = { ...v1, aujourdhui: REPRISE, debut: '2027-07-05', premierJour: '2027-07-05' };
+  assert.deepEqual(departCalcule(fini), departCalcule({ ...fini, apres }));
+  // Sans le moteur v1, rien ne change : la reprise.
+  assert.deepEqual(departCalcule({ ...cas, apres }), { prevu: REPRISE, apres: 'Trail marathon', raison: 'recuperation' });
+});
+
+test('moteur v1 : le départ pendant la récupération écrit la semaine du lundi du départ, et l’écran du coach le dit', () => {
+  const lire = (f) => readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
+  const e = lire('lib/app/ecriture.ts');
+  assert.ok(e.includes('const sousLaV1 = o.coache && (await moteurEstV9());'));
+  assert.ok(e.includes('...(sousLaV1 ? { recuperation: lundiApresLaCourse(apres.q.course_date) } : {})'));
+  assert.ok(e.includes('const lundiDeRecuperation = sousLaV1 && apres && lundiDe(prevu?.prevu ?? jourDeDepart) < apres.lundi ? lundiDe(prevu?.prevu ?? jourDeDepart) : null;'));
+  assert.ok(e.includes('const premiere = lundiDeRecuperation ? { ...(duPlan ?? debut), lundi: lundiDeRecuperation } : duPlan;'));
+  assert.ok(lire('lib/app/actionsEcriture.ts').includes('le lundi après ${depart.apres}, et commencera par sa récupération.'));
 });
