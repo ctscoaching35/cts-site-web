@@ -3,6 +3,7 @@ import Link from 'next/link';
 import clsx from 'clsx';
 import { Deconnexion } from './BoutonsCompte';
 import LienDemandes from './LienDemandes';
+import LiensFermesEnDemonstration from './LiensFermesEnDemonstration';
 import { demonstrationCoachOuverte, jourSimuleEnClair, MOMENTS } from '@/lib/app/demonstrationCoach';
 import { moteurEstV9 } from '@/lib/app/moteurEnLigne';
 import { liensDuMenu, rubriqueActive, rubriqueDeLaPastille, type RubriqueCoach } from '@/lib/app/espaceCoachSimple';
@@ -59,7 +60,7 @@ export default async function CadreCoach({ actif: demande, urgents = 0, children
       <main className="flex-[999_1_560px] min-w-0 px-4 py-5 sm:px-8 sm:py-8">
         <div className="max-w-5xl space-y-6">{children}</div>
       </main>
-      {demonstrationCoachOuverte() && <Demonstration />}
+      {demonstrationCoachOuverte() && <><LiensFermesEnDemonstration /><Demonstration /></>}
     </div>
   );
 }
@@ -71,7 +72,7 @@ function Demonstration() {
     <details className="fixed bottom-3 left-3 z-50 max-w-[calc(100vw-1.5rem)] w-[14.5rem] rounded-xl bg-[#1F1D3A] text-white text-xs shadow-lg ring-1 ring-white/15">
       <summary className="cursor-pointer list-none px-3 py-2 font-bold">Démonstration · {jourSimuleEnClair()}</summary>
       <div className="px-3 pb-3 space-y-2 text-[#D6D5E6]">
-        <p>Dix coachés fictifs ; rien ne s’enregistre, rien ne part dans Nolio. Le jour simulé :</p>
+        <p>Onze coachés fictifs ; rien ne s’enregistre, rien ne part dans Nolio, les liens vers les vrais sites sont fermés. Le jour simulé :</p>
         <ul className="space-y-1">
           {MOMENTS.map(([jour, texte]) => <li key={jour}><a href={`?jour=${jour}`} className="font-semibold text-[#8FD1C3] underline">{texte}</a></li>)}
         </ul>
