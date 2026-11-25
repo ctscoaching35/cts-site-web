@@ -179,6 +179,32 @@ test('les lecteurs prennent la semaine par lireLaSemaine, jamais en la lisant co
   }
 });
 
+test('un renfo un jour sans course (244, parfois un jour non donné) : il part à Nolio ce jour-là, et la semaine le montre, dans l’app comme depuis Nolio', () => {
+  const lundi = SEMAINE.jours[0];
+  assert.ok(!lundi.seance && lundi.renfo, 'la semaine d’essai a ce cas : le lundi n’a que le renfo');
+  // Ce que le site pose dans Nolio : le renfo est une séance de plus, à sa date.
+  const pose = NOLIO.seances.find((s) => s.id === 'S2-lundi:renfo');
+  assert.equal(pose.nolio.date_start.slice(0, 10), lundi.date);
+  // La semaine écrite : le renfo, pas « Repos » ; l’identifiant reste celui du jour.
+  const semaine = lue.lireLaSemaine(SEMAINE);
+  const jour = semaine.jours[0];
+  assert.deepEqual([jour.id, jour.seance, jour.nom, jour.famille, jour.duree, jour.rpe], ['S2-lundi', lundi.renfo.titre, lundi.renfo.titre, 'ef', tableau.enHeures(lundi.renfo.duree_min), String(lundi.renfo.rpe)]);
+  // Un jour sans rien reste un repos ; un jour qui a une séance la montre seule.
+  assert.equal(semaine.jours[2].seance, 'Repos');
+  const deux = lue.lireLaSemaine({ ...SEMAINE, jours: SEMAINE.jours.map((j, i) => (i === 1 ? { ...j, renfo: lundi.renfo } : j)) });
+  assert.deepEqual([deux.jours[1].id, deux.jours[1].famille], ['S2-mardi', 'qualite']);
+  // La semaine lue dans Nolio : la ligne du renfo à son lundi, sans marque, sans compter dans les séances de course.
+  const sports = [...new Set(NOLIO.seances.filter((s) => !s.id.endsWith(':renfo')).map((s) => s.nolio.sport))];
+  assert.ok(!sports.includes(pose.nolio.sport), 'le renfo n’est pas un sport de course');
+  const tout = NOLIO.seances.filter((s) => s.nolio).map((s) => ({ id: `n-${s.id}`, name: s.nolio.name, date_start: `${s.nolio.date_start.slice(0, 10)}T08:00:00`, sport: s.nolio.sport, duration: s.nolio.duration, rpe: s.nolio.rpe, revision: 'r1' }));
+  const vue = compare.comparerLaSemaine({ semaine, envoyees: envoyees(), nolio: tout, sports });
+  const ligne = vue.lignes.find((l) => l.cle === 'n-S2-lundi:renfo');
+  assert.ok(ligne, 'la ligne du renfo');
+  assert.deepEqual([ligne.date, ligne.nom, ligne.marques, ligne.course], [lundi.date, pose.nolio.name, [], false]);
+  assert.equal(vue.seances, 4);
+  assert.equal(vue.lignes.length, 5, 'rien en double');
+});
+
 // ─── La trame (« Mon plan », le tableau de bord, l'espace du coach) ─────────────────────────────────
 
 test('la trame du moteur v1 se lit dans la forme de l’app : numéro « S2 », type et bloc en mots, dates, volume, séances clés ; la charge visée n’y est pas', () => {
