@@ -26,7 +26,7 @@ export const NOTE_SEUIL2 = 'En relief, ta FC guide les blocs longs, de 6 à 15 m
 export const estSeuil2 = (nom: string) => /seuil 2/i.test(nom);
 
 // zones : celles du plan (Plan.zones) ; lignes : ses zones et leur RPE (Plan.mode_emploi.effort.zones, sans l'en-tête).
-// plat : sous la 9.x (décision 220 du coach, 24/11/2026), « Ses zones » est un morceau de la carte de coureur du coach (components/app/CarteCoureur.tsx) : le même tableau, sans
+// plat : sous la 9.x (décision 220 du coach, 24/11/2026), « Ses zones » est un morceau de la carte du coach sur son athlète (components/app/CarteSavoir.tsx) : le même tableau, sans
 // cadre à lui. Sans lui, la carte d'avant (l'app de l'athlète et la 8.x n'y changent rien).
 export function TableauZones({ zones, lignes, profil, titre, saisie = null, plat = false }: {
   zones: Pick<Zones, 'tableau' | 'recoupement'>; lignes: string[][]; profil: Profil; titre: string; saisie?: string | null; plat?: boolean;
@@ -90,7 +90,7 @@ function Plat({ children, className }: { children: React.ReactNode; className?: 
 
 // Le style de coureur (la règle du calculateur « Ton profil de traileur », tirée du test de vitesse critique) et ce que la
 // préparation en fait ; sans test complet, la phrase C38.
-// plat : sous la 9.x, le style est un morceau de la carte de coureur du coach, sur fond clair et sans cadre à lui ; sans test complet, rien (la carte dit déjà que le test manque).
+// plat : sous la 9.x, le style est un morceau de la carte du coach, sur fond clair et sans cadre à lui ; sans test complet, rien (la carte dit déjà que le test manque).
 // Sans lui, les cartes d'avant (l'app de l'athlète et la 8.x n'y changent rien).
 export function StyleCoureur({ profil, titre, plat = false }: { profil: Pick<Profil, 'vc_ms' | 'd_prime_m'>; titre: string; plat?: boolean }) {
   const coureur = profilCoureur(profil);

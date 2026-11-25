@@ -37,7 +37,7 @@ export default function PointsPourLui({ lignes, accordRecu }: { lignes: LigneAFa
               )}
             </li>
           ) : l.type === 'test' ? (
-            // Un test que la v1 a écrit : son résultat est à saisir (lib/app/testsASaisir.ts) ; le geste est celui de la carte de coureur, qui s'ouvre au clic.
+            // Un test que la v1 a écrit : son résultat est à saisir (lib/app/testsASaisir.ts) ; le geste mène à sa partie de la carte « Ce que j'ai besoin de savoir ».
             <li key={`test:${l.test.cle}`} className={ligne}>
               <p className="min-w-0 flex-[1_1_300px] text-sm text-[#4A4866] leading-snug"><span className="font-semibold text-indigo">{l.test.texte}</span></p>
               <a href={l.test.href} className={geste}>{l.test.geste === 'test_vc' ? t.saisirTest : t.modifierReperes}</a>

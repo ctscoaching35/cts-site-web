@@ -8,8 +8,8 @@ import { gestesDeLObjectif, repereDeLObjectif, TEXTES_PAGE_ATHLETE, type VerifOb
 // venir : la course, sa date, un repère (« Complet » ou « Il manque : … ») et ce que le moteur lit : sa côte en minutes, ses deux critères, son tapis, la trace de sa course
 // (lib/app/pageAthleteSimple.ts, verifierObjectif). Le lien vers la page de l'objectif reste ; les deux boutons « + Objectif » aussi. Ses courses de préparation et ses objectifs passés
 // sont dans « Réglages ». Sous la 8.x, la page garde sa carte d'avant. verif : null pour un objectif envoyé en entier (il n'a pas de réponses à vérifier).
-// Ce qui manque a son geste, juste dessous (inventaire du 25/11/2026) : « Modifier son profil » pour la côte, les critères et le tapis (il ouvre le formulaire de sa carte de coureur :
-// la page suit l'ancre, components/app/OuvrirLeReglage.tsx) ; « Ajouter la trace » et « Modifier l'objectif » mènent au questionnaire de l'objectif. La ligne « Semaine » dit ce que le moteur lit
+// Ce qui manque a son geste, juste dessous (inventaire du 25/11/2026) : « Modifier son profil » pour la côte, les critères et le tapis (il mène à ces champs de la carte
+// « Ce que j'ai besoin de savoir », components/app/CarteSavoir.tsx) ; « Ajouter la trace » et « Modifier l'objectif » mènent au questionnaire de l'objectif. La ligne « Semaine » dit ce que le moteur lit
 // pour ses jours, sa sortie longue et son nombre de séances : ceux de l'objectif, pas ceux de sa fiche.
 // Sans la saison de fond (troisième simplification, lib/app/cacherSousLaV1.ts) : le moteur v1 n'en écrit pas, son lien « en cours » n'est plus ici.
 // courses : ses courses de préparation (`parametres.courses_secondaires`), quand l'objectif s'écrit semaine par semaine (sinon `null` : rien à ajouter) ; jour : aujourd'hui, pour ce qui se modifie encore.

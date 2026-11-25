@@ -12,7 +12,7 @@
  *   (c) la saison de fond : son lien et ses étiquettes (« Saison de fond », « Bloc … », « tests dans … »), les points « Saison de fond refusée » et « Profil à remplir » (le profil pour
  *       sa saison de fond) ;
  *   (d) les tests lus (ce que la préparation lit comme test de vitesse critique ou de FC dans Nolio) : leurs lignes, « Ses cibles et ses zones ont suivi », le point « Test à
- *       revoir ». Le geste « Saisir son test de vitesse critique » et la carte de coureur restent : ils ne dépendent pas de cette lecture ;
+ *       revoir ». Le geste « Saisir son test de vitesse critique » et le test sur la carte restent : ils ne dépendent pas de cette lecture ;
  *   (e) les séances allégées en EF et « Garder la séance d'origine » (/v1/fatigue et /v1/veto sont retirées), et ce qui parle d'« Ajustements annulés » (« Annuler » est abandonné,
  *       décision 213).
  * Ce qui n'est PAS caché, après vérification : le lien « course Nolio » → « Créer l'objectif » (la course se lit dans Nolio par le site, jamais par le moteur) et « les prérequis du
@@ -86,7 +86,7 @@ export const GENRES_CACHES_9X: Record<string, string> = {
   preparation: 'une course de préparation dans les 14 jours : la course de préparation n’est pas portée (b)',
   test: 'un test illisible, sans réponse ou pas fait : la lecture des tests n’est pas portée (d)',
   saison: 'sa saison de fond refusée : la saison de fond n’existe pas sous la 9.x (c)',
-  profil: 'le profil à remplir pour que sa saison de fond parte : la saison de fond n’existe pas sous la 9.x (c) ; sa carte de coureur le dit déjà',
+  profil: 'le profil à remplir pour que sa saison de fond parte : la saison de fond n’existe pas sous la 9.x (c) ; la carte « Ce que j’ai besoin de savoir » dit déjà ce qui manque',
   lundi: 'la passe du lundi n’a pas réécrit sa semaine : la passe du lundi de la 8.x n’existe plus (a)',
 };
 

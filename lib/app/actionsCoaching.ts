@@ -12,7 +12,9 @@ import { objectifEcrit, retirerDeNolio, zonesDeLaFicheVersNolio, zonesVersNolio 
 import { athletesNolio, coachConnecte } from './nolio';
 import { usrAcheteurs } from './acheteurs';
 import { retirerFiche, supprimerPlans } from './retrait';
-import { lireAllure } from './allureCoach';
+import { allureDepuisVitesse, lireAllure } from './allureCoach';
+import { lireSaisieCoureur, profilAvecLaCarte } from './carteSavoir';
+import { profilEstRempli } from './pageAthleteSimple';
 import { lireNouveauCoache } from './messageAccord';
 import { messageAuCoach, pasEncoreSonAccordAuCoach, profilEnregistre, soucisAuCoach } from './erreursDuCoach';
 import { moteurEstV9 } from './moteurEnLigne';
@@ -132,11 +134,19 @@ export async function enregistrerValeurs(athleteId: string, _e: EtatCoach, form:
   // L'allure, de 2:15 à 11:00 min/km (de 27 à 5,4 km/h).
   const brutAllure = String(form.get('vc_allure') ?? '').trim();
   const allure = brutAllure ? lireAllure(brutAllure) : null;
-  const vcOk = !brutAllure || (allure !== null && allure >= 135 && allure <= 660);
+  // « Ce que j’ai besoin de savoir » (9.x, décision 241, moment 2) ne change que les fréquences cardiaques et renvoie les allures telles qu'affichées (`allures_gardees`) : leur valeur reste exacte
+  // (ni arrondie à la seconde, ni redite « saisie par toi »), même pour un test hors des bornes de cette saisie.
+  const gardee = form.get('allures_gardees') === '1' ? await ficheAthlete(coach.compteId, athleteId) : null;
+  const telle = (brut: string, ms: number | null | undefined) => (ms && brut === allureDepuisVitesse(ms) ? ms : null);
+  const vcGardee = telle(brutAllure, gardee?.vc_ms);
+  const vcOk = !brutAllure || vcGardee !== null || (allure !== null && allure >= 135 && allure <= 660);
   // L'allure au seuil 1, le palier du test de la parole, de 2:30 à 12:00 min/km (moteur 8.320).
   const brutS1 = String(form.get('vs1_allure') ?? '').trim();
   const allureS1 = brutS1 ? lireAllure(brutS1) : null;
-  const s1Ok = !brutS1 || (allureS1 !== null && allureS1 >= 150 && allureS1 <= 720);
+  const s1Gardee = telle(brutS1, gardee?.v_seuil1_ms);
+  const s1Ok = !brutS1 || s1Gardee !== null || (allureS1 !== null && allureS1 >= 150 && allureS1 <= 720);
+  const vcMs = vcGardee ?? (allure === null ? null : Math.round((1000 / allure) * 1000) / 1000);
+  const s1Ms = s1Gardee ?? (allureS1 === null ? null : Math.round((1000 / allureS1) * 1000) / 1000);
   if (!fc1.ok || !vcOk || !fc2.ok || !s1Ok)
     return { ok: false, message: 'Une valeur ne semble pas juste : FC entre 80 et 230, allures en min/km (par exemple 6:00 au seuil 1, 4:10 pour la vitesse critique).' };
   if (fc1.valeur !== null && fc2.valeur !== null && fc2.valeur <= fc1.valeur)
@@ -148,8 +158,8 @@ export async function enregistrerValeurs(athleteId: string, _e: EtatCoach, form:
   const avant = await ficheAthlete(coach.compteId, athleteId);
   const { error } = await clientService().from('athletes_coaches').update({
     fc_seuil1: fc1.valeur === null ? null : Math.round(fc1.valeur),
-    vc_ms: allure === null ? null : Math.round((1000 / allure) * 1000) / 1000,
-    v_seuil1_ms: allureS1 === null ? null : Math.round((1000 / allureS1) * 1000) / 1000,
+    vc_ms: vcMs,
+    v_seuil1_ms: s1Ms,
     fc_seuil2: fc2.valeur === null ? null : Math.round(fc2.valeur),
   }).eq('id', athleteId).eq('coach_id', coach.compteId);
   if (error) return { ok: false, message: 'L’enregistrement n’a pas abouti. Réessaie.' };
@@ -158,7 +168,7 @@ export async function enregistrerValeurs(athleteId: string, _e: EtatCoach, form:
     const jour = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
     const nouveau: Record<string, number | null> = {
       fc_seuil1: fc1.valeur === null ? null : Math.round(fc1.valeur), fc_seuil2: fc2.valeur === null ? null : Math.round(fc2.valeur),
-      vc_ms: allure === null ? null : Math.round((1000 / allure) * 1000) / 1000,
+      vc_ms: vcMs,
     };
     const sources = { ...avant.reperes_sources } as Record<string, unknown>;
     let change = false;
@@ -182,6 +192,27 @@ export async function enregistrerValeurs(athleteId: string, _e: EtatCoach, form:
   // Sous la 9.x (décision 220 du coach, 24/11/2026, suite), un souci de Nolio qui est un message technique (la clé de l'API…) se lit en une phrase simple (lib/app/erreursDuCoach.ts) ; sous la 8.x, tel quel.
   const soucis = await soucisAuCoach(o ? await zonesVersNolio(o) : dernier ? [] : await zonesDeLaFicheVersNolio(athleteId));
   return { ok: true, message: `C’est enregistré. Les prochaines semaines envoyées partiront avec ces valeurs.${soucis.length ? ` Zones Nolio : ${soucis.join(' ; ')}.` : ''}` };
+}
+
+// « Ce que j’ai besoin de savoir » (décision 241 du coach, 25/11/2026, moment 2), sous la 9.x : ce que la carte remplit du coureur (côte, tapis, critères) et la semaine de son objectif (jours, sortie
+// longue, séances), recopiés sur sa fiche (lib/app/carteSavoir.ts, profilAvecLaCarte). Un enregistrement partiel est permis : un champ vide ne change rien, rien n'est effacé.
+export async function enregistrerLeCoureur(athleteId: string, form: FormData): Promise<EtatCoach> {
+  const coach = await coachConnecte();
+  if (!coach) return { ok: false, message: 'Ta session a expiré : reconnecte-toi.' };
+  if (!(await ficheAthlete(coach.compteId, athleteId))) return { ok: false, message: 'Athlète introuvable.' };
+  const { profilDeLaFiche } = await import('./profilEntrainement');
+  const lu = profilAvecLaCarte(await profilDeLaFiche(athleteId), lireSaisieCoureur(form));
+  if ('erreur' in lu) return { ok: false, message: lu.erreur };
+  const { error } = await clientService().from('athletes_coaches').update({ profil: lu.profil })
+    .eq('id', athleteId).eq('coach_id', coach.compteId);
+  if (error) {
+    console.error(`Fiche de ${athleteId} :`, error.message);
+    return { ok: false, message: 'L’enregistrement n’a pas abouti. Réessaie.' };
+  }
+  // Une fiche créée d'elle-même depuis l'équipe Nolio ne quitte la programmation à la main que son profil rempli.
+  if (profilEstRempli(lu.profil)) await quitterLAttenteDuProfil(coach.compteId, athleteId);
+  revalidatePath(`/app/coach/athlete/${athleteId}`);
+  return { ok: true, message: 'C’est enregistré.' };
 }
 
 // T6 : inviter un athlète coaché dans l'app ; « Retirer l'accès » délie son compte de sa fiche.

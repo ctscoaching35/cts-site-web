@@ -7,7 +7,8 @@
  * Sous la 9.x, la page tient en quatre blocs, dans cet ordre, puis « Réglages », replié :
  *   (a) « À faire pour lui » : ses alertes et ce qui manque (ce qu'il doit revoir, une semaine pas partie, une alerte de fatigue, un arrêt ; son compte
  *       Nolio pas associé, son accord pas reçu, son objectif pas démarré). Un point n'y est dit qu'une fois.
- *   (b) Sa carte de coureur : son profil, ses tests, ses repères, ses zones, son style, en une carte. Ce qui manque saute aux yeux, avec son geste.
+ *   (b) « Ce que j’ai besoin de savoir » (décision 241 du coach, 25/11/2026, moment 2 ; components/app/CarteSavoir.tsx, lib/app/carteSavoir.ts) : le coureur et son objectif en un seul formulaire, ses zones et son style
+ *       repliés ; ce qui manque en tête et surligné dans son champ ; dessous, « Lancer sa préparation ».
  *   (c) Ses objectifs : la course, la date, et de quoi vérifier que tout est rempli (côte, critères, tapis, trace GPX).
  *   (d) Sa semaine qui arrive (components/app/SemaineQuiArrive.tsx, inchangée).
  * Rien ne disparaît : tout le reste est dans « Réglages » (ORDRE_DES_REGLAGES_9X), sauf ce que la 9.x ne porte pas encore (ses courses de préparation, sa saison de fond : lib/app/cacherSousLaV1.ts).
@@ -34,15 +35,12 @@ export const TEXTES_PAGE_ATHLETE = {
   accordSous: 'Envoie-lui le message d’accord dans Nolio. Quand il répond oui, clique sur « Accord reçu ».',
   depart: 'Son objectif n’a pas démarré dans Nolio.',
   boutonAccord: 'Accord reçu',
-  // (b)
-  carte: 'Sa carte de coureur',
+  // (b) Les autres textes de la carte « Ce que j’ai besoin de savoir » sont dans lib/app/carteSavoir.ts.
   ilManque: (liste: string[]) => `Il manque : ${liste.join(', ')}`,
-  manqueProfil: 'son profil de coureur',
-  // Les mots du test, ceux du coach (décision 220, 24/11/2026 : pas de « vitesse critique » : lib/app/motsDuCoach.ts).
-  manqueTest: MOTS_DU_COACH.simple.test.manque,
-  manqueReperes: 'ses repères',
+  manqueObjectif: 'son objectif',
+  lancer: 'Lancer sa préparation',
+  pourquoiCarte: 'Sa carte n’est pas complète.',
   // Les gestes sont ceux de la page d'avant, mot pour mot.
-  remplirProfil: 'Remplir son profil',
   modifierProfil: 'Modifier son profil',
   saisirTest: MOTS_DU_COACH.simple.test.geste,
   modifierReperes: 'Modifier ses repères',
@@ -110,7 +108,7 @@ export const ordreDesReglages = (v9: boolean): readonly string[] => (v9 ? ORDRE_
 // Où va, sous la 9.x, chacun des blocs d'avant : en haut, ou dans « Réglages ». Rien ne disparaît.
 //   - « À faire pour lui » : ses points à faire en (a) ; ce qui arrive (« À venir ») et sa revue du dimanche dans « Réglages » ;
 //   - « Son entrée » : ses étapes à faire sont des lignes de (a) ; la carte, une fois ces étapes faites, est dans « Réglages » ;
-//   - « Ses repères », « Son profil de coureur », « Ses zones », « Son style » : une seule carte, (b) ;
+//   - « Ses repères », « Son profil de coureur », « Ses zones », « Son style » : une seule carte, (b), « Ce que j’ai besoin de savoir » ;
 //   - « Ses objectifs » : la course et ce qui se vérifie en (c) ; ses objectifs passés dans « Réglages ». Ses courses de préparation et sa saison de fond n'y sont plus : la 9.x ne les
 //     porte pas encore (troisième simplification, lib/app/cacherSousLaV1.ts) ; sous la 8.x, la page d'avant les montre.
 export const PLACE_EN_9X: Record<Bloc8x, readonly (BlocHaut9x | SectionDesReglages)[]> = {
@@ -163,7 +161,7 @@ export type LigneAFaire = { type: 'point'; point: Point } | { type: 'entree'; li
 
 // Ses points à faire, rangés comme les quatre groupes d'« Urgent » (« A besoin de toi », « Ne court plus », « Semaine pas partie », « Objectif bloqué » ; dans chaque groupe,
 // l'ordre reçu), puis les étapes de son entrée. Jamais « À venir » (ils sont dans « Réglages »). Un point n'y est dit qu'une fois : celui que dit déjà une ligne de l'entrée
-// (compte Nolio, accord, départ) ou la carte de coureur (profil à remplir) est retiré. `profilManque` : la carte dit « il manque son profil ».
+// (compte Nolio, accord, départ) ou la carte « Ce que j’ai besoin de savoir » (profil à remplir) est retiré. `profilManque` : sa fiche n'a pas son profil entier, la carte le dit.
 export function aFairePourLui(points: Point[], entree: Pick<Entree, 'etapes'>, profilManque: boolean, alertes: LigneAlerte[] = [], tests: LigneTest[] = []): LigneAFaire[] {
   const lignes = lignesDEntree(entree);
   const dit = new Set(lignes.map((l) => POINT_DE_LA_LIGNE[l.cle]));
@@ -175,13 +173,14 @@ export function aFairePourLui(points: Point[], entree: Pick<Entree, 'etapes'>, p
     .map(({ point }) => point);
   return [...aFaire.map((point): LigneAFaire => ({ type: 'point', point })), ...alertes.map((alerte): LigneAFaire => ({ type: 'alerte', alerte })),
     ...tests.map((test): LigneAFaire => ({ type: 'test', test })),
-    ...lignes.map((ligne): LigneAFaire => ({ type: 'entree', ligne }))];
+    // Sous la 9.x (décision 241), le départ se fait par « Lancer sa préparation », sur sa page : la ligne y mène (et non à la page de l'objectif).
+    ...lignes.map((ligne): LigneAFaire => ({ type: 'entree', ligne: ligne.cle === 'depart' && ligne.action ? { ...ligne, action: { ...ligne.action, href: '#lancer-sa-preparation' } } : ligne }))];
 }
 
 // Ce qui arrive (niveau « À venir » : une course A dans Nolio, rien après l'objectif… ; plus de course de préparation, la 9.x ne la porte pas) : il quitte le haut de la page et va dans « Réglages ».
 export const pointsAVenir = (points: Point[]): Point[] => points.filter((p) => groupeUrgent(p) === null);
 
-// ─── (b) Sa carte de coureur ──────────────────────────────────────────────────────────────────────────────────────────
+// ─── (b) « Ce que j’ai besoin de savoir » ─────────────────────────────────────────────────────────────────────────────
 
 type Reponses = Record<string, unknown> | null | undefined;
 
@@ -189,31 +188,8 @@ type Reponses = Record<string, unknown> | null | undefined;
 const REPONSES_DU_PROFIL = ['niveau', 'terrain', 'jour_sl', 'freq_hebdo', 'jours_disponibles'];
 export const profilEstRempli = (profil: Reponses): boolean => REPONSES_DU_PROFIL.every((k) => profil?.[k] !== undefined && String(profil[k]).length > 0);
 
+// Les trois parties de la carte où un lien peut mener (lib/app/testsASaisir.ts) : sa côte, son tapis et ses critères ; son test ; ses repères.
 export type GesteDeLaCarte = 'profil' | 'test_vc' | 'reperes';
-export type ManqueCoureur = { cle: GesteDeLaCarte; texte: string };
-
-// Ce qui manque à sa carte : son profil de coureur pas (entièrement) rempli, pas de test de vitesse critique, aucun repère (ni FC au seuil 1, ni FC au seuil 2, ni allure au seuil 1).
-// Les trois ont chacun leur geste, un seul : voir `ouEstLeGeste`.
-export function ceQuiManqueAuCoureur({ profil, vcMs, fc1, fc2, vs1 }: {
-  profil: Reponses; vcMs?: number | null; fc1?: number | null; fc2?: number | null; vs1?: number | null;
-}): ManqueCoureur[] {
-  const present = (n: number | null | undefined) => typeof n === 'number' && n > 0;
-  const manque: ManqueCoureur[] = [];
-  if (!profilEstRempli(profil)) manque.push({ cle: 'profil', texte: TEXTES_PAGE_ATHLETE.manqueProfil });
-  if (!present(vcMs)) manque.push({ cle: 'test_vc', texte: TEXTES_PAGE_ATHLETE.manqueTest });
-  if (!present(fc1) && !present(fc2) && !present(vs1)) manque.push({ cle: 'reperes', texte: TEXTES_PAGE_ATHLETE.manqueReperes });
-  return manque;
-}
-
-// Un seul geste par chose : dans le bandeau « Il manque » quand la chose manque, sous elle dans la carte sinon.
-export const ouEstLeGeste = (cle: GesteDeLaCarte, manque: ManqueCoureur[]): 'bandeau' | 'carte' => (manque.some((m) => m.cle === cle) ? 'bandeau' : 'carte');
-
-// Le mot du geste : celui des boutons d'avant. Le profil se « remplit » quand il manque, se « modifie » sinon.
-export function motDuGeste(cle: GesteDeLaCarte, manque: ManqueCoureur[]): string {
-  if (cle === 'test_vc') return TEXTES_PAGE_ATHLETE.saisirTest;
-  if (cle === 'reperes') return TEXTES_PAGE_ATHLETE.modifierReperes;
-  return ouEstLeGeste('profil', manque) === 'bandeau' ? TEXTES_PAGE_ATHLETE.remplirProfil : TEXTES_PAGE_ATHLETE.modifierProfil;
-}
 
 // ─── (c) Ses objectifs : de quoi vérifier que tout est rempli ────────────────────────────────────────────────────────────
 
@@ -259,7 +235,7 @@ export function verifierObjectif(champs: Reponses, fiche: Reponses = null): Veri
   return { route, items, manque, complet: manque.length === 0 };
 }
 
-// Le geste qui règle ce qui manque à un objectif, un seul par chose : la côte, les critères et le tapis se donnent sur la fiche (la carte de coureur), la trace et la semaine habituelle dans
+// Le geste qui règle ce qui manque à un objectif, un seul par chose : la côte, les critères et le tapis se donnent sur la fiche (la carte « Ce que j’ai besoin de savoir »), la trace et la semaine habituelle dans
 // l'objectif. Dans l'ordre de l'objectif ; rien quand tout y est.
 export type GesteDeLObjectif = 'profil' | 'trace' | 'semaine';
 export function gestesDeLObjectif(v: VerifObjectif): GesteDeLObjectif[] {
@@ -273,6 +249,31 @@ export function gestesDeLObjectif(v: VerifObjectif): GesteDeLObjectif[] {
 
 // Le repère d'un objectif : « Complet », ou « Il manque : … ».
 export const repereDeLObjectif = (v: VerifObjectif): string => (v.complet ? TEXTES_PAGE_ATHLETE.complet : TEXTES_PAGE_ATHLETE.ilManque(v.manque));
+
+// Le repère en tête de « Ce que j’ai besoin de savoir », et les champs à surligner : ceux de son objectif en cours, comme « Ses objectifs » les vérifie. `objectif` : null sans objectif à venir (seuls
+// sa côte, ses critères et son tapis se vérifient, et son objectif manque) ; `champs` null : un objectif envoyé en entier, qui n'a pas de réponses à vérifier.
+export type EtatDeLaCarte = { repere: string; complet: boolean; manquants: ItemObjectif['cle'][] };
+export function etatDeLaCarte(objectif: { champs: Reponses } | null, fiche: Reponses = null): EtatDeLaCarte {
+  if (objectif && !objectif.champs) return { repere: TEXTES_PAGE_ATHLETE.envoyeEnEntier, complet: false, manquants: [] };
+  const v = verifierObjectif(objectif?.champs ?? {}, fiche);
+  const manquants = v.items.filter((i) => i.valeur === null && (objectif !== null || (i.cle !== 'gpx' && i.cle !== 'semaine')));
+  const cles = manquants.map((i) => i.cle);
+  if (!objectif) return { repere: TEXTES_PAGE_ATHLETE.ilManque([...manquants.map((i) => i.manque), TEXTES_PAGE_ATHLETE.manqueObjectif]), complet: false, manquants: cles };
+  return { repere: repereDeLObjectif(v), complet: v.complet, manquants: cles };
+}
+
+// « Lancer sa préparation », pour son objectif à venir : rien à montrer sans objectif écrit semaine par semaine, une fois démarré, ou s'il est programmé à la main ; programmé, la date ; sinon le bouton, actif quand sa
+// carte est complète, son compte Nolio associé et son accord de lecture reçu, avec une ligne qui dit le premier qui manque.
+export type EtatDuLancement = { programme: string } | { actif: boolean; pourquoi: string | null };
+export function etatDuLancement({ objectif, complet, nolio, accord, aLaMain }: {
+  objectif: { ecrit: boolean; demarre: boolean; prevu: string | null } | null; complet: boolean; nolio: boolean; accord: boolean; aLaMain: boolean;
+}): EtatDuLancement | null {
+  if (!objectif || !objectif.ecrit || objectif.demarre || aLaMain) return null;
+  if (objectif.prevu) return { programme: objectif.prevu };
+  const t = TEXTES_PAGE_ATHLETE;
+  const pourquoi = !complet ? t.pourquoiCarte : !nolio ? t.nolio : !accord ? t.accord : null;
+  return { actif: pourquoi === null, pourquoi };
+}
 
 // Ses objectifs à vérifier : ceux dont la course n'est pas passée ; les autres sont dans « Réglages » (« Ses objectifs passés »).
 export function departagerLesObjectifs<T extends { course_date: string }>(objectifs: T[], aujourdhui: string): { aVenir: T[]; passes: T[] } {

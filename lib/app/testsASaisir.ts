@@ -3,7 +3,7 @@
  * « SAISIR LE RÉSULTAT DE SON TEST », SOUS LA 9.x (décision du coach du 25/11/2026) : la v1 écrit des tests dans ses semaines (`famille: "test"` : la vitesse critique, la FC au seuil 2, la parole pour la FC
  * au seuil 1 ; CONTRAT_API_CTS.md), mais le site ne les relit plus dans Nolio sous la 9.x (lib/app/cacherSousLaV1.ts, (d)). Personne ne saurait donc qu'un test est fait. Le lundi qui suit une semaine où la v1
  * a écrit un test, « À faire pour lui » dit « Saisir le résultat de son test de vitesse critique » (ou « de fréquence cardiaque »), avec le geste qui existe déjà : « Saisir son test de vitesse critique » ou
- * « Modifier ses repères » (la carte de coureur, lib/app/pageAthleteSimple.ts). Le point disparaît dès que le résultat est saisi, par le coach ou par l'athlète dans son app : la fiche garde, pour chaque repère, le jour
+ * « Modifier ses repères » (la carte « Ce que j'ai besoin de savoir », components/app/CarteSavoir.tsx). Le point disparaît dès que le résultat est saisi, par le coach ou par l'athlète dans son app : la fiche garde, pour chaque repère, le jour
  * de sa saisie (`athletes_coaches.reperes_sources`) ; un repère saisi le jour du test ou après le clôt. Un test vieux de plus de huit semaines n'est plus rappelé.
  */
 export type TestAEcrit = { forme: string; jour: string; lundi: string };
@@ -19,7 +19,7 @@ export const TESTS_DE_LA_V1 = {
 export type FormeDeTest = keyof typeof TESTS_DE_LA_V1;
 const estUneForme = (f: unknown): f is FormeDeTest => typeof f === 'string' && Object.prototype.hasOwnProperty.call(TESTS_DE_LA_V1, f);
 
-// L'adresse de chaque geste dans la carte de coureur (components/app/CarteCoureur.tsx) : le lien ouvre son formulaire.
+// L'adresse de chaque geste dans la carte « Ce que j'ai besoin de savoir » (components/app/CarteSavoir.tsx) : le lien mène à sa partie.
 export const ANCRE_DU_GESTE = { test_vc: '#geste-test-vc', reperes: '#geste-reperes' } as const;
 
 export const TEXTES_TESTS = {

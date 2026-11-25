@@ -74,7 +74,7 @@ export function unMot(a: DeQuoiDireUnMot): UnMot {
     return dit(8, t.manque(a.manque), href, 'warn');
   }
   if (!a.objectif) return dit(9, t.sansObjectif, `/app/coach/nouveau?athlete=${a.id}`, 'neutre');
-  if (!a.objectif.demarre && !a.objectif.prevu) return dit(10, t.lancer, `/app/coach/plan/${a.objectif.plan_id}`, 'warn');
+  if (!a.objectif.demarre && !a.objectif.prevu) return dit(10, t.lancer, `${page}#lancer-sa-preparation`, 'warn');
   if (a.test) return dit(11, t.test, `${page}#geste-${a.test.geste === 'test_vc' ? 'test-vc' : 'reperes'}`, 'warn');
   if (a.sansReponse) return dit(12, t.sansReponse, page, 'neutre');
   const partie = a.objectif.suivante?.partie === true || a.objectif.partie === true;

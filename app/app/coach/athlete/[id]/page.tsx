@@ -4,10 +4,11 @@ import { formatRouteDe } from '@/lib/app/route';
 import clsx from 'clsx';
 import { notFound } from 'next/navigation';
 import CadreCoach from '@/components/app/CadreCoach';
-import CarteCoureur from '@/components/app/CarteCoureur';
+import CarteSavoir from '@/components/app/CarteSavoir';
 import CarteEntree from '@/components/app/CarteEntree';
 import FormulaireValeurs from '@/components/app/FormulaireValeurs';
 import InvitationApp from '@/components/app/InvitationApp';
+import LancerSaPreparation from '@/components/app/LancerSaPreparation';
 import ObjectifsAVerifier, { type LigneObjectif } from '@/components/app/ObjectifsAVerifier';
 import type { CourseDePreparation } from '@/components/app/CoursesDePreparation';
 import { alertesDuCoach, lirePrerequisDuMoteur, prochainLundi } from '@/lib/app/alerteCoach';
@@ -30,8 +31,10 @@ import { demandeDeLAthlete } from '@/lib/app/demandesCoaching';
 import { initiales } from '@/lib/app/contexte';
 import { entreeDe } from '@/lib/app/entree';
 import {
-  aFairePourLui, ceQuiManqueAuCoureur, departagerLesObjectifs, entreeDansLesReglages, pointsAVenir, TEXTES_PAGE_ATHLETE, verifierObjectif, type LigneAlerte, type LigneTest,
+  aFairePourLui, departagerLesObjectifs, entreeDansLesReglages, estUneCourseSurRoute, etatDeLaCarte, etatDuLancement, pointsAVenir, profilEstRempli, TEXTES_PAGE_ATHLETE, verifierObjectif, type LigneAlerte, type LigneTest,
 } from '@/lib/app/pageAthleteSimple';
+import { reponsesReprises, valeursDeLaCarte } from '@/lib/app/carteSavoir';
+import { lireGpx } from '@/lib/app/gpxV9';
 import { coursesDansNolio, pasEncoreIci, type CourseNolio } from '@/lib/app/coursesNolio';
 import { coursesNolioVisibles, estUneCourseEnPreparation, TEXTES_CACHES, testsLusDisponibles } from '@/lib/app/cacherSousLaV1';
 import { semainesSansSaisonPasPartie } from '@/lib/app/reessayerDeSaison';
@@ -89,8 +92,8 @@ const TENDANCE = { hausse: 'en hausse', baisse: 'en baisse', stable: 'stable' } 
 // migration de Supabase) : il reste au journal du serveur. Sous la 8.x, rien ne change.
 // DEUXIÈME SIMPLIFICATION, « une page athlète courte » (même décision 220, 24/11/2026 ; reports/Application coach — revue de simplicité, 24-11.md, proposition 2) : sous la 9.x,
 // la page tient en quatre blocs, dans cet ordre : (a) « À faire pour lui » (ses alertes et ce qui manque, dont les étapes de « Son entrée » que le coach fait lui-même),
-// (b) sa carte de coureur (ses repères, son profil, ses zones et son style en une carte, ce qui manque en tête avec son geste), (c) ses objectifs (la course, la date et de quoi
-// vérifier que tout est rempli), (d) sa semaine qui arrive ; puis « Réglages », replié, où va tout le reste (sa revue du dimanche, sa semaine passée et ses 7 jours,
+// (b) « Ce que j’ai besoin de savoir » (décision 241, moment 2, 25/11/2026 : le coureur et son objectif en un seul formulaire, ce qui manque surligné, puis « Lancer sa préparation »), (c) ses objectifs
+// (la course, la date et de quoi vérifier que tout est rempli), (d) sa semaine qui arrive ; puis « Réglages », replié, où va tout le reste (sa revue du dimanche, sa semaine passée et ses 7 jours,
 // ses courses dans Nolio, ses courses de préparation, ce qui arrive, son entrée complète…). Rien ne disparaît. L'ordre et ce qui manque se calculent dans
 // lib/app/pageAthleteSimple.ts. Sous la 8.x, les treize blocs d'avant, dans leur ordre : le rendu est celui d'avant.
 // TROISIÈME SIMPLIFICATION, « ce que la v1 ne fait pas encore est caché » (même décision 220, lib/app/cacherSousLaV1.ts) : sous la 9.x, ni l'aperçu du dimanche (« Voir ce que le moteur
@@ -139,7 +142,7 @@ export default async function PageAthlete({ params, searchParams }: {
   const gardesManquent = !espace.signaux;
   const septJours = etat?.signaux ?? null;
   const { data: plans } = a.objectifs.length
-    ? await service.from('plans').select('id, parametres, demarre_le, depart_prevu, donnees->course->>distance_km, donnees->course->>dplus_m, zones:donnees->zones, lignes_zones:donnees->mode_emploi->effort->zones')
+    ? await service.from('plans').select('id, parametres, intake, demarre_le, depart_prevu, donnees->course->>distance_km, donnees->course->>dplus_m, zones:donnees->zones, lignes_zones:donnees->mode_emploi->effort->zones')
       .in('id', a.objectifs.map((o) => o.plan_id))
     : { data: [] };
   const parPlan = new Map((plans ?? []).map((p) => [p.id as string, p as Record<string, unknown>]));
@@ -272,9 +275,8 @@ export default async function PageAthlete({ params, searchParams }: {
   const septJoursAffiches = Boolean(accord && a.nolio_athlete_id && septJoursVisibles);
   const prenomDe = (nom: string) => nom.split(' ')[0];
   // SOUS LA 9.x (décision 220 du coach, 24/11/2026 : une page athlète courte ; lib/app/pageAthleteSimple.ts) : ce qui est à faire pour lui (ses points, puis les étapes de son entrée que le
-  // coach fait lui-même), ce qui manque à sa carte de coureur, ce que chaque objectif à venir a de rempli, ce qui arrive. Rien n'est lu de plus : les mêmes données que la 8.x. Sous la 8.x, rien.
+  // coach fait lui-même), ce que la carte « Ce que j'ai besoin de savoir » montre, ce que chaque objectif à venir a de rempli, ce qui arrive. Rien n'est lu de plus : les mêmes données que la 8.x. Sous la 8.x, rien.
   const donnerLAccord = a.nolio_athlete_id && !accord ? accordRecu.bind(null, a.nolio_athlete_id, a.nom) : undefined;
-  const manqueCoureur = v9 ? ceQuiManqueAuCoureur({ profil, vcMs: a.vc_ms, fc1: a.fc_seuil1, fc2: a.fc_seuil2, vs1: a.v_seuil1_ms }) : [];
   const { aVenir: objectifsAVenir, passes: objectifsPasses } = v9 ? departagerLesObjectifs(objectifs, jour) : { aVenir: [], passes: [] };
   // L'alerte du moteur (entrée 234, lib/app/alerteCoach.ts) : pour un objectif qui n'a pas démarré, le moteur dit si sa sortie longue de départ ou ses séances par semaine ne tiennent pas. Les paramètres sont
   // ceux que le moteur lira (parametresDuPlanV9), entrée au prochain lundi sans départ prévu ; une route qui ne répond pas ne donne pas d'alerte et ne fait rien échouer.
@@ -286,12 +288,12 @@ export default async function PageAthlete({ params, searchParams }: {
       premierLundi: (p.depart_prevu as string | null) ?? prochainLundi(jour),
     }, a.profil) }];
   }), lirePrerequisDuMoteur)).map((x) => ({ ...x, href: `/app/coach/nouveau?athlete=${a.id}&modifier=${x.planId}` })) : [];
-  // Les tests que la v1 a écrits dans ses semaines et dont le résultat n'est pas saisi (lib/app/testsASaisir.ts) : « Saisir le résultat de son test de … », avec le geste de sa carte de coureur. La v1 ne les relit
+  // Les tests que la v1 a écrits dans ses semaines et dont le résultat n'est pas saisi (lib/app/testsASaisir.ts) : « Saisir le résultat de son test de … », avec le geste qui mène à sa partie de la carte. La v1 ne les relit
   // pas dans Nolio ; le point tombe dès que le repère est saisi, par toi ou par lui. Sans la migration du 24/11/2026 (état du moteur v1), rien n'est lu et rien n'est dit.
   const semainesDeLaV1 = v9 ? await lireLesSemainesRecentes(service, a.objectifs.map((o) => o.plan_id), new Date(Date.now() - 70 * 86_400_000).toISOString()).catch(() => []) : [];
   const testsAFaire: LigneTest[] = v9 ? testsASaisir({ semaines: semainesDeLaV1, sources: a.reperes_sources, aujourdhui: jour }).map((t) => ({
     cle: `${t.mot}:${t.jour}`, texte: TEXTES_TESTS.saisir(t.mot), geste: t.geste, href: ANCRE_DU_GESTE[t.geste] })) : [];
-  const lignesAFaire = v9 ? aFairePourLui(points, entree, manqueCoureur.some((m) => m.cle === 'profil'), alertes, testsAFaire) : [];
+  const lignesAFaire = v9 ? aFairePourLui(points, entree, !profilEstRempli(profil), alertes, testsAFaire) : [];
   // Les réponses de l'objectif (parametres.champs), lues avec celles de la fiche comme le moteur v1 les lit ; un objectif envoyé en entier n'a pas de réponses à vérifier.
   const lignesObjectifs: LigneObjectif[] = objectifsAVenir.map((o) => {
     const parametres = parPlan.get(o.plan_id)?.parametres as { champs?: Record<string, unknown> } | null | undefined;
@@ -307,6 +309,41 @@ export default async function PageAthlete({ params, searchParams }: {
       <StyleCoureur profil={profilZones} titre="Son style de coureur" plat />
     </>
   ) : null;
+  // « CE QUE J'AI BESOIN DE SAVOIR » (décision 241 du coach, 25/11/2026, moment 2) : le coureur et son objectif en cours (le prochain à venir), puis « Lancer sa préparation » s'il n'a pas démarré. Les mêmes
+  // données que le reste de la page : sa fiche, et de cet objectif ses réponses (`parametres.champs`, ce que la v1 lit) par-dessus celles de son achat.
+  const carte = ((): { savoir: Omit<React.ComponentProps<typeof CarteSavoir>, 'zonesEtStyle'>; lancer: React.ComponentProps<typeof LancerSaPreparation> } | null => {
+    if (!v9) return null;
+    const o = objectifsAVenir[0] ?? null;
+    const p = o ? parPlan.get(o.plan_id) : undefined;
+    const parametres = (p?.parametres ?? null) as { champs?: Record<string, unknown> } | null;
+    const champs = parametres ? parametres.champs ?? {} : null;
+    const intakeDuPlan = (p?.intake ?? null) as Record<string, unknown> | null;
+    const base = reponsesReprises(intakeDuPlan, champs);
+    const etatCarte = etatDeLaCarte(o ? { champs } : null, a.profil);
+    const lundiDeSaCourse = o ? ajouterJours(o.course_date, -((new Date(`${o.course_date}T12:00:00Z`).getUTCDay() + 6) % 7)) : lundiProchain;
+    return {
+      savoir: {
+        athleteId: a.id, nom: a.nom, email: coach.email, aujourdhui: jour, ...etatCarte,
+        valeurs: valeursDeLaCarte({ fiche: a.profil, intake: intakeDuPlan, champs, courseDate: o?.course_date ?? '', fc1: a.fc_seuil1, fc2: a.fc_seuil2 }),
+        niveau: String(profil.niveau ?? ''),
+        objectif: o ? {
+          planId: o.plan_id, nom: o.course_nom, route: estUneCourseSurRoute(base), enRoute: Boolean(p?.demarre_le), programme: Boolean(p?.depart_prevu && !p?.demarre_le),
+          envoyeEnEntier: !parametres, traceDonnee: Boolean(lireGpx(champs?.gpx)), base,
+        } : null,
+        reperes, allures: { vs1: a.v_seuil1_ms ? allureDepuisVitesse(a.v_seuil1_ms) : null, vc: a.vc_ms ? allureDepuisVitesse(a.vc_ms) : null },
+        aideDuTest: TEXTES_CACHES.testSaisi, aideDesReperes: mots.reperesAide, titreDesZones: TEXTES_PAGE_ATHLETE.ceQuIlLit,
+      },
+      lancer: {
+        planId: o?.plan_id ?? '',
+        etat: etatDuLancement({
+          objectif: o ? { ecrit: Boolean(parametres), demarre: Boolean(p?.demarre_le), prevu: (p?.depart_prevu as string | null) ?? null } : null,
+          complet: etatCarte.complet, nolio: Boolean(a.nolio_athlete_id), accord: Boolean(accord), aLaMain,
+        }),
+        alertes: alertes.filter((x) => x.planId === o?.plan_id).flatMap((x) => x.phrases),
+        premier: lundiProchain, dernier: lundiDeSaCourse,
+      },
+    };
+  })();
   const lesPastilles = pastilles.map(([texte, bien]) => (
     <span key={texte} className={clsx('text-[0.72rem] font-bold px-2.5 py-1 rounded-xl',
       bien ? 'bg-[#E3EFE9] text-teal' : 'bg-[#F6ECD8] text-[#7A520D]')}>{texte}</span>
@@ -538,11 +575,11 @@ export default async function PageAthlete({ params, searchParams }: {
 
       {v9 ? (
         <>
-          {/* (a) Ses alertes et ce qui est à faire pour lui ; (b) sa carte de coureur, ce qui manque en tête ; (c) ses objectifs, de quoi vérifier que tout est rempli ; (d) sa semaine
-              qui arrive. Le reste est dans « Réglages » (lib/app/pageAthleteSimple.ts : ORDRE_9X). */}
+          {/* (a) Ses alertes et ce qui est à faire pour lui ; (b) « Ce que j'ai besoin de savoir » et « Lancer sa préparation » ; (c) ses objectifs, de quoi vérifier que tout est rempli ; (d) sa
+              semaine qui arrive. Le reste est dans « Réglages » (lib/app/pageAthleteSimple.ts : ORDRE_9X). */}
           <PointsPourLui lignes={lignesAFaire} accordRecu={donnerLAccord} />
-          <CarteCoureur lignesProfil={profilVide ? [] : lignesProfil} reperes={reperes} manque={manqueCoureur} profilVide={profilVide}
-            formulaires={{ profil: contenuProfil, test_vc: contenuTest, reperes: contenuReperes }} zonesEtStyle={zonesEtStyle} />
+          {carte && <CarteSavoir key={`${a.id}:${carte.lancer.planId}`} {...carte.savoir} zonesEtStyle={zonesEtStyle} />}
+          {carte && <LancerSaPreparation {...carte.lancer} />}
           <ObjectifsAVerifier athleteId={a.id} lignes={lignesObjectifs} jour={jour} />
           {semaine}
         </>
