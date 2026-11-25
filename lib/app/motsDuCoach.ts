@@ -241,7 +241,8 @@ const SIMPLE: MotsDuCoach = {
   accordLu: 'ses séances, son effort ressenti et sa fatigue déclarée sont lus dans Nolio, et ses repères gardés sur sa fiche.',
   dplus: (valeur) => `${valeur} m de dénivelé`,
   cibles: {
-    fc1: (v) => `FC seuil 1 ${v}`, vs1: (a) => `allure seuil 1 ${a}/km`, vc: (a) => `vitesse critique ${a}/km`, fc2: (v) => `FC seuil 2 ${v}`,
+    // « à » : « FC seuil 1 152 » se lisait « 1 152 » (relecture du 25/11/2026).
+    fc1: (v) => `FC seuil 1 à ${v}`, vs1: (a) => `allure seuil 1 ${a}/km`, vc: (a) => `vitesse critique ${a}/km`, fc2: (v) => `FC seuil 2 à ${v}`,
     liste: (s) => `Cibles : ${s}.`, sans: 'Sans repères : ses séances se règlent à l’effort ressenti.',
   },
   semaines: {

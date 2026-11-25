@@ -256,6 +256,25 @@ export function coefficientRiegel(vc_ms: number, d_prime_m: number): number {
   return 1 + lxy / lxx;
 }
 
+// SOUS LA v1 (relecture du 25/11/2026 ; CONTRAT_API_CTS.md du moteur, « Le profil rapide / endurant », 217 et 248) : le moteur ne lit ce profil que dans les semaines loin de la course d'un coaché dont il écrit
+// la préparation, tour à tour sur son point faible et son point fort ; près d'elle, la course décide. 'ecrite' : un coaché dont le moteur écrit la préparation ; 'sans' : un acheteur, ou un coaché dont son
+// coach écrit lui-même les semaines : rien n'est dit d'une préparation. TEXTES : BROUILLONS, à valider par le coach.
+export type PreparationV1 = 'ecrite' | 'sans';
+const LONGS = 'les efforts longs et soutenus';
+const COURTS = 'les efforts courts et rapides';
+const tourATour = (faible: string, fort: string) => `Ta préparation travaille tour à tour ton point faible, ${faible}, et ton point fort, ${fort}.`;
+export function conseilsV1(rapide: boolean): { loin: string; pres: string; note: string } {
+  return {
+    loin: rapide ? tourATour(LONGS, COURTS) : tourATour(COURTS, LONGS),
+    pres: 'Ta préparation suit ce que demande ta course : sa durée, son dénivelé, son allure.',
+    note: 'Ce style oriente ta préparation ; tes sensations et ton objectif décident.',
+  };
+}
+export const STYLE_SANS_TEST_V1 = {
+  ecrite: 'Il se tire de ton test de vitesse critique : plutôt rapide ou plutôt endurant. Loin de ton objectif, ta préparation en tient compte.',
+  sans: 'Il se tire de ton test de vitesse critique : plutôt rapide ou plutôt endurant.',
+} as const;
+
 export type ProfilCoureur = { coefficient: number; nom: string; texte: string; loin: string; pres: string; note: string };
 export function profilCoureur(p: Pick<Profil, 'vc_ms' | 'd_prime_m'>): ProfilCoureur | null {
   if (p.vc_ms === null || p.d_prime_m === null || !p.d_prime_m) return null;

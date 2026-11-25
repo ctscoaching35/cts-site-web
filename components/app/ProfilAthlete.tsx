@@ -151,7 +151,7 @@ export default function ProfilAthlete({ athleteId, profil, pourMoi = false, rafr
               {JOURS.map((j) => <option key={j} value={j}>{j.charAt(0).toUpperCase() + j.slice(1)}</option>)}
             </select>
           </label>
-          <label className="block text-xs font-semibold text-indigo">{textes.disponibilite.seances}
+          <label className="block text-xs font-semibold text-indigo">{moi ? textes.disponibilite.seances : textes.disponibilite.seancesDuCoach}
             <input name="freq_hebdo" type="number" min={1} max={7} defaultValue={String(profil.freq_hebdo ?? '')} className={champ} required />
           </label>
         </div>

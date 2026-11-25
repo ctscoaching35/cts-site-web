@@ -21,6 +21,7 @@ import { API_URL, formatDepuisDistance } from '@/lib/plan';
 // En tête, « Complet » ou « Il manque : … » (le même repère que « Ses objectifs ») ; chaque manque est surligné dans son champ. L'objectif d'abord (« Modifier l'objectif » : app/app/coach/athletes/route.ts, comme le
 // questionnaire), puis sa fiche, ses repères (s'ils ont changé) et son test (s'il est saisi), le test en dernier : il l'emporte sur l'allure d'avant. Un champ vide n'efface rien.
 // « son-profil », « geste-profil », « geste-test-vc », « geste-reperes » : les adresses que d'autres écrans donnent à cette page ; chacune est sur sa partie de la carte.
+// Complète, la carte s'ouvre repliée sur son repère (relecture du 25/11/2026) ; incomplète, elle reste ouverte ; un lien vers l'un de ses champs la rouvre (components/app/OuvrirLeReglage.tsx, sur la page).
 
 export type ObjectifDeLaCarte = {
   planId: string; nom: string; route: boolean; enRoute: boolean; programme: boolean; envoyeEnEntier: boolean; traceDonnee: boolean; base: ReponsesDeLObjectif;
@@ -72,6 +73,7 @@ export default function CarteSavoir({
   const [cleGpx, setCleGpx] = useState(0);
   const [enCours, setEnCours] = useState(false);
   const [messages, setMessages] = useState<Ligne[]>([]);
+  const [ouverte, setOuverte] = useState(!complet);
   const v = { ...valeurs, ...saisie };
   const maj = (cle: Cle, valeur: string | string[]) => setSaisie((s) => ({ ...s, [cle]: valeur }));
   const manque = (cle: string) => manquants.includes(cle) && SURLIGNE;
@@ -204,153 +206,158 @@ export default function CarteSavoir({
         <span>{repere}</span>
       </p>
 
-      <form onSubmit={enregistrer} noValidate className="space-y-5">
-        <div className="space-y-4">
-          <h3 className={SECTION}>{t.leCoureur}</h3>
-          <div id="geste-profil" className="space-y-3 scroll-mt-6">
-            <label className={clsx(LIBELLE, manque('cote'))}>{TEXTES_COTE.sa}
-              <input value={v.cote_min} onChange={(e) => maj('cote_min', e.target.value)} inputMode="decimal" className={clsx(CHAMP, '!w-28 block')} />
-            </label>
-            <div role="radiogroup" aria-label={t.tapis} className={clsx('space-y-1.5', manque('tapis'))}>
-              <span className={LIBELLE}>{t.tapis}</span>
-              <div className="flex gap-1.5">
-                {([['oui', t.oui], ['non', t.non]] as const).map(([valeur, titre]) => (
-                  <label key={valeur} className={PUCE}>
-                    <input type="radio" name="tapis" value={valeur} checked={v.tapis === valeur} onChange={() => maj('tapis', valeur)} className="sr-only" />
-                    {titre}
-                  </label>
-                ))}
-              </div>
-            </div>
-            <div role="group" aria-label={TITRE_CRITERES_FICHE} className="space-y-3">
-              {CRITERES.map((q) => (
-                <label key={q.champ} className={clsx(LIBELLE, manque(q.champ === 'critere_intensite' ? 'intensite' : 'mecanique'))}>{q.fiche}
-                  <span className={clsx('block font-normal', AIDE)}>{q.fichePrecision}</span>
-                  <select value={v[q.champ]} onChange={(e) => maj(q.champ, e.target.value)} className={CHAMP}>
-                    <option value="">{SANS_CRITERE}</option>
-                    {REPONSES_CRITERE.map((r) => <option key={r.valeur} value={r.valeur}>{r.precision ? `${r.titre} — ${r.precision}` : r.titre}</option>)}
-                  </select>
+      <details open={ouverte || !complet} onToggle={(e) => setOuverte(e.currentTarget.open)}>
+        <summary className={complet ? 'cursor-pointer min-h-10 flex items-center text-[0.8125rem] font-bold text-teal' : 'hidden'}>{t.voirEtModifier}</summary>
+        <div className="pt-1 space-y-4">
+          <form onSubmit={enregistrer} noValidate className="space-y-5">
+            <div className="space-y-4">
+              <h3 className={SECTION}>{t.leCoureur}</h3>
+              <div id="geste-profil" className="space-y-3 scroll-mt-6">
+                <label className={clsx(LIBELLE, manque('cote'))}>{TEXTES_COTE.sa}
+                  <input value={v.cote_min} onChange={(e) => maj('cote_min', e.target.value)} inputMode="decimal" className={clsx(CHAMP, '!w-28 block')} />
                 </label>
-              ))}
-            </div>
-          </div>
-
-          <ChoixPointsTrail titre={TEXTES_TRAIL.son} valeurs={v} onChange={maj} />
-
-          <div id="geste-test-vc" className="space-y-2.5 pt-3 border-t border-indigo/[0.07] scroll-mt-6">
-            <h4 className="text-[0.8125rem] font-bold text-indigo">{t.test}</h4>
-            <p className="text-[0.8125rem] text-[#4A4866]">
-              {vc[0]} : <span className="font-bold text-indigo">{vc[1] ?? t.aTester}</span>{vc[1] && vc[2] ? ` · ${vc[2]}` : ''}
-            </p>
-            <p className={AIDE}>{aideDuTest}</p>
-            <label className={LIBELLE}>{t.dateDuTest}
-              {/* Vide tant qu'aucun effort n'est entré ; dès qu'il y en a un, aujourd'hui, que l'enregistrement prendrait (enregistrerTestVc), à changer au besoin. */}
-              <input type="date" value={efforts.le || (testSaisi(efforts) ? aujourdhui : '')} max={aujourdhui} onChange={(e) => setEfforts((x) => ({ ...x, le: e.target.value }))} className={CHAMP} />
-            </label>
-            {effort(1, t.effortCourt, ['3 ou 3:00', '1000 m ou 1'])}
-            {effort(2, t.effortLong, ['12 ou 12:00', '3150 m ou 3,15'])}
-            <p className={AIDE}>{t.autresDurees}</p>
-            <label className={LIBELLE}>{t.vcConnue}
-              <input value={v.vc_allure} onChange={(e) => maj('vc_allure', e.target.value)} placeholder="4:10" className={clsx(CHAMP, '!w-28 block')} />
-            </label>
-          </div>
-
-          <div id="geste-reperes" className="space-y-2.5 pt-3 border-t border-indigo/[0.07] scroll-mt-6">
-            <h4 className="text-[0.8125rem] font-bold text-indigo">{t.reperes}</h4>
-            <div className="grid grid-cols-2 gap-2.5 items-start">
-              {frequence('fc_seuil1', fc1)}
-              {frequence('fc_seuil2', fc2)}
-            </div>
-            <p className={AIDE}>{aideDesReperes}</p>
-          </div>
-        </div>
-
-        <div className="space-y-3 pt-4 border-t border-indigo/[0.12]">
-          <h3 className={SECTION}>{TEXTES_COURSES.sesCourses}</h3>
-          {objectif && <h4 className="text-[0.8125rem] font-bold text-indigo">{TEXTES_COURSES.prochaine} · {objectif.nom}</h4>}
-          {!objectif ? (
-            <div className={clsx('flex flex-wrap gap-2', SURLIGNE)}>
-              <Link href={`/app/coach/nouveau?athlete=${athleteId}&discipline=route`} className="inline-flex items-center min-h-10 px-3.5 rounded-[10px] border border-teal text-teal text-[0.8125rem] font-bold">
-                + Objectif route
-              </Link>
-              <Link href={`/app/coach/nouveau?athlete=${athleteId}`} className="inline-flex items-center min-h-10 px-3.5 rounded-[10px] bg-teal text-white text-[0.8125rem] font-bold">
-                + Objectif trail
-              </Link>
-            </div>
-          ) : objectif.envoyeEnEntier ? (
-            <Link href={`/app/coach/nouveau?athlete=${athleteId}&modifier=${objectif.planId}`} className="inline-flex items-center min-h-10 px-3.5 rounded-[10px] border border-teal text-teal text-[0.8125rem] font-bold">
-              {t.modifierObjectif}
-            </Link>
-          ) : (
-            <>
-              {objectif.enRoute && <p className={AIDE}>{t.enRoute}</p>}
-              {objectif.programme && <p className="text-[0.8125rem] text-[#7A520D]">{t.programme}</p>}
-              <div className="grid grid-cols-2 gap-2.5">
-                <label className={LIBELLE}>{t.dateDeLaCourse}
-                  <input type="date" value={v.date_course} onChange={(e) => maj('date_course', e.target.value)} disabled={objectif.enRoute} className={CHAMP} />
-                </label>
-                <label className={LIBELLE}>{t.chrono}
-                  <input value={v.temps_cible} onChange={(e) => maj('temps_cible', e.target.value)} placeholder={objectif.route ? '0h46' : '5h30'} className={CHAMP} />
-                </label>
-                {!objectif.route && nombre('distance_km', t.km, objectif.enRoute)}
-                {!objectif.route && nombre('dplus_m', t.denivele)}
-              </div>
-              {!objectif.route && (
-                <div id="champ-gpx" className={clsx('space-y-1 scroll-mt-6', manque('gpx'))}>
-                  <label className={LIBELLE}>{objectif.traceDonnee ? t.nouvelleTrace : t.trace}
-                    <input key={cleGpx} type="file" accept=".gpx" onChange={(e) => setGpx(e.target.files?.[0] ?? null)}
-                      className="mt-1.5 block w-full max-w-full text-sm font-normal text-indigo file:mr-3 file:min-h-10 file:px-3 file:rounded-[10px] file:border-0 file:bg-[#E1EFEA] file:text-teal-dark file:font-bold" />
-                  </label>
-                  {objectif.traceDonnee && <p className={AIDE}>{t.traceGardee}</p>}
-                </div>
-              )}
-              <div id="champ-semaine" className={clsx('space-y-2.5 scroll-mt-6', manque('semaine'))}>
-                <div role="group" aria-label={t.jours}>
-                  <div className={LIBELLE}>{t.jours}</div>
-                  <div className="mt-1.5 flex flex-wrap gap-1.5">
-                    {JOURS_DE_LA_SEMAINE.map((j) => (
-                      <label key={j} className={PUCE}>
-                        <input type="checkbox" checked={v.jours_disponibles.includes(j)} className="sr-only"
-                          onChange={(e) => maj('jours_disponibles', e.target.checked ? [...v.jours_disponibles, j] : v.jours_disponibles.filter((x) => x !== j))} />
-                        {majuscule(j.slice(0, 3))}.
+                <div role="radiogroup" aria-label={t.tapis} className={clsx('space-y-1.5', manque('tapis'))}>
+                  <span className={LIBELLE}>{t.tapis}</span>
+                  <div className="flex gap-1.5">
+                    {([['oui', t.oui], ['non', t.non]] as const).map(([valeur, titre]) => (
+                      <label key={valeur} className={PUCE}>
+                        <input type="radio" name="tapis" value={valeur} checked={v.tapis === valeur} onChange={() => maj('tapis', valeur)} className="sr-only" />
+                        {titre}
                       </label>
                     ))}
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-2.5 items-end">
-                  <label className={LIBELLE}>{t.sortieLongue}
-                    <select value={v.jour_sl} onChange={(e) => maj('jour_sl', e.target.value)} className={CHAMP}>
-                      <option value="" disabled>{t.choisis}</option>
-                      {JOURS_DE_LA_SEMAINE.map((j) => <option key={j} value={j}>{majuscule(j)}</option>)}
-                    </select>
-                  </label>
-                  <label className={LIBELLE}>{t.seances}
-                    <input value={v.freq_hebdo} onChange={(e) => maj('freq_hebdo', e.target.value)} inputMode="numeric" className={CHAMP} />
-                  </label>
+                <div role="group" aria-label={TITRE_CRITERES_FICHE} className="space-y-3">
+                  {CRITERES.map((q) => (
+                    <label key={q.champ} className={clsx(LIBELLE, manque(q.champ === 'critere_intensite' ? 'intensite' : 'mecanique'))}>{q.fiche}
+                      <span className={clsx('block font-normal', AIDE)}>{q.fichePrecision}</span>
+                      <select value={v[q.champ]} onChange={(e) => maj(q.champ, e.target.value)} className={CHAMP}>
+                        <option value="">{SANS_CRITERE}</option>
+                        {REPONSES_CRITERE.map((r) => <option key={r.valeur} value={r.valeur}>{r.precision ? `${r.titre} — ${r.precision}` : r.titre}</option>)}
+                      </select>
+                    </label>
+                  ))}
                 </div>
               </div>
-            </>
+
+              <ChoixPointsTrail titre={TEXTES_TRAIL.son} valeurs={v} onChange={maj} />
+
+              <div id="geste-test-vc" className="space-y-2.5 pt-3 border-t border-indigo/[0.07] scroll-mt-6">
+                <h4 className="text-[0.8125rem] font-bold text-indigo">{t.test}</h4>
+                <p className="text-[0.8125rem] text-[#4A4866]">
+                  {vc[0]} : <span className="font-bold text-indigo">{vc[1] ?? t.aTester}</span>{vc[1] && vc[2] ? ` · ${vc[2]}` : ''}
+                </p>
+                <p className={AIDE}>{aideDuTest}</p>
+                <label className={LIBELLE}>{t.dateDuTest}
+                  {/* Vide tant qu'aucun effort n'est entré ; dès qu'il y en a un, aujourd'hui, que l'enregistrement prendrait (enregistrerTestVc), à changer au besoin. */}
+                  <input type="date" value={efforts.le || (testSaisi(efforts) ? aujourdhui : '')} max={aujourdhui} onChange={(e) => setEfforts((x) => ({ ...x, le: e.target.value }))} className={CHAMP} />
+                </label>
+                {effort(1, t.effortCourt, ['3 ou 3:00', '1000 m ou 1'])}
+                {effort(2, t.effortLong, ['12 ou 12:00', '3150 m ou 3,15'])}
+                <p className={AIDE}>{t.autresDurees}</p>
+                <label className={LIBELLE}>{t.vcConnue}
+                  <input value={v.vc_allure} onChange={(e) => maj('vc_allure', e.target.value)} placeholder="4:10" className={clsx(CHAMP, '!w-28 block')} />
+                </label>
+              </div>
+
+              <div id="geste-reperes" className="space-y-2.5 pt-3 border-t border-indigo/[0.07] scroll-mt-6">
+                <h4 className="text-[0.8125rem] font-bold text-indigo">{t.reperes}</h4>
+                <div className="grid grid-cols-2 gap-2.5 items-start">
+                  {frequence('fc_seuil1', fc1)}
+                  {frequence('fc_seuil2', fc2)}
+                </div>
+                <p className={AIDE}>{aideDesReperes}</p>
+              </div>
+            </div>
+
+            <div className="space-y-3 pt-4 border-t border-indigo/[0.12]">
+              <h3 className={SECTION}>{TEXTES_COURSES.sesCourses}</h3>
+              {objectif && <h4 className="text-[0.8125rem] font-bold text-indigo">{TEXTES_COURSES.prochaine} · {objectif.nom}</h4>}
+              {!objectif ? (
+                <div className={clsx('flex flex-wrap gap-2', SURLIGNE)}>
+                  <Link href={`/app/coach/nouveau?athlete=${athleteId}&discipline=route`} className="inline-flex items-center min-h-10 px-3.5 rounded-[10px] border border-teal text-teal text-[0.8125rem] font-bold">
+                    + Objectif route
+                  </Link>
+                  <Link href={`/app/coach/nouveau?athlete=${athleteId}`} className="inline-flex items-center min-h-10 px-3.5 rounded-[10px] bg-teal text-white text-[0.8125rem] font-bold">
+                    + Objectif trail
+                  </Link>
+                </div>
+              ) : objectif.envoyeEnEntier ? (
+                <Link href={`/app/coach/nouveau?athlete=${athleteId}&modifier=${objectif.planId}`} className="inline-flex items-center min-h-10 px-3.5 rounded-[10px] border border-teal text-teal text-[0.8125rem] font-bold">
+                  {t.modifierObjectif}
+                </Link>
+              ) : (
+                <>
+                  {objectif.enRoute && <p className={AIDE}>{t.enRoute}</p>}
+                  {objectif.programme && <p className="text-[0.8125rem] text-[#7A520D]">{t.programme}</p>}
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <label className={LIBELLE}>{t.dateDeLaCourse}
+                      <input type="date" value={v.date_course} onChange={(e) => maj('date_course', e.target.value)} disabled={objectif.enRoute} className={CHAMP} />
+                    </label>
+                    <label className={LIBELLE}>{t.chrono}
+                      <input value={v.temps_cible} onChange={(e) => maj('temps_cible', e.target.value)} placeholder={objectif.route ? '0h46' : '5h30'} className={CHAMP} />
+                    </label>
+                    {!objectif.route && nombre('distance_km', t.km, objectif.enRoute)}
+                    {!objectif.route && nombre('dplus_m', t.denivele)}
+                  </div>
+                  {!objectif.route && (
+                    <div id="champ-gpx" className={clsx('space-y-1 scroll-mt-6', manque('gpx'))}>
+                      <label className={LIBELLE}>{objectif.traceDonnee ? t.nouvelleTrace : t.trace}
+                        <input key={cleGpx} type="file" accept=".gpx" onChange={(e) => setGpx(e.target.files?.[0] ?? null)}
+                          className="mt-1.5 block w-full max-w-full text-sm font-normal text-indigo file:mr-3 file:min-h-10 file:px-3 file:rounded-[10px] file:border-0 file:bg-[#E1EFEA] file:text-teal-dark file:font-bold" />
+                      </label>
+                      {objectif.traceDonnee && <p className={AIDE}>{t.traceGardee}</p>}
+                    </div>
+                  )}
+                  <div id="champ-semaine" className={clsx('space-y-2.5 scroll-mt-6', manque('semaine'))}>
+                    <div role="group" aria-label={t.jours}>
+                      <div className={LIBELLE}>{t.jours}</div>
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        {JOURS_DE_LA_SEMAINE.map((j) => (
+                          <label key={j} className={PUCE}>
+                            <input type="checkbox" checked={v.jours_disponibles.includes(j)} className="sr-only"
+                              onChange={(e) => maj('jours_disponibles', e.target.checked ? [...v.jours_disponibles, j] : v.jours_disponibles.filter((x) => x !== j))} />
+                            {majuscule(j.slice(0, 3))}.
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2.5 items-end">
+                      <label className={LIBELLE}>{t.sortieLongue}
+                        <select value={v.jour_sl} onChange={(e) => maj('jour_sl', e.target.value)} className={CHAMP}>
+                          <option value="" disabled>{t.choisis}</option>
+                          {JOURS_DE_LA_SEMAINE.map((j) => <option key={j} value={j}>{majuscule(j)}</option>)}
+                        </select>
+                      </label>
+                      <label className={LIBELLE}>{t.seances}
+                        <input value={v.freq_hebdo} onChange={(e) => maj('freq_hebdo', e.target.value)} inputMode="numeric" className={CHAMP} />
+                      </label>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <button type="submit" disabled={enCours} className="w-full min-h-12 px-5 rounded-xl bg-teal text-white text-sm font-bold disabled:opacity-50">
+              {enCours ? t.enregistrement : t.enregistrer}
+            </button>
+            {messages.length > 0 && (
+              <div role="status" className="space-y-1">
+                {messages.map((m, i) => <p key={`${i}:${m.texte}`} className={clsx('text-sm', m.ok ? 'text-teal font-semibold' : 'text-[#8A5E10]')}>{m.texte}</p>)}
+              </div>
+            )}
+          </form>
+
+          {courses}
+
+          {zonesEtStyle && (
+            <details className="pt-3 border-t border-indigo/[0.07]">
+              <summary className="cursor-pointer min-h-10 flex items-center text-[0.8125rem] font-bold text-teal">{titreDesZones}</summary>
+              <div className="pt-3 space-y-5">{zonesEtStyle}</div>
+            </details>
           )}
         </div>
-
-        <button type="submit" disabled={enCours} className="w-full min-h-12 px-5 rounded-xl bg-teal text-white text-sm font-bold disabled:opacity-50">
-          {enCours ? t.enregistrement : t.enregistrer}
-        </button>
-        {messages.length > 0 && (
-          <div role="status" className="space-y-1">
-            {messages.map((m, i) => <p key={`${i}:${m.texte}`} className={clsx('text-sm', m.ok ? 'text-teal font-semibold' : 'text-[#8A5E10]')}>{m.texte}</p>)}
-          </div>
-        )}
-      </form>
-
-      {courses}
-
-      {zonesEtStyle && (
-        <details className="pt-3 border-t border-indigo/[0.07]">
-          <summary className="cursor-pointer min-h-10 flex items-center text-[0.8125rem] font-bold text-teal">{titreDesZones}</summary>
-          <div className="pt-3 space-y-5">{zonesEtStyle}</div>
-        </details>
-      )}
+      </details>
     </Carte>
   );
 }

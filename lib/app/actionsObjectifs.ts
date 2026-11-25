@@ -8,6 +8,7 @@ import { revalidatePath } from 'next/cache';
 import { ficheDuCompte } from './demandes';
 import { clientServeur, clientService } from './supabase';
 import { demonstrationOuverte } from './demonstrationPorte';
+import { moteurEstV9 } from './moteurEnLigne';
 
 // La démonstration de l'app (développement seulement) : aucune fiche, rien ne s'enregistre (modifierMonProfil le dit).
 async function maFiche() {
@@ -51,7 +52,8 @@ export async function demanderRetrait(planId: string): Promise<void> {
 }
 
 // Son profil d'entraînement, modifié par le coaché lui-même (décision coach du 20/10/2026, « le voir et le modifier ») :
-// il vaut pour ses prochains objectifs, que son coach relit et lance ; sa préparation en cours garde le sien.
+// il vaut pour ses prochains objectifs, que son coach relit et lance ; sa préparation en cours garde le sien. Sauf, sous la 9.x, sa plus longue côte et son tapis, relus à chaque semaine écrite
+// (lib/app/parametresPlanV9.ts) : le message le dit (TEXTE : BROUILLON, à valider par le coach).
 export async function modifierMonProfil(_e: { ok: boolean; message: string } | null, form: FormData): Promise<{ ok: boolean; message: string }> {
   if (demonstrationOuverte()) return { ok: false, message: 'Démonstration : rien ne s’enregistre.' };
   const fiche = await maFiche();
@@ -63,5 +65,8 @@ export async function modifierMonProfil(_e: { ok: boolean; message: string } | n
   const { error } = await clientService().from('athletes_coaches').update({ profil: lu.profil }).eq('id', fiche.id);
   if (error) return { ok: false, message: 'L’enregistrement n’a pas abouti : réessaie dans un moment.' };
   revalidatePath('/app/profil');
-  return { ok: true, message: 'C’est enregistré : ton prochain objectif partira de ce profil ; ta préparation en cours garde le sien.' };
+  const v9 = await moteurEstV9().catch(() => false);
+  return { ok: true, message: v9
+    ? 'C’est enregistré : ta plus longue côte et ton tapis comptent dès la prochaine semaine écrite ; le reste servira à ton prochain objectif.'
+    : 'C’est enregistré : ton prochain objectif partira de ce profil ; ta préparation en cours garde le sien.' };
 }

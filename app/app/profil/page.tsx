@@ -176,7 +176,7 @@ export default async function MonProfil({ searchParams }: { searchParams: Recher
             ? 'Tu as refait un test de ton côté ? Entre-le ici. Tes zones changent tout de suite, je le vois sur ta fiche et j’en tiens compte pour ta semaine suivante.'
             : 'Tu as refait un test de ton côté ? Entre-le ici. Tes zones changent tout de suite, tes séances à partir de la semaine que je te prépare dimanche, et je le vois sur ta fiche.'}</p>}
         </Carte>
-        <StyleCoureur profil={profil} titre="Ton style de coureur" />
+        <StyleCoureur profil={profil} titre="Ton style de coureur" v1={v9 ? (ctx.coache && !ctx.aLaMain ? 'ecrite' : 'sans') : null} />
 
         {entrainement && (
           <Carte id="profil-entrainement" className="space-y-1 scroll-mt-20">

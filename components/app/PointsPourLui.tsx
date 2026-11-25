@@ -12,12 +12,14 @@ import { motsDuCoach } from '@/lib/app/motsDuCoach';
 // à démarrer) : elles n'ont pas de « Réglé », elles se cochent d'elles-mêmes. Pas de pastille de couleur par ligne : tout ce qui est ici est à faire. Sous la 8.x, la page garde son bloc
 // d'avant. accordRecu : « Accord reçu », le geste de l'accord de lecture, quand son compte Nolio est associé.
 // Les phrases des étapes de l'entrée (le rappel du départ) se lisent en mots du coach, sans « Hooper » (lib/app/motsDuCoach.ts, décision 220 du coach, 24/11/2026) : ce composant est celui de la 9.x.
-export default function PointsPourLui({ lignes, accordRecu }: { lignes: LigneAFaire[]; accordRecu?: () => Promise<void> }) {
+// attend : sa ligne de « Mes athlètes » demande un geste (un manque sur sa carte, un objectif à lancer…) : sans ligne ici, rien ne s'affiche, jamais « Rien à faire » (relecture du 25/11/2026).
+export default function PointsPourLui({ lignes, accordRecu, attend = false }: { lignes: LigneAFaire[]; accordRecu?: () => Promise<void>; attend?: boolean }) {
   const t = TEXTES_PAGE_ATHLETE;
   const enMots = motsDuCoach(true).enMots;
   const n = lignes.length;
   const ligne = 'flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 py-3 border-t first:border-t-0 border-indigo/[0.07] scroll-mt-6';
   const geste = `${BOUTON_POINT} bg-white text-indigo border border-indigo/20 hover:bg-sand`;
+  if (n === 0 && attend) return null;
   return (
     <Carte id="a-faire" className="!p-5 scroll-mt-6">
       <h2 className={clsx('text-[0.8125rem] font-extrabold tracking-[0.1em] uppercase', n > 0 ? 'text-[#8A3326]' : 'text-teal')}>{t.aFaire}{n > 0 ? ` · ${n}` : ''}</h2>

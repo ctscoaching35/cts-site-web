@@ -12,6 +12,8 @@ import { champsVides, FORMATS_ROUTE, intakePourApi, type Champs } from '@/lib/pl
 
 export const TEXTES_CARTE = {
   titre: 'Ce que j’ai besoin de savoir',
+  // La carte complète se replie (choix du coach du 25/11/2026 : la page d’un athlète faisait plusieurs écrans).
+  voirEtModifier: 'Voir et modifier',
   leCoureur: 'Le coureur',
   sonObjectif: 'Son objectif',
   tapis: 'Accès à un tapis de course qui monte',

@@ -56,6 +56,8 @@ import { PROFIL_VIDE, profilCoureur, type Profil } from '@/lib/app/zones';
 import { reperesDeBase } from '@/lib/app/reperes';
 import { demonstrationCoachOuverte } from '@/lib/app/demonstrationCoach';
 import { recuperationAEcrire } from '@/lib/app/ecriture';
+import { deQui } from '@/lib/app/elision';
+import { attendLeCoach } from '@/lib/app/unMot';
 import { modeAppGratuite } from '@/lib/app/gratuitRegles';
 import { clientService, espaceCoachOuvert } from '@/lib/app/supabase';
 import type { CourseSecondaire } from '@/lib/app/tableauDuPlan';
@@ -318,7 +320,7 @@ export default async function PageAthlete({ params, searchParams }: {
   const zonesEtStyle = v9 && ((zones && lignesZones.length > 0) || profilCoureur(profilZones)) ? (
     <>
       {zones && lignesZones.length > 0 && <TableauZones zones={zones} lignes={lignesZones} profil={profilZones} titre="Ses zones" plat />}
-      <StyleCoureur profil={profilZones} titre="Son style de coureur" plat />
+      <StyleCoureur profil={profilZones} titre="Son style de coureur" v1={aLaMain ? 'sans' : 'ecrite'} plat />
     </>
   ) : null;
   // « CE QUE J'AI BESOIN DE SAVOIR » (décision 241 du coach, 25/11/2026, moment 2) : le coureur et son objectif en cours (le prochain à venir), puis « Lancer sa préparation » s'il n'a pas démarré. Les mêmes
@@ -595,7 +597,7 @@ export default async function PageAthlete({ params, searchParams }: {
               semaine qui arrive. Le reste est dans « Réglages » (lib/app/pageAthleteSimple.ts : ORDRE_9X). */}
           {/* La vue d'ensemble, en lecture (241) : son profil et ses courses sur une ligne de temps. */}
           {carte && <VueDEnsemble coureur={vueDuCoureur(carte.savoir.valeurs, reperes, profilCoureur(profilZones))} courses={ligneDeTemps(objectifsLus, jour)} />}
-          <PointsPourLui lignes={lignesAFaire} accordRecu={donnerLAccord} />
+          <PointsPourLui lignes={lignesAFaire} accordRecu={donnerLAccord} attend={espace.mots.some((m) => m.id === a.id && attendLeCoach(m.un))} />
           {carte && <CarteSavoir key={`${a.id}:${carte.lancer.planId}`} {...carte.savoir} zonesEtStyle={zonesEtStyle}
             courses={<ObjectifsAVerifier athleteId={a.id} lignes={lignesObjectifs} jour={jour} plat />} />}
           {carte && <LancerSaPreparation {...carte.lancer} />}
@@ -877,7 +879,7 @@ export default async function PageAthlete({ params, searchParams }: {
                     semaines, ses signaux et ses badges. Rien ne se récupère.
                   </p>
                   <button type="submit" className="min-h-10 px-3 rounded-[10px] border border-[#8A3326]/40 bg-white text-[#8A3326] font-bold">
-                    Retirer l’accord de {a.nom}
+                    Retirer l’accord {v9 ? deQui(a.nom) : `de ${a.nom}`}
                   </button>
                 </form>
               </details>

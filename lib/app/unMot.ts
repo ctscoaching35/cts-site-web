@@ -14,7 +14,8 @@ export const TEXTES_UN_MOT = {
   arret: 'Arrêt signalé',
   silence: 'Ne court plus',
   message: 'Message à lire',
-  fatigue: 'Fatigue signalée',
+  // « Signal à regarder » (choix du coach du 25/11/2026) : le même mot couvre une fatigue, un effort plus dur que prévu, des sensations.
+  fatigue: 'Signal à regarder',
   semaine: 'Semaine pas partie',
   demande: 'Demande à relire',
   nolio: 'Nolio à associer',
@@ -80,6 +81,10 @@ export function unMot(a: DeQuoiDireUnMot): UnMot {
   const partie = a.objectif.suivante?.partie === true || a.objectif.partie === true;
   return partie ? dit(15, t.partie, page, 'ok') : dit(13, t.rien, page, 'neutre');
 }
+
+// Sa ligne attend un geste du coach (tous les mots avant « Rien à faire », « À la main » et « Partie ») : ce que compte la pastille du menu, et ce qui retire
+// « Rien à faire pour lui » de sa page (relecture du 25/11/2026 : la pastille disait 8 pour 11 lignes en attente).
+export const attendLeCoach = (m: Pick<UnMot, 'rang'>): boolean => m.rang < 13;
 
 // Les coachés rangés : ceux qui attendent le coach d'abord (le plus urgent en tête), puis « Partie » et les autres ; à égalité, par leur nom.
 export function rangerLesMots<T extends { nom: string; un: UnMot }>(lignes: T[]): T[] {

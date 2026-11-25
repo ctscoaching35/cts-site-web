@@ -1095,7 +1095,7 @@ export default function Questionnaire({
           </div>
         </div>
         <div role="group" aria-labelledby="freq-titre">
-          <span id="freq-titre" className={labelCls}>{textes.disponibilite.seances}</span>
+          <span id="freq-titre" className={labelCls}>{coach && !demande ? textes.disponibilite.seancesDuCoach : textes.disponibilite.seances}</span>
           {valeursFreq.length ? (
             <div className="flex flex-wrap gap-2">
               {valeursFreq.map((v) => (

@@ -13,9 +13,8 @@ import { texteBilan } from '@/lib/app/espaceParAthlete';
 import { creerFicheDepuisNolio } from '@/lib/app/actionsCoaching';
 import { usrAcheteurs } from '@/lib/app/acheteurs';
 import { dateAbregee, dateLongue } from '@/lib/app/plan';
-import { clientService, espaceCoachOuvert } from '@/lib/app/supabase';
+import { espaceCoachOuvert } from '@/lib/app/supabase';
 import ListeSimple from '@/components/app/ListeSimple';
-import { lireLesMots } from '@/lib/app/motsDesCoaches';
 import { exigerCoach, nolioConfigure } from '@/lib/app/nolio';
 
 // Toujours calculée à la visite : la page lit la session du coach.
@@ -60,7 +59,7 @@ export default async function MesAthletes({ searchParams }: { searchParams: Prom
   const series = await lesSeriesAFaire(coach.compteId, v9);
   const lignes = v9 ? espace.lignes.map((e) => ({ ...e, etiquettes: etiquettesSansAFaire(e.points, e.moteur) })) : espace.lignes;
   // Sous la 9.x (décision 241, moment 3) : un mot par coaché (lib/app/unMot.ts), sans nouvel appel à Nolio.
-  const mots = v9 ? await lireLesMots(clientService(), coach.compteId, espace.lignes, jour) : [];
+  const mots = espace.mots;
   // Sous la 9.x, la clé de l'API Nolio qui manque n'est plus dite au coach : pas de carte « Dans Nolio », une ligne au journal.
   const carteNolio = !(!nolioConfigure() && !montrerLInfra(v9, 'La clé de l’API Nolio manque dans Vercel (NOLIO_API_KEY).'));
   return (

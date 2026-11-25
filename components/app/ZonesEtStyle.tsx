@@ -2,7 +2,7 @@ import Link from 'next/link';
 import clsx from 'clsx';
 import { Carte, CarteSombre, Surtitre } from './Ui';
 import type { Zones } from '@/lib/app/plan';
-import { decalageSeuil1, profilCoureur, texteAllureLigne, texteFc, type Profil } from '@/lib/app/zones';
+import { conseilsV1, decalageSeuil1, profilCoureur, STYLE_SANS_TEST_V1, texteAllureLigne, texteFc, type PreparationV1, type Profil } from '@/lib/app/zones';
 
 // « Tes zones » et « Ton style de coureur », de l'onglet Profil de l'app de l'athlète (app/app/profil/page.tsx ; revu après
 // les audits du 05/11/2026 : Q1, Q3, Q6-e, C38, C39) ; repris tels quels sur la page de l'athlète, côté coach (décision du
@@ -92,8 +92,13 @@ function Plat({ children, className }: { children: React.ReactNode; className?: 
 // préparation en fait ; sans test complet, la phrase C38.
 // plat : sous la 9.x, le style est un morceau de la carte du coach, sur fond clair et sans cadre à lui ; sans test complet, rien (la carte dit déjà que le test manque).
 // Sans lui, les cartes d'avant (l'app de l'athlète et la 8.x n'y changent rien).
-export function StyleCoureur({ profil, titre, plat = false }: { profil: Pick<Profil, 'vc_ms' | 'd_prime_m'>; titre: string; plat?: boolean }) {
+// v1 : sous la 9.x, ce que le moteur v1 fait de ce style (lib/app/zones.ts, conseilsV1) ; sans lui, les textes de la 8.x.
+export function StyleCoureur({ profil, titre, plat = false, v1 = null }: { profil: Pick<Profil, 'vc_ms' | 'd_prime_m'>; titre: string; plat?: boolean; v1?: PreparationV1 | null }) {
   const coureur = profilCoureur(profil);
+  // null : rien à dire d'une préparation que le moteur n'écrit pas.
+  const conseils = !coureur || v1 === 'sans' ? null : v1 ? conseilsV1(coureur.coefficient < 0.9) : coureur;
+  const loin = v1 ? 'Loin de ton objectif' : 'Loin de ton objectif · ton point faible';
+  const pres = v1 ? 'Près de ton objectif' : 'Près de ton objectif · ton point fort';
   if (plat) {
     if (!coureur) return null;
     return (
@@ -107,9 +112,13 @@ export function StyleCoureur({ profil, titre, plat = false }: { profil: Pick<Pro
         </div>
         <div className="flex justify-between text-[0.6875rem] text-[#5E5C78]"><span>plutôt rapide</span><span>plutôt endurant</span></div>
         <p className="text-[0.8125rem] leading-relaxed text-[#4A4866]">{coureur.texte}</p>
-        <Conseil titre="Loin de ton objectif · ton point faible" texte={coureur.loin} ton="faible" />
-        <Conseil titre="Près de ton objectif · ton point fort" texte={coureur.pres} ton="fort" />
-        <p className="text-[0.72rem] text-[#5E5C78] leading-relaxed">{coureur.note}</p>
+        {conseils && (
+          <>
+            <Conseil titre={loin} texte={conseils.loin} ton="faible" />
+            <Conseil titre={pres} texte={conseils.pres} ton="fort" />
+            <p className="text-[0.72rem] text-[#5E5C78] leading-relaxed">{conseils.note}</p>
+          </>
+        )}
       </div>
     );
   }
@@ -119,8 +128,7 @@ export function StyleCoureur({ profil, titre, plat = false }: { profil: Pick<Pro
         <Surtitre>{titre}</Surtitre>
         {/* C38 : Validé par le coach le 05/11/2026 (1A). */}
         <p className="text-[0.8125rem] text-[#4A4866] leading-relaxed">
-          Il se tire de ton test de vitesse critique : plutôt rapide ou plutôt endurant. Ta préparation en tient compte :
-          ton point faible loin de ton objectif, ton point fort près de lui.
+          {v1 ? STYLE_SANS_TEST_V1[v1] : 'Il se tire de ton test de vitesse critique : plutôt rapide ou plutôt endurant. Ta préparation en tient compte : ton point faible loin de ton objectif, ton point fort près de lui.'}
         </p>
       </Carte>
     );
@@ -140,12 +148,14 @@ export function StyleCoureur({ profil, titre, plat = false }: { profil: Pick<Pro
         <div className="flex justify-between text-[0.6875rem] text-[#D6D5E6]"><span>plutôt rapide</span><span>plutôt endurant</span></div>
         <p className="text-[0.8125rem] leading-relaxed text-[#E8E7F2]">{coureur.texte}</p>
       </CarteSombre>
-      <Carte className="space-y-3.5">
-        <Conseil titre="Loin de ton objectif · ton point faible" texte={coureur.loin} ton="faible" />
-        <div className="h-px bg-indigo/[0.08]" />
-        <Conseil titre="Près de ton objectif · ton point fort" texte={coureur.pres} ton="fort" />
-        <p className="text-[0.72rem] text-[#5E5C78] leading-relaxed">{coureur.note}</p>
-      </Carte>
+      {conseils && (
+        <Carte className="space-y-3.5">
+          <Conseil titre={loin} texte={conseils.loin} ton="faible" />
+          <div className="h-px bg-indigo/[0.08]" />
+          <Conseil titre={pres} texte={conseils.pres} ton="fort" />
+          <p className="text-[0.72rem] text-[#5E5C78] leading-relaxed">{conseils.note}</p>
+        </Carte>
+      )}
     </>
   );
 }

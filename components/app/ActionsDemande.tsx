@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { accepterDemande, demandeSansSuite } from '@/lib/app/actionsDemandesCoaching';
+import { deQui } from '@/lib/app/elision';
 import { BOUTON, BOUTON_DANGER, BOUTON_SECONDAIRE, Carte } from './Ui';
 
 // « Accepter » et « Sans suite » d'une demande de coaching (app gratuite, lot A2), chacun derrière une confirmation qui dit ce
@@ -28,7 +29,7 @@ export default function ActionsDemande({ demandeId, nom, ficheCree = 'Une fiche 
   if (etape === 'accepter') {
     return (
       <Carte className="space-y-3 border-teal/40">
-        <p className="text-sm font-bold text-indigo">Accepter la demande de {nom} ?</p>
+        <p className="text-sm font-bold text-indigo">Accepter la demande {deQui(nom)} ?</p>
         <ul className="list-disc pl-5 space-y-1 text-[0.8125rem] text-[#4A4866] leading-relaxed">
           <li>{ficheCree}</li>
           <li>Son espace s’ouvre : la personne reçoit l’e-mail d’invitation à l’app, et s’y connecte avec le même e-mail.</li>
@@ -46,7 +47,7 @@ export default function ActionsDemande({ demandeId, nom, ficheCree = 'Une fiche 
   if (etape === 'sans_suite') {
     return (
       <Carte className="space-y-3 border-[#9A3B2C]/30">
-        <p className="text-sm font-bold text-indigo">Classer la demande de {nom} sans suite ?</p>
+        <p className="text-sm font-bold text-indigo">Classer la demande {deQui(nom)} sans suite ?</p>
         <p className="text-[0.8125rem] text-[#4A4866] leading-relaxed">
           La demande est effacée tout de suite, sans retour possible. Aucun e-mail ne part : tu l’as dit à la personne à l’appel.
         </p>

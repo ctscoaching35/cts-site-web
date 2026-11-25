@@ -24,6 +24,8 @@ import { moteurEstV9 } from './moteurEnLigne';
 import { ajustementsSansAllegees, pointsSousLaV1 } from './cacherSousLaV1';
 import { estUneSaisonDeFond, reessayerPossible } from './reessayerDeSaison';
 import { motsDuCoach, pointEnMotsDuCoach } from './motsDuCoach';
+import { lireLesMots, type LigneDUnMot } from './motsDesCoaches';
+import { attendLeCoach } from './unMot';
 import { apresLePassage, HEURE_PASSAGE_UTC, lundiQuiVient, semainesDuDimanche, type SemainesDuDimanche } from './semainesDuDimanche';
 import { clientService } from './supabase';
 
@@ -44,6 +46,8 @@ export type EtatAthlete = {
 };
 export type EspaceCoach = {
   jour: string; vue: VueCoach; lignes: EtatAthlete[]; urgent: GroupeUrgent[]; urgents: number;
+  // Sous la 9.x, un mot par coaché (lib/app/unMot.ts) ; vide sous la 8.x.
+  mots: LigneDUnMot[];
   bilan: BilanDimanche | null; dimanche: SemainesDuDimanche;
   // false sans la migration du 04/11/2026 (signaux_suivi) : les pages le disent.
   signaux: boolean;
@@ -194,8 +198,10 @@ export async function espaceDuCoach(coachId: string, membres: Set<string> | null
   });
   const ordonnees = ordonner(lignes);
   const urgent = urgentDe(ordonnees);
-  const urgents = athletesUrgents(urgent);
+  // Sous la 9.x, la pastille compte les lignes de « Mes athlètes » qui attendent le coach, « Il manque » comprises ; sous la 8.x, les athlètes d'« Urgent ».
+  const mots = v9 ? await lireLesMots(clientService(), coachId, ordonnees, jour) : [];
+  const urgents = v9 ? mots.filter((m) => attendLeCoach(m.un)).length : athletesUrgents(urgent);
   const bilan = bilanVisible(rangDuJour(jour), apresLePassage(undefined, v9))
     ? await bilanDuDimanche(coachId, jour, dimanche, vue.aRegarder.filter((r) => r.genre === 'semaine').length, v9).catch(() => null) : null;
-  return { jour, vue, lignes: ordonnees, urgent, urgents, bilan, dimanche, signaux: gardes !== null };
+  return { jour, vue, lignes: ordonnees, urgent, urgents, mots, bilan, dimanche, signaux: gardes !== null };
 }
