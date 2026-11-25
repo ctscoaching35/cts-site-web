@@ -209,8 +209,11 @@ export default async function ObjectifCoache({ params, searchParams }: {
                         : `Programmé : il démarre tout seul le ${dateLongue(String(ecriture.depart_prevu), true)}.`}
                     </p>
                   )}
-                  <DemarrerNolio planId={id} actif={Boolean(nolio)} lundi={lundiDepart} premier={premierLundi} dernier={dernierLundi}
-                    programme={Boolean(ecriture.depart_prevu)} />
+                  {/* Sous la 9.x (décision 241), seul « Lancer sa préparation » démarre, sur sa page, carte complète et accord reçu ; la 8.x garde son bouton. */}
+                  {v9
+                    ? !ecriture.depart_prevu && <Link href={`/app/coach/athlete/${o.athlete.id}#lancer-sa-preparation`} className="inline-flex items-center min-h-11 px-4 rounded-xl bg-teal text-white text-sm font-bold">Lancer sa préparation ›</Link>
+                    : <DemarrerNolio planId={id} actif={Boolean(nolio)} lundi={lundiDepart} premier={premierLundi} dernier={dernierLundi}
+                        programme={Boolean(ecriture.depart_prevu)} />}
                 </div>
               ) : (
                 <>

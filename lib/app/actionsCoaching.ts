@@ -79,7 +79,7 @@ export async function creerFicheDepuisNolio(nolioId: string): Promise<void> {
 }
 
 // « Nouveau coaché », sous la 9.x (décision 241 du coach, 25/11/2026, moment 1) : un seul écran. Sa fiche (prénom et nom), son compte Nolio (une fiche déjà créée d'elle-même depuis l'équipe est reprise, pas doublée),
-// et, si le coach donne son e-mail, son accès à l'app (ouvrirEspace : l'app lui envoie son lien). Le coach envoie ensuite lui-même le message d'accord dans Nolio. Redirige vers sa page.
+// et son e-mail GARDÉ SEULEMENT (retouche de la 241 : l'app de l'athlète attend, rien n'est envoyé ; le lien partira par « Inviter dans l'app »). Le coach envoie ensuite lui-même le message d'accord dans Nolio. Redirige vers sa page.
 export async function creerCoache(_e: EtatCoach, form: FormData): Promise<EtatCoach> {
   const coach = await coachConnecte();
   if (!coach) return { ok: false, message: 'Ta session a expiré : reconnecte-toi.' };
@@ -99,11 +99,11 @@ export async function creerCoache(_e: EtatCoach, form: FormData): Promise<EtatCo
     id = data.id as string;
   }
   if (email) {
-    try {
-      await ouvrirEspace(coach.compteId, { id, nom: complet }, email);
-    } catch (e) {
+    const { error } = await service.from('athletes_coaches').update({ email_app: email }).eq('id', id).eq('coach_id', coach.compteId);
+    if (error) {
+      console.error(`E-mail de ${id} (la migration du 25/11/2026 est-elle passée ?) :`, error.message);
       revalidatePath('/app/coach');
-      return { ok: false, message: await messageAuCoach(`Sa fiche est créée, mais son lien n’est pas parti : ${e instanceof Error ? e.message : String(e)} Invite-le depuis sa page, « Réglages ».`) };
+      return { ok: false, message: 'Sa fiche est créée, mais son e-mail n’a pas pu être gardé : note-le de côté, tu le donneras à son invitation.' };
     }
   }
   revalidatePath('/app/coach');

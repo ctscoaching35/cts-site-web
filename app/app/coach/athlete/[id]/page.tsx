@@ -335,7 +335,7 @@ export default async function PageAthlete({ params, searchParams }: {
     return {
       savoir: {
         athleteId: a.id, nom: a.nom, email: coach.email, aujourdhui: jour, ...etatCarte,
-        valeurs: valeursDeLaCarte({ fiche: a.profil, intake: intakeDuPlan, champs, courseDate: o?.course_date ?? '', fc1: a.fc_seuil1, fc2: a.fc_seuil2 }),
+        valeurs: valeursDeLaCarte({ fiche: a.profil, intake: intakeDuPlan, champs, courseDate: o?.course_date ?? '', fc1: a.fc_seuil1, fc2: a.fc_seuil2, vcAllure: a.vc_ms ? allureDepuisVitesse(a.vc_ms) : null }),
         niveau: String(profil.niveau ?? ''),
         objectif: o ? {
           planId: o.plan_id, nom: o.course_nom, route: estUneCourseSurRoute(base), enRoute: Boolean(p?.demarre_le), programme: Boolean(p?.depart_prevu && !p?.demarre_le),
@@ -821,7 +821,7 @@ export default async function PageAthlete({ params, searchParams }: {
                 ? `Son espace est ouvert (${adresse}) : son tableau de bord, ses données, son profil, la bibliothèque. Ses séances restent dans Nolio.`
                 : `${prenom} n’a pas encore accès à l’app. Invité, il reçoit un code à cette adresse pour s’y connecter, et voit son tableau de bord, ses données, son profil et la bibliothèque. Ses séances restent dans Nolio.`}
             </p>
-            <InvitationApp athleteId={a.id} adresse={adresse} />
+            <InvitationApp athleteId={a.id} adresse={adresse} gardee={a.email_app} />
             {a.compte_id && (
               <form action={retirerAcces.bind(null, a.id)}>
                 <button type="submit" className="text-xs text-[#5E5C78] underline underline-offset-2">Retirer son accès</button>

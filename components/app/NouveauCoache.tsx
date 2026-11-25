@@ -28,7 +28,7 @@ export default function NouveauCoache({ nolio, message }: { nolio: { id: string;
         </label>
         <label className="block text-xs font-semibold text-indigo">Son e-mail
           <input name="email" type="email" autoComplete="off" className={champ} />
-          <span className="mt-1 block font-normal text-[#5E5C78]">Facultatif. Si tu le remplis, l’app lui envoie maintenant le lien de son espace.</span>
+          <span className="mt-1 block font-normal text-[#5E5C78]">Facultatif. Il est gardé, rien ne lui est envoyé : tu l’inviteras dans l’app quand tu voudras.</span>
         </label>
         <button type="submit" disabled={enCours} className="min-h-12 px-5 rounded-xl bg-teal text-white text-sm font-bold disabled:opacity-50">
           {enCours ? 'Création…' : 'Créer sa fiche'}

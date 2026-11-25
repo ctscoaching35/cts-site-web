@@ -25,7 +25,7 @@ export { volumeDuMoment };
 
 export type Objectif = { plan_id: string; course_nom: string; course_date: string };
 export type FicheAthlete = {
-  id: string; nom: string; nolio_athlete_id: string | null;
+  id: string; nom: string; nolio_athlete_id: string | null; email_app?: string | null;
   fc_seuil1: number | null; vc_ms: number | null; fc_seuil2: number | null; v_seuil1_ms: number | null;
   objectifs: Objectif[];
   // Son compte dans l'app, quand le coach l'y a invité (T6).
@@ -96,6 +96,8 @@ export async function athletesCoaches(coachId: string): Promise<FicheAthlete[]> 
     v_seuil1_ms: a.v_seuil1_ms ?? null, compte_id: a.compte_id ?? null, questionnaires: a.questionnaires ?? null,
     profil: (a.profil ?? null) as FicheAthlete['profil'], d_prime_m: a.d_prime_m ?? null,
     reperes_sources: (a.reperes_sources ?? {}) as FicheAthlete['reperes_sources'],
+    // Son e-mail gardé à la création (retouche de la 241) ; absent sans la migration du 25/11/2026.
+    email_app: (a.email_app ?? null) as string | null,
     programmation: a.programmation === 'main' ? 'main' : 'auto',
     mode: a.mode === 'plan' ? 'plan' : 'coaching', mode_le: a.mode_le ?? null,
     saison_refusee: (a.saison_refusee ?? null) as FicheAthlete['saison_refusee'],

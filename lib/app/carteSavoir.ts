@@ -17,6 +17,8 @@ export const TEXTES_CARTE = {
   oui: 'Oui',
   non: 'Non',
   test: 'Son dernier test de vitesse critique',
+  // Une vitesse critique connue d'un test passé (241, retouche) : son allure, sans les deux efforts.
+  vcConnue: 'Ou son allure à la vitesse critique, si tu la connais d’un test passé (min/km)',
   aTester: 'à tester',
   dateDuTest: 'Date du test',
   effortCourt: 'Effort court (3 min)',
@@ -56,11 +58,11 @@ export const JOURS_DE_LA_SEMAINE = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vend
 
 export type ValeursDeLaCarte = {
   cote_min: string; tapis: string; critere_intensite: string; critere_denivele: string;
-  fc_seuil1: string; fc_seuil2: string;
+  fc_seuil1: string; fc_seuil2: string; vc_allure: string;
   date_course: string; distance_km: string; dplus_m: string; temps_cible: string; jours_disponibles: string[]; jour_sl: string; freq_hebdo: string;
 };
 export const CLES_DU_COUREUR = ['cote_min', 'tapis', 'critere_intensite', 'critere_denivele'] as const;
-export const CLES_DES_REPERES = ['fc_seuil1', 'fc_seuil2'] as const;
+export const CLES_DES_REPERES = ['fc_seuil1', 'fc_seuil2', 'vc_allure'] as const;
 export const CLES_DE_L_OBJECTIF = ['date_course', 'distance_km', 'dplus_m', 'temps_cible', 'jours_disponibles', 'jour_sl', 'freq_hebdo'] as const;
 
 export type EffortsDuTest = { le: string; duree1: string; distance1: string; duree2: string; distance2: string };
@@ -90,8 +92,8 @@ export function reponsesReprises(intake: Reponses, champs: Reponses): ReponsesDe
 }
 
 // Ce que la carte montre d’emblée. La côte, le tapis et les critères se lisent comme le moteur les lit (sa fiche d’abord, sinon l’objectif) ; ses jours, sa sortie longue et ses séances sont ceux de l’objectif.
-export function valeursDeLaCarte({ fiche, intake, champs, courseDate, fc1, fc2 }: {
-  fiche: Reponses; intake: Reponses; champs: Reponses; courseDate: string; fc1: number | null | undefined; fc2: number | null | undefined;
+export function valeursDeLaCarte({ fiche, intake, champs, courseDate, fc1, fc2, vcAllure = null }: {
+  fiche: Reponses; intake: Reponses; champs: Reponses; courseDate: string; fc1: number | null | undefined; fc2: number | null | undefined; vcAllure?: string | null;
 }): ValeursDeLaCarte {
   const base = reponsesReprises(intake, champs);
   const criteres = (typeof champs?.criteres === 'object' && champs.criteres !== null ? champs.criteres : {}) as Record<string, unknown>;
@@ -105,6 +107,7 @@ export function valeursDeLaCarte({ fiche, intake, champs, courseDate, fc1, fc2 }
     critere_denivele: critere('critere_denivele', 'mecanique'),
     fc_seuil1: fc1 ? String(fc1) : '',
     fc_seuil2: fc2 ? String(fc2) : '',
+    vc_allure: vcAllure ?? '',
     date_course: texte(base.date_course) || courseDate,
     distance_km: texte(base.distance_km),
     dplus_m: texte(base.dplus_m),
@@ -197,12 +200,12 @@ export function intakeDeLObjectif({ base, avant, apres, nom, email, niveau, form
 export const testSaisi = (e: EffortsDuTest): boolean => [e.duree1, e.distance1, e.duree2, e.distance2].some((x) => x.trim() !== '');
 
 /**
- * Ses repères, quand une fréquence cardiaque a changé (null sinon) : l’enregistrement (enregistrerValeurs) efface tout ce qui part vide, donc la fréquence inchangée et les deux allures repartent telles qu’elles sont ;
+ * Ses repères, quand une fréquence cardiaque ou l'allure de sa vitesse critique a changé (null sinon) : l’enregistrement (enregistrerValeurs) efface tout ce qui part vide, donc la fréquence inchangée et les deux allures repartent telles qu’elles sont ;
  * `allures_gardees` lui dit de garder leur valeur exacte (ni arrondie à la seconde, ni redite « saisie par toi »).
  */
 export function reperesAEnvoyer(avant: ValeursDeLaCarte, apres: ValeursDeLaCarte, allures: { vs1: string | null; vc: string | null }): [string, string][] | null {
-  if (CLES_DES_REPERES.every((k) => memeNombre(avant[k], apres[k]))) return null;
-  return [['fc_seuil1', apres.fc_seuil1], ['fc_seuil2', apres.fc_seuil2], ['vs1_allure', allures.vs1 ?? ''], ['vc_allure', allures.vc ?? ''], ['allures_gardees', '1']];
+  if (CLES_DES_REPERES.every((k) => (k === 'vc_allure' ? avant[k] === apres[k] : memeNombre(avant[k], apres[k])))) return null;
+  return [['fc_seuil1', apres.fc_seuil1], ['fc_seuil2', apres.fc_seuil2], ['vs1_allure', allures.vs1 ?? ''], ['vc_allure', apres.vc_allure || (allures.vc ?? '')], ['allures_gardees', '1']];
 }
 
 // ─── Sa fiche ────────────────────────────────────────────────────────────────────────────────────────────────────────

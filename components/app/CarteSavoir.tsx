@@ -245,6 +245,9 @@ export default function CarteSavoir({
             {effort(1, t.effortCourt, ['3 ou 3:00', '1000 m ou 1'])}
             {effort(2, t.effortLong, ['12 ou 12:00', '3150 m ou 3,15'])}
             <p className={AIDE}>{t.autresDurees}</p>
+            <label className={LIBELLE}>{t.vcConnue}
+              <input value={v.vc_allure} onChange={(e) => maj('vc_allure', e.target.value)} placeholder="4:10" className={clsx(CHAMP, '!w-28 block')} />
+            </label>
           </div>
 
           <div id="geste-reperes" className="space-y-2.5 pt-3 border-t border-indigo/[0.07] scroll-mt-6">
@@ -288,7 +291,7 @@ export default function CarteSavoir({
                 {!objectif.route && nombre('dplus_m', t.denivele)}
               </div>
               {!objectif.route && (
-                <div className={clsx('space-y-1', manque('gpx'))}>
+                <div id="champ-gpx" className={clsx('space-y-1 scroll-mt-6', manque('gpx'))}>
                   <label className={LIBELLE}>{objectif.traceDonnee ? t.nouvelleTrace : t.trace}
                     <input key={cleGpx} type="file" accept=".gpx" onChange={(e) => setGpx(e.target.files?.[0] ?? null)}
                       className="mt-1.5 block w-full max-w-full text-sm font-normal text-indigo file:mr-3 file:min-h-10 file:px-3 file:rounded-[10px] file:border-0 file:bg-[#E1EFEA] file:text-teal-dark file:font-bold" />
@@ -296,7 +299,7 @@ export default function CarteSavoir({
                   {objectif.traceDonnee && <p className={AIDE}>{t.traceGardee}</p>}
                 </div>
               )}
-              <div className={clsx('space-y-2.5', manque('semaine'))}>
+              <div id="champ-semaine" className={clsx('space-y-2.5 scroll-mt-6', manque('semaine'))}>
                 <div role="group" aria-label={t.jours}>
                   <div className={LIBELLE}>{t.jours}</div>
                   <div className="mt-1.5 flex flex-wrap gap-1.5">

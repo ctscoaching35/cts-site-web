@@ -68,10 +68,10 @@ export function unMot(a: DeQuoiDireUnMot): UnMot {
   if (!a.nolio) return dit(6, t.nolio, page, 'warn');
   if (!a.accord && !a.aLaMain) return dit(7, t.accord, `${page}#son-entree`, 'warn');
   if (a.aLaMain) return dit(14, t.main, page, 'neutre');
+  // Le manque ouvre sa carte sur le champ surligné (retouche de la 241) : la côte, le tapis, les critères ; la trace ; la semaine.
   if (a.manque) {
-    const href = a.gesteDuManque === 'profil' ? `${page}#geste-profil`
-      : a.objectif ? `/app/coach/nouveau?athlete=${a.id}&modifier=${a.objectif.plan_id}` : page;
-    return dit(8, t.manque(a.manque), href, 'warn');
+    const ancre = { profil: '#geste-profil', trace: '#champ-gpx', semaine: '#champ-semaine' } as const;
+    return dit(8, t.manque(a.manque), a.gesteDuManque ? `${page}${ancre[a.gesteDuManque]}` : page, 'warn');
   }
   if (!a.objectif) return dit(9, t.sansObjectif, `/app/coach/nouveau?athlete=${a.id}`, 'neutre');
   if (!a.objectif.demarre && !a.objectif.prevu) return dit(10, t.lancer, `${page}#lancer-sa-preparation`, 'warn');
