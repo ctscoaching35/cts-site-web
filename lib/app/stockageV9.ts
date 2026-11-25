@@ -90,6 +90,26 @@ export async function lireLesSemainesRecentes(service: SupabaseClient, planIds: 
   });
 }
 
+// Pour « Mes athlètes » (lib/app/unMot.ts) : de chaque semaine écrite récente, son lundi, ses réponses lues et si un point du dimanche a été posé à sa fin ; rien d'autre.
+export type ReponseDeSemaineV9 = { planId: string; numero: number; lundi: string | null; reponsesLues: boolean; pointPose: boolean };
+export async function lireLesReponsesRecentes(service: SupabaseClient, planIds: string[], depuis: string): Promise<ReponseDeSemaineV9[]> {
+  if (!planIds.length) return [];
+  const { data, error } = await service.from('semaines_ecrites').select('plan_id, numero, lundi:donnees->>lundi, reponses_lues, questionnaire')
+    .in('plan_id', planIds).eq('moteur', MOTEUR_ECRIT).gte('ecrite_le', depuis);
+  if (error) throw echec('semaines_ecrites', error);
+  return ((data ?? []) as unknown as { plan_id: string; numero: string; lundi: string | null; reponses_lues: unknown; questionnaire: unknown }[]).flatMap((l) => {
+    const numero = numeroDeLaCle(l.numero);
+    return numero === null ? [] : [{ planId: l.plan_id, numero, lundi: typeof l.lundi === 'string' ? l.lundi : null, reponsesLues: Boolean(l.reponses_lues), pointPose: Boolean(l.questionnaire) }];
+  });
+}
+
+// Pas de réponse au point du dimanche pour la semaine en cours (`lundi`) : elle est écrite sans réponse lue, alors qu'un point avait été posé à la fin de la semaine d'avant.
+export function sansReponseAuPoint(semaines: ReponseDeSemaineV9[], planId: string, lundi: string): boolean {
+  const duPlan = semaines.filter((s) => s.planId === planId);
+  const courante = duPlan.find((s) => s.lundi === lundi);
+  return Boolean(courante && !courante.reponsesLues && duPlan.some((s) => s.numero === courante.numero - 1 && s.pointPose));
+}
+
 // Les réponses qu'une réponse tardive a vues : la semaine n'est pas réécrite, mais la même réponse ne se rejoue pas au passage suivant.
 export async function garderLesReponsesLues(service: SupabaseClient, planId: string, numero: number, reponses: ReponsesDimanche): Promise<void> {
   const { error } = await service.from('semaines_ecrites').update({ reponses_lues: reponses }).eq('plan_id', planId).eq('numero', cleDeLaSemaine(numero));

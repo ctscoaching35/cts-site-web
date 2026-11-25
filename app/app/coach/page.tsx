@@ -8,12 +8,14 @@ import TableauAthletes, { filtreDe } from '@/components/app/TableauAthletes';
 import { equipeNolio, synchroniserLEquipe } from '@/lib/app/espaceCoach';
 import { espaceDuCoach } from '@/lib/app/mesAthletes';
 import { moteurEstV9 } from '@/lib/app/moteurEnLigne';
-import { aFaireDe, etiquettesSansAFaire, lesSeriesAFaire, montrerLInfra, TEXTES_A_FAIRE, texteBilanV9 } from '@/lib/app/espaceCoachSimple';
+import { etiquettesSansAFaire, lesSeriesAFaire, montrerLInfra, TEXTES_A_FAIRE } from '@/lib/app/espaceCoachSimple';
 import { texteBilan } from '@/lib/app/espaceParAthlete';
 import { creerFicheDepuisNolio } from '@/lib/app/actionsCoaching';
 import { usrAcheteurs } from '@/lib/app/acheteurs';
 import { dateAbregee, dateLongue } from '@/lib/app/plan';
-import { espaceCoachOuvert } from '@/lib/app/supabase';
+import { clientService, espaceCoachOuvert } from '@/lib/app/supabase';
+import ListeSimple from '@/components/app/ListeSimple';
+import { lireLesMots } from '@/lib/app/motsDesCoaches';
 import { exigerCoach, nolioConfigure } from '@/lib/app/nolio';
 
 // Toujours calculée à la visite : la page lit la session du coach.
@@ -57,7 +59,8 @@ export default async function MesAthletes({ searchParams }: { searchParams: Prom
   // Sous la 9.x : ce qui attend le coach est dans « À faire » ; la colonne « Ce qui l'attend » ne le redit pas.
   const series = await lesSeriesAFaire(coach.compteId, v9);
   const lignes = v9 ? espace.lignes.map((e) => ({ ...e, etiquettes: etiquettesSansAFaire(e.points, e.moteur) })) : espace.lignes;
-  const bilanV9 = v9 && bilan ? texteBilanV9(bilan.parties) : null;
+  // Sous la 9.x (décision 241, moment 3) : un mot par coaché (lib/app/unMot.ts), sans nouvel appel à Nolio.
+  const mots = v9 ? await lireLesMots(clientService(), coach.compteId, espace.lignes, jour) : [];
   // Sous la 9.x, la clé de l'API Nolio qui manque n'est plus dite au coach : pas de carte « Dans Nolio », une ligne au journal.
   const carteNolio = !(!nolioConfigure() && !montrerLInfra(v9, 'La clé de l’API Nolio manque dans Vercel (NOLIO_API_KEY).'));
   return (
@@ -85,16 +88,9 @@ export default async function MesAthletes({ searchParams }: { searchParams: Prom
         </Link>
       )}
 
-      {/* Sous la 9.x, le bilan du dimanche ne dit que ce qui est parti : les semaines pas parties et les athlètes qui attendent sont dans « À faire ». */}
-      {bilanV9 && bilan && (
-        <div className="bg-indigo text-white rounded-[14px] p-4 text-sm">
-          <strong>Dimanche {dateAbregee(bilan.dimanche, false)}</strong> : {bilanV9}
-        </div>
-      )}
-
-      {v9 && <AFaire lignes={aFaireDe(espace.urgent)} series={series} />}
-
-      <TableauAthletes lignes={lignes} jour={jour} passee={vue.semainePassee} filtre={filtre} v9={v9} />
+      {/* Sous la 9.x (décision 241, moment 3) : une ligne par coaché et un seul mot ; les séries du samedi à retirer (restes de la 8.x) restent dites tant qu'il y en a. */}
+      {v9 && series > 0 && <AFaire lignes={[]} series={series} />}
+      {v9 ? <ListeSimple lignes={mots} /> : <TableauAthletes lignes={lignes} jour={jour} passee={vue.semainePassee} filtre={filtre} v9={v9} />}
       {!espace.signaux && montrerLInfra(v9, 'Les signaux de la semaine ne sont pas gardés : la migration du 04/11/2026 est à passer dans Supabase.') && (
         <p className="text-xs text-[#5E5C78]">
           Les signaux de la semaine (commentaires, sensations, Hooper, rien de remonté) ne sont pas encore gardés : la migration
@@ -102,63 +98,76 @@ export default async function MesAthletes({ searchParams }: { searchParams: Prom
         </p>
       )}
 
-      {/* Les anciens athlètes (lot 2, décision A du coach du 12/11/2026) : sortis de l'équipe Nolio, hors de la liste ;
-          leur fiche et leur historique restent, ils reviennent d'eux-mêmes dans la liste s'ils reviennent dans l'équipe. */}
-      {anciens.length > 0 && (
-        <Carte className="!p-5 space-y-2">
-          <Surtitre>Anciens athlètes</Surtitre>
-          <p className="text-sm text-[#4A4866]">
-            Plus dans ton équipe Nolio : le moteur n’écrit plus rien pour eux, leur historique reste. S’ils reviennent dans
-            l’équipe, ils reviennent dans ta liste.
-          </p>
-          <ul className="text-sm divide-y divide-indigo/[0.06]">
-            {anciens.map((a) => (
-              <li key={a.id}>
-                <Link href={`/app/coach/athlete/${a.id}`} className="flex items-center justify-between gap-3 min-h-11 text-indigo">
-                  <span className="font-semibold">{a.nom}</span>
-                  <span className="text-xs text-[#5E5C78]">depuis le {dateAbregee(a.depuis, false)} ›</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </Carte>
-      )}
-
-      {carteNolio && (
-        <Carte className="!p-5 space-y-2">
-          <Surtitre>Dans Nolio</Surtitre>
-          {!nolioConfigure() ? (
-            <p className="text-sm text-[#4A4866]">La clé de l’API Nolio manque dans Vercel (NOLIO_API_KEY).</p>
-          ) : erreur ? (
-            <p className="text-sm text-[#4A4866]">{v9 ? TEXTES_A_FAIRE.nolioMuet : erreur}</p>
-          ) : (
-            <details className="text-sm" open={sansFiche.length > 0 || Boolean(toi)}>
-              <summary className="cursor-pointer min-h-11 flex items-center font-semibold text-indigo">
-                {sansFiche.length ? `${sansFiche.length} athlète${sansFiche.length > 1 ? 's' : ''} de Nolio sans fiche ici` : 'Tous tes athlètes de Nolio ont leur fiche'}
-              </summary>
-              {/* « Créer sa fiche » (décision coach du 22/10/2026) : d'un clic, déjà reliée à Nolio. */}
-              <ul className="pb-2 text-[#4A4866] divide-y divide-indigo/[0.06]">
-                {sansFiche.map((x) => (
-                  <li key={x.id} className="flex items-center justify-between gap-3 py-1.5">
-                    <span>{x.name}</span>
-                    <form action={creerFicheDepuisNolio.bind(null, x.id)}>
-                      <button type="submit" className="min-h-10 px-3 rounded-[10px] border border-teal text-teal text-[0.8125rem] font-bold">Créer sa fiche ›</button>
-                    </form>
+      {/* Sous la 9.x, rien d'autre que la liste sur la page (décision 241) : les anciens athlètes et « Dans Nolio » sont repliés dans « Réglages ». */}
+      {(() => {
+        const reste = (
+          <>
+          {/* Les anciens athlètes (lot 2, décision A du coach du 12/11/2026) : sortis de l'équipe Nolio, hors de la liste ;
+              leur fiche et leur historique restent, ils reviennent d'eux-mêmes dans la liste s'ils reviennent dans l'équipe. */}
+          {anciens.length > 0 && (
+            <Carte className="!p-5 space-y-2">
+              <Surtitre>Anciens athlètes</Surtitre>
+              <p className="text-sm text-[#4A4866]">
+                Plus dans ton équipe Nolio : le moteur n’écrit plus rien pour eux, leur historique reste. S’ils reviennent dans
+                l’équipe, ils reviennent dans ta liste.
+              </p>
+              <ul className="text-sm divide-y divide-indigo/[0.06]">
+                {anciens.map((a) => (
+                  <li key={a.id}>
+                    <Link href={`/app/coach/athlete/${a.id}`} className="flex items-center justify-between gap-3 min-h-11 text-indigo">
+                      <span className="font-semibold">{a.nom}</span>
+                      <span className="text-xs text-[#5E5C78]">depuis le {dateAbregee(a.depuis, false)} ›</span>
+                    </Link>
                   </li>
                 ))}
               </ul>
-              {toi && (
-                <div className="flex items-center justify-between gap-3 pt-2 pb-1 border-t border-indigo/[0.06] text-[#4A4866]">
-                  <span>Toi : vis l’app d’un coaché sur ton propre Nolio.</span>
-                  <form action={creerFicheDepuisNolio.bind(null, toi.id)}>
-                    <button type="submit" className="min-h-10 px-3 rounded-[10px] border border-teal text-teal text-[0.8125rem] font-bold">Créer ta fiche de test ›</button>
-                  </form>
-                </div>
-              )}
-            </details>
+            </Carte>
           )}
-        </Carte>
-      )}
+
+          {carteNolio && (
+            <Carte className="!p-5 space-y-2">
+              <Surtitre>Dans Nolio</Surtitre>
+              {!nolioConfigure() ? (
+                <p className="text-sm text-[#4A4866]">La clé de l’API Nolio manque dans Vercel (NOLIO_API_KEY).</p>
+              ) : erreur ? (
+                <p className="text-sm text-[#4A4866]">{v9 ? TEXTES_A_FAIRE.nolioMuet : erreur}</p>
+              ) : (
+                <details className="text-sm" open={sansFiche.length > 0 || Boolean(toi)}>
+                  <summary className="cursor-pointer min-h-11 flex items-center font-semibold text-indigo">
+                    {sansFiche.length ? `${sansFiche.length} athlète${sansFiche.length > 1 ? 's' : ''} de Nolio sans fiche ici` : 'Tous tes athlètes de Nolio ont leur fiche'}
+                  </summary>
+                  {/* « Créer sa fiche » (décision coach du 22/10/2026) : d'un clic, déjà reliée à Nolio. */}
+                  <ul className="pb-2 text-[#4A4866] divide-y divide-indigo/[0.06]">
+                    {sansFiche.map((x) => (
+                      <li key={x.id} className="flex items-center justify-between gap-3 py-1.5">
+                        <span>{x.name}</span>
+                        <form action={creerFicheDepuisNolio.bind(null, x.id)}>
+                          <button type="submit" className="min-h-10 px-3 rounded-[10px] border border-teal text-teal text-[0.8125rem] font-bold">Créer sa fiche ›</button>
+                        </form>
+                      </li>
+                    ))}
+                  </ul>
+                  {toi && (
+                    <div className="flex items-center justify-between gap-3 pt-2 pb-1 border-t border-indigo/[0.06] text-[#4A4866]">
+                      <span>Toi : vis l’app d’un coaché sur ton propre Nolio.</span>
+                      <form action={creerFicheDepuisNolio.bind(null, toi.id)}>
+                        <button type="submit" className="min-h-10 px-3 rounded-[10px] border border-teal text-teal text-[0.8125rem] font-bold">Créer ta fiche de test ›</button>
+                      </form>
+                    </div>
+                  )}
+                </details>
+              )}
+            </Carte>
+          )}
+          </>
+        );
+        return v9 ? (
+          <details className="space-y-5">
+            <summary className="cursor-pointer min-h-11 flex items-center text-[0.8125rem] font-bold text-teal">Réglages</summary>
+            <div className="space-y-5 pt-2">{reste}</div>
+          </details>
+        ) : reste;
+      })()}
     </CadreCoach>
   );
 }
