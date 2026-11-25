@@ -248,8 +248,8 @@ test('préparé, pas branché : aucun fichier du site ne lit encore le questionn
   } catch (e) {
     if (e.status !== 1) throw e;
   }
-  // lib/app/moteurV9.ts n'en prend que les types (il est préparé, pas branché non plus : scripts/test-moteur-v9.mjs).
-  assert.deepEqual(lecteurs.filter((f) => !['lib/app/moteurV9.ts', 'lib/app/ecritureV9.ts', 'lib/app/stockageV9.ts', 'lib/app/passeUnPlanV9.ts', 'lib/app/passagesV9.ts'].includes(f)), []);
+  // lib/app/moteurV9.ts n'en prend que les types (il est préparé, pas branché non plus : scripts/test-moteur-v9.mjs). lib/app/realiseV9.ts n'en prend que la liste des familles clés (198, 199), pour le résumé des semaines de la v1.
+  assert.deepEqual(lecteurs.filter((f) => !['lib/app/moteurV9.ts', 'lib/app/ecritureV9.ts', 'lib/app/stockageV9.ts', 'lib/app/passeUnPlanV9.ts', 'lib/app/passagesV9.ts', 'lib/app/realiseV9.ts'].includes(f)), []);
 });
 
 test('les réponses du dimanche se prennent par l’identifiant posé ; avant la semaine 1, par le nom « Ton point du dimanche », jamais par une série du samedi encore dans Nolio', () => {

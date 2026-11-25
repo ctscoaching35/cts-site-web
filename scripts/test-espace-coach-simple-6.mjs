@@ -73,9 +73,9 @@ test('le réalisé d’une semaine n’est écrit par aucune chaîne du moteur v
   const garder = stockage.slice(stockage.indexOf('export async function garderUneEcriture'), stockage.indexOf('export async function garderLEtat'));
   assert.match(garder, /from\('semaines_ecrites'\)\.upsert\(\{\s*plan_id: planId, numero: cleDeLaSemaine\(ecrite\.numero\), donnees: ecrite\.semaine,/);
   assert.ok(!/realise/.test(garder));
-  // Qui écrit la colonne (`semaines_ecrites` ou `semaines_athlete`), dans tout le code : la 8.x, le résumé de la nuit des semaines hors moteur, et deux effacements.
+  // Qui écrit la colonne (`semaines_ecrites` ou `semaines_athlete`), dans tout le code : la 8.x, le résumé de la nuit des semaines hors moteur, celui des semaines de la v1 (198, 199), et deux effacements.
   const ecrivains = grep('(semaines_ecrites|semaines_athlete)', 'app', 'lib').filter((f) => /\.(update|upsert)\(\{[^}]*\brealise\b/.test(sansCommentaires(source(f))));
-  assert.deepEqual(ecrivains, ['lib/app/actionsSuivi.ts', ECRIT, 'lib/app/semainesNolio.ts'].sort());
+  assert.deepEqual(ecrivains, ['lib/app/actionsSuivi.ts', ECRIT, 'lib/app/realiseDuV1.ts', 'lib/app/semainesNolio.ts'].sort());
   // Ceux qui ne vident pas : exactement deux dans ecriture.ts (le rangement de la semaine de la 8.x, le résumé refait la nuit), un dans semainesNolio.ts (les semaines hors moteur).
   const e = sansCommentaires(source(ECRIT));
   const ecritures = [...e.matchAll(/\.(?:update|upsert)\(\{ realise(?::\s*([^}]*?))? \}\)/g)].filter((m) => m[1] !== 'null');
