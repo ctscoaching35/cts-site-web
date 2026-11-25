@@ -109,16 +109,15 @@ test('dans « À faire pour lui » : après ses points et l’alerte, avant les 
   const c = sansCommentaires(source('components/app/PointsPourLui.tsx'));
   assert.match(c, /l\.type === 'test' \? \(/);
   assert.match(c, /<a href=\{l\.test\.href\} className=\{geste\}>\{l\.test\.geste === 'test_vc' \? t\.saisirTest : t\.modifierReperes\}<\/a>/);
-  const carte = sansCommentaires(source('components/app/CarteCoureur.tsx'));
-  assert.ok(carte.includes('id="geste-test-vc"') && carte.includes('id="geste-reperes"'), 'le formulaire porte l’adresse du lien');
-  assert.ok(carte.includes("m.cle === 'test_vc' ? 'geste-test-vc' : 'geste-reperes'"), 'au bandeau aussi');
+  const carte = sansCommentaires(source('components/app/CarteSavoir.tsx'));
+  assert.ok(carte.includes('id="geste-test-vc"') && carte.includes('id="geste-reperes"'), 'la carte porte l’adresse du lien, sur la partie à remplir');
 });
 
 test('la page : sous la 9.x seulement, les semaines récentes de la v1 sont lues (une migration pas passée ne casse rien) et rangées dans « À faire pour lui »', () => {
   const page = sansCommentaires(source('app/app/coach/athlete/[id]/page.tsx'));
   assert.match(page, /const semainesDeLaV1 = v9 \? await lireLesSemainesRecentes\(service, a\.objectifs\.map\(\(o\) => o\.plan_id\), new Date\(Date\.now\(\) - 70 \* 86_400_000\)\.toISOString\(\)\)\.catch\(\(\) => \[\]\) : \[\];/);
   assert.match(page, /const testsAFaire: LigneTest\[\] = v9 \? testsASaisir\(\{ semaines: semainesDeLaV1, sources: a\.reperes_sources, aujourdhui: jour \}\)/);
-  assert.match(page, /aFairePourLui\(points, entree, manqueCoureur\.some\(\(m\) => m\.cle === 'profil'\), alertes, testsAFaire\)/);
+  assert.match(page, /aFairePourLui\(points, entree, !profilEstRempli\(profil\), alertes, testsAFaire\)/);
   assert.ok(page.indexOf('const testsAFaire') < page.indexOf('const lignesAFaire = v9'));
 });
 

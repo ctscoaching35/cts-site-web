@@ -66,7 +66,7 @@ test('le clic ouvre le bon geste : la fiche pour la côte et les critères, l’
   assert.equal(mot({ accord: false }).href, '/app/coach/athlete/a1#son-entree');
   assert.equal(mot({ test: { geste: 'test_vc' } }).href, '/app/coach/athlete/a1#geste-test-vc');
   assert.equal(mot({ test: { geste: 'reperes' } }).href, '/app/coach/athlete/a1#geste-reperes');
-  assert.equal(mot({ objectif: { ...BASE.objectif, demarre: false, partie: null } }).href, '/app/coach/plan/p1');
+  assert.equal(mot({ objectif: { ...BASE.objectif, demarre: false, partie: null } }).href, '/app/coach/athlete/a1#lancer-sa-preparation', 'le bouton « Lancer sa préparation »');
   assert.equal(mot({ objectif: null }).href, '/app/coach/nouveau?athlete=a1');
   const m = mot({ points: [P('mot', 'sante', 'https://nolio/x', true)] });
   assert.deepEqual([m.href, m.externe], ['https://nolio/x', true]);

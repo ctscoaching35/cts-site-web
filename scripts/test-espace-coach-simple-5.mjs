@@ -49,7 +49,8 @@ const { SIGNAL, etiquettes, virgule } = await import(`${RACINE}lib/app/espacePar
 const { signaux } = await import(`${RACINE}lib/app/signauxSuivi.ts`);
 const { montrerLInfra, TEXTES_A_FAIRE } = await import(`${RACINE}lib/app/espaceCoachSimple.ts`);
 const { TEXTES_CACHES } = await import(`${RACINE}lib/app/cacherSousLaV1.ts`);
-const { TEXTES_PAGE_ATHLETE, ceQuiManqueAuCoureur, motDuGeste } = await import(`${RACINE}lib/app/pageAthleteSimple.ts`);
+const { TEXTES_PAGE_ATHLETE } = await import(`${RACINE}lib/app/pageAthleteSimple.ts`);
+const { TEXTES_CARTE } = await import(`${RACINE}lib/app/carteSavoir.ts`);
 const { TEXTES_SERIES } = await import(`${RACINE}lib/app/seriesDuSamedi.ts`);
 const { NOTE_AVANT_DE_DEMARRER } = await import(`${RACINE}lib/app/entree.ts`);
 
@@ -264,13 +265,12 @@ test('sous la 9.x, aucun des mots du jargon n’est dans les textes du coach ; c
   }
   assert.ok(remplaces >= 30, `trente textes au moins remplacés (${remplaces})`);
   // Les deux phrases d'un autre fichier que le jeu de mots (étapes 2 et 3) : sans jargon, elles aussi.
-  for (const t of [...Object.values(TEXTES_CACHES), ...Object.values(TEXTES_PAGE_ATHLETE).filter((x) => typeof x === 'string'), ...Object.values(TEXTES_A_FAIRE).filter((x) => typeof x === 'string')]) {
+  for (const t of [...Object.values(TEXTES_CACHES), ...Object.values(TEXTES_PAGE_ATHLETE).filter((x) => typeof x === 'string'), ...Object.values(TEXTES_CARTE), ...Object.values(TEXTES_A_FAIRE).filter((x) => typeof x === 'string')]) {
     assert.ok(!JARGON.test(t), `jargon dans « ${t} »`);
   }
-  assert.equal(TEXTES_PAGE_ATHLETE.manqueTest, MOTS_DU_COACH.simple.test.manque);
   assert.equal(TEXTES_PAGE_ATHLETE.saisirTest, MOTS_DU_COACH.simple.test.geste);
-  assert.equal(ceQuiManqueAuCoureur({ profil: {}, vcMs: null, fc1: 150 }).find((m) => m.cle === 'test_vc').texte, 'son test de vitesse critique');
-  assert.equal(motDuGeste('test_vc', []), 'Saisir son test de vitesse critique');
+  assert.equal(TEXTES_PAGE_ATHLETE.saisirTest, 'Saisir son test de vitesse critique');
+  assert.equal(TEXTES_CARTE.test, 'Son dernier test de vitesse critique', '« vitesse critique » reste le mot du coach');
 });
 
 test('les mots du coach de chaque remplacement : ceux de la décision (« semaine tenue à 87 % du prévu », « fatigue déclarée », « effort ressenti », « dénivelé », « endurance », « sortie longue »)', () => {

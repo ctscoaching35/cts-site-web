@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
  * L'ESPACE COACH SIMPLE SOUS LA 9.x, DEUXIÈME SIMPLIFICATION : « une page athlète courte » (décision 220 du coach, 24/11/2026 ; reports/Application coach — revue de simplicité, 24-11.md,
- * proposition 2). Sous la 9.x, la page d'un athlète tient en quatre blocs : (a) « À faire pour lui », (b) sa carte de coureur (ce qui manque en tête, avec son geste), (c) ses objectifs (de quoi
- * vérifier que tout est rempli), (d) sa semaine qui arrive ; puis « Réglages », replié, où va tout le reste (rien ne disparaît). Sous la 8.x, RIEN ne change : les treize blocs d'avant, dans leur ordre.
+ * proposition 2). Sous la 9.x, la page d'un athlète tient en quatre blocs : (a) « À faire pour lui », (b) « Ce que j'ai besoin de savoir » (décision 241, moment 2 : ce qui manque en tête et surligné, puis
+ * « Lancer sa préparation » ; scripts/test-parcours-moment2.mjs), (c) ses objectifs (de quoi vérifier que tout est rempli), (d) sa semaine qui arrive ; puis « Réglages », replié, où va tout le reste (rien ne disparaît). Sous la 8.x, RIEN ne change : les treize blocs d'avant, dans leur ordre.
  * Les écrans ne se rendent pas ici : le calcul est essayé (lib/app/pageAthleteSimple.ts) et la page est lue comme un texte (la garde `v9`, l'ordre des blocs, l'absence de doublon). Aucun réseau,
  * aucune donnée d'athlète.
  *
@@ -34,8 +34,8 @@ const { entreeDe, NOTE_AVANT_DE_DEMARRER } = await import(`${RACINE}lib/app/entr
 const { groupeUrgent, GROUPES_URGENT } = await import(`${RACINE}lib/app/espaceParAthlete.ts`);
 const { CRITERES } = await import(`${RACINE}lib/criteres.ts`);
 const {
-  aFairePourLui, ceQuiManqueAuCoureur, departagerLesObjectifs, entreeDansLesReglages, lignesDEntree, motDuGeste, ORDRE_8X, ORDRE_9X, ORDRE_DES_REGLAGES_8X, ORDRE_DES_REGLAGES_9X,
-  ordreDeLaPage, ordreDesReglages, ouEstLeGeste, PLACE_EN_9X, pointsAVenir, profilEstRempli, repereDeLObjectif, TEXTES_PAGE_ATHLETE, verifierObjectif,
+  aFairePourLui, departagerLesObjectifs, entreeDansLesReglages, etatDeLaCarte, lignesDEntree, ORDRE_8X, ORDRE_9X, ORDRE_DES_REGLAGES_8X, ORDRE_DES_REGLAGES_9X,
+  ordreDeLaPage, ordreDesReglages, PLACE_EN_9X, pointsAVenir, profilEstRempli, repereDeLObjectif, TEXTES_PAGE_ATHLETE, verifierObjectif,
 } = lib;
 
 const PAGE = 'app/app/coach/athlete/[id]/page.tsx';
@@ -62,7 +62,7 @@ const ENTREE = (x = {}) => entreeDe({
 
 // ─── L'ordre des blocs : sous la 9.x le nouveau, sous la 8.x celui d'avant ─────────────────────────────────────────────────
 
-test('l’ordre : quatre blocs sous la 9.x (à faire, carte de coureur, objectifs, semaine qui arrive), puis « Réglages » ; sous la 8.x, les blocs d’avant', () => {
+test('l’ordre : quatre blocs sous la 9.x (à faire, ce que le coach a besoin de savoir, objectifs, semaine qui arrive), puis « Réglages » ; sous la 8.x, les blocs d’avant', () => {
   assert.deepEqual([...ordreDeLaPage(true)], ['a_faire', 'carte', 'objectifs', 'semaine_qui_arrive', 'reglages']);
   assert.deepEqual([...ordreDeLaPage(false)], ['demande', 'entree', 'a_faire', 'semaine_qui_arrive', 'semaine_passee', 'objectifs', 'courses_nolio', 'reperes', 'zones', 'style', 'profil', 'reglages']);
   assert.equal(ORDRE_8X.length + 1, 13, 'les douze blocs du corps, plus l’en-tête : les treize blocs de la page d’avant');
@@ -94,12 +94,13 @@ test('rien ne disparaît : chaque bloc d’avant a sa place sous la 9.x, en haut
 });
 
 test('la page 9.x suit cet ordre : (a), (b), (c), (d), puis « Réglages » ; rien d’autre en tête', () => {
-  const ordre = [...branche9.matchAll(/<(PointsPourLui|CarteCoureur|ObjectifsAVerifier)\b|\{(semaine)\}/g)].map((m) => m[1] ?? m[2]);
-  assert.deepEqual(ordre, ['PointsPourLui', 'CarteCoureur', 'ObjectifsAVerifier', 'semaine']);
-  const sesNoms = { PointsPourLui: 'a_faire', CarteCoureur: 'carte', ObjectifsAVerifier: 'objectifs', semaine: 'semaine_qui_arrive' };
-  assert.deepEqual(ordre.map((o) => sesNoms[o]), ORDRE_9X.slice(0, 4));
+  const ordre = [...branche9.matchAll(/<(PointsPourLui|CarteSavoir|LancerSaPreparation|ObjectifsAVerifier)\b|\{(semaine)\}/g)].map((m) => m[1] ?? m[2]);
+  assert.deepEqual(ordre, ['PointsPourLui', 'CarteSavoir', 'LancerSaPreparation', 'ObjectifsAVerifier', 'semaine']);
+  // La carte et son bouton « Lancer sa préparation » sont un seul bloc.
+  const sesNoms = { PointsPourLui: 'a_faire', CarteSavoir: 'carte', LancerSaPreparation: 'carte', ObjectifsAVerifier: 'objectifs', semaine: 'semaine_qui_arrive' };
+  assert.deepEqual([...new Set(ordre.map((o) => sesNoms[o]))], ORDRE_9X.slice(0, 4));
   // Aucun autre bloc dans la branche : pas de carte à part, pas de revue, pas de semaine passée, pas d'entrée.
-  assert.deepEqual([...branche9.matchAll(/<([A-Z][A-Za-z]*)\b/g)].map((m) => m[1]), ['PointsPourLui', 'CarteCoureur', 'ObjectifsAVerifier']);
+  assert.deepEqual([...branche9.matchAll(/<([A-Z][A-Za-z]*)\b/g)].map((m) => m[1]), ['PointsPourLui', 'CarteSavoir', 'LancerSaPreparation', 'ObjectifsAVerifier']);
   for (const interdit of ['Carte ', 'CarteEntree', 'TableauZones', 'StyleCoureur', 'ProfilAthlete', 'contenuRevue', 'contenuSemainePassee', 'contenuCoursesNolio']) {
     assert.ok(!branche9.includes(interdit), `${interdit} n’est pas en tête sous la 9.x`);
   }
@@ -107,9 +108,10 @@ test('la page 9.x suit cet ordre : (a), (b), (c), (d), puis « Réglages » ; ri
   assert.ok(avantLeCorps.includes('{a.nom}</h1>'));
   assert.ok(page.indexOf('<details id="reglages"') > i8);
   assert.ok(page.indexOf('aria-label="Athlète suivant"') > page.indexOf('<details id="reglages"'));
-  // Les trois formulaires sont ceux de la page d'avant, donnés à la carte ; les zones et le style y sont repliés.
-  assert.match(branche9, /formulaires=\{\{ profil: contenuProfil, test_vc: contenuTest, reperes: contenuReperes \}\} zonesEtStyle=\{zonesEtStyle\}/);
-  assert.match(branche9, /<CarteCoureur lignesProfil=\{profilVide \? \[\] : lignesProfil\}/);
+  // Un seul formulaire, celui de la carte : aucun des trois formulaires d'avant n'y est ; ses zones et son style y sont repliés.
+  assert.match(branche9, /\{carte && <CarteSavoir key=\{`\$\{a\.id\}:\$\{carte\.lancer\.planId\}`\} \{\.\.\.carte\.savoir\} zonesEtStyle=\{zonesEtStyle\} \/>\}/);
+  assert.match(branche9, /\{carte && <LancerSaPreparation \{\.\.\.carte\.lancer\} \/>\}/);
+  assert.ok(!/contenuProfil|contenuTest|contenuReperes/.test(branche9));
 });
 
 test('« Réglages » sous la 9.x : les sections dans l’ordre de ORDRE_DES_REGLAGES_9X, « Retirer cet athlète » en dernier', () => {
@@ -152,7 +154,7 @@ test('sous la 8.x, la page garde ses blocs d’avant, dans leur ordre, sans aucu
   assert.deepEqual([...positions].sort((x, y) => x[1] - y[1]).map(([cle]) => cle),
     ['demande', 'entree', 'a_faire', 'semaine_qui_arrive', 'semaine_passee', 'objectifs', 'courses_nolio', 'reperes', 'profil', 'zones', 'style']);
   assert.deepEqual([...ordre].sort(), ORDRE_8X.filter((b) => b !== 'reglages').sort());
-  for (const nouveau of ['PointsPourLui', 'CarteCoureur', 'ObjectifsAVerifier', 'PointsAVenir', 'sectionEtat', 'sectionsEnPlus', 'TEXTES_PAGE_ATHLETE', ' plat']) {
+  for (const nouveau of ['PointsPourLui', 'CarteSavoir', 'LancerSaPreparation', 'ObjectifsAVerifier', 'PointsAVenir', 'sectionEtat', 'sectionsEnPlus', 'TEXTES_PAGE_ATHLETE', ' plat']) {
     assert.ok(!branche8.includes(nouveau), `la branche 8.x ne contient pas ${nouveau}`);
   }
   // Les textes de la 8.x, mot pour mot.
@@ -177,8 +179,8 @@ test('chaque morceau de la 9.x est derrière `v9` : la branche, les deux section
   assert.ok(branche9.startsWith('      {v9 ? (\n'));
   assert.match(page, /\{v9 && sectionEtat\}/);
   assert.match(page, /\{v9 && sectionsEnPlus\}/);
-  assert.match(page, /const manqueCoureur = v9 \? ceQuiManqueAuCoureur\(/);
-  assert.match(page, /const lignesAFaire = v9 \? aFairePourLui\(points, entree, manqueCoureur\.some\(\(m\) => m\.cle === 'profil'\), alertes, testsAFaire\) : \[\];/);
+  assert.match(page, /const carte = \(\(\): [^\n]* => \{\n\s*if \(!v9\) return null;/);
+  assert.match(page, /const lignesAFaire = v9 \? aFairePourLui\(points, entree, !profilEstRempli\(profil\), alertes, testsAFaire\) : \[\];/);
   assert.match(page, /const \{ aVenir: objectifsAVenir, passes: objectifsPasses \} = v9 \? departagerLesObjectifs\(objectifs, jour\) : \{ aVenir: \[\], passes: \[\] \};/);
   // La saison de fond et les courses de préparation ne sont plus rendues sous la 9.x (troisième simplification) : ni leur calcul ni leur section.
   assert.ok(!page.includes('saison9') && !/const preparations\b/.test(page));
@@ -314,67 +316,60 @@ test('« À faire pour lui » sous la 9.x : les mêmes gestes et le même « Ré
   assert.match(page, /<PointsAVenir points=\{pointsAVenir\(points\)\} \/>/);
 });
 
-// ─── (b) Sa carte de coureur ─────────────────────────────────────────────────────────────────────────────────────────────────
+// ─── (b) « Ce que j'ai besoin de savoir » ──────────────────────────────────────────────────────────────────────────────────────
 
-test('ce qui manque à sa carte : son profil de coureur, son test de vitesse critique, ses repères', () => {
-  const tout = ceQuiManqueAuCoureur({ profil: {}, vcMs: null, fc1: null, fc2: null, vs1: null });
-  assert.deepEqual(tout.map((m) => m.cle), ['profil', 'test_vc', 'reperes']);
-  assert.deepEqual(tout.map((m) => m.texte), ['son profil de coureur', 'son test de vitesse critique', 'ses repères']);
-  // Rien ne manque.
-  assert.deepEqual(ceQuiManqueAuCoureur({ profil: PROFIL_COMPLET, vcMs: 3.8, fc1: 150, fc2: 172, vs1: null }), []);
-  // Chacun à son tour.
-  assert.deepEqual(ceQuiManqueAuCoureur({ profil: PROFIL_COMPLET, vcMs: null, fc1: 150, fc2: 172 }).map((m) => m.cle), ['test_vc']);
-  assert.deepEqual(ceQuiManqueAuCoureur({ profil: PROFIL_COMPLET, vcMs: 3.8 }).map((m) => m.cle), ['reperes']);
-  assert.deepEqual(ceQuiManqueAuCoureur({ profil: { ...PROFIL_COMPLET, freq_hebdo: undefined }, vcMs: 3.8, fc1: 150 }).map((m) => m.cle), ['profil']);
-  // Un profil à moitié rempli compte comme pas rempli : les cinq réponses de la règle de « Profil à remplir » (lib/app/espaceCoach.ts).
+test('ce qui manque à la carte : le repère de son objectif en cours, le même que « Ses objectifs » ; sans objectif, son profil de coureur et son objectif', () => {
+  const champs = { cote_min: '12', gpx: GPX, ...SEMAINE };
+  const e = etatDeLaCarte({ champs }, { tapis: 'oui' });
+  assert.deepEqual(e.manquants, ['intensite', 'mecanique']);
+  assert.equal(e.repere, repereDeLObjectif(verifierObjectif(champs, { tapis: 'oui' })));
+  assert.equal(e.repere, 'Il manque : son critère d’intensité, son critère de mécanique');
+  assert.equal(e.complet, false);
+  const plein = etatDeLaCarte({ champs: { ...champs, tapis: 'non', critere_intensite: 'jamais', critere_denivele: 'jamais' } });
+  assert.deepEqual(plein, { repere: 'Complet', complet: true, manquants: [] });
+  // Sans objectif à venir : sa côte, ses critères, son tapis, puis son objectif ; ni trace ni semaine à surligner.
+  const sans = etatDeLaCarte(null, {});
+  assert.deepEqual(sans.manquants, ['cote', 'intensite', 'mecanique', 'tapis']);
+  assert.equal(sans.repere, 'Il manque : sa côte en minutes, son critère d’intensité, son critère de mécanique, son tapis (oui ou non), son objectif');
+  assert.equal(sans.complet, false);
+  assert.equal(etatDeLaCarte(null, { cote_min: '5', tapis: 'oui', critere_intensite: 'jamais', critere_denivele: 'jamais' }).repere, 'Il manque : son objectif');
+  // Un objectif envoyé en entier : rien à vérifier, rien à surligner.
+  assert.deepEqual(etatDeLaCarte({ champs: null }, {}), { repere: TEXTES_PAGE_ATHLETE.envoyeEnEntier, complet: false, manquants: [] });
+  // Les cinq réponses de la règle de « Profil à remplir » (lib/app/espaceCoach.ts), comme avant.
   assert.equal(profilEstRempli(PROFIL_COMPLET), true);
   for (const k of Object.keys(PROFIL_COMPLET)) assert.equal(profilEstRempli({ ...PROFIL_COMPLET, [k]: undefined }), false, k);
   assert.equal(profilEstRempli({ ...PROFIL_COMPLET, jours_disponibles: [] }), false);
   assert.equal(profilEstRempli(null), false);
-  // Un seul repère suffit (« pas de repères » : aucun) ; le test de référence a son propre mot.
-  for (const x of [{ fc1: 150 }, { fc2: 172 }, { vs1: 3.1 }]) assert.deepEqual(ceQuiManqueAuCoureur({ profil: PROFIL_COMPLET, vcMs: 3.8, ...x }), []);
-  assert.equal(ceQuiManqueAuCoureur({ profil: PROFIL_COMPLET, vcMs: 0 }).some((m) => m.cle === 'test_vc'), true, 'une VC à zéro n’est pas un test');
 });
 
-test('un seul geste par chose : dans le bandeau « Il manque » quand elle manque, sous elle sinon ; les mots sont ceux des boutons d’avant', () => {
-  const cles = ['profil', 'test_vc', 'reperes'];
-  for (let masque = 0; masque < 8; masque += 1) {
-    const manque = cles.filter((_, i) => masque & (1 << i)).map((cle) => ({ cle, texte: cle }));
-    for (const cle of cles) {
-      const ou = ouEstLeGeste(cle, manque);
-      assert.equal(ou, manque.some((m) => m.cle === cle) ? 'bandeau' : 'carte', `${cle} ${masque}`);
-    }
-  }
-  assert.equal(motDuGeste('profil', [{ cle: 'profil', texte: '' }]), 'Remplir son profil');
-  assert.equal(motDuGeste('profil', []), 'Modifier son profil');
-  // Étape 5 (décision 220, 24/11/2026) : « vitesse critique » reste, c'est le mot du coach (comme « Seuil 1 » et « Seuil 2 »).
-  assert.equal(motDuGeste('test_vc', []), 'Saisir son test de vitesse critique');
-  assert.equal(motDuGeste('reperes', []), 'Modifier ses repères');
-  for (const mot of ['Remplir son profil', 'Modifier son profil', 'Saisir son test de vitesse critique', 'Modifier ses repères', 'Ce qu’il lit dans son app']) {
-    assert.ok(page.includes(mot), `« ${mot} » est le mot de la page d’avant (la 8.x : sa branche le garde)`);
-  }
-  const c = source('components/app/CarteCoureur.tsx');
-  assert.match(c, /\{manque\.length > 0 && \(/, 'le bandeau n’est là que s’il manque quelque chose');
-  assert.match(c, /t\.ilManque\(manque\.map\(\(m\) => m\.texte\)\)/);
-  assert.match(c, /ouvert=\{m\.cle === 'profil' && profilVide\}/, 'un profil vide s’ouvre de lui-même, comme avant');
-  for (const cle of cles) {
-    const n = (c.match(new RegExp(`ici\\('${cle}'\\) && <GesteDeCarte cle="${cle}"`, 'g')) ?? []).length;
-    assert.equal(n, 1, `${cle} : un seul geste sous la carte`);
-  }
-  assert.equal((c.match(/<GesteDeCarte key=\{m\.cle\}/g) ?? []).length, 1, 'et un seul dans le bandeau, pour chaque chose qui manque');
-  // La carte réunit ce que quatre blocs montraient : profil (lignes du coach), repères, zones et style repliés.
-  assert.match(c, /<Surtitre>\{t\.carte\}<\/Surtitre>/);
-  assert.match(c, /<Surtitre as="h3" ton="gris">Ses repères<\/Surtitre>/);
-  assert.match(c, /<details className="pt-3 border-t border-indigo\/\[0\.07\]">\s*<summary[^>]*>\{t\.ceQuIlLit\}<\/summary>/);
-  assert.match(c, /<Carte id="son-profil"/, 'l’adresse que prennent « Son profil › » et la revue du dimanche');
+test('la carte : un seul formulaire, un seul bouton ; chaque manque surligné dans son champ ; chaque adresse sur sa partie ; ses zones et son style repliés', () => {
+  const c = source('components/app/CarteSavoir.tsx');
+  assert.equal((c.match(/<form\b/g) ?? []).length, 1);
+  assert.equal((c.match(/type="submit"/g) ?? []).length, 1);
+  assert.match(c, /<Surtitre>\{t\.titre\}<\/Surtitre>/);
+  assert.match(c, /<span>\{repere\}<\/span>/, 'le repère est en tête');
+  assert.ok(c.indexOf('<span>{repere}</span>') < c.indexOf('<form'));
+  for (const cle of ['cote', 'tapis', 'gpx', 'semaine']) assert.ok(c.includes(`manque('${cle}')`), cle);
+  assert.ok(c.includes("manque(q.champ === 'critere_intensite' ? 'intensite' : 'mecanique')"));
+  assert.match(c, /const manque = \(cle: string\) => manquants\.includes\(cle\) && SURLIGNE;/);
+  for (const id of ['son-profil', 'geste-profil', 'geste-test-vc', 'geste-reperes']) assert.equal((c.match(new RegExp(`id="${id}"`, 'g')) ?? []).length, 1, id);
+  // Chaque adresse est suivie de ce qu'elle annonce.
+  const entre = (de, a) => c.slice(c.indexOf(`id="${de}"`), a ? c.indexOf(`id="${a}"`) : c.indexOf('<h3 className={SECTION}>{t.sonObjectif}'));
+  assert.ok(entre('geste-profil', 'geste-test-vc').includes("maj('cote_min'"));
+  assert.ok(entre('geste-test-vc', 'geste-reperes').includes('{effort(1, t.effortCourt'));
+  assert.ok(entre('geste-reperes').includes("{frequence('fc_seuil1', fc1)}"));
+  assert.match(c, /<details className="pt-3 border-t border-indigo\/\[0\.07\]">\s*<summary[^>]*>\{titreDesZones\}<\/summary>/);
+  assert.match(page, /titreDesZones: TEXTES_PAGE_ATHLETE\.ceQuIlLit/);
 });
 
-test('la carte lit le profil comme avant : les lignes du coach (lignesDuProfil), les trois repères, les mêmes formulaires', () => {
+test('la carte reçoit les trois repères de la page ; la 8.x garde ses formulaires et ses lignes du coach (lignesDuProfil)', () => {
   assert.match(page, /const lignesProfil = lignesDuProfil\(profil, true\);/);
   assert.match(page, /const profilVide = Object\.keys\(profil\)\.length === 0;/);
   for (const f of ['ProfilAthlete athleteId={a.id} profil={profil} pointDuDimanche={v9}', '<TestVcCoach athleteId={a.id} aujourdhui={jour} />', '<FormulaireValeurs athleteId={a.id}']) {
-    assert.equal((page.match(new RegExp(f.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) ?? []).length, 1, `${f} : un seul formulaire, donné à la 8.x et à la 9.x`);
+    assert.equal((page.match(new RegExp(f.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) ?? []).length, 1, `${f} : un seul formulaire, celui de la 8.x`);
   }
+  assert.match(page, /\n\s*reperes, allures: \{ vs1:/, 'les trois repères de la page, avec leur source');
+  assert.match(page, /aideDuTest: TEXTES_CACHES\.testSaisi, aideDesReperes: mots\.reperesAide/);
   // Les textes des formulaires sont ceux d'avant (écrits une fois, dans la page).
   assert.equal((page.match(/S’il ne l’a pas fait dans l’app/g) ?? []).length, 1);
   assert.equal((page.match(/Avec eux, les séances partent avec une allure/g) ?? []).length, 1);
@@ -498,21 +493,21 @@ test('les textes nouveaux : apostrophe typographique, phrases courtes, mots simp
     assert.equal(t, t.trim());
   }
   assert.deepEqual(textes.map(([cle]) => cle), [
-    'aFaire', 'rienAFaire', 'nolio', 'accord', 'accordSous', 'depart', 'boutonAccord', 'carte', 'ilManque', 'manqueProfil', 'manqueTest', 'manqueReperes', 'remplirProfil', 'modifierProfil',
+    'aFaire', 'rienAFaire', 'nolio', 'accord', 'accordSous', 'depart', 'boutonAccord', 'ilManque', 'manqueObjectif', 'lancer', 'pourquoiCarte', 'modifierProfil',
     'saisirTest', 'modifierReperes', 'ceQuIlLit', 'objectifs', 'aucunObjectif', 'complet', 'envoyeEnEntier', 'manqueCote', 'manqueIntensite', 'manqueMecanique', 'manqueTapis', 'manqueGpx', 'manqueSemaine', 'gesteTrace', 'gesteObjectif',
     'titreCote', 'titreIntensite', 'titreMecanique', 'titreTapis', 'titreGpx', 'titreSemaine', 'coursesDePreparation', 'aucuneCourse', 'ajouterUneCourse', 'traceDonnee', 'sansValeur', 'reglagesSous', 'ouEnEstIl', 'aVenir', 'anciensObjectifs',
   ]);
   // Les textes repris de la page d'avant sont ceux de la page d'avant, mot pour mot.
   // (saisirTest : « Saisir son test de vitesse critique », le même mot sous les deux moteurs.)
-  for (const cle of ['aFaire', 'rienAFaire', 'remplirProfil', 'modifierProfil', 'modifierReperes', 'ceQuIlLit', 'objectifs', 'aucunObjectif']) {
+  for (const cle of ['aFaire', 'rienAFaire', 'modifierProfil', 'modifierReperes', 'ceQuIlLit', 'objectifs', 'aucunObjectif']) {
     assert.ok(page.includes(TEXTES_PAGE_ATHLETE[cle]), `${cle} : « ${TEXTES_PAGE_ATHLETE[cle]} » est dans la page d’avant`);
   }
   assert.ok(page.includes('Saisir son test de vitesse critique') && TEXTES_PAGE_ATHLETE.saisirTest === 'Saisir son test de vitesse critique', '« vitesse critique » reste : c’est le mot du coach');
   assert.equal(TEXTES_PAGE_ATHLETE.ilManque(['a', 'b']), 'Il manque : a, b');
   // Chaque texte de la liste est écrit dans le fichier, et les pages ne l'écrivent pas une seconde fois en dur.
-  for (const cle of ['nolio', 'accord', 'depart', 'carte', 'complet', 'ouEnEstIl']) {
+  for (const cle of ['nolio', 'accord', 'depart', 'lancer', 'complet', 'ouEnEstIl']) {
     const t = TEXTES_PAGE_ATHLETE[cle];
-    assert.ok(![page, source('components/app/CarteCoureur.tsx'), source('components/app/PointsPourLui.tsx'), source('components/app/ObjectifsAVerifier.tsx')].some((f) => sansCommentaires(f).includes(t)), cle);
+    assert.ok(![page, source('components/app/CarteSavoir.tsx'), source('components/app/LancerSaPreparation.tsx'), source('components/app/PointsPourLui.tsx'), source('components/app/ObjectifsAVerifier.tsx')].some((f) => sansCommentaires(f).includes(t)), cle);
   }
 });
 
@@ -520,9 +515,11 @@ test('aucun texte nouveau n’est lu par un athlète : le fichier et les trois c
   const grep = (motif, ...dossiers) => execFileSync('grep', ['-rlE', motif, ...dossiers], { cwd: RACINE, encoding: 'utf8' }).split('\n').filter(Boolean).sort();
   // « Mes athlètes » (un mot par coaché, 241) en lit la vérification de l'objectif (lib/app/motsDesCoaches.ts), pour le coach seul.
   assert.deepEqual(grep("from '[^']*pageAthleteSimple'", 'app', 'components', 'lib').concat(grep("from '\\./pageAthleteSimple'", 'lib')).sort().filter((f, i, a) => a.indexOf(f) === i), [
-    PAGE, 'components/app/CarteCoureur.tsx', 'lib/app/motsDesCoaches.ts', 'components/app/CoursesDePreparation.tsx', 'components/app/ObjectifsAVerifier.tsx', 'components/app/PointsPourLui.tsx',
+    PAGE, 'components/app/LancerSaPreparation.tsx', 'lib/app/actionsCoaching.ts', 'lib/app/motsDesCoaches.ts', 'components/app/CoursesDePreparation.tsx', 'components/app/ObjectifsAVerifier.tsx', 'components/app/PointsPourLui.tsx',
   ].sort());
-  for (const nom of ['CarteCoureur', 'ObjectifsAVerifier', 'PointsPourLui']) {
+  // La carte et son calcul ne sont lus que par l'espace coach : la page, la carte, les gestes du coach.
+  assert.deepEqual(grep("from '[^']*carteSavoir'", 'app', 'components', 'lib'), [PAGE, 'components/app/CarteSavoir.tsx', 'lib/app/actionsCoaching.ts'].sort());
+  for (const nom of ['CarteSavoir', 'LancerSaPreparation', 'ObjectifsAVerifier', 'PointsPourLui']) {
     const lecteurs = grep(`components/app/${nom}'`, 'app', 'components', 'lib');
     assert.deepEqual(lecteurs, [PAGE], `${nom} : lu par la page de l’athlète du coach seulement`);
   }
@@ -530,7 +527,7 @@ test('aucun texte nouveau n’est lu par un athlète : le fichier et les trois c
   for (const f of ['components/app/ZonesEtStyle.tsx', 'components/app/CarteEntree.tsx', 'components/app/ProfilAthlete.tsx', 'components/app/PointsCoach.tsx']) assert.ok(!source(f).includes('pageAthleteSimple'), f);
   // Les lecteurs du premier essai n'ont pas changé : ce fichier-ci n'est pas parmi ceux qui lisent les textes de la première simplification.
   assert.ok(!source('lib/app/pageAthleteSimple.ts').includes('espaceCoachSimple') && !source('lib/app/pageAthleteSimple.ts').includes('TEXTES_A_FAIRE'));
-  for (const f of ['components/app/CarteCoureur.tsx', 'components/app/ObjectifsAVerifier.tsx', 'components/app/PointsPourLui.tsx']) {
+  for (const f of ['components/app/CarteSavoir.tsx', 'components/app/LancerSaPreparation.tsx', 'components/app/ObjectifsAVerifier.tsx', 'components/app/PointsPourLui.tsx']) {
     assert.ok(!source(f).includes('espaceCoachSimple') && !source(f).includes('TEXTES_A_FAIRE'), f);
   }
   // Le seul texte nouveau d'un module que l'athlète lit est une constante déplacée, la même : le rappel du départ (lib/app/entree.ts), sous la carte « Son entrée » du coach.
@@ -545,7 +542,7 @@ test('aucun doublon : chaque adresse (id) de la page n’est posée qu’une foi
   const iPlus = page.indexOf('  const sectionEtat = (');
   const sectionsReglages = page.slice(iPlus, page.indexOf('  return (\n    <CadreCoach', iPlus));
   // Sous la 9.x : les composants de la branche, la semaine qui arrive, « Réglages » (ses sections d'avant, l'état, les ajouts) ; la carte d'entrée ou la ligne « accord » (jamais les deux).
-  const neuf = [...ids(composants('PointsPourLui', 'CarteCoureur', 'ObjectifsAVerifier', 'CarteEntree')), ...ids(source('components/app/SemaineQuiArrive.tsx')).slice(0, 1), ...ids(reglages), ...ids(sectionsReglages)];
+  const neuf = [...ids(composants('PointsPourLui', 'CarteSavoir', 'LancerSaPreparation', 'ObjectifsAVerifier', 'CarteEntree')), ...ids(source('components/app/SemaineQuiArrive.tsx')).slice(0, 1), ...ids(reglages), ...ids(sectionsReglages)];
   assert.equal(new Set(neuf).size, neuf.length, `un doublon : ${neuf.filter((x, i) => neuf.indexOf(x) !== i)}`);
   // « son-entree » : la carte plate (Réglages) ; la ligne « accord » de « À faire pour lui » le porte aussi, et les deux s'excluent (entreeDansLesReglages).
   assert.match(source('components/app/PointsPourLui.tsx'), /id=\{l\.ligne\.cle === 'accord' \? 'son-entree' : undefined\}/);
@@ -564,12 +561,12 @@ test('aucun doublon : chaque adresse (id) de la page n’est posée qu’une foi
 
 test('la garde : la page lit le moteur comme les autres composants serveur, et rien de la 9.x ne se rend sans lui', () => {
   assert.match(page, /moteurEstV9\(\)\.catch\(\(\) => false\)/);
-  for (const f of ['components/app/PointsPourLui.tsx', 'components/app/CarteCoureur.tsx', 'components/app/ObjectifsAVerifier.tsx']) {
+  for (const f of ['components/app/PointsPourLui.tsx', 'components/app/CarteSavoir.tsx', 'components/app/LancerSaPreparation.tsx', 'components/app/ObjectifsAVerifier.tsx']) {
     assert.ok(!/moteurEstV9/.test(source(f)), `${f} reçoit le choix, il ne le fait pas`);
   }
   // Les composants de la 9.x ne sont rendus que dans la branche `v9 ? (` et les deux sections de « Réglages » gardées par `v9 &&`.
   const dehors = page.replace(branche9, '');
-  for (const nom of ['<PointsPourLui', '<CarteCoureur', '<ObjectifsAVerifier']) assert.ok(!dehors.includes(nom), `${nom} n’est que dans la branche 9.x`);
+  for (const nom of ['<PointsPourLui', '<CarteSavoir {', '<LancerSaPreparation {', '<ObjectifsAVerifier']) assert.ok(!dehors.includes(nom), `${nom} n’est que dans la branche 9.x`);
   assert.equal((dehors.match(/<PointsAVenir/g) ?? []).length, 1);
   assert.ok(dehors.indexOf('<PointsAVenir') > dehors.indexOf('const sectionsEnPlus'));
   assert.equal(PLACE_EN_9X.a_faire.includes('a_venir'), true);

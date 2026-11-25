@@ -340,10 +340,9 @@ test('la saison de fond : ni son lien, ni son nom, ni ses points sous la 9.x ; l
   assert.ok(!/saison9|saisonEnCours/.test(sansCommentaires(source('app/app/coach/athlete/[id]/page.tsx').split('{v9 ? (')[1].split('      ) : (')[0])), 'la branche 9.x non plus');
   assert.ok(athlete.includes('{saisonEnCours && ('), 'la 8.x garde son lien');
   assert.ok(athlete.includes('<span className="block text-[0.9375rem] font-bold">{saisonEnCours.course_nom} · en cours</span>'));
-  // Les points : « Saison de fond refusée » et « Profil à remplir » (le profil pour sa saison de fond) ne sont plus dits ; la carte de coureur dit toujours son profil.
+  // Les points : « Saison de fond refusée » et « Profil à remplir » (le profil pour sa saison de fond) ne sont plus dits ; la carte « Ce que j'ai besoin de savoir » dit toujours ce qui manque de lui.
   assert.ok('saison' in GENRES_CACHES_9X && 'profil' in GENRES_CACHES_9X);
-  const c = source('components/app/CarteCoureur.tsx');
-  assert.ok(c.includes('{t.ilManque(manque.map((m) => m.texte))}') && source('lib/app/pageAthleteSimple.ts').includes("manqueProfil: 'son profil de coureur'"));
+  assert.ok(source('components/app/CarteSavoir.tsx').includes('<span>{repere}</span>') && source(ATHLETE).includes('const etatCarte = etatDeLaCarte('));
   // Ses 7 jours, rien de lu : la phrase de la 9.x est celle de la 8.x sans « ou une saison » (étape 5 : et sans « Hooper », « sa fatigue déclarée » à la place).
   assert.equal(TEXTES_CACHES.septJoursVide, 'Rien de lu pour l’instant. Ses séances et sa fatigue déclarée des 7 derniers jours se lisent dans Nolio chaque soir, dès qu’un objectif a démarré. « Relire maintenant » les lit tout de suite.');
   assert.ok(athlete.includes('Rien de lu pour l’instant. Ses séances et son Hooper des 7 derniers jours se lisent dans Nolio chaque soir, dès qu’un objectif ou une saison a démarré. « Relire maintenant » les lit tout de suite.'), 'la phrase de la 8.x : mot pour mot, avec « ou une saison »');
@@ -351,7 +350,7 @@ test('la saison de fond : ni son lien, ni son nom, ni ses points sous la 9.x ; l
 
 // ─── (d) les tests lus ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-test('les tests lus : cachés sous la 9.x ; le geste « Saisir son test de vitesse critique » et la carte de coureur restent', () => {
+test('les tests lus : cachés sous la 9.x ; le geste « Saisir son test de vitesse critique » et son test sur la carte restent', () => {
   assert.equal(testsLusDisponibles(false), true);
   assert.equal(testsLusDisponibles(true), false);
   // La page de l'objectif ne lit même pas la table sous la 9.x ; ses lignes (et « Ses cibles et ses zones ont suivi ») n'ont alors rien à montrer.
@@ -360,7 +359,10 @@ test('les tests lus : cachés sous la 9.x ; le geste « Saisir son test de vites
   // Le geste du coach et sa carte : inchangés, sous la 9.x comme sous la 8.x.
   assert.ok(athlete.includes('<TestVcCoach athleteId={a.id} aujourdhui={jour} />'));
   assert.ok(athlete.includes('Saisir son test de vitesse critique'));
-  assert.ok(athlete.includes('test_vc: contenuTest') && athlete.includes('<CarteCoureur'));
+  // Sous la 9.x, son test est dans la carte « Ce que j'ai besoin de savoir », enregistré par le même geste, avec la phrase sans lecture dans Nolio.
+  const carte = source('components/app/CarteSavoir.tsx');
+  assert.ok(carte.includes('id="geste-test-vc"') && carte.includes('enregistrerTestVc(athleteId, null,') && athlete.includes('<CarteSavoir'));
+  assert.ok(athlete.includes('aideDuTest: TEXTES_CACHES.testSaisi'));
   // Sa phrase d'explication : celle de la 8.x, mot pour mot ; sous la 9.x, sans la lecture dans Nolio ni le test « marqué lu ».
   const ancienne = 'S’il ne l’a pas fait dans l’app, ou si sa lecture dans Nolio n’a pas abouti : ses deux efforts donnent sa vitesse\n            critique et son profil de coureur. Un test écrit dans ses semaines et pas encore lu est alors marqué lu.';
   assert.ok(athlete.includes(ancienne));

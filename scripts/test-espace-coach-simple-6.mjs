@@ -644,11 +644,12 @@ test('le composant : client, sans rien rendre, il suit l’ancre au chargement ;
 // La liste fermée des ancres : chaque lien du code qui mène à une ancre de la page de l'athlète, où elle est sous la 9.x (en haut, ou dans « Réglages »), et les ancres des autres pages.
 const ANCRES_DE_LA_PAGE_ATHLETE = {
   'semaine-qui-arrive': 'haut', // SemaineQuiArrive.tsx : « Réessayer » du dimanche soir, la revue
-  'son-profil': 'haut', // CarteCoureur.tsx : « Son profil › », la revue
+  'son-profil': 'haut', // CarteSavoir.tsx : « Son profil › », la revue
   'a-faire': 'haut', // PointsPourLui.tsx : la revue (« Ses messages »)
-  'geste-profil': 'haut', // CarteCoureur.tsx : « Modifier son profil » de « Ses objectifs » (ObjectifsAVerifier.tsx) ouvre le formulaire de la carte
-  'geste-test-vc': 'haut', // CarteCoureur.tsx : « Saisir le résultat de son test de vitesse critique » (À faire pour lui, lib/app/testsASaisir.ts)
-  'geste-reperes': 'haut', // CarteCoureur.tsx : « Saisir le résultat de son test de fréquence cardiaque »
+  'geste-profil': 'haut', // CarteSavoir.tsx : « Modifier son profil » de « Ses objectifs » (ObjectifsAVerifier.tsx) mène à sa côte, son tapis, ses critères
+  'geste-test-vc': 'haut', // CarteSavoir.tsx : « Saisir le résultat de son test de vitesse critique » (À faire pour lui, lib/app/testsASaisir.ts)
+  'geste-reperes': 'haut', // CarteSavoir.tsx : « Saisir le résultat de son test de fréquence cardiaque »
+  'lancer-sa-preparation': 'haut', // LancerSaPreparation.tsx : « Son objectif n'a pas démarré » (À faire pour lui) et « À lancer » (Mes athlètes)
   'son-entree': 'haut', // PointsPourLui.tsx (la ligne « accord ») ; CarteEntree.tsx dans « Réglages » quand l'entrée est faite (les deux s'excluent)
   'sa-semaine-passee': 'reglages', // la revue, quand il y a un réalisé
   'courses-nolio': 'reglages', // la revue, quand il y a des courses dans Nolio
@@ -675,7 +676,7 @@ test('la liste fermée des ancres : chaque lien du code mène à une ancre connu
   for (const a of Object.keys(ANCRES_DE_LA_PAGE_ATHLETE)) assert.ok(liens.has(a), `#${a} n’est lié nulle part`);
   // Les ids que la page de l'athlète pose sous la 9.x : la page, ses composants du haut, la semaine qui arrive, la carte d'entrée.
   const ids = (texte) => [...sansCommentaires(texte).matchAll(/\bid=(?:"([a-z-]+)"|\{[^}]*'([a-z-]+)'[^}]*\})/g)].map((m) => m[1] ?? m[2]);
-  const composants = ['PointsPourLui', 'CarteCoureur', 'ObjectifsAVerifier', 'CarteEntree', 'SemaineQuiArrive'].map((n) => source(`components/app/${n}.tsx`)).join('\n');
+  const composants = ['PointsPourLui', 'CarteSavoir', 'LancerSaPreparation', 'ObjectifsAVerifier', 'CarteEntree', 'SemaineQuiArrive'].map((n) => source(`components/app/${n}.tsx`)).join('\n');
   const posees = new Set([...ids(page), ...ids(composants)]);
   for (const a of Object.keys(ANCRES_DE_LA_PAGE_ATHLETE)) assert.ok(posees.has(a), `#${a} : pas d’id correspondant sous la 9.x`);
 });
@@ -695,7 +696,7 @@ test('chaque ancre de « Réglages » est posée dans le `details` « Réglages 
   const i9 = page.indexOf('      {v9 ? (\n        <>\n');
   const i8 = page.indexOf('      ) : (\n        <>\n', i9);
   const dehors = idsDe(page.slice(0, i8).replace(plus, ''));
-  const hautDePage = new Set([...idsDe(source('components/app/PointsPourLui.tsx')), ...idsDe(source('components/app/CarteCoureur.tsx')), ...idsDe(source('components/app/SemaineQuiArrive.tsx')),
+  const hautDePage = new Set([...idsDe(source('components/app/PointsPourLui.tsx')), ...idsDe(source('components/app/CarteSavoir.tsx')), ...idsDe(source('components/app/LancerSaPreparation.tsx')), ...idsDe(source('components/app/SemaineQuiArrive.tsx')),
     ...[...sansCommentaires(source('components/app/PointsPourLui.tsx')).matchAll(/'(son-entree)'/g)].map((m) => m[1])]);
   for (const [a, ou] of Object.entries(ANCRES_DE_LA_PAGE_ATHLETE)) {
     if (ou === 'reglages') {

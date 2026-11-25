@@ -145,7 +145,7 @@ test('les gestes d’un objectif : la fiche pour la côte, les critères et le t
   assert.equal(simple.TEXTES_PAGE_ATHLETE.gesteObjectif, 'Modifier l’objectif');
 });
 
-test('les gestes sont sur la page : « Modifier son profil » ouvre le formulaire de la carte, les deux autres mènent au questionnaire de l’objectif', () => {
+test('les gestes sont sur la page : « Modifier son profil » mène aux champs de la carte, les deux autres au questionnaire de l’objectif', () => {
   const o = sansCommentaires(source('components/app/ObjectifsAVerifier.tsx'));
   assert.match(o, /<a key=\{g\} href="#geste-profil" className=\{GESTE\}>\{t\.modifierProfil\}<\/a>/);
   assert.match(o, /href=\{`\/app\/coach\/nouveau\?athlete=\$\{athleteId\}&modifier=\$\{o\.planId\}`\}/);
@@ -153,12 +153,12 @@ test('les gestes sont sur la page : « Modifier son profil » ouvre le formulair
   assert.match(o, /o\.verif && gestesDeLObjectif\(o\.verif\)\.length > 0/, 'rien quand tout y est');
   // Les gestes sont hors du lien de la carte (un lien ne contient pas un lien).
   assert.ok(o.indexOf('</Link>') < o.indexOf('gestesDeLObjectif(o.verif)'));
-  // Le formulaire de la carte porte cette adresse, au bandeau comme sous le profil (un seul des deux est rendu).
-  const c = sansCommentaires(source('components/app/CarteCoureur.tsx'));
+  // La carte porte cette adresse, une fois, sur sa côte, son tapis et ses critères, toujours visibles (rien à déplier).
+  const c = sansCommentaires(source('components/app/CarteSavoir.tsx'));
   assert.equal((c.match(/id="geste-profil"/g) ?? []).length, 1);
-  assert.match(c, /id=\{m\.cle === 'profil' \? 'geste-profil' : m\.cle === 'test_vc' \? 'geste-test-vc' : 'geste-reperes'\}/);
-  assert.match(c, /<details id=\{id\} open=\{ouvert\}/);
-  // La page suit l'ancre et ouvre le `details` : le même mécanisme que « Réglages ».
+  assert.match(c, /<div id="geste-profil" className="space-y-3 scroll-mt-6">\s*<label className=\{clsx\(LIBELLE, manque\('cote'\)\)\}>/);
+  assert.ok(!c.slice(0, c.indexOf('id="geste-reperes"')).includes('<details'));
+  // La page suit l'ancre et ouvre le `details` s'il y en a un : le même mécanisme que « Réglages ».
   const ouvert = { tagName: 'DETAILS', open: false, parentElement: null };
   assert.equal(ancres.ouvrirLaCible({ getElementById: (id) => (id === 'geste-profil' ? ouvert : null) }, 'geste-profil', false), true);
   assert.equal(ouvert.open, true);
