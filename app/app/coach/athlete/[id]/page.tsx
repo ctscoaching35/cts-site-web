@@ -33,7 +33,7 @@ import { demandeDeLAthlete } from '@/lib/app/demandesCoaching';
 import { initiales } from '@/lib/app/contexte';
 import { entreeDe } from '@/lib/app/entree';
 import {
-  aFairePourLui, departagerLesObjectifs, entreeDansLesReglages, estUneCourseSurRoute, etatDeLaCarte, etatDuLancement, pointsAVenir, profilEstRempli, TEXTES_PAGE_ATHLETE, verifierObjectif, type LigneAlerte, type LigneTest,
+  aFairePourLui, auPlusTot, departagerLesObjectifs, entreeDansLesReglages, estUneCourseSurRoute, etatDeLaCarte, etatDuLancement, pointsAVenir, profilEstRempli, TEXTES_PAGE_ATHLETE, verifierObjectif, type LigneAlerte, type LigneTest,
 } from '@/lib/app/pageAthleteSimple';
 import { reponsesReprises, valeursDeLaCarte } from '@/lib/app/carteSavoir';
 import { lireGpx } from '@/lib/app/gpxV9';
@@ -144,7 +144,7 @@ export default async function PageAthlete({ params, searchParams }: {
   const gardesManquent = !espace.signaux;
   const septJours = etat?.signaux ?? null;
   const { data: plans } = a.objectifs.length
-    ? await service.from('plans').select('id, parametres, intake, demarre_le, depart_prevu, donnees->course->>distance_km, donnees->course->>dplus_m, zones:donnees->zones, lignes_zones:donnees->mode_emploi->effort->zones')
+    ? await service.from('plans').select('id, parametres, intake, demarre_le, depart_prevu, debut_plan, donnees->course->>distance_km, donnees->course->>dplus_m, zones:donnees->zones, lignes_zones:donnees->mode_emploi->effort->zones')
       .in('id', a.objectifs.map((o) => o.plan_id))
     : { data: [] };
   const parPlan = new Map((plans ?? []).map((p) => [p.id as string, p as Record<string, unknown>]));
@@ -351,7 +351,7 @@ export default async function PageAthlete({ params, searchParams }: {
           complet: etatCarte.complet, nolio: Boolean(a.nolio_athlete_id), accord: Boolean(accord), aLaMain,
         }),
         alertes: alertes.filter((x) => x.planId === o?.plan_id).flatMap((x) => x.phrases),
-        premier: lundiProchain, dernier: lundiDeSaCourse,
+        premier: lundiProchain, dernier: lundiDeSaCourse, plusTot: auPlusTot(p?.debut_plan as string | null | undefined, jour),
       },
     };
   })();

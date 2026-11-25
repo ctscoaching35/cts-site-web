@@ -17,9 +17,10 @@ function Message({ etat }: { etat: EtatGeste }) {
 
 // Le lundi du départ, au choix du coach (décision coach du 22/10/2026) : vide, dès que possible ; premier : le premier
 // lundi possible, dernier : celui de la semaine de course ; programme : un départ déjà programmé, que le geste déplace.
-// libelle, pourquoi : les mots de la page d'un athlète sous la 9.x (« Lancer sa préparation », décision 241, moment 2) ; sans eux, ceux de la page de l'objectif.
-export function DemarrerNolio({ planId, actif, lundi, premier, dernier, programme, libelle = 'Démarrer dans Nolio', pourquoi = 'Associe d’abord l’athlète à Nolio, sur sa fiche.' }: {
-  planId: string; actif: boolean; lundi: string; premier: string; dernier: string; programme: boolean; libelle?: string; pourquoi?: string;
+// libelle, pourquoi, aide, classe : les mots et le bouton de la page d'un athlète sous la 9.x (« Lancer sa préparation », décision 241, moment 2) ; sans eux, ceux de la page de l'objectif.
+export function DemarrerNolio({ planId, actif, lundi, premier, dernier, programme, libelle = 'Démarrer dans Nolio', pourquoi = 'Associe d’abord l’athlète à Nolio, sur sa fiche.',
+  aide = 'Vide : dès que possible. Plus tard : par exemple après un objectif que tu prépares à la main.', classe = 'btn btn-primary !py-2.5 disabled:opacity-50' }: {
+  planId: string; actif: boolean; lundi: string; premier: string; dernier: string; programme: boolean; libelle?: string; pourquoi?: string; aide?: string; classe?: string;
 }) {
   const [etat, action, enCours] = useActionState<EtatGeste, FormData>(demarrerDansNolio.bind(null, planId), null);
   const champ = 'mt-1.5 w-full min-h-11 rounded-[10px] border border-indigo/20 px-3 text-sm font-normal text-indigo bg-white';
@@ -28,8 +29,8 @@ export function DemarrerNolio({ planId, actif, lundi, premier, dernier, programm
       <label className="block max-w-[240px] text-xs font-semibold text-indigo">Démarre le lundi
         <input name="depart" type="date" min={premier} max={dernier} step={7} defaultValue={lundi} className={champ} />
       </label>
-      <p className="text-xs text-indigo/60">Vide : dès que possible. Plus tard : par exemple après un objectif que tu prépares à la main.</p>
-      <button type="submit" disabled={!actif || enCours} className="btn btn-primary !py-2.5 disabled:opacity-50">
+      <p className="text-xs text-indigo/60">{aide}</p>
+      <button type="submit" disabled={!actif || enCours} className={classe}>
         {enCours ? 'Départ…' : programme ? 'Changer le départ' : libelle}
       </button>
       {!actif && <p className="text-xs text-indigo/60">{pourquoi}</p>}

@@ -23,6 +23,7 @@ import { NOTE_AVANT_DE_DEMARRER, type Entree } from './entree';
 import { GROUPES_URGENT, groupeUrgent, type Point } from './espaceParAthlete';
 import { lireGpx } from './gpxV9';
 import { MOTS_DU_COACH } from './motsDuCoach';
+import { ajouterJours } from './plan';
 
 // ─── Les textes (pour le coach seul) ──────────────────────────────────────────────────────────────────────────────
 
@@ -39,6 +40,8 @@ export const TEXTES_PAGE_ATHLETE = {
   ilManque: (liste: string[]) => `Il manque : ${liste.join(', ')}`,
   manqueObjectif: 'son objectif',
   lancer: 'Lancer sa préparation',
+  // Sous le champ de date, quand sa préparation commence plus tard (`date` : en clair).
+  departAuPlusTot: (date: string) => `Vide : dès que possible, au plus tôt le ${date}.`,
   pourquoiCarte: 'Sa carte n’est pas complète.',
   // Les gestes sont ceux de la page d'avant, mot pour mot.
   modifierProfil: 'Modifier son profil',
@@ -261,6 +264,9 @@ export function etatDeLaCarte(objectif: { champs: Reponses } | null, fiche: Repo
   if (!objectif) return { repere: TEXTES_PAGE_ATHLETE.ilManque([...manquants.map((i) => i.manque), TEXTES_PAGE_ATHLETE.manqueObjectif]), complet: false, manquants: cles };
   return { repere: repereDeLObjectif(v), complet: v.complet, manquants: cles };
 }
+
+// Le premier lundi possible d'une préparation qui commence plus tard (la règle de la page de l'objectif, « au plus tôt le … ») ; null quand elle peut partir tout de suite. `debutPlan` : le lundi de sa première semaine.
+export const auPlusTot = (debutPlan: string | null | undefined, aujourdhui: string): string | null => (debutPlan && debutPlan > ajouterJours(aujourdhui, 1) ? debutPlan : null);
 
 // « Lancer sa préparation », pour son objectif à venir : rien à montrer sans objectif écrit semaine par semaine, une fois démarré, ou s'il est programmé à la main ; programmé, la date ; sinon le bouton, actif quand sa
 // carte est complète, son compte Nolio associé et son accord de lecture reçu, avec une ligne qui dit le premier qui manque.
