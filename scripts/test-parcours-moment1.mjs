@@ -63,3 +63,13 @@ test('l’écran : un seul formulaire et le message à copier ; sous la 8.x, « 
   assert.match(c, /navigator\.clipboard\.writeText\(message\)/);
   assert.match(source('app/app/coach/page.tsx'), /href=\{v9 \? '\/app\/coach\/nouveau-coache' : '\/app\/coach\/nouveau'\}/);
 });
+
+test('la politique de confidentialité dit que l’e-mail peut être gardé dès la fiche, avant « Avec ton accord… » ; la liste ne change pas (décision 246)', () => {
+  const page = source('app/confidentialite/page.tsx').replace(/\s+/g, ' ');
+  const phrase = 'Quand nous créons ta fiche, nous pouvons y garder ton adresse e-mail, pour t’inviter plus tard dans l’app : rien ne t’est envoyé avant cette invitation. Elle est effacée avec ta fiche.';
+  assert.equal(page.split(phrase).length - 1, 1);
+  const section = page.indexOf('titre={no(\'Si tu es coaché par CTS sur Nolio\')}');
+  const accord = page.indexOf('<p>Avec ton accord, donné par écrit dans la messagerie Nolio');
+  assert.ok(section > 0 && section < page.indexOf(phrase) && page.indexOf(phrase) < accord, 'dans sa section, avant ce qui demande l’accord');
+  assert.ok(page.includes('si nous t’ouvrons un espace dans l’app, nous gardons ton adresse e-mail'), 'la ligne de la liste reste');
+});
