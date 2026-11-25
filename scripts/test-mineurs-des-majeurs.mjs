@@ -65,7 +65,7 @@ test('les mineures d’un majeur : leur date, leur chrono visé (sans chrono, sa
 });
 
 test('la ligne dite sous la course', () => {
-  assert.equal(M.TEXTE_DANS_LA_RECUPERATION('Trail du Mont'), 'Elle tombe dans ta récupération après Trail du Mont : je la prépare comme une course de préparation.');
+  assert.equal(M.TEXTE_DANS_LA_RECUPERATION('Trail du Mont'), 'Elle tombe pendant sa récupération après Trail du Mont : elle se prépare comme une course de préparation.');
 });
 
 test('sous la 9.x : les paramètres du plan de la course 1 portent ses mineures ; la course 2 ne se lance pas ; la 8.x ne change pas', () => {

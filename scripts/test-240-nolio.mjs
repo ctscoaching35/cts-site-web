@@ -154,11 +154,11 @@ test('au premier passage d’un coaché, `/v1/semaine` reçoit ce que Nolio mont
 
 test('le lecteur réel : au départ, les 4 lundis d’avant, sans `id`, les étapes relues en détail, les semaines vides écartées ; aux passages suivants, comme avant', () => {
   const p = sansCommentaires(source('lib/app/passagesV9.ts'));
-  assert.match(p, /lireNolio: async \(lundi, avecLaSemaine, depart = false\) => \{/);
+  assert.match(p, /lireNolio: async \(lundi, avecLaSemaine, depart = false, sansEtapes = false\) => \{/);
   assert.match(p, /const lundis = depart \? lundisDuDepart\(lundi\) : lundisALire\(avecLaSemaine \? ajouterJours\(lundi, 7\) : lundi, premierLundi \?\? ajouterJours\(lundi, -91\)\);/);
   assert.match(p, /if \(!depart\) for \(const e of o\.envois\)/, 'sans `id` au départ : aucun envoi n’est rattaché');
   assert.match(p, /const detail = q \? `\?\$\{q\.slice\(1\)\}` : '';/);
-  assert.match(p, /completerLesEtapes\(planifiees, \(p\) => estEnvoyee\(p, lundis, parNolio, SPORTS_COURSE\), async \(id\) => \{/);
+  assert.match(p, /const completes = sansEtapes \? planifiees : await completerLesEtapes\(planifiees, \(p\) => estEnvoyee\(p, lundis, parNolio, SPORTS_COURSE\), async \(id\) => \{/);
   assert.match(p, /appelNolio\('GET', `planned\/trainings\/\$\{id\}\/\$\{detail\}`\)/);
   assert.match(p, /planifiees: completes, reelles, hooper, parNolio/);
   assert.match(p, /return depart \? vueDuDepart\(vu\) : vu;/);
@@ -176,4 +176,23 @@ test('la vérification de la liste de Nolio n’affiche que la structure : aucun
   const affiche = s.split('\n').filter((l) => l.includes('console.log')).join('\n');
   assert.ok(!/\.name|titre|date_start|description|\.workout|s\.id|JSON\.stringify|\$\{s[.\[]/.test(affiche), 'aucun contenu de séance dans ce qui s’affiche');
   assert.ok(!/console\.(log|error|info)\(\s*(liste|d|seances|corps|r)\s*[,)]/.test(s), 'aucun objet affiché tel quel');
+});
+
+test('le point du dimanche ne relit aucun détail (240, confirmé par le moteur) ; le soir et le lundi, si', async () => {
+  const q = fixture('questionnaire');
+  const a = contexte({ coache: true, nolioLu: null });
+  const derniere = { numero: 1, lundi: LUNDI, semaine: SEMAINE.reponse.semaine, reponsesLues: null, questionnaire: null };
+  a.c.derniere = derniere;
+  a.c.etat = { courant: SEMAINE.reponse.etat, ecrites: [{ numero: 1, etatAvant: null }] };
+  a.c.poserLeQuiz = async () => 'pqz';
+  a.c.garderLeQuestionnaire = async () => {};
+  a.c.ports.appeler = async (chemin) => structuredClone(chemin === '/v1/trame' ? TRAME.reponse : q.reponse);
+  const dimanche = new Date(Date.parse(`${LUNDI}T12:00:00Z`) + 6 * 86_400_000).toISOString().slice(0, 10);
+  await passes.poserLeQuestionnaireDuDimanche(a.c, dimanche).catch(() => {});
+  assert.deepEqual(a.j.nolio.map((x) => x.slice(1)), [[false, false, true]], 'sans étapes');
+  const p = sansCommentaires(source('lib/app/passeUnPlanV9.ts'));
+  assert.ok(p.includes('c.coache ? await c.lireNolio(lundi, false, true) : null'), 'le départ : relu (les étapes aussi)');
+  assert.ok(p.includes('const nolio = await c.lireNolio(lundi, true);'), 'le lundi : la semaine en cours, avec ses étapes');
+  assert.ok(p.includes('derniere ? await c.lireNolio(lundiASuivre, false, false, true) : null'), 'le point du dimanche : sans étapes');
+  assert.equal((p.match(/lireNolio\(lundi[A-Za-z]*, [^)]*\)/g) ?? []).length, 4, 'les quatre lectures, aucune de plus');
 });
