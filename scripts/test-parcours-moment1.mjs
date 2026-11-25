@@ -36,15 +36,21 @@ test('le formulaire : le prénom et le nom obligatoires, l’e-mail et le compte
   assert.equal(lireNouveauCoache(formulaire({ prenom: 'x'.repeat(200), nom: 'B' })).coache.prenom.length, 40);
 });
 
-test('le geste : une fiche déjà créée depuis l’équipe est reprise ; un acheteur refusé ; son lien ne part qu’avec un e-mail ; puis sa page', () => {
+test('le geste : une fiche déjà créée depuis l’équipe est reprise ; un acheteur refusé ; son e-mail est gardé, rien ne lui est envoyé ; puis sa page', () => {
   const a = source('lib/app/actionsCoaching.ts');
   const g = a.slice(a.indexOf('export async function creerCoache'), a.indexOf('export async function associerNolio'));
   assert.match(g, /const lu = lireNouveauCoache\(form\);\n\s+if \('erreur' in lu\) return/);
   assert.match(g, /usrAcheteurs\(coach\.compteId\)\)\.has\(nolioId\)\) return \{ ok: false/);
   assert.match(g, /\.eq\('nolio_athlete_id', nolioId\)\.maybeSingle\(\)/, 'jamais deux fiches pour un même compte Nolio');
-  assert.match(g, /if \(email\) \{\n\s+try \{\n\s+await ouvrirEspace\(coach\.compteId, \{ id, nom: complet \}, email\);/);
-  assert.ok(g.indexOf('redirect(`/app/coach/athlete/${id}`)') > g.indexOf('ouvrirEspace'));
-  assert.ok(!/appelNolio|envoyerLien\(/.test(g), 'rien d’écrit dans Nolio');
+  assert.match(g, /if \(email\) \{\n\s+const \{ error \} = await service\.from\('athletes_coaches'\)\.update\(\{ email_app: email \}\)/, 'gardé avec sa fiche');
+  assert.ok(!/ouvrirEspace|envoyerLien\(|auth\.admin/.test(g), 'aucun lien, aucun compte, aucun envoi (le lien partira par « Inviter dans l’app »)');
+  assert.ok(g.indexOf('redirect(`/app/coach/athlete/${id}`)') > g.indexOf('email_app'));
+  assert.ok(!/appelNolio/.test(g), 'rien d’écrit dans Nolio');
+  // Gardé, il se reprend à l'invitation ; la migration qui ajoute sa colonne est écrite.
+  assert.ok(source('components/app/InvitationApp.tsx').includes("defaultValue={adresse ?? gardee ?? ''}"));
+  assert.ok(source('app/app/coach/athlete/[id]/page.tsx').includes('<InvitationApp athleteId={a.id} adresse={adresse} gardee={a.email_app} />'));
+  assert.match(source('supabase/migrations/20261125100000_email_app_du_coache.sql'), /add column if not exists email_app text;/);
+  assert.ok(source('components/app/NouveauCoache.tsx').includes('Il est gardé, rien ne lui est envoyé'));
 });
 
 test('l’écran : un seul formulaire et le message à copier ; sous la 8.x, « Ajouter un athlète » reste le questionnaire', () => {

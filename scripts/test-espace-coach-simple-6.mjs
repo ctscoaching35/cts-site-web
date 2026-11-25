@@ -342,7 +342,7 @@ test('où le coach reçoit le message après un geste : chaque site le passe par
   assert.ok(c.includes("message: await messageAuCoach(e instanceof Error ? e.message : 'L’envoi n’a pas abouti.')"));
   assert.ok(c.includes("message: await messageAuCoach(e instanceof Error ? e.message : 'La mise à jour n’a pas abouti.')"));
   // Et « Nouveau coaché » (décision 241) : la fiche qui n'a pas pu se créer, le lien qui n'est pas parti (scripts/test-parcours-moment1.mjs).
-  assert.equal((c.match(/messageAuCoach\(/g) ?? []).length, 6);
+  assert.equal((c.match(/messageAuCoach\(/g) ?? []).length, 5);
   // Aucun de ces messages ne part sans passer par là : plus d'`e.message` brut dans un `message:` de ce fichier.
   assert.ok(!/message: e instanceof Error \? e\.message/.test(c));
   const w = sansCommentaires(source('lib/app/actionsEcriture.ts'));
@@ -649,6 +649,8 @@ const ANCRES_DE_LA_PAGE_ATHLETE = {
   'geste-profil': 'haut', // CarteSavoir.tsx : « Modifier son profil » de « Ses objectifs » (ObjectifsAVerifier.tsx) mène à sa côte, son tapis, ses critères
   'geste-test-vc': 'haut', // CarteSavoir.tsx : « Saisir le résultat de son test de vitesse critique » (À faire pour lui, lib/app/testsASaisir.ts)
   'geste-reperes': 'haut', // CarteSavoir.tsx : « Saisir le résultat de son test de fréquence cardiaque »
+  'champ-gpx': 'haut', // CarteSavoir.tsx : « Il manque : sa trace » (Mes athlètes)
+  'champ-semaine': 'haut', // CarteSavoir.tsx : « Il manque : sa semaine » (Mes athlètes)
   'lancer-sa-preparation': 'haut', // LancerSaPreparation.tsx : « Son objectif n'a pas démarré » (À faire pour lui) et « À lancer » (Mes athlètes)
   'son-entree': 'haut', // PointsPourLui.tsx (la ligne « accord ») ; CarteEntree.tsx dans « Réglages » quand l'entrée est faite (les deux s'excluent)
   'sa-semaine-passee': 'reglages', // la revue, quand il y a un réalisé

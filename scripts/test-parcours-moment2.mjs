@@ -41,7 +41,7 @@ const avant = (x = {}) => C.valeursDeLaCarte({ fiche: { cote_min: '8', tapis: 'n
 
 test('ce que la carte montre : sa fiche d’abord pour la côte, le tapis et les critères ; les jours, la sortie longue et les séances de l’objectif seul', () => {
   assert.deepEqual(avant({ champs: { ...CHAMPS, cote_min: '3', tapis: 'oui', criteres: { mecanique: 'regulier' } } }), {
-    cote_min: '8', tapis: 'non', critere_intensite: 'parfois', critere_denivele: 'regulier', fc_seuil1: '148', fc_seuil2: '',
+    cote_min: '8', tapis: 'non', critere_intensite: 'parfois', critere_denivele: 'regulier', fc_seuil1: '148', fc_seuil2: '', vc_allure: '',
     date_course: '2027-05-02', distance_km: '30', dplus_m: '1200', temps_cible: '4h00', jours_disponibles: ['mardi', 'jeudi', 'dimanche'], jour_sl: 'dimanche', freq_hebdo: '3',
   });
   // Sans fiche, l'objectif ; sans objectif, rien de la course ni de la semaine, même si l'achat avait des jours.
@@ -238,4 +238,16 @@ test('les textes de la carte : pour le coach, apostrophe typographique, sans mot
     assert.equal(t, t.trim(), cle);
   }
   assert.equal(C.TEXTES_CARTE.titre, 'Ce que j’ai besoin de savoir');
+});
+
+test('une vitesse critique connue d’un test passé s’écrit dans la carte, en allure ; inchangée, elle garde sa valeur exacte', () => {
+  const a = C.valeursDeLaCarte({ fiche: null, intake: null, champs: null, courseDate: '', fc1: 148, fc2: 170, vcAllure: '4:10' });
+  assert.equal(a.vc_allure, '4:10');
+  assert.equal(C.reperesAEnvoyer(a, a, { vs1: null, vc: '4:10' }), null);
+  assert.deepEqual(C.reperesAEnvoyer(a, C.completer(a, { vc_allure: '4:05' }), { vs1: '6:00', vc: '4:10' }),
+    [['fc_seuil1', '148'], ['fc_seuil2', '170'], ['vs1_allure', '6:00'], ['vc_allure', '4:05'], ['allures_gardees', '1']]);
+  // Vidée, elle n'efface rien.
+  assert.equal(C.completer(a, { vc_allure: '' }).vc_allure, '4:10');
+  const c = readFileSync(`${RACINE}components/app/CarteSavoir.tsx`, 'utf8');
+  assert.ok(c.includes('{t.vcConnue}') && c.includes("maj('vc_allure', e.target.value)"));
 });

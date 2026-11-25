@@ -61,8 +61,8 @@ test('un seul mot, le plus urgent : la santé, la semaine, la demande, Nolio, l�
 
 test('le clic ouvre le bon geste : la fiche pour la côte et les critères, l’objectif pour la trace et la semaine, la carte pour le test, l’accord, le point', () => {
   assert.equal(mot({ manque: 'sa côte en minutes', gesteDuManque: 'profil' }).href, '/app/coach/athlete/a1#geste-profil');
-  assert.equal(mot({ manque: 'sa trace GPX', gesteDuManque: 'trace' }).href, '/app/coach/nouveau?athlete=a1&modifier=p1');
-  assert.equal(mot({ manque: 'sa semaine habituelle', gesteDuManque: 'semaine' }).href, '/app/coach/nouveau?athlete=a1&modifier=p1');
+  assert.equal(mot({ manque: 'sa trace GPX', gesteDuManque: 'trace' }).href, '/app/coach/athlete/a1#champ-gpx', 'sa carte, sur le champ surligné');
+  assert.equal(mot({ manque: 'sa semaine habituelle', gesteDuManque: 'semaine' }).href, '/app/coach/athlete/a1#champ-semaine');
   assert.equal(mot({ accord: false }).href, '/app/coach/athlete/a1#son-entree');
   assert.equal(mot({ test: { geste: 'test_vc' } }).href, '/app/coach/athlete/a1#geste-test-vc');
   assert.equal(mot({ test: { geste: 'reperes' } }).href, '/app/coach/athlete/a1#geste-reperes');
@@ -119,4 +119,19 @@ test('la page : sous la 9.x, la liste d’un mot et le reste replié dans « Ré
   assert.match(lecture, /verifierObjectif\(parametres\.champs \?\? \{\}, fiche\?\.profil\)/);
   const liste = source('components/app/ListeSimple.tsx');
   assert.match(liste, /\{l\.un\.externe \? <a href=\{l\.un\.href\} target="_blank" rel="noopener"/);
+});
+
+test('sous la 9.x, la page de l’objectif n’a plus « Démarrer dans Nolio » : elle renvoie à « Lancer sa préparation » ; en 8.x rien ne change', () => {
+  const p = readFileSync(`${RACINE}app/app/coach/plan/[id]/page.tsx`, 'utf8');
+  assert.match(p, /\{v9\n?\s*\? !ecriture\.depart_prevu && [\s\S]{0,200}?#lancer-sa-preparation[\s\S]{0,400}?: <DemarrerNolio/);
+  assert.equal((p.match(/<DemarrerNolio/g) ?? []).length, 1);
+  // La page d'un athlète : l'ancien bouton ne reste que dans la branche 8.x.
+  const a = readFileSync(`${RACINE}app/app/coach/athlete/[id]/page.tsx`, 'utf8');
+  const i9 = a.indexOf('      {v9 ? (\n        <>\n');
+  const i8 = a.indexOf('      ) : (\n        <>\n', i9);
+  assert.ok(i9 > 0 && i8 > i9);
+  assert.ok(!a.slice(i9, i8).includes('Démarrer dans Nolio'));
+  assert.ok(a.slice(i8).includes('>Démarrer dans Nolio</Link>'), 'la 8.x garde son lien');
+  const c = readFileSync(`${RACINE}components/app/CarteSavoir.tsx`, 'utf8');
+  assert.ok(c.includes('<div id="champ-gpx"') && c.includes('<div id="champ-semaine"'));
 });
