@@ -18,6 +18,7 @@ import { API_URL, dureeConseillee, dureesPossibles, lireTemps, type Champs, type
 import { moteurEstV9 } from './moteurEnLigne';
 import { lireTrame } from './moteurV9';
 import { parametresDuObjectifV9 } from './parametresPlanV9';
+import { majeurQuiCouvre, TEXTE_DANS_LA_RECUPERATION } from './mineursDesMajeurs';
 import { trameDuBonMoteur, trameLue } from './semaineLue';
 import {
   chargeDepuisNolio, creer, destinataire, envoyerSemaineCible, ficheAthlete, garderEnvoi, mettreAJourSemaineCible, profilDe, remplacerLaNote, seancesDuMoteur,
@@ -1074,6 +1075,11 @@ export async function demarrerObjectif(planId: string, { prevenir = true, lundi,
   // 2027, bloquait Menestrail, couru en décembre 2026). Un objectif dont la course vient avant : celui-ci démarre le
   // lundi après sa récupération.
   const autres = await autresObjectifs(o);
+  // Sous la 9.x (décision 241, C3) : une course d'un coaché dans la récupération d'une autre n'est pas un majeur, elle ne se lance pas ; elle part dans les courses de préparation de celle d'avant.
+  if (o.coache && (await moteurEstV9())) {
+    const couvre = majeurQuiCouvre(o.planId, [...autres, { id: o.planId, course_nom: o.plan.course.nom, course_date: o.plan.course.date, temps_h: o.tempsH, format: formatDe(o) }]);
+    if (couvre) throw new Error(TEXTE_DANS_LA_RECUPERATION(couvre.course_nom));
+  }
   const fini = ajouterJours(debutApres({ course_date: o.plan.course.date, temps_h: o.tempsH, format: formatDe(o) }), 7);
   const enRoute = autres.find((q) => q.demarre && q.course_date >= aujourdhui && q.course_date > o.plan.course.date
     && !(q.debut && q.debut > fini));
