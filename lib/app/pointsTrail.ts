@@ -2,7 +2,7 @@
 /**
  * SES POINTS FORTS ET FAIBLES EN TRAIL (demande du coach du 25/11/2026 : « point fort trail, point faible trail […] avec la liste des choses sur lesquelles il est plus fort ou moins fort ») : montées, descentes,
  * technique, fin de course, les quatre de « Ce qui te coûte le plus » (lib/app/accentFond.ts). Chacun est un point fort, un point faible ou neutre, gardé sur sa fiche (`profil.trail_…`), saisi par l'athlète ou par son
- * coach, sous la 9.x. Sans réponse, la réponse d'avant (`cout_trail`) vaut un point faible. Rien n'en part au moteur. Textes : BROUILLONS.
+ * coach, sous la 9.x. Sans réponse, la réponse d'avant (`cout_trail`) vaut un point faible. Rien n'en part au moteur. Les mots que l'athlète lit : validés par le coach le 25/11/2026.
  */
 export const POINTS_TRAIL = [
   { champ: 'trail_montees', accent: 'montees', titre: 'Montées' },
