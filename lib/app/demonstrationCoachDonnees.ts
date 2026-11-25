@@ -1,7 +1,7 @@
 /**
  * Les données de la démonstration de l'espace coach (lib/app/demonstrationCoach.ts), en développement seulement :
  * lib/app/exemples/coach.json (scripts/demonstration-coach.py : dix coachés fictifs, leurs objectifs pris dans le corpus
- * du moteur, leurs semaines écrites par le moteur), lu sur le disque, puis rangé en tables, en Nolio et en moteur pour
+ * du moteur, leurs semaines écrites par le moteur), lu sur le disque (plus une coachée fictive prête à partir, demonstrationCoachPrete.ts), puis rangé en tables, en Nolio et en moteur pour
  * l'instant simulé : ce qui n'a pas encore eu lieu (une semaine écrite dimanche soir, une séance de jeudi) reste caché ;
  * les signaux gardés du soir se calculent comme le passage du soir les calcule (signauxSuivi.ts). Jamais importé en
  * production : demonstrationCoach.ts ne le charge que la porte ouverte.
@@ -9,6 +9,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { COACH_DEMONSTRATION, LUNDI_DEMONSTRATION } from './demonstrationCoachPorte';
+import { avecLaCoacheePrete, profilDeDemonstration } from './demonstrationCoachPrete';
 import { QUESTIONNAIRE_SEMAINE } from './ecriture';
 import { ajouterJours } from './plan';
 import { signaux, type Prevue, type Realisee, type Seuils, type ValeurHooper } from './signauxSuivi';
@@ -37,8 +38,8 @@ function donnees(): Donnees {
   if (d.lundi !== LUNDI_DEMONSTRATION) {
     throw new Error(`coach.json est fait pour la semaine du ${d.lundi}, la démonstration attend celle du ${LUNDI_DEMONSTRATION} : aligne LUNDI_DEMONSTRATION.`);
   }
-  lues = d;
-  return d;
+  lues = avecLaCoacheePrete(d);
+  return lues;
 }
 
 const COACH = COACH_DEMONSTRATION.compteId;
@@ -135,7 +136,7 @@ export function tables(): Record<string, Ligne[]> {
       d_prime_m: a.reperes ? a.d_prime ?? null : null, compte_id: compteDe(a), mode: 'coaching', mode_le: null, programmation: 'auto',
       // Son week-end posé dans Nolio jusqu'au dimanche suivant ; un mot à la question ouverte du samedi.
       questionnaires: { jusqua: a.pas_demarre ? null : ajouterJours(lundi, 13), mot_le: a.mot ?? null, mot_note: a.mot ? `${a.mot}T09:00:00.000Z` : null },
-      profil: { niveau: c.niveau, terrain: c.terrain, jours_disponibles: c.jours_disponibles, jour_sl: c.jour_sl, freq_hebdo: c.freq_hebdo },
+      profil: profilDeDemonstration(c),
       reperes_sources: a.reperes ? { fc_seuil1: { le: '2026-09-12', source: 'test' }, vc_ms: { le: '2026-09-12', source: 'test' },
         fc_seuil2: { le: '2026-10-03', source: 'coach' } } : {},
       cree_le: '2026-09-01T10:00:00.000Z',
