@@ -135,3 +135,11 @@ test('sous la 9.x, la page de l’objectif n’a plus « Démarrer dans Nolio »
   const c = readFileSync(`${RACINE}components/app/CarteSavoir.tsx`, 'utf8');
   assert.ok(c.includes('<div id="champ-gpx"') && c.includes('<div id="champ-semaine"'));
 });
+
+test('« À faire pour lui » sous la 9.x : la ligne du départ dit « Lancer sa préparation › » et mène au bouton du bas ; la phrase sur les anciennes séries reste', async () => {
+  const page = await import(pathToFileURL(`${RACINE}lib/app/pageAthleteSimple.ts`).href);
+  const entree = { etapes: [{ cle: 'depart', titre: 'Démarré dans Nolio', fait: false, action: { texte: 'Démarrer ›', href: '/app/coach/plan/p1' } }] };
+  const [ligne] = page.aFairePourLui([], entree, false);
+  assert.deepEqual([ligne.ligne.action, ligne.ligne.texte], [{ texte: 'Lancer sa préparation ›', href: '#lancer-sa-preparation' }, 'Son objectif n’a pas démarré dans Nolio.']);
+  assert.match(ligne.ligne.sous, /^Avant de démarrer, retire de son Nolio tes anciennes séries/);
+});

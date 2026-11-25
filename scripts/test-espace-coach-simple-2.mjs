@@ -494,7 +494,7 @@ test('les textes nouveaux : apostrophe typographique, phrases courtes, mots simp
     assert.equal(t, t.trim());
   }
   assert.deepEqual(textes.map(([cle]) => cle), [
-    'aFaire', 'rienAFaire', 'nolio', 'accord', 'accordSous', 'depart', 'boutonAccord', 'ilManque', 'manqueObjectif', 'lancer', 'pourquoiCarte', 'modifierProfil',
+    'aFaire', 'rienAFaire', 'nolio', 'accord', 'accordSous', 'depart', 'boutonAccord', 'ilManque', 'manqueObjectif', 'lancer', 'departAuPlusTot', 'pourquoiCarte', 'modifierProfil',
     'saisirTest', 'modifierReperes', 'ceQuIlLit', 'objectifs', 'aucunObjectif', 'complet', 'envoyeEnEntier', 'manqueCote', 'manqueIntensite', 'manqueMecanique', 'manqueTapis', 'manqueGpx', 'manqueSemaine', 'gesteTrace', 'gesteObjectif',
     'titreCote', 'titreIntensite', 'titreMecanique', 'titreTapis', 'titreGpx', 'titreSemaine', 'coursesDePreparation', 'aucuneCourse', 'ajouterUneCourse', 'traceDonnee', 'sansValeur', 'reglagesSous', 'ouEnEstIl', 'aVenir', 'anciensObjectifs',
   ]);

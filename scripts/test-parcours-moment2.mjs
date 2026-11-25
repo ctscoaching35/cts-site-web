@@ -188,7 +188,8 @@ test('« Lancer sa préparation » : actif carte complète, Nolio associé et ac
 
 test('le geste de départ : celui de la page de l’objectif, avec ses mots à elle par défaut ; sur la page de l’athlète, l’alerte juste au-dessus du bouton', () => {
   const g = source('components/app/GestesEcriture.tsx');
-  assert.match(g, /libelle = 'Démarrer dans Nolio', pourquoi = 'Associe d’abord l’athlète à Nolio, sur sa fiche\.' \}/);
+  assert.match(g, /libelle = 'Démarrer dans Nolio', pourquoi = 'Associe d’abord l’athlète à Nolio, sur sa fiche\.',/);
+  assert.match(g, /aide = 'Vide : dès que possible\. Plus tard : par exemple après un objectif que tu prépares à la main\.', classe = 'btn btn-primary !py-2\.5 disabled:opacity-50' \}/, 'la page de l’objectif garde son aide et son bouton');
   assert.match(g, /\{enCours \? 'Départ…' : programme \? 'Changer le départ' : libelle\}/);
   assert.match(source('app/app/coach/plan/[id]/page.tsx'), /<DemarrerNolio planId=\{id\} actif=\{Boolean\(nolio\)\}[^>]*\n\s*programme=\{Boolean\(ecriture\.depart_prevu\)\} \/>/, 'la page de l’objectif ne change pas');
   const l = source('components/app/LancerSaPreparation.tsx');
@@ -250,4 +251,30 @@ test('une vitesse critique connue d’un test passé s’écrit dans la carte, e
   assert.equal(C.completer(a, { vc_allure: '' }).vc_allure, '4:10');
   const c = readFileSync(`${RACINE}components/app/CarteSavoir.tsx`, 'utf8');
   assert.ok(c.includes('{t.vcConnue}') && c.includes("maj('vc_allure', e.target.value)"));
+});
+
+test('une préparation qui commence plus tard dit son premier lundi sous le champ de date ; le bouton a la casse des autres', () => {
+  // La règle de la page de l'objectif : plus tard que demain.
+  assert.equal(page.auPlusTot('2026-12-21', '2026-11-11'), '2026-12-21');
+  assert.equal(page.auPlusTot('2026-11-16', '2026-11-11'), '2026-11-16');
+  assert.equal(page.auPlusTot('2026-11-16', '2026-11-15'), null, 'demain : elle part ce soir');
+  assert.equal(page.auPlusTot('2026-09-21', '2026-11-11'), null, 'sa préparation a commencé : dès que possible');
+  assert.equal(page.auPlusTot(null, '2026-11-11'), null);
+  assert.equal(page.TEXTES_PAGE_ATHLETE.departAuPlusTot('lundi 21 décembre 2026'), 'Vide : dès que possible, au plus tôt le lundi 21 décembre 2026.');
+  const l = source('components/app/LancerSaPreparation.tsx');
+  assert.match(l, /aide=\{plusTot \? TEXTES_PAGE_ATHLETE\.departAuPlusTot\(dateLongue\(plusTot, true\)\) : undefined\}/);
+  assert.ok(l.includes('premier={plusTot ?? premier}'), 'pas de lundi plus tôt à choisir');
+  assert.ok(/classe="[^"]*rounded-xl bg-teal[^"]*"/.test(l) && !/classe="[^"]*\bbtn\b/.test(l), 'la forme d’« Enregistrer », sans capitales');
+  const p = source('app/app/coach/athlete/[id]/page.tsx');
+  assert.ok(p.includes('plusTot: auPlusTot(p?.debut_plan as string | null | undefined, jour)') && p.includes('demarre_le, depart_prevu, debut_plan, '));
+});
+
+test('la date du test reste vide tant qu’aucun effort n’est entré', () => {
+  const c = source('components/app/CarteSavoir.tsx');
+  assert.ok(c.includes("useState<EffortsDuTest>(sansEfforts(''))") && c.includes("setEfforts(sansEfforts(''))") && !c.includes('sansEfforts(aujourdhui)'));
+  assert.ok(c.includes("value={efforts.le || (testSaisi(efforts) ? aujourdhui : '')}"));
+  assert.equal(C.testSaisi({ le: '', duree1: '', distance1: '', duree2: '', distance2: '' }), false);
+  assert.equal(C.testSaisi({ le: '', duree1: '3', distance1: '', duree2: '', distance2: '' }), true);
+  // Sans date envoyée, l'enregistrement prend aujourd'hui : ce que le champ montre alors.
+  assert.ok(source('lib/app/actionsCoaching.ts').includes("const le = String(form.get('le') ?? '') || jour;"));
 });

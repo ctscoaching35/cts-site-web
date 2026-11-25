@@ -77,3 +77,18 @@ test('les tables de la démonstration la portent : sa fiche, son accord, son obj
   assert.ok(D.nolio('GET', 'me/athletes/').corps.data.some((x) => x.id === fiche.nolio_athlete_id));
   assert.deepEqual(D.nolio('GET', `planned/trainings/?athlete=${fiche.nolio_athlete_id}`).corps.data, []);
 });
+
+test('en démonstration seulement, les liens qui sortent vers les vrais sites sont fermés et le disent', () => {
+  const lire = (f) => readFileSync(`${RACINE}${f}`, 'utf8');
+  const cadre = lire('components/app/CadreCoach.tsx');
+  assert.ok(cadre.includes('{demonstrationCoachOuverte() && <><LiensFermesEnDemonstration /><Demonstration /></>}'));
+  assert.equal((cadre.match(/<LiensFermesEnDemonstration/g) ?? []).length, 1);
+  const l = lire('components/app/LiensFermesEnDemonstration.tsx');
+  assert.ok(l.startsWith("'use client';"));
+  assert.ok(l.includes(`const SORTANT = 'a[href^="http"]';`), 'un lien du site est relatif');
+  for (const e of ['click', 'auxclick']) assert.ok(l.includes(`document.addEventListener('${e}', retenir, true);`), e);
+  assert.ok(l.includes('e.preventDefault();') && l.includes("content: 'en démonstration'"));
+  // Les liens que le coach nous a nommés sortent bien en « http » : Nolio et la fiche de course.
+  assert.match(lire('lib/app/liensNolio.ts'), /NOLIO_ACCUEIL_COACH = 'https:\/\/www\.nolio\.io\/calendar\/';/);
+  assert.ok(lire('lib/app/ficheCourse.ts').includes('export const lienFicheCourse = (planId: string) => `${site.url}/fiche-course/'), 'la fiche de course : l’adresse du site en ligne');
+});
