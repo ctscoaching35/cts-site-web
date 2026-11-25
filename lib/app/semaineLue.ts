@@ -19,7 +19,7 @@ export type SemaineLue = Pick<Semaine, 'numero' | 'numero_int' | 'type' | 'bloc'
   & Partial<Pick<Semaine, 'theme' | 'reprise_apres_course' | 'reprise_arret' | 'pourquoi'>> & { jours: JourLu[]; moteur?: string };
 
 type SeanceV9 = { id?: string; famille?: string; terrain?: string | null; titre?: string; dose_min?: number; duree_min?: number; rpe?: number };
-type JourV9 = { jour?: string; date?: string; seance?: SeanceV9 | null; renfo?: { id?: string } | null };
+type JourV9 = { jour?: string; date?: string; seance?: SeanceV9 | null; renfo?: SeanceV9 | null };
 
 // Une semaine du moteur v1 : ses jours portent tous `renfo` (nul ou non), et leur séance est un objet ou rien, jamais un texte.
 export function estSemaineV9(donnees: unknown): boolean {
@@ -52,11 +52,13 @@ const ajouterJours = (iso: string, n: number) => new Date(Date.parse(`${iso}T12:
 
 function jourLuV9(numero: number, j: JourV9): JourLu {
   const jour = String(j.jour ?? '').toLowerCase();
-  const s = j.seance ?? null;
+  // Un jour sans autre séance qui porte un renfo (244 : il peut tomber un jour non donné pour courir) : c'est le renfo qu'on lit, pas « Repos ». L'identifiant reste celui du jour (« S9-jeudi »),
+  // que la comparaison avec Nolio retrouve depuis « S9-jeudi:renfo ». Un jour qui a une séance la montre seule, comme avant.
+  const s = j.seance ?? (j.renfo?.titre ? j.renfo : null);
   const iso = typeof j.date === 'string' ? j.date : null;
   const minutes = s ? Math.round(s.duree_min ?? s.dose_min ?? 0) : 0;
   return {
-    id: s?.id ?? `S${numero}-${jour}`, jour: jour ? jour[0].toUpperCase() + jour.slice(1) : '', date_iso: iso,
+    id: j.seance?.id ?? `S${numero}-${jour}`, jour: jour ? jour[0].toUpperCase() + jour.slice(1) : '', date_iso: iso,
     date: iso ? `${JOURS_COURTS[jour] ?? ''} ${jjmm(iso)}`.trim() : '', seance: s ? String(s.titre ?? '') : 'Repos', nom: s ? String(s.titre ?? '') : undefined,
     duree: s && minutes ? enHeures(minutes) : '—', rpe: s && typeof s.rpe === 'number' ? String(s.rpe) : '—',
     famille: s ? FAMILLE[String(s.famille)] ?? 'ef' : 'repos', terrain: s?.terrain ? String(s.terrain) : '',
