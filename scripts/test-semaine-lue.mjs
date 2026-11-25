@@ -292,3 +292,24 @@ test('les noms des séances du journal et la bannière lisent les deux formes', 
   assert.match(v9('S2-mardi'), /^Seuil 1 route/);
   assert.equal(v9('S2-mercredi'), 'Repos');
 });
+
+test('le renfo qui partage le jour d’une séance se montre après elle, partout où les jours de la semaine écrite se lisent', () => {
+  const renfo = SEMAINE.jours[0].renfo;
+  const semaine = lue.lireLaSemaine({ ...SEMAINE, jours: SEMAINE.jours.map((j, i) => (i === 5 ? { ...j, renfo: { ...renfo, id: 'S2-samedi:renfo' } } : j)) });
+  const samedi = semaine.jours[5];
+  assert.equal(samedi.id, 'S2-samedi');
+  assert.match(samedi.seance, /^Endurance/, 'sa séance reste la sienne, avec sa durée et son effort');
+  assert.deepEqual(samedi.renfoDuJour, { nom: renfo.titre, duree: tableau.enHeures(renfo.duree_min), rpe: String(renfo.rpe) });
+  assert.equal(tableau.minutesDe(samedi.renfoDuJour.duree), renfo.duree_min);
+  // Un jour qui n'a que le renfo est le renfo : pas une seconde ligne. Un repos et une séance seule n'en ont pas.
+  assert.deepEqual([semaine.jours[0].renfoDuJour, semaine.jours[1].renfoDuJour, semaine.jours[2].renfoDuJour], [undefined, undefined, undefined]);
+  assert.ok(lue.lireLaSemaine(ANCIENNE).jours.every((j) => !('renfoDuJour' in j)), 'la 8.x ne change pas');
+  // Les trois endroits qui affichent ces jours : « Sa semaine qui arrive » du coach (Nolio pas lu), « Cette semaine » et « Mon plan » de l'athlète.
+  const lire = (f) => readFileSync(`${RACINE}${f}`, 'utf8');
+  const ecrite = lire('components/app/SemaineEcrite.tsx');
+  assert.ok(ecrite.includes('{j.renfoDuJour && (') && ecrite.includes('{j.renfoDuJour.nom}') && ecrite.includes('effortVise(j.renfoDuJour.rpe)'));
+  const bord = lire('components/app/TableauDeBord.tsx');
+  assert.ok(bord.includes('{jours.flatMap((j) => [ligneJour(j), ligneRenfo(j)])}') && bord.includes('cle: `${j.id}:renfo`'));
+  assert.ok(bord.includes('...(j.renfoDuJour ? [j.renfoDuJour.nom] : [])'), 'ses mots sont expliqués dessous');
+  assert.ok(lire('lib/app/tableauDuPlan.ts').includes('...(j.renfoDuJour ? [{ cle: `${j.id}:renfo`'));
+});
