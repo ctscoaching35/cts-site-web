@@ -11,6 +11,7 @@ import {
   testSaisi, TEXTES_CARTE, type EffortsDuTest, type ReponsesDeLObjectif, type ValeursDeLaCarte,
 } from '@/lib/app/carteSavoir';
 import { TEXTES_COTE } from '@/lib/cote';
+import { TEXTES_COURSES } from '@/lib/app/sesCourses';
 import { CRITERES, REPONSES_CRITERE, SANS_CRITERE, TITRE_CRITERES_FICHE } from '@/lib/criteres';
 import { API_URL, formatDepuisDistance } from '@/lib/plan';
 
@@ -49,7 +50,7 @@ const appeler = async (geste: () => Promise<EtatCoach>): Promise<{ ok: boolean; 
 };
 
 export default function CarteSavoir({
-  athleteId, nom, email, aujourdhui, repere, complet, manquants, valeurs, niveau, objectif, reperes, allures, aideDuTest, aideDesReperes, titreDesZones, zonesEtStyle = null,
+  athleteId, nom, email, aujourdhui, repere, complet, manquants, valeurs, niveau, objectif, reperes, allures, aideDuTest, aideDesReperes, titreDesZones, zonesEtStyle = null, courses = null,
 }: {
   athleteId: string; nom: string; email: string; aujourdhui: string;
   // Le repère en tête et les champs qui manquent (lib/app/pageAthleteSimple.ts, etatDeLaCarte).
@@ -58,6 +59,8 @@ export default function CarteSavoir({
   // Ses repères tels que la page les dit : FC au seuil 1, vitesse critique, FC au seuil 2 ; les deux allures telles qu'elles sont gardées.
   reperes: Repere[]; allures: { vs1: string | null; vc: string | null };
   aideDuTest: string; aideDesReperes: string; titreDesZones: string; zonesEtStyle?: React.ReactNode;
+  // « Ses courses » : toutes, dans l'ordre (components/app/ObjectifsAVerifier.tsx, en `plat`), sous le formulaire : elles ont leurs propres formulaires.
+  courses?: React.ReactNode;
 }) {
   const t = TEXTES_CARTE;
   const router = useRouter();
@@ -255,7 +258,8 @@ export default function CarteSavoir({
         </div>
 
         <div className="space-y-3 pt-4 border-t border-indigo/[0.12]">
-          <h3 className={SECTION}>{t.sonObjectif}{objectif ? ` · ${objectif.nom}` : ''}</h3>
+          <h3 className={SECTION}>{TEXTES_COURSES.sesCourses}</h3>
+          {objectif && <h4 className="text-[0.8125rem] font-bold text-indigo">{TEXTES_COURSES.prochaine} · {objectif.nom}</h4>}
           {!objectif ? (
             <div className={clsx('flex flex-wrap gap-2', SURLIGNE)}>
               <Link href={`/app/coach/nouveau?athlete=${athleteId}&discipline=route`} className="inline-flex items-center min-h-10 px-3.5 rounded-[10px] border border-teal text-teal text-[0.8125rem] font-bold">
@@ -330,6 +334,8 @@ export default function CarteSavoir({
           </div>
         )}
       </form>
+
+      {courses}
 
       {zonesEtStyle && (
         <details className="pt-3 border-t border-indigo/[0.07]">

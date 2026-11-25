@@ -1,5 +1,6 @@
 import { moteurEstV9 } from '@/lib/app/moteurEnLigne';
 import { preparationsDisponibles } from '@/lib/app/cacherSousLaV1';
+import { semaineReprise } from '@/lib/app/sesCourses';
 import Link from 'next/link';
 import { formatRouteDe } from '@/lib/app/route';
 import CadreCoach from '@/components/app/CadreCoach';
@@ -65,6 +66,10 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
   const discipline: 'trail' | 'route' = route ? 'route' : 'trail';
   const jour = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
   const enCours = suite?.athlete.objectifs.find((o) => o.course_date >= jour) ?? null;
+  // Sous la 9.x (décision 241) : un nouvel objectif reprend par défaut la semaine de celui en cours (jours, sortie longue, séances), pas celle de la fiche.
+  const semaineDeLObjectifEnCours = v9 && suite && enCours && !aModifier && !demande
+    ? semaineReprise(((await clientService().from('plans').select('parametres').eq('id', enCours.plan_id).maybeSingle()).data?.parametres as { champs?: Record<string, unknown> } | null)?.champs)
+    : {};
   return (
     <CadreCoach actif="athletes">
       <div className="max-w-3xl">
@@ -138,7 +143,7 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
           initial={achete ? { ...reponsesDe(achete.intake), ...reponsesDe(pm?.champs), nom: achete.nom || String(achete.intake.nom ?? '') }
             : aModifier ? { ...reponsesDe(aModifier.intake), ...reponsesDe(pm?.champs), ...suite?.profil, nom: suite?.athlete.nom ?? '' }
             : demande ? { ...demande.champs, ...suite?.profil, nom: suite?.athlete.nom ?? '' }
-              : deNolio ? { ...suite?.initial, ...deNolio, ...(routeNolio ? { format: routeNolio } : {}) } : suite?.initial} />}
+              : deNolio ? { ...suite?.initial, ...semaineDeLObjectifEnCours, ...deNolio, ...(routeNolio ? { format: routeNolio } : {}) } : suite ? { ...suite.initial, ...semaineDeLObjectifEnCours } : undefined} />}
       </div>
     </CadreCoach>
   );

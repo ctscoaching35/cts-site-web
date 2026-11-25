@@ -11,6 +11,8 @@ import InvitationApp from '@/components/app/InvitationApp';
 import LancerSaPreparation from '@/components/app/LancerSaPreparation';
 import ObjectifsAVerifier, { type LigneObjectif } from '@/components/app/ObjectifsAVerifier';
 import type { CourseDePreparation } from '@/components/app/CoursesDePreparation';
+import VueDEnsemble from '@/components/app/VueDEnsemble';
+import { detailsDeLaCourse, ligneDeTemps, rangerSesCourses, vueDuCoureur } from '@/lib/app/sesCourses';
 import { alertesDuCoach, lirePrerequisDuMoteur, prochainLundi } from '@/lib/app/alerteCoach';
 import { parametresDuPlanV9 } from '@/lib/app/passeUnPlanV9';
 import { lireLesSemainesRecentes } from '@/lib/app/stockageV9';
@@ -295,13 +297,22 @@ export default async function PageAthlete({ params, searchParams }: {
     cle: `${t.mot}:${t.jour}`, texte: TEXTES_TESTS.saisir(t.mot), geste: t.geste, href: ANCRE_DU_GESTE[t.geste] })) : [];
   const lignesAFaire = v9 ? aFairePourLui(points, entree, !profilEstRempli(profil), alertes, testsAFaire) : [];
   // Les réponses de l'objectif (parametres.champs), lues avec celles de la fiche comme le moteur v1 les lit ; un objectif envoyé en entier n'a pas de réponses à vérifier.
-  const lignesObjectifs: LigneObjectif[] = objectifsAVenir.map((o) => {
-    const parametres = parPlan.get(o.plan_id)?.parametres as { champs?: Record<string, unknown> } | null | undefined;
-    return { planId: o.plan_id, nom: o.course_nom, date: o.course_date, principal: o.plan_id === prochain,
-      verif: parametres ? verifierObjectif(parametres.champs ?? {}, a.profil) : null,
-      // Ses courses de préparation (C5) : celles que l'objectif garde, quand il s'écrit semaine par semaine (il a des paramètres).
-      courses: parametres ? ((parametres as { courses_secondaires?: CourseDePreparation[] }).courses_secondaires ?? []) : null };
+  // « Ses courses » (décision 241) : chaque objectif à venir tel qu'il se lit (distance, D+, chrono visé, trace, ses courses de préparation), les majeurs dans l'ordre des dates, les courses d'une récupération sous leur majeur.
+  const objectifsLus = objectifsAVenir.map((o) => {
+    const p = parPlan.get(o.plan_id);
+    const parametres = (p?.parametres ?? null) as { champs?: Record<string, unknown>; courses_secondaires?: CourseDePreparation[] } | null;
+    const reponses = reponsesReprises((p?.intake ?? null) as Record<string, unknown> | null, parametres?.champs ?? null);
+    const texte = (v: unknown) => (typeof v === 'string' ? v : '');
+    return { planId: o.plan_id, nom: o.course_nom, date: o.course_date, temps_cible: texte(reponses.temps_cible), format: texte(reponses.format),
+      distance_km: texte(reponses.distance_km) || String(p?.distance_km ?? ''), dplus_m: texte(reponses.dplus_m) || String(p?.dplus_m ?? ''),
+      route: estUneCourseSurRoute(reponses), trace: Boolean(lireGpx(parametres?.champs?.gpx)), preparations: parametres?.courses_secondaires ?? [], parametres };
   });
+  const lignesObjectifs: LigneObjectif[] = rangerSesCourses(objectifsLus).map(({ majeur: o, mineures }) => (
+    { planId: o.planId, nom: o.nom, date: o.date, principal: o.planId === prochain,
+      verif: o.parametres ? verifierObjectif(o.parametres.champs ?? {}, a.profil) : null, details: detailsDeLaCourse(o),
+      // Ses courses de préparation (C5) : celles que l'objectif garde, quand il s'écrit semaine par semaine (il a des paramètres).
+      courses: o.parametres ? (o.parametres.courses_secondaires ?? []) : null,
+      mineures: mineures.map((m) => ({ planId: m.planId, nom: m.nom, date: m.date })) }));
   // Ses zones et son style, repliés dans sa carte : seulement ce qu'il y a à lire.
   const zonesEtStyle = v9 && ((zones && lignesZones.length > 0) || profilCoureur(profilZones)) ? (
     <>
@@ -577,10 +588,12 @@ export default async function PageAthlete({ params, searchParams }: {
         <>
           {/* (a) Ses alertes et ce qui est à faire pour lui ; (b) « Ce que j'ai besoin de savoir » et « Lancer sa préparation » ; (c) ses objectifs, de quoi vérifier que tout est rempli ; (d) sa
               semaine qui arrive. Le reste est dans « Réglages » (lib/app/pageAthleteSimple.ts : ORDRE_9X). */}
+          {/* La vue d'ensemble, en lecture (241) : son profil et ses courses sur une ligne de temps. */}
+          {carte && <VueDEnsemble coureur={vueDuCoureur(carte.savoir.valeurs, reperes)} courses={ligneDeTemps(objectifsLus, jour)} />}
           <PointsPourLui lignes={lignesAFaire} accordRecu={donnerLAccord} />
-          {carte && <CarteSavoir key={`${a.id}:${carte.lancer.planId}`} {...carte.savoir} zonesEtStyle={zonesEtStyle} />}
+          {carte && <CarteSavoir key={`${a.id}:${carte.lancer.planId}`} {...carte.savoir} zonesEtStyle={zonesEtStyle}
+            courses={<ObjectifsAVerifier athleteId={a.id} lignes={lignesObjectifs} jour={jour} plat />} />}
           {carte && <LancerSaPreparation {...carte.lancer} />}
-          <ObjectifsAVerifier athleteId={a.id} lignes={lignesObjectifs} jour={jour} />
           {semaine}
         </>
       ) : (
