@@ -341,7 +341,8 @@ test('où le coach reçoit le message après un geste : chaque site le passe par
   // envoyer et mettreAJour : ce que lève la chaîne (Nolio, le moteur).
   assert.ok(c.includes("message: await messageAuCoach(e instanceof Error ? e.message : 'L’envoi n’a pas abouti.')"));
   assert.ok(c.includes("message: await messageAuCoach(e instanceof Error ? e.message : 'La mise à jour n’a pas abouti.')"));
-  assert.equal((c.match(/messageAuCoach\(/g) ?? []).length, 4);
+  // Et « Nouveau coaché » (décision 241) : la fiche qui n'a pas pu se créer, le lien qui n'est pas parti (scripts/test-parcours-moment1.mjs).
+  assert.equal((c.match(/messageAuCoach\(/g) ?? []).length, 6);
   // Aucun de ces messages ne part sans passer par là : plus d'`e.message` brut dans un `message:` de ce fichier.
   assert.ok(!/message: e instanceof Error \? e\.message/.test(c));
   const w = sansCommentaires(source('lib/app/actionsEcriture.ts'));
