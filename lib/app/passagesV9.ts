@@ -59,7 +59,7 @@ async function contextePlan(planId: string): Promise<{ c: ContextePlan; o: Objec
 
     // Ce que Nolio montre : les séances prévues et les activités des semaines à lire, rangées pour le moteur. Une lecture qui échoue donne null : la clé
     // `nolio` ne part pas (une semaine lue sans séance dirait au moteur que le coach les a supprimées).
-    lireNolio: async (lundi, avecLaSemaine, depart = false) => {
+    lireNolio: async (lundi, avecLaSemaine, depart = false, sansEtapes = false) => {
       // Au premier passage d'un coaché (240) : les 4 lundis d'avant `lundi` (avant son entrée), et non depuis le premier lundi du plan.
       const lundis = depart ? lundisDuDepart(lundi) : lundisALire(avecLaSemaine ? ajouterJours(lundi, 7) : lundi, premierLundi ?? ajouterJours(lundi, -91));
       if (!lundis.length) return null;
@@ -76,9 +76,9 @@ async function contextePlan(planId: string): Promise<{ c: ContextePlan; o: Objec
         const parNolio = new Map<string, string>();
         if (!depart) for (const e of o.envois) for (const s of e.seances) if (s.nolio_id && (s.genre ?? 'seance') === 'seance' && !s.jour_id.includes(':')) parNolio.set(String(s.nolio_id), s.jour_id);
         const joursDeCourse = new Set([o.plan.course.date, ...((o.parametres.courses_secondaires ?? []) as { date: string }[]).map((x) => x.date)]);
-        // La liste ne rend pas les étapes : celles des séances qui partent au moteur sont relues une par une (completerLesEtapes).
+        // La liste ne rend pas les étapes : celles des séances qui partent au moteur sont relues une par une (completerLesEtapes), sauf pour le point du dimanche, qui n'en lit aucune (sansEtapes).
         const detail = q ? `?${q.slice(1)}` : '';
-        const completes = await completerLesEtapes(planifiees, (p) => estEnvoyee(p, lundis, parNolio, SPORTS_COURSE), async (id) => {
+        const completes = sansEtapes ? planifiees : await completerLesEtapes(planifiees, (p) => estEnvoyee(p, lundis, parNolio, SPORTS_COURSE), async (id) => {
           const r = await appelNolio('GET', `planned/trainings/${id}/${detail}`);
           return { statut: r.statut, workout: (r.corps as { workout?: NoeudPlanifie[] } | null)?.workout };
         });

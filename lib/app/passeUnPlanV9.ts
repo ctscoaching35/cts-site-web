@@ -29,8 +29,8 @@ export type ContextePlan = {
   // La dernière semaine écrite par le moteur v1, ou null.
   derniere: SemaineEnMemoire | null;
   // Ce que Nolio montre des semaines avant `lundi` (avec la sienne si avecLaSemaine) ; null si la lecture a manqué ou qu'il n'y a rien à lire.
-  // `depart` : le premier passage d'un coaché sur la v1 (240) : les 4 semaines d'avant son entrée, sans `id`, sans semaine vide.
-  lireNolio: (lundi: string, avecLaSemaine: boolean, depart?: boolean) => Promise<NolioVu | null>;
+  // `depart` : le premier passage d'un coaché sur la v1 (240) : les 4 semaines d'avant son entrée, sans `id`, sans semaine vide. `sansEtapes` : sans relire le détail des séances (le point du dimanche n'en a pas besoin).
+  lireNolio: (lundi: string, avecLaSemaine: boolean, depart?: boolean, sansEtapes?: boolean) => Promise<NolioVu | null>;
   // Ce qu'il court au départ (entrée 203, lib/app/charge.ts, luAuDepart), lu pour la semaine qui commence ce lundi ; null : rien à lire (pas un coaché relié et d'accord,
   // ou aucune activité), le moteur garde le déclaré. Une lecture qui échoue remonte. garderLu : le garde avec le plan (`parametres.champs.lu`), pour ne plus jamais le relire.
   lireLeDepart: (lundi: string) => Promise<LuAuDepart | null>;
@@ -162,7 +162,8 @@ export async function poserLeQuestionnaireDuDimanche(c: ContextePlan, jour: stri
   if (derniere?.questionnaire?.nolio_id) return null; // posé une fois
   const trame = await lireLaTrame(c.ports, c.parametres);
   if (numeroDeLaSemaine(trame, lundiASuivre) === null) return null;
-  const nolio = derniere ? await c.lireNolio(lundiASuivre, false) : null;
+  // Le point du dimanche (240) : `/v1/questionnaire` choisit sa version d'après la dernière semaine, les RPE, les ressentis et le Hooper : aucune étape n'est relue en détail, le passage de 8 h reste court.
+  const nolio = derniere ? await c.lireNolio(lundiASuivre, false, false, true) : null;
   const q = await preparerLeQuestionnaire(c.ports, { parametres: c.parametres, lundiASuivre, etat: c.etat, nolio, derniere: derniere?.semaine ?? null, coache: c.coache, accord: c.accordLecture, trame });
   const nolioId = await c.poserLeQuiz(q.quiz, jour);
   if (derniere) await c.garderLeQuestionnaire(derniere.numero, { version: q.version, cles: q.cles, nolio_id: nolioId, pose_le: new Date().toISOString() });

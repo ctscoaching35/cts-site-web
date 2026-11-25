@@ -8,8 +8,8 @@ import { debutApres } from './jonction';
 
 export type MajeurDuCoache = { id: string; course_nom: string; course_date: string; temps_h: number; format?: string; fond?: boolean };
 
-// La ligne dite sous la course (texte de la session du moteur, 25/11/2026).
-export const TEXTE_DANS_LA_RECUPERATION = (course: string) => `Elle tombe dans ta récupération après ${course} : je la prépare comme une course de préparation.`;
+// La ligne dite sous la course, dans l'app du coach (session du moteur, 25/11/2026).
+export const TEXTE_DANS_LA_RECUPERATION = (course: string) => `Elle tombe pendant sa récupération après ${course} : elle se prépare comme une course de préparation.`;
 
 export const tombeDansLaRecuperation = (date: string, avant: Pick<MajeurDuCoache, 'course_date' | 'temps_h' | 'format'>): boolean =>
   date > avant.course_date && date < debutApres(avant);
