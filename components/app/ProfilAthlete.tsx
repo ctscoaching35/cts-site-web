@@ -6,6 +6,8 @@ import { enregistrerProfil, type EtatCoach } from '@/lib/app/actionsCoaching';
 import { modifierMonProfil } from '@/lib/app/actionsObjectifs';
 import { ANCIENNETES, ENTRAINEMENTS, niveauDesFaits } from '@/lib/app/niveau';
 import { ACCENTS } from '@/lib/app/accentFond';
+import ChoixPointsTrail from './ChoixPointsTrail';
+import { pointsTrail, TEXTES_TRAIL } from '@/lib/app/pointsTrail';
 import { COTE_MAX_MIN } from '@/lib/cote';
 import { CRITERES, REPONSES_CRITERE, SANS_CRITERE, TITRE_CRITERES_FICHE } from '@/lib/criteres';
 import { motsDuQuestionnaire } from '@/lib/app/motsDuQuestionnaire';
@@ -112,13 +114,20 @@ export default function ProfilAthlete({ athleteId, profil, pourMoi = false, rafr
         <span>{moi ? 'J’ai accès à un tapis de course qui monte' : 'Accès à un tapis de course qui monte'}
           <span className="block font-normal text-[#5E5C78]">Utile pour une course qui monte.</span></span>
       </label>
-      {/* Facultative (décisions coach du 24/10/2026) : l'accent du terrain de sa saison de fond. */}
-      <label className="block text-xs font-semibold text-indigo">{moi ? 'Ce qui te coûte le plus en trail' : 'Ce qui lui coûte le plus en trail'}
-        <select name="cout_trail" defaultValue={String(profil.cout_trail ?? '')} className={champ}>
-          <option value="">Pas de réponse</option>
-          {ACCENTS.map(([valeur, titre]) => <option key={valeur} value={valeur}>{titre}</option>)}
-        </select>
-      </label>
+      {/* Facultative (décisions coach du 24/10/2026) : l'accent du terrain de sa saison de fond. Sous la 9.x, ses points forts et faibles (demande du 25/11/2026) ; la réponse d'avant est gardée telle quelle. */}
+      {pointDuDimanche ? (
+        <>
+          <ChoixPointsTrail titre={moi ? TEXTES_TRAIL.ton : TEXTES_TRAIL.son} valeurs={pointsTrail(profil)} />
+          <input type="hidden" name="cout_trail" value={String(profil.cout_trail ?? '')} />
+        </>
+      ) : (
+        <label className="block text-xs font-semibold text-indigo">{moi ? 'Ce qui te coûte le plus en trail' : 'Ce qui lui coûte le plus en trail'}
+          <select name="cout_trail" defaultValue={String(profil.cout_trail ?? '')} className={champ}>
+            <option value="">Pas de réponse</option>
+            {ACCENTS.map(([valeur, titre]) => <option key={valeur} value={valeur}>{titre}</option>)}
+          </select>
+        </label>
+      )}
       <fieldset className="space-y-2.5">
         <legend className="text-[0.8125rem] font-bold text-indigo">{moi ? 'Ta semaine habituelle' : 'Sa semaine habituelle'}</legend>
         <p className="text-xs text-[#5E5C78] leading-relaxed">

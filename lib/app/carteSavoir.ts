@@ -7,6 +7,7 @@
  */
 import { lireCote, terrainDeLaCote, TEXTES_COTE } from '@/lib/cote';
 import { estReponseCritere } from '@/lib/criteres';
+import { POINTS_TRAIL, pointsSaisis, pointsTrail, type ValeursTrail } from './pointsTrail';
 import { champsVides, FORMATS_ROUTE, intakePourApi, type Champs } from '@/lib/plan';
 
 export const TEXTES_CARTE = {
@@ -56,12 +57,12 @@ export const TEXTES_CARTE = {
 
 export const JOURS_DE_LA_SEMAINE = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
 
-export type ValeursDeLaCarte = {
+export type ValeursDeLaCarte = ValeursTrail & {
   cote_min: string; tapis: string; critere_intensite: string; critere_denivele: string;
   fc_seuil1: string; fc_seuil2: string; vc_allure: string;
   date_course: string; distance_km: string; dplus_m: string; temps_cible: string; jours_disponibles: string[]; jour_sl: string; freq_hebdo: string;
 };
-export const CLES_DU_COUREUR = ['cote_min', 'tapis', 'critere_intensite', 'critere_denivele'] as const;
+export const CLES_DU_COUREUR = ['cote_min', 'tapis', 'critere_intensite', 'critere_denivele', 'trail_montees', 'trail_descentes', 'trail_technique', 'trail_fin'] as const;
 export const CLES_DES_REPERES = ['fc_seuil1', 'fc_seuil2', 'vc_allure'] as const;
 export const CLES_DE_L_OBJECTIF = ['date_course', 'distance_km', 'dplus_m', 'temps_cible', 'jours_disponibles', 'jour_sl', 'freq_hebdo'] as const;
 
@@ -105,6 +106,7 @@ export function valeursDeLaCarte({ fiche, intake, champs, courseDate, fc1, fc2, 
     tapis: String([fiche?.tapis, champs?.tapis].find((v) => v === 'oui' || v === 'non') ?? ''),
     critere_intensite: critere('critere_intensite', 'intensite'),
     critere_denivele: critere('critere_denivele', 'mecanique'),
+    ...pointsTrail(fiche as Record<string, unknown> | null | undefined),
     fc_seuil1: fc1 ? String(fc1) : '',
     fc_seuil2: fc2 ? String(fc2) : '',
     vc_allure: vcAllure ?? '',
@@ -218,12 +220,13 @@ export function champsDuCoureur(v: ValeursDeLaCarte, avecSemaine: boolean): [str
   ].filter(([, x]) => x !== '');
 }
 
-export type SaisieCoureur = { cote_min: string; tapis: string; critere_intensite: string; critere_denivele: string; jours_disponibles: string[]; jour_sl: string; freq_hebdo: string };
+export type SaisieCoureur = ValeursTrail & { cote_min: string; tapis: string; critere_intensite: string; critere_denivele: string; jours_disponibles: string[]; jour_sl: string; freq_hebdo: string };
 
 export function lireSaisieCoureur(form: FormData): SaisieCoureur {
   const lu = (k: string) => String(form.get(k) ?? '').trim();
   return {
     cote_min: lu('cote_min'), tapis: lu('tapis'), critere_intensite: lu('critere_intensite'), critere_denivele: lu('critere_denivele'),
+    ...(Object.fromEntries(POINTS_TRAIL.map((p) => [p.champ, lu(p.champ)])) as ValeursTrail),
     jours_disponibles: form.getAll('jours_disponibles').map(String).filter((j) => JOURS_DE_LA_SEMAINE.includes(j)), jour_sl: lu('jour_sl'), freq_hebdo: lu('freq_hebdo'),
   };
 }
@@ -246,6 +249,7 @@ export function profilAvecLaCarte(avant: Profil | null | undefined, s: SaisieCou
   if (s.tapis === 'oui' || s.tapis === 'non') profil.tapis = s.tapis;
   if (estReponseCritere(s.critere_intensite)) profil.critere_intensite = s.critere_intensite;
   if (estReponseCritere(s.critere_denivele)) profil.critere_denivele = s.critere_denivele;
+  Object.assign(profil, pointsSaisis((champ) => s[champ]));
   if (s.jours_disponibles.length || s.jour_sl || s.freq_hebdo) {
     const jours = s.jours_disponibles.length ? s.jours_disponibles : liste(profil.jours_disponibles);
     const erreur = erreurDeSemaine(jours, s.jour_sl, s.freq_hebdo);

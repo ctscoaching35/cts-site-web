@@ -594,7 +594,7 @@ export default async function PageAthlete({ params, searchParams }: {
           {/* (a) Ses alertes et ce qui est à faire pour lui ; (b) « Ce que j'ai besoin de savoir » et « Lancer sa préparation » ; (c) ses objectifs, de quoi vérifier que tout est rempli ; (d) sa
               semaine qui arrive. Le reste est dans « Réglages » (lib/app/pageAthleteSimple.ts : ORDRE_9X). */}
           {/* La vue d'ensemble, en lecture (241) : son profil et ses courses sur une ligne de temps. */}
-          {carte && <VueDEnsemble coureur={vueDuCoureur(carte.savoir.valeurs, reperes)} courses={ligneDeTemps(objectifsLus, jour)} />}
+          {carte && <VueDEnsemble coureur={vueDuCoureur(carte.savoir.valeurs, reperes, profilCoureur(profilZones))} courses={ligneDeTemps(objectifsLus, jour)} />}
           <PointsPourLui lignes={lignesAFaire} accordRecu={donnerLAccord} />
           {carte && <CarteSavoir key={`${a.id}:${carte.lancer.planId}`} {...carte.savoir} zonesEtStyle={zonesEtStyle}
             courses={<ObjectifsAVerifier athleteId={a.id} lignes={lignesObjectifs} jour={jour} plat />} />}

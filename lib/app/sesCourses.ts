@@ -7,6 +7,7 @@
 import { coteEnClair } from '@/lib/cote';
 import { titreReponse } from '@/lib/criteres';
 import { heuresDuTemps } from './jonction';
+import { listeDesPoints, TEXTES_TRAIL, type ValeursTrail } from './pointsTrail';
 import { classerLesCourses } from './mineursDesMajeurs';
 
 export const TEXTES_COURSES = {
@@ -15,6 +16,8 @@ export const TEXTES_COURSES = {
   tapis: 'Tapis',
   intensite: 'Intensité',
   mecanique: 'Mécanique',
+  // L'indice tiré des deux efforts de son test (demande du coach du 25/11/2026) : sous 0,90, « plutôt rapide », sinon « plutôt endurant » (lib/app/zones.ts, profilCoureur).
+  indice: 'Indice d’endurance',
   inconnu: '—',
   sansCourse: 'Aucune course à venir.',
   majeur: 'Objectif',
@@ -69,8 +72,14 @@ export function semaineReprise(champs: Record<string, unknown> | null | undefine
   return { ...(jours.length ? { jours_disponibles: jours } : {}), ...(jourSl ? { jour_sl: jourSl } : {}), ...(freq ? { freq_hebdo: freq } : {}) };
 }
 
-// Le coureur en lecture : sa côte, son tapis, ses deux critères, sa vitesse critique et ses repères (les titres et valeurs de la page).
-export function vueDuCoureur(v: { cote_min: string; tapis: string; critere_intensite: string; critere_denivele: string }, reperes: [string, string | null, string | null][]): [string, string][] {
+// « 0,93 · plutôt endurant ». Coupé à deux chiffres, pas arrondi : 0,896 se dit 0,89, du même côté de 0,90 que son mot.
+export function indiceDEndurance(style: { coefficient: number; nom: string } | null): string | null {
+  return style ? `${(Math.floor(style.coefficient * 100 + 1e-9) / 100).toFixed(2).replace('.', ',')} · ${style.nom.toLowerCase()}` : null;
+}
+
+// Le coureur en lecture : sa côte, son tapis, ses deux critères, sa vitesse critique et ses repères (les titres et valeurs de la page) ; puis, quand la page donne son style (null sans les deux efforts), son indice
+// d'endurance et ses points forts et faibles en trail.
+export function vueDuCoureur(v: { cote_min: string; tapis: string; critere_intensite: string; critere_denivele: string } & Partial<ValeursTrail>, reperes: [string, string | null, string | null][], style?: { coefficient: number; nom: string } | null): [string, string][] {
   const t = TEXTES_COURSES;
   return [
     [t.cote, coteEnClair(v.cote_min) ?? t.inconnu],
@@ -78,5 +87,10 @@ export function vueDuCoureur(v: { cote_min: string; tapis: string; critere_inten
     [t.intensite, v.critere_intensite ? titreReponse(v.critere_intensite) : t.inconnu],
     [t.mecanique, v.critere_denivele ? titreReponse(v.critere_denivele) : t.inconnu],
     ...reperes.map(([titre, valeur]): [string, string] => [titre, valeur ?? t.inconnu]),
+    ...(style === undefined ? [] : [
+      [t.indice, indiceDEndurance(style) ?? t.inconnu],
+      [TEXTES_TRAIL.forts, listeDesPoints(v, 'fort') || t.inconnu],
+      [TEXTES_TRAIL.faibles, listeDesPoints(v, 'faible') || t.inconnu],
+    ] as [string, string][]),
   ];
 }

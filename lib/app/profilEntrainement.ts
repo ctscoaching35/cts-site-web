@@ -5,6 +5,7 @@
  * de son dernier objectif. Il ne sert qu'à ses prochains objectifs ; sa semaine s'ajuste chaque dimanche par son
  * questionnaire. Une seule règle de lecture et de vérification, pour le coach et pour l'athlète. Côté serveur seulement.
  */
+import { listeDesPoints, pointsSaisis, TEXTES_TRAIL } from './pointsTrail';
 import { coteEnClair, lireCote, terrainDeLaCote, TEXTES_COTE } from '@/lib/cote';
 import { CRITERES, estReponseCritere, titreReponse } from '@/lib/criteres';
 import { API_URL, textes } from '@/lib/plan';
@@ -52,6 +53,13 @@ function ligneDeLaCote(profil: ProfilEntrainement): [string, string | undefined]
 
 // Le profil en clair : « Niveau », « Terrain », « Semaine habituelle ». pourCoach : le niveau qu'il a choisi, à côté
 // de celui des faits.
+// Ses points forts et faibles en trail, quand il les a donnés (ils remplacent alors la réponse d'avant) ; null sans réponse.
+function lignesDesPoints(profil: ProfilEntrainement): [string, string][] | null {
+  const points = pointsSaisis((champ) => profil[champ]);
+  if (!Object.keys(points).length) return null;
+  return ([[TEXTES_TRAIL.forts, listeDesPoints(points, 'fort')], [TEXTES_TRAIL.faibles, listeDesPoints(points, 'faible')]] as [string, string][]).filter(([, v]) => v);
+}
+
 export function lignesDuProfil(profil: ProfilEntrainement, pourCoach = false): [string, string][] {
   const jours = Array.isArray(profil.jours_disponibles) ? profil.jours_disponibles : [];
   const faits = texteDesFaits(profil.anciennete, profil.entrainement);
@@ -69,7 +77,7 @@ export function lignesDuProfil(profil: ProfilEntrainement, pourCoach = false): [
     ['Semaine habituelle', profil.freq_hebdo
       ? `${profil.freq_hebdo} séances · ${jours.map((j) => j.slice(0, 3)).join(', ')} · sortie longue le ${String(profil.jour_sl ?? '—')}`
       : '—'],
-    ...(profil.cout_trail ? [['Ce qui coûte le plus', ACCENTS.find(([cle]) => cle === profil.cout_trail)?.[1] ?? '—'] as [string, string]] : []),
+    ...(lignesDesPoints(profil) ?? (profil.cout_trail ? [['Ce qui coûte le plus', ACCENTS.find(([cle]) => cle === profil.cout_trail)?.[1] ?? '—'] as [string, string]] : [])),
   ];
 }
 
@@ -87,7 +95,7 @@ export function lignesDeLaCarte(profil: ProfilEntrainement | null | undefined): 
     ['Niveau', titreNiveau(profil.niveau)],
     ['Semaine habituelle', semaine],
     [titreCote, cote && `${cote}${profil.tapis === 'oui' ? ' · un tapis qui monte' : ''}`],
-    ['Ce qui te coûte le plus', ACCENTS.find(([cle]) => cle === profil.cout_trail)?.[1]],
+    ...(lignesDesPoints(profil) ?? [['Ce qui te coûte le plus', ACCENTS.find(([cle]) => cle === profil.cout_trail)?.[1]] as [string, string | undefined]]),
   ];
   return lignes.filter((l): l is [string, string] => Boolean(l[1]));
 }
@@ -146,6 +154,9 @@ export function lireProfil(form: FormData, pour: 'son' | 'ton', ancien?: ProfilE
   const freq = Number(form.get('freq_hebdo'));
   // Ce qui lui coûte le plus en trail (décisions coach du 24/10/2026) : facultatif.
   const cout = String(form.get('cout_trail') ?? '');
+  // Ses points forts et faibles (sous la 9.x) ; un formulaire qui ne les pose pas garde ceux d'avant.
+  const donnes = pointsSaisis((champ) => form.get(champ));
+  const points = Object.keys(donnes).length ? donnes : pointsSaisis((champ) => ancien?.[champ]);
   const ses = pour === 'son' ? 'ses' : 'tes';
   // Les deux critères : le coach les remplit (« son »), l'athlète garde ceux de son coach (« ton »). Sans réponse lue, la clé manque,
   // et le critère vaut « jamais ».
@@ -169,6 +180,7 @@ export function lireProfil(form: FormData, pour: 'son' | 'ton', ancien?: ProfilE
     niveau, ...(faits ? { anciennete, entrainement } : {}), ...(niveauCoach ? { niveau_coach: niveauCoach } : {}),
     terrain, cote_min: String(cote), tapis: tapis ? 'oui' : 'non', ...criteres, jours_disponibles: jours, jour_sl: jourSl, freq_hebdo: String(freq),
     ...(ACCENTS.some(([cle]) => cle === cout) ? { cout_trail: cout } : {}),
+    ...points,
   } };
 }
 

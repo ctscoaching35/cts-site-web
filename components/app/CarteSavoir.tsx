@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { startTransition, useState } from 'react';
 import clsx from 'clsx';
 import { Carte, Surtitre } from './Ui';
+import ChoixPointsTrail from './ChoixPointsTrail';
+import { TEXTES_TRAIL } from '@/lib/app/pointsTrail';
 import { enregistrerLeCoureur, enregistrerTestVc, enregistrerValeurs, type EtatCoach } from '@/lib/app/actionsCoaching';
 import {
   champsDuCoureur, CLES_DE_L_OBJECTIF, CLES_DES_REPERES, CLES_DU_COUREUR, completer, distanceChangee, erreurDeLaCarte, intakeDeLObjectif, JOURS_DE_LA_SEMAINE, objectifChange, reperesAEnvoyer,
@@ -232,6 +234,8 @@ export default function CarteSavoir({
               ))}
             </div>
           </div>
+
+          <ChoixPointsTrail titre={TEXTES_TRAIL.son} valeurs={v} onChange={maj} />
 
           <div id="geste-test-vc" className="space-y-2.5 pt-3 border-t border-indigo/[0.07] scroll-mt-6">
             <h4 className="text-[0.8125rem] font-bold text-indigo">{t.test}</h4>
