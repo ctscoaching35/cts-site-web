@@ -136,7 +136,10 @@ test('« Mes athlètes » sous la 9.x : une liste, un mot par coaché (241) ; le
   const p = source('app/app/coach/page.tsx');
   assert.match(p, /const v9 = await moteurEstV9\(\)\.catch\(\(\) => false\);/);
   assert.match(p, /\{v9 \? <ListeSimple lignes=\{mots\} \/> : <TableauAthletes lignes=\{lignes\} jour=\{jour\} passee=\{vue\.semainePassee\} filtre=\{filtre\} v9=\{v9\} \/>\}/);
-  assert.match(p, /const mots = v9 \? await lireLesMots\(clientService\(\), coach\.compteId, espace\.lignes, jour\) : \[\];/);
+  // Les mots sont lus une fois, avec l'espace, sous la 9.x seulement : la pastille du menu les compte (relecture du 25/11/2026).
+  assert.match(p, /const mots = espace\.mots;/);
+  assert.match(source('lib/app/mesAthletes.ts'), /const mots = v9 \? await lireLesMots\(clientService\(\), coachId, ordonnees, jour\) : \[\];/);
+  assert.match(source('lib/app/mesAthletes.ts'), /const urgents = v9 \? mots\.filter\(\(m\) => attendLeCoach\(m\.un\)\)\.length : athletesUrgents\(urgent\);/);
   assert.match(p, /\{v9 && series > 0 && <AFaire lignes=\{\[\]\} series=\{series\} \/>\}/);
   assert.ok(p.indexOf('<CarteDemandes />') < p.indexOf('<ListeSimple'), 'après la demande de coaching qui attend');
   assert.match(p, /const series = await lesSeriesAFaire\(coach\.compteId, v9\);/);

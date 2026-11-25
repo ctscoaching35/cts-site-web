@@ -33,10 +33,12 @@ const QUESTION = 'Combien de séances peux-tu faire par semaine ?';
 test('207 : la question du nombre de séances est la même à l’achat et sur la fiche, et remplace « Séances par semaine »', () => {
   assert.equal(textes.disponibilite.seances, QUESTION);
   const achat = source('components/plan/Questionnaire.tsx');
-  assert.match(achat, /<span id="freq-titre" className=\{labelCls\}>\{textes\.disponibilite\.seances\}<\/span>/);
+  // Quand c'est le coach qui répond pour son athlète, la même question au « il » (relecture du 25/11/2026).
+  assert.equal(textes.disponibilite.seancesDuCoach, 'Combien de séances peut-il faire par semaine ?');
+  assert.match(achat, /<span id="freq-titre" className=\{labelCls\}>\{coach && !demande \? textes\.disponibilite\.seancesDuCoach : textes\.disponibilite\.seances\}<\/span>/);
   assert.ok(!/>Séances par semaine</.test(achat), 'l’ancien libellé a quitté l’achat');
   const fiche = source('components/app/ProfilAthlete.tsx');
-  assert.match(fiche, /<label className="block text-xs font-semibold text-indigo">\{textes\.disponibilite\.seances\}\n\s+<input name="freq_hebdo"/);
+  assert.match(fiche, /<label className="block text-xs font-semibold text-indigo">\{moi \? textes\.disponibilite\.seances : textes\.disponibilite\.seancesDuCoach\}\n\s+<input name="freq_hebdo"/);
   assert.ok(!/>Séances par semaine\n/.test(fiche), 'ni de la fiche');
   // Le point du dimanche pose la même (scripts/test-dimanche-v9.mjs), le contrat dit « au plus » : le champ envoyé est toujours `freq_hebdo`.
   assert.match(source('lib/app/dimancheV9.ts'), /export const QUESTION_SEANCES = 'Combien de séances peux-tu faire par semaine \?';/);

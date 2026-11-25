@@ -44,7 +44,7 @@ test('un seul mot, le plus urgent : la santé, la semaine, la demande, Nolio, l�
   assert.equal(mot({ ...tout, points: [P('arret', 'sante', '/arret'), ...tout.points] }).mot, 'Arrêt signalé');
   assert.equal(mot({ ...tout, points: [P('silence', 'sante', '/silence'), ...tout.points] }).mot, 'Ne court plus');
   assert.equal(mot(tout).mot, 'Message à lire');
-  for (const genre of ['hooper', 'rpe', 'retour', 'sensations', 'sous_plan', 'remontee']) assert.equal(mot({ points: [P(genre, 'sante')] }).mot, 'Fatigue signalée', genre);
+  for (const genre of ['hooper', 'rpe', 'retour', 'sensations', 'sous_plan', 'remontee']) assert.equal(mot({ points: [P(genre, 'sante')] }).mot, 'Signal à regarder', genre);
   const sansSante = { ...tout, points: tout.points.slice(1) };
   assert.equal(mot(sansSante).mot, 'Semaine pas partie');
   assert.equal(mot({ ...sansSante, points: [P('demande', 'bloque', '/demande')] }).mot, 'Demande à relire');

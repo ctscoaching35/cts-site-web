@@ -153,11 +153,13 @@ test('les gestes sont sur la page : « Modifier son profil » mène aux champs d
   assert.match(o, /o\.verif && gestesDeLObjectif\(o\.verif\)\.length > 0/, 'rien quand tout y est');
   // Les gestes sont hors du lien de la carte (un lien ne contient pas un lien).
   assert.ok(o.indexOf('</Link>') < o.indexOf('gestesDeLObjectif(o.verif)'));
-  // La carte porte cette adresse, une fois, sur sa côte, son tapis et ses critères, toujours visibles (rien à déplier).
+  // La carte porte cette adresse, une fois, sur sa côte, son tapis et ses critères. Complète, la carte est repliée (relecture du 25/11/2026) ; avec un manque, elle est ouverte (rien à déplier).
   const c = sansCommentaires(source('components/app/CarteSavoir.tsx'));
   assert.equal((c.match(/id="geste-profil"/g) ?? []).length, 1);
   assert.match(c, /<div id="geste-profil" className="space-y-3 scroll-mt-6">\s*<label className=\{clsx\(LIBELLE, manque\('cote'\)\)\}>/);
-  assert.ok(!c.slice(0, c.indexOf('id="geste-reperes"')).includes('<details'));
+  const avant = c.slice(0, c.indexOf('id="geste-reperes"'));
+  assert.equal((avant.match(/<details/g) ?? []).length, 1, 'le repli de la carte, et lui seul');
+  assert.match(avant, /<details open=\{ouverte \|\| !complet\}/);
   // La page suit l'ancre et ouvre le `details` s'il y en a un : le même mécanisme que « Réglages ».
   const ouvert = { tagName: 'DETAILS', open: false, parentElement: null };
   assert.equal(ancres.ouvrirLaCible({ getElementById: (id) => (id === 'geste-profil' ? ouvert : null) }, 'geste-profil', false), true);

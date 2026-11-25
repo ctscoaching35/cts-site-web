@@ -202,7 +202,7 @@ test('les composants partagés gardent leur rendu d’avant par défaut (`plat` 
   assert.match(z, /titre: string; saisie\?: string \| null; plat\?: boolean/);
   assert.match(z, /export function TableauZones\(\{ zones, lignes, profil, titre, saisie = null, plat = false \}/);
   assert.match(z, /const Cadre = plat \? Plat : Carte;\s*return \(\s*<Cadre className=\{plat \? '' : '!pb-2\.5'\}>/);
-  assert.match(z, /export function StyleCoureur\(\{ profil, titre, plat = false \}/);
+  assert.match(z, /export function StyleCoureur\(\{ profil, titre, plat = false, v1 = null \}/);
   assert.match(z, /if \(plat\) \{\s*if \(!coureur\) return null;/);
   // Les trois lignes que d'autres essais lisent n'ont pas bougé.
   assert.match(z, /export const NOTE_SEUIL2 = 'En relief, ta FC guide les blocs longs, de 6 à 15 min\. Sur les fractions courtes, elle n’a pas '\s*\+\s*'le temps de monter/);
@@ -376,7 +376,7 @@ test('la carte reçoit les trois repères de la page ; la 8.x garde ses formulai
   assert.equal((page.match(/Avec eux, les séances partent avec une allure/g) ?? []).length, 1);
   // Les zones et le style : les composants de l'app de l'athlète, à plat, sans nouveau texte.
   assert.match(page, /<TableauZones zones=\{zones\} lignes=\{lignesZones\} profil=\{profilZones\} titre="Ses zones" plat \/>/);
-  assert.match(page, /<StyleCoureur profil=\{profilZones\} titre="Son style de coureur" plat \/>/);
+  assert.match(page, /<StyleCoureur profil=\{profilZones\} titre="Son style de coureur" v1=\{aLaMain \? 'sans' : 'ecrite'\} plat \/>/);
   assert.match(page, /\(zones && lignesZones\.length > 0\) \|\| profilCoureur\(profilZones\)/, 'rien à lire : pas de repli vide');
 });
 
