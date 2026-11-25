@@ -245,6 +245,11 @@ export default async function Confidentialite() {
       )}
 
       <Section titre={no('Si tu es coaché par CTS sur Nolio')}>
+        {/* Décision 246 du coach (25/11/2026) : l'e-mail peut être gardé dès la création de la fiche, avant l'accord (« Nouveau coaché », colonne email_app). */}
+        <p>
+          Quand nous créons ta fiche, nous pouvons y garder ton adresse e-mail, pour t’inviter plus tard dans l’app : rien
+          ne t’est envoyé avant cette invitation. Elle est effacée avec ta fiche.
+        </p>
         <p>Avec ton accord, donné par écrit dans la messagerie Nolio et que tu peux retirer à tout moment :</p>
         <Liste>
           <li>
