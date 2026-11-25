@@ -65,7 +65,7 @@ export default function CarteSavoir({
   const t = TEXTES_CARTE;
   const router = useRouter();
   const [saisie, setSaisie] = useState<Partial<ValeursDeLaCarte>>({});
-  const [efforts, setEfforts] = useState<EffortsDuTest>(sansEfforts(aujourdhui));
+  const [efforts, setEfforts] = useState<EffortsDuTest>(sansEfforts(''));
   const [gpx, setGpx] = useState<File | null>(null);
   const [cleGpx, setCleGpx] = useState(0);
   const [enCours, setEnCours] = useState(false);
@@ -162,7 +162,7 @@ export default function CarteSavoir({
     startTransition(() => {
       router.refresh();
       setSaisie((s) => Object.fromEntries(Object.entries(s).filter(([k]) => !enregistres.includes(k as Cle))) as Partial<ValeursDeLaCarte>);
-      if (testEnregistre) setEfforts(sansEfforts(aujourdhui));
+      if (testEnregistre) setEfforts(sansEfforts(''));
       if (traceEnvoyee) {
         setGpx(null);
         setCleGpx((k) => k + 1);
@@ -240,7 +240,8 @@ export default function CarteSavoir({
             </p>
             <p className={AIDE}>{aideDuTest}</p>
             <label className={LIBELLE}>{t.dateDuTest}
-              <input type="date" value={efforts.le} max={aujourdhui} onChange={(e) => setEfforts((x) => ({ ...x, le: e.target.value }))} className={CHAMP} />
+              {/* Vide tant qu'aucun effort n'est entré ; dès qu'il y en a un, aujourd'hui, que l'enregistrement prendrait (enregistrerTestVc), à changer au besoin. */}
+              <input type="date" value={efforts.le || (testSaisi(efforts) ? aujourdhui : '')} max={aujourdhui} onChange={(e) => setEfforts((x) => ({ ...x, le: e.target.value }))} className={CHAMP} />
             </label>
             {effort(1, t.effortCourt, ['3 ou 3:00', '1000 m ou 1'])}
             {effort(2, t.effortLong, ['12 ou 12:00', '3150 m ou 3,15'])}
