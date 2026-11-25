@@ -258,7 +258,7 @@ export function coefficientRiegel(vc_ms: number, d_prime_m: number): number {
 
 // SOUS LA v1 (relecture du 25/11/2026 ; CONTRAT_API_CTS.md du moteur, « Le profil rapide / endurant », 217 et 248) : le moteur ne lit ce profil que dans les semaines loin de la course d'un coaché dont il écrit
 // la préparation, tour à tour sur son point faible et son point fort ; près d'elle, la course décide. 'ecrite' : un coaché dont le moteur écrit la préparation ; 'sans' : un acheteur, ou un coaché dont son
-// coach écrit lui-même les semaines : rien n'est dit d'une préparation. TEXTES : BROUILLONS, à valider par le coach.
+// coach écrit lui-même les semaines : rien n'est dit d'une préparation. Les textes : validés par le coach le 25/11/2026.
 export type PreparationV1 = 'ecrite' | 'sans';
 const LONGS = 'les efforts longs et soutenus';
 const COURTS = 'les efforts courts et rapides';

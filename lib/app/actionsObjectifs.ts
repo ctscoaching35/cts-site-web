@@ -53,7 +53,7 @@ export async function demanderRetrait(planId: string): Promise<void> {
 
 // Son profil d'entraînement, modifié par le coaché lui-même (décision coach du 20/10/2026, « le voir et le modifier ») :
 // il vaut pour ses prochains objectifs, que son coach relit et lance ; sa préparation en cours garde le sien. Sauf, sous la 9.x, sa plus longue côte et son tapis, relus à chaque semaine écrite
-// (lib/app/parametresPlanV9.ts) : le message le dit (TEXTE : BROUILLON, à valider par le coach).
+// (lib/app/parametresPlanV9.ts) : le message le dit (validé par le coach le 25/11/2026).
 export async function modifierMonProfil(_e: { ok: boolean; message: string } | null, form: FormData): Promise<{ ok: boolean; message: string }> {
   if (demonstrationOuverte()) return { ok: false, message: 'Démonstration : rien ne s’enregistre.' };
   const fiche = await maFiche();
