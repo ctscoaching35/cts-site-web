@@ -49,6 +49,8 @@ test('sa carte est complète comme la page la vérifie, son objectif n’a pas d
   assert.ok(lireGpx(plan.parametres.champs.gpx), 'sa trace se lit');
   const fiche = P.profilDeDemonstration(a.champs);
   assert.deepEqual([fiche.cote_min, fiche.tapis, fiche.critere_intensite, fiche.critere_denivele], ['12', 'non', 'parfois', 'regulier']);
+  // Ses points forts et faibles en trail sont sur sa fiche, pas dans les réponses de son objectif.
+  assert.deepEqual([fiche.trail_montees, fiche.trail_descentes], ['faible', 'fort']);
   const etat = page.etatDeLaCarte({ champs: plan.parametres.champs }, fiche);
   assert.deepEqual([etat.complet, etat.manquants], [true, []]);
   assert.deepEqual(page.etatDuLancement({ objectif: { ecrit: true, demarre: false, prevu: null }, complet: etat.complet, nolio: true, accord: true, aLaMain: false }), { actif: true, pourquoi: null });

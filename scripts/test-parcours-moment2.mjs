@@ -43,6 +43,8 @@ test('ce que la carte montre : sa fiche d’abord pour la côte, le tapis et les
   assert.deepEqual(avant({ champs: { ...CHAMPS, cote_min: '3', tapis: 'oui', criteres: { mecanique: 'regulier' } } }), {
     cote_min: '8', tapis: 'non', critere_intensite: 'parfois', critere_denivele: 'regulier', fc_seuil1: '148', fc_seuil2: '', vc_allure: '',
     date_course: '2027-05-02', distance_km: '30', dplus_m: '1200', temps_cible: '4h00', jours_disponibles: ['mardi', 'jeudi', 'dimanche'], jour_sl: 'dimanche', freq_hebdo: '3',
+    // Ses points forts et faibles en trail (25/11/2026) : de sa fiche seule, vides sans réponse (scripts/test-points-trail.mjs).
+    trail_montees: '', trail_descentes: '', trail_technique: '', trail_fin: '',
   });
   // Sans fiche, l'objectif ; sans objectif, rien de la course ni de la semaine, même si l'achat avait des jours.
   assert.equal(avant({ fiche: null, champs: { ...CHAMPS, cote_min: '3,5' } }).cote_min, '3.5');

@@ -68,7 +68,7 @@ test('le nouvel objectif reprend la semaine de celui en cours, quand il l’a', 
 
 test('la page : la vue d’ensemble en haut, « Ses courses » dans la carte avec la ligne des récupérations, sous la 9.x seulement', () => {
   const p = source('app/app/coach/athlete/[id]/page.tsx');
-  assert.match(p, /\{carte && <VueDEnsemble coureur=\{vueDuCoureur\(carte\.savoir\.valeurs, reperes\)\} courses=\{ligneDeTemps\(objectifsLus, jour\)\} \/>\}/);
+  assert.match(p, /\{carte && <VueDEnsemble coureur=\{vueDuCoureur\(carte\.savoir\.valeurs, reperes, profilCoureur\(profilZones\)\)\} courses=\{ligneDeTemps\(objectifsLus, jour\)\} \/>\}/);
   assert.match(p, /const lignesObjectifs: LigneObjectif\[\] = rangerSesCourses\(objectifsLus\)\.map/);
   const o = source('components/app/ObjectifsAVerifier.tsx');
   assert.match(o, /\{TEXTE_DANS_LA_RECUPERATION\(o\.nom\)\}/);
