@@ -56,6 +56,40 @@ export function aplatirLesEtapes(workout: NoeudPlanifie[] | null | undefined): E
   return sortie;
 }
 
+// ─── Les étapes d'une séance prévue ────────────────────────────────────────────────────────────
+
+// Une séance prévue part-elle au moteur : dans une des semaines lues, et de la course (ou une des nôtres) ? La même règle que `nolioDepuisNolio`.
+export const estEnvoyee = (p: PlanifieeLue, lundis: readonly string[], parNolio: ReadonlyMap<string, string>, sportsDeCourse: readonly string[]): boolean =>
+  lundis.some((l) => JOUR(p.date_start) >= l && JOUR(p.date_start) <= ajouterJours(l, 6)) && (parNolio.has(p.id) || sportsDeCourse.includes(String(p.sport)));
+
+export const aSesEtapes = (p: Pick<PlanifieeLue, 'workout'>): boolean => Array.isArray(p.workout) && p.workout.length > 0;
+
+// Ce que rend le détail d'une séance prévue (`GET planned/trainings/{id}/`).
+export type DetailDeSeance = { statut: number; workout?: NoeudPlanifie[] | null };
+
+/**
+ * LES ÉTAPES DES SÉANCES ENVOYÉES (240 du coach, 25/11/2026 ; défaut bloquant : la liste `planned/trainings/` de Nolio ne rend pas, ou pas toujours, les étapes, et la 8.x les relit séance par séance, lib/app/continuite.ts).
+ * Le coach corrige depuis la barre de Nolio, dont les titres n'ont pas de dose : sans les étapes, la v1 ne relit pas ses corrections. Chaque séance prévue qui part au moteur et dont la liste ne rend pas les étapes est
+ * relue en détail, à tous les passages : par petits groupes, avec la pause de la 8.x (les quotas de Nolio sont à l'heure et au jour, pas à la seconde : trois à la fois divisent par trois le temps du passage). Une
+ * séance déjà complète dans la liste n'est pas relue. Un détail introuvable (404 : retirée entre-temps) garde la séance telle quelle ; toute autre réponse fait échouer la lecture entière : plutôt pas de `nolio` qu'une
+ * semaine à moitié lue, que le moteur prendrait pour des séances sans contenu.
+ */
+export async function completerLesEtapes(planifiees: PlanifieeLue[], aRelire: (p: PlanifieeLue) => boolean, lireLeDetail: (id: string) => Promise<DetailDeSeance>,
+  { parGroupe = 3, pause = () => new Promise<void>((ok) => setTimeout(ok, 150)) }: { parGroupe?: number; pause?: () => Promise<void> } = {}): Promise<PlanifieeLue[]> {
+  const sans = planifiees.filter((p) => aRelire(p) && !aSesEtapes(p));
+  const lues = new Map<string, NoeudPlanifie[]>();
+  for (let i = 0; i < sans.length; i += parGroupe) {
+    await pause();
+    await Promise.all(sans.slice(i, i + parGroupe).map(async (p) => {
+      const d = await lireLeDetail(p.id);
+      if (d.statut === 404) return;
+      if (d.statut !== 200) throw new Error(`Nolio : une séance prévue n’a pas pu être relue (statut ${d.statut}).`);
+      if (Array.isArray(d.workout)) lues.set(p.id, d.workout);
+    }));
+  }
+  return planifiees.map((p) => (lues.has(p.id) ? { ...p, workout: lues.get(p.id) as NoeudPlanifie[] } : p));
+}
+
 const minutes = (d: { value?: number } | null | undefined): number | null => (typeof d?.value === 'number' && d.value > 0 ? Math.round(d.value / 60) : null);
 const JOUR = (iso: string) => iso.slice(0, 10);
 const ajouterJours = (iso: string, n: number) => new Date(Date.parse(`${iso}T12:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
@@ -73,7 +107,7 @@ export function nolioDepuisNolio({ lundis, planifiees, reelles, hooper = [], par
   const semaines: SemaineVue[] = [...new Set(lundis)].map((lundi) => {
     const reellesDeLaSemaine = reelles.filter((r) => dansLaSemaine(r.date_start, lundi));
     const seances: SeanceVue[] = planifiees
-      .filter((p) => dansLaSemaine(p.date_start, lundi) && (parNolio.has(p.id) || sportsDeCourse.includes(String(p.sport))))
+      .filter((p) => estEnvoyee(p, [lundi], parNolio, sportsDeCourse))
       .map((p) => {
         const reelle = reellesDeLaSemaine.find((r) => r.planned === p.id);
         const rpe = accordLecture ? reelle?.debrief?.rpe : null;
@@ -97,6 +131,16 @@ export function nolioDepuisNolio({ lundis, planifiees, reelles, hooper = [], par
 }
 
 // Les lundis des semaines à lire : celles du plan d'avant le lundi de la semaine à écrire, les 13 dernières au plus.
+// LE PREMIER PASSAGE D'UN COACHÉ (240 du coach, 25/11/2026) : les 4 lundis d'avant le lundi à écrire, c'est-à-dire avant son entrée. Le même format `nolio` qu'aux passages suivants.
+export const SEMAINES_DU_DEPART = 4;
+export const lundisDuDepart = (lundiDeLaSemaineAEcrire: string): string[] => lundisALire(lundiDeLaSemaineAEcrire, ajouterJours(lundiDeLaSemaineAEcrire, -7 * SEMAINES_DU_DEPART));
+
+// Au premier passage, une semaine sans séance prévue n'est pas envoyée (`seances: []` dirait au moteur que le coach les a toutes supprimées) ; sans aucune semaine à séances, pas de `nolio`.
+export function vueDuDepart(vu: NolioVu): NolioVu | null {
+  const semaines = vu.semaines.filter((s) => s.seances?.length);
+  return semaines.length ? { semaines } : null;
+}
+
 export function lundisALire(lundiDeLaSemaineAEcrire: string, debutDuPlan: string): string[] {
   const lundis: string[] = [];
   for (let l = ajouterJours(lundiDeLaSemaineAEcrire, -7); l >= debutDuPlan && lundis.length < SEMAINES_LUES_AU_PLUS; l = ajouterJours(l, -7)) lundis.unshift(l);

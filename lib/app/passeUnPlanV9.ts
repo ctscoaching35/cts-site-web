@@ -29,7 +29,8 @@ export type ContextePlan = {
   // La dernière semaine écrite par le moteur v1, ou null.
   derniere: SemaineEnMemoire | null;
   // Ce que Nolio montre des semaines avant `lundi` (avec la sienne si avecLaSemaine) ; null si la lecture a manqué ou qu'il n'y a rien à lire.
-  lireNolio: (lundi: string, avecLaSemaine: boolean) => Promise<NolioVu | null>;
+  // `depart` : le premier passage d'un coaché sur la v1 (240) : les 4 semaines d'avant son entrée, sans `id`, sans semaine vide.
+  lireNolio: (lundi: string, avecLaSemaine: boolean, depart?: boolean) => Promise<NolioVu | null>;
   // Ce qu'il court au départ (entrée 203, lib/app/charge.ts, luAuDepart), lu pour la semaine qui commence ce lundi ; null : rien à lire (pas un coaché relié et d'accord,
   // ou aucune activité), le moteur garde le déclaré. Une lecture qui échoue remonte. garderLu : le garde avec le plan (`parametres.champs.lu`), pour ne plus jamais le relire.
   lireLeDepart: (lundi: string) => Promise<LuAuDepart | null>;
@@ -94,7 +95,8 @@ export async function ecrireOuReprendre(c: ContextePlan, lundi: string, options:
   if (c.etat.ecrites.some((w) => w.numero === numero)) return { statut: 'deja', numero };
   await lireLeDepartSiBesoin(c, lundi);
   const reponses = await reponsesDeLaVeille(c);
-  const nolio = c.etat.ecrites.length ? await c.lireNolio(lundi, false) : null;
+  // Sans aucune semaine écrite (le premier passage d'un coaché sur la v1, 240) : le moteur lit ses séances prévues des 4 semaines d'avant, pour fixer la marche de chaque qualité au lieu de tout mettre au plancher.
+  const nolio = c.etat.ecrites.length ? await c.lireNolio(lundi, false) : c.coache ? await c.lireNolio(lundi, false, true) : null;
   const ecrite = await ecrireLaSemaine(c.ports, { parametres: c.parametres, lundi, etat: c.etat, nolio, reponses, trame });
   await c.envoyer(ecrite, options);
   await c.garderEcriture(ecrite, etatApresEcriture(c.etat, ecrite));

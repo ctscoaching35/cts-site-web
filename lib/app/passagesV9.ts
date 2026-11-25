@@ -16,7 +16,7 @@ import {
 import { HEURE_D_ENVOI, lireReponsesDimanche, repondAuDimanche, type ReponsesDimanche } from './dimancheV9';
 import { lireEtatDuPlan, garderLEtat, garderLeQuestionnairePose, garderLesReponsesLues, garderUneEcriture, lireLaDerniereSemaine, lireLeQuestionnairePose } from './stockageV9';
 import { noteEnTexte } from './moteurV9';
-import { lundisALire, nolioDepuisNolio, type HooperLu, type PlanifieeLue, type ReelleLue } from './nolioV9';
+import { completerLesEtapes, estEnvoyee, lundisALire, lundisDuDepart, nolioDepuisNolio, vueDuDepart, type HooperLu, type NoeudPlanifie, type PlanifieeLue, type ReelleLue } from './nolioV9';
 import { parametresDuObjectifV9 } from './parametresPlanV9';
 import {
   ecrireLaSemaineDuLundi, ecrireOuReprendre, passeDuLundiSurUnPlan, pointSansReponse, poserLeQuestionnaireDuDimanche, type ContextePlan, type Resultat, type SortDeLaSemaine,
@@ -59,8 +59,9 @@ async function contextePlan(planId: string): Promise<{ c: ContextePlan; o: Objec
 
     // Ce que Nolio montre : les séances prévues et les activités des semaines à lire, rangées pour le moteur. Une lecture qui échoue donne null : la clé
     // `nolio` ne part pas (une semaine lue sans séance dirait au moteur que le coach les a supprimées).
-    lireNolio: async (lundi, avecLaSemaine) => {
-      const lundis = lundisALire(avecLaSemaine ? ajouterJours(lundi, 7) : lundi, premierLundi ?? ajouterJours(lundi, -91));
+    lireNolio: async (lundi, avecLaSemaine, depart = false) => {
+      // Au premier passage d'un coaché (240) : les 4 lundis d'avant `lundi` (avant son entrée), et non depuis le premier lundi du plan.
+      const lundis = depart ? lundisDuDepart(lundi) : lundisALire(avecLaSemaine ? ajouterJours(lundi, 7) : lundi, premierLundi ?? ajouterJours(lundi, -91));
       if (!lundis.length) return null;
       try {
         const q = await qui();
@@ -71,10 +72,19 @@ async function contextePlan(planId: string): Promise<{ c: ContextePlan; o: Objec
           `real/trainings/?date_from=${du}&date_to=${au}&fields=id,name,date_start,sport,duration,planned${o.accordLecture ? ',debrief' : ''}${q}`);
         const item = o.accordLecture ? await indiceHooper() : null;
         const hooper = item ? await listeNolio<HooperLu & { id: string }>(`metrics/values/?item=${item}&date_from=${du}&date_to=${au}${q}`) : [];
+        // Au premier passage, aucun `id` : ceux des envois de la 8.x (« S12-mardi ») seraient pris pour ceux de la v1 ; ses séances se lisent à leur titre et à leurs étapes.
         const parNolio = new Map<string, string>();
-        for (const e of o.envois) for (const s of e.seances) if (s.nolio_id && (s.genre ?? 'seance') === 'seance' && !s.jour_id.includes(':')) parNolio.set(String(s.nolio_id), s.jour_id);
+        if (!depart) for (const e of o.envois) for (const s of e.seances) if (s.nolio_id && (s.genre ?? 'seance') === 'seance' && !s.jour_id.includes(':')) parNolio.set(String(s.nolio_id), s.jour_id);
         const joursDeCourse = new Set([o.plan.course.date, ...((o.parametres.courses_secondaires ?? []) as { date: string }[]).map((x) => x.date)]);
-        return nolioDepuisNolio({ lundis, planifiees, reelles, hooper, parNolio, accordLecture: o.accordLecture, sportsDeCourse: SPORTS_COURSE, joursDeCourse });
+        // La liste ne rend pas les étapes : celles des séances qui partent au moteur sont relues une par une (completerLesEtapes).
+        const detail = q ? `?${q.slice(1)}` : '';
+        const completes = await completerLesEtapes(planifiees, (p) => estEnvoyee(p, lundis, parNolio, SPORTS_COURSE), async (id) => {
+          const r = await appelNolio('GET', `planned/trainings/${id}/${detail}`);
+          return { statut: r.statut, workout: (r.corps as { workout?: NoeudPlanifie[] } | null)?.workout };
+        });
+        const vu = nolioDepuisNolio({ lundis, planifiees: completes, reelles, hooper, parNolio, accordLecture: o.accordLecture, sportsDeCourse: SPORTS_COURSE, joursDeCourse });
+        // Au premier passage, sans les semaines sans séance (vueDuDepart).
+        return depart ? vueDuDepart(vu) : vu;
       } catch (e) {
         console.error(`Nolio de ${planId} non lu pour le moteur :`, e instanceof Error ? e.message : e);
         return null;
