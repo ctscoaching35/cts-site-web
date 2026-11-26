@@ -5,7 +5,7 @@ import { gestesDeLObjectif, verifierObjectif, type VerifObjectif } from './pageA
 import { estUneSaisonDeFond } from './reessayerDeSaison';
 import { lireLesReponsesRecentes, lireLesSemainesRecentes, sansReponseAuPoint } from './stockageV9';
 import { testsASaisir, type SourcesDesReperes } from './testsASaisir';
-import { rangerLesMots, unMot, type DeQuoiDireUnMot, type UnMot } from './unMot';
+import { unMot, type DeQuoiDireUnMot, type UnMot } from './unMot';
 import type { EtatAthlete } from './mesAthletes';
 
 type Parametres = { champs?: Record<string, unknown>; fond?: unknown } | null;
@@ -37,6 +37,7 @@ const lundiDe = (jour: string) => new Date(Date.parse(`${jour}T12:00:00Z`) - ((n
 
 export type LigneDUnMot = { id: string; nom: string; un: UnMot };
 
+// `lignes` : dans l'ordre de Nolio (lib/app/espaceParAthlete.ts, ordonner), que la liste garde (demande du coach du 26/11/2026 ; ce qui l'attend ne change plus l'ordre).
 export async function lireLesMots(service: SupabaseClient, coachId: string, lignes: EtatAthlete[], jour: string): Promise<LigneDUnMot[]> {
   const planIds = lignes.flatMap((l) => (l.a.objectif ? [l.a.objectif.plan_id] : []));
   const depuis = new Date(Date.parse(`${jour}T12:00:00Z`) - 70 * 86_400_000).toISOString();
@@ -51,7 +52,7 @@ export async function lireLesMots(service: SupabaseClient, coachId: string, lign
   // En saison de fond : son objectif daté à venir, s'il en a un (la saison, plus proche, passe devant lui dans la liste), c'est lui qui attend le coach.
   const enSaison = lignes.filter((l) => l.a.objectif && estUneSaisonDeFond(parametresDe.get(l.a.objectif.plan_id))).map((l) => l.id);
   const dates = enSaison.length ? await objectifsDates(service, enSaison, jour).catch(() => new Map<string, Date_>()) : new Map<string, Date_>();
-  return rangerLesMots(lignes.map((l): LigneDUnMot => {
+  return lignes.map((l): LigneDUnMot => {
     const planId = l.a.objectif?.plan_id ?? null;
     const parametres = planId ? parametresDe.get(planId) : null;
     const fiche = ficheDe.get(l.id);
@@ -70,5 +71,5 @@ export async function lireLesMots(service: SupabaseClient, coachId: string, lign
       sansReponse: planId ? sansReponseAuPoint(reponses, planId, lundiDe(jour)) : false,
     };
     return { id: l.id, nom: l.nom, un: unMot(entree) };
-  }));
+  });
 }

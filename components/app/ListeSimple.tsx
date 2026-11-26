@@ -4,7 +4,7 @@ import { Carte } from './Ui';
 import type { LigneDUnMot } from '@/lib/app/motsDesCoaches';
 
 // « MES ATHLÈTES » SOUS LA 9.x (décision 241 du coach, 25/11/2026, moment 3) : une ligne par coaché, son nom et un seul mot à droite. Le nom ouvre toujours la page de l'athlète, le mot ouvre son geste (la
-// page, à l'ancre du formulaire à remplir, ou l'endroit du point : Nolio, sa demande…) ; quand le geste est sur sa page, toute la ligne y mène. Les mots et leur ordre : lib/app/unMot.ts.
+// page, à l'ancre du formulaire à remplir, ou l'endroit du point : Nolio, sa demande…) ; quand le geste est sur sa page, toute la ligne y mène. Les mots : lib/app/unMot.ts ; la liste garde l'ordre de Nolio (le prénom).
 const TONS = {
   ko: 'bg-[#FBE7E3] text-[#8A3326]', warn: 'bg-[#FFF6E5] text-[#7A520D]', ok: 'bg-[#E3EFE9] text-[#22604F]', neutre: 'bg-indigo/[0.05] text-[#4A4866]',
 } as const;

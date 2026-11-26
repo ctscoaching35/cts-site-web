@@ -3,7 +3,7 @@
  * « MES ATHLÈTES » EN UNE LISTE, UN MOT PAR COACHÉ (décision 241 du coach, 25/11/2026 ; « Parcours du coach dans l'app — proposition, 25-11 », moment 3, validée « A ») : le lundi, deux minutes. Chaque ligne porte
  * un seul mot : « Partie » (sa semaine est écrite dans Nolio, rien à faire) ou une seule action, la plus urgente ; un clic ouvre directement le bon geste. Rien d'autre sur la ligne.
  *
- * L'ORDRE DE L'URGENCE, du plus au moins urgent : sa santé (un arrêt, un silence, un message, une fatigue), sa semaine pas partie, une demande à relire, son compte Nolio à associer, son accord à recevoir, ce qui
+ * LE MOT D'UNE LIGNE, par ordre d'urgence (la liste, elle, reste dans l'ordre de Nolio, 26/11/2026) : sa santé (un arrêt, un silence, un message, une fatigue), sa semaine pas partie, une demande à relire, son compte Nolio à associer, son accord à recevoir, ce qui
  * manque à son objectif (sa côte, un critère, son tapis, sa trace, sa semaine), pas d'objectif, un objectif pas lancé, un test à saisir, pas de réponse au point du dimanche ; puis, quand rien n'attend, « Partie »,
  * « À la main » (le coach écrit lui-même) ou « Rien à faire ». Les textes sont lus par le coach seul.
  */
@@ -91,8 +91,3 @@ export function unMot(a: DeQuoiDireUnMot): UnMot {
 // Sa ligne attend un geste du coach (tous les mots avant « Rien à faire », « À la main » et « Partie ») : ce que compte la pastille du menu, et ce qui retire
 // « Rien à faire pour lui » de sa page (relecture du 25/11/2026 : la pastille disait 8 pour 11 lignes en attente).
 export const attendLeCoach = (m: Pick<UnMot, 'rang'>): boolean => m.rang < 13;
-
-// Les coachés rangés : ceux qui attendent le coach d'abord (le plus urgent en tête), puis « Partie » et les autres ; à égalité, par leur nom.
-export function rangerLesMots<T extends { nom: string; un: UnMot }>(lignes: T[]): T[] {
-  return [...lignes].sort((x, y) => x.un.rang - y.un.rang || x.nom.localeCompare(y.nom, 'fr'));
-}
