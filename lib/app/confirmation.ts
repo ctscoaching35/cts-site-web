@@ -84,6 +84,15 @@ export async function confirmationAVenir(planId: string): Promise<boolean> {
   return Boolean(p?.parametres && !p.demarre_le && confirmationDemandee(p.debut_plan, jourParis(p.cree_le)));
 }
 
+// Ce que POST /v1/trame lit d'une charge corrigée : sous la 9.x, des paramètres à plat, ceux du passage du dimanche (lib/app/parametresPlanV9.ts), et non la forme rangée avec le plan (`champs`), qu'il
+// ne lit pas (26/11/2026) ; sous la 8.x, la forme rangée.
+async function pourLeMoteur(planId: string, parametres: Record<string, unknown>): Promise<Record<string, unknown>> {
+  if (!(await moteurEstV9())) return parametres;
+  const [{ objectifEcrit }, { parametresDuObjectifV9 }] = await Promise.all([import('./ecriture'), import('./parametresPlanV9')]);
+  const o = await objectifEcrit(planId);
+  return o ? parametresDuObjectifV9({ ...o, parametres }) : parametres;
+}
+
 // La réponse de l'acheteur (l'action vérifie à qui est le plan) : « oui » (charge null), ou sa charge corrigée, relue par
 // le moteur avec les contrôles du questionnaire d'achat ; sa phrase de refus revient telle quelle.
 export async function enregistrerConfirmation(planId: string, charge: Charge | null): Promise<{ ok: boolean; message: string }> {
@@ -107,7 +116,7 @@ export async function enregistrerConfirmation(planId: string, charge: Charge | n
     const verifier = async (c: Charge): Promise<{ ok: true } | { ok: false; refus: string | null }> => {
       const r = await fetch(`${API_URL}/v1/trame`, {
         method: 'POST', headers: enTetesMoteur({ 'Content-Type': 'application/json' }), cache: 'no-store',
-        body: JSON.stringify({ parametres: { ...p.parametres, champs: { ...champs, ...c } } }),
+        body: JSON.stringify({ parametres: await pourLeMoteur(planId, { ...p.parametres, champs: { ...champs, ...c } }) }),
       }).catch(() => null);
       if (r?.ok) return { ok: true };
       const refus = r?.status === 400 ? await r.json().then((x) => x?.message as string | undefined).catch(() => undefined) : undefined;
