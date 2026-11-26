@@ -14,6 +14,8 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import ts from 'typescript';
 
+// En vrai, pas en démonstration : la porte de la démonstration est fermée (le défaut ne se voyait que là).
+process.env.NODE_ENV = 'production';
 const RACINE = new URL('..', import.meta.url).pathname;
 // `next/link` rendu comme ce qu'il pose dans la page : une ancre.
 const LIEN = `data:text/javascript,${encodeURIComponent(`import React from '${import.meta.resolve('react')}'; export default ({ children, ...p }) => React.createElement('a', p, children);`)}`;
