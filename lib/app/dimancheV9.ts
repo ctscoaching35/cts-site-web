@@ -42,6 +42,8 @@ export const HEURE_D_ENVOI = '12:00';
 export const DESCRIPTION_DE_BASE = 'Une minute, d’ici dimanche 21 h : tes séances de la semaine prochaine sont préparées dimanche soir à partir de tes réponses.';
 export const DESCRIPTION_DE_BASE_COACHE = 'Une minute, d’ici dimanche 21 h : je prépare tes séances de la semaine prochaine dimanche soir à partir de tes réponses.';
 export const descriptionDeBase = (coache: boolean): string => (coache ? DESCRIPTION_DE_BASE_COACHE : DESCRIPTION_DE_BASE);
+// Le coaché programmé à la main (le choix « B » du coach, 26/11/2026) : sans « dimanche soir », son coach écrit ses séances quand il veut.
+export const DESCRIPTION_DE_BASE_A_LA_MAIN = 'Une minute, d’ici dimanche 21 h : je prépare tes séances de la semaine prochaine à partir de tes réponses.';
 // La première ligne de la description, quelle que soit la version (décision 211 du coach, 24/11/2026 : les athlètes répondent après leur dernière sortie, souvent le dimanche soir) ;
 // elle remplace « Pense à synchroniser ta montre avant de répondre. » (décision 206). Deux voix : le coaché lit celle du coach (« je »), l'acheteur une voix neutre.
 export const ACCUEIL_COACHE = 'Réponds après ta dernière sortie de la semaine, une fois ta montre synchronisée : je vois ainsi toute ta semaine.';
@@ -129,11 +131,11 @@ const choixUnique = (question: string, choix: string[], obligatoire: boolean): Q
 // celle d'aujourd'hui. ligneEffet : la ligne d'effet de la version « fatigue » (les mots du coach), à la suite de son ouverture.
 // accord : l'accord de lecture de l'athlète (le même que pour le RPE et le Hooper). La CAUSE d'un arrêt (blessure, maladie, autre) est une donnée de santé (décision 209 du coach,
 // 24/11/2026) : elle ne se pose qu'avec cet accord ; sans lui, l'arrêt et sa durée suffisent, et le moteur le traite « sans cause ».
-export function questionnaireDuDimanche({ version, cles = [], premiere = false, coache = false, ligneEffet = null, accord = false }: {
-  version: VersionDimanche; cles?: SeanceCle[]; premiere?: boolean; coache?: boolean; ligneEffet?: string | null; accord?: boolean;
+export function questionnaireDuDimanche({ version, cles = [], premiere = false, coache = false, ligneEffet = null, accord = false, aLaMain = false }: {
+  version: VersionDimanche; cles?: SeanceCle[]; premiere?: boolean; coache?: boolean; ligneEffet?: string | null; accord?: boolean; aLaMain?: boolean;
 }): QuestionnaireDimanche {
   const ouverture = premiere ? null : ouvertureDe(version, accord, coache);
-  const description = [accueilDuPoint(coache), ouverture, ouverture && version === 'fatigue' ? ligneEffet : null, descriptionDeBase(coache)].filter(Boolean).join('\n\n');
+  const description = [accueilDuPoint(coache), ouverture, ouverture && version === 'fatigue' ? ligneEffet : null, aLaMain ? DESCRIPTION_DE_BASE_A_LA_MAIN : descriptionDeBase(coache)].filter(Boolean).join('\n\n');
   const items: Question[] = [];
   if (!premiere) {
     if (version === 'fatigue') items.push(choixUnique(QUESTION_FATIGUE, CHOIX_OUI_NON, true));

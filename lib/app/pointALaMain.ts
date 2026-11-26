@@ -71,7 +71,7 @@ async function pourChacun(budgetMs: number, quoi: string, faire: (f: Fiche) => P
 export const poserLesPointsALaMain = (jour: string, budgetMs = 60_000): Promise<Compte[]> => pourChacun(budgetMs, 'point du dimanche à la main non posé', async (f) => {
   if (f.questionnaires?.point?.jour === jour) return null;
   const d = await destinataire(f.nolio_athlete_id);
-  const quiz = questionnaireDuDimanche({ version: 'normale', coache: true, accord: await aSonAccord(f) });
+  const quiz = questionnaireDuDimanche({ version: 'normale', coache: true, accord: await aSonAccord(f), aLaMain: true });
   const r = await appelNolio('POST', 'planned/quizzes/', { ...quiz, date_start: jour, hour_start: HEURE_D_ENVOI, ...(d.moi ? {} : { athletes: [d.usr] }) });
   if (r.statut !== 201 && r.statut !== 200) throw new Error(refusNolio(r, 'le questionnaire du dimanche'));
   await garder(f, { point: { jour, nolio_id: String(r.corps?.id ?? '') || null } });
