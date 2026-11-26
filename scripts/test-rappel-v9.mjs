@@ -46,6 +46,7 @@ export const lireLaDerniereSemaine = async (_s, planId) => structuredClone(globa
 export const garderLEtat = async () => {}; export const garderLeQuestionnairePose = async () => {}; export const garderLesReponsesLues = async () => {};
 export const garderUneEcriture = async () => {}; export const lireLeQuestionnairePose = async () => null;`,
   '/lib/app/parametresPlanV9.ts': 'export const parametresDuObjectifV9 = async () => globalThis.__parametres;',
+  '/lib/app/pointALaMain.ts': 'export const poserLesPointsALaMain = async () => []; export const rappelerLesALaMain = async () => [];',
   '/lib/app/moteurEnLigne.ts': 'export const moteurEstV9 = async () => true; export const moteurAuMoins91 = async () => globalThis.__v91 === true;',
 };
 registerHooks({

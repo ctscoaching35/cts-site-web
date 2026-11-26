@@ -25,6 +25,7 @@ export const nomsDesPlans = async () => new Map(); export const REMIS = 'remis';
 ${fonctions('passagesV9', { passageDuLundiV9: [{ plan: 'b', quoi: 'v1' }], questionnaireDuMatinV9: [{ plan: 'b', quoi: 'v1' }], rappelDuDimancheV9: { actif: true, texteValide: true, comptes: [{ plan: 'b', quoi: 'rappel v1' }] } })}`,
   '/lib/app/rappelDuDimanche.ts': fonctions('rappelDuDimanche', { rappelerLeDimanche: { actif: true, texteValide: true, comptes: [{ plan: 'a', quoi: 'rappel avant' }] } }),
   '/lib/app/fond.ts': fonctions('fond', { saisonsDuJour: [{ plan: 's', quoi: 'saison' }], saisonsDuV1: [{ plan: 'sv', quoi: 'saison v1' }] }),
+  '/lib/app/pointALaMain.ts': fonctions('pointALaMain', { signauxDesALaMain: [] }),
   // Les dimanches notent aussi leurs options (le Hooper seul sous la 9.x) : globalThis.__options, le deuxième argument.
   '/lib/app/dimanchesCoaches.ts': `export const programmerLesDimanches = async (...a) => { globalThis.__appels.push(['dimanchesCoaches.programmerLesDimanches', a[0]]); globalThis.__options = a[1] ?? null; return [{ plan: 'd', quoi: 'dimanches' }]; };`,
   '/lib/app/comptesInactifs.ts': fonctions('comptesInactifs', { passerComptesInactifs: [] }),
@@ -103,6 +104,8 @@ test('le passage quotidien : sous la 8.x, les saisons de fond et les dimanches d
   assert.ok(v1.appels.includes('fond.saisonsDuV1'), 'sous la v1, un coaché n’est jamais sans semaine');
   assert.ok(v1.appels.includes('dimanchesCoaches.programmerLesDimanches'), 'le Hooper du dimanche reste posé sous la 9.x');
   assert.deepEqual(v1.options, { seulementLeHooper: true }, 'le Hooper seul : le questionnaire du samedi n’est ni posé ni retiré');
+  assert.ok(v1.appels.includes('pointALaMain.signauxDesALaMain'), 'les signaux des coachés à la main, sous la 9.x');
+  assert.ok(!avant.appels.includes('pointALaMain.signauxDesALaMain'));
   for (const nom of ['relance.envoyerRelancesDues', 'ecriture.passageQuotidienLeger', 'ecriture.retirerLaTrameAuDela', 'ecriture.passageQuotidienLong', 'comptesInactifs.passerComptesInactifs'])
     assert.ok(v1.appels.includes(nom), nom);
   assert.deepEqual(v1.appels.filter((n) => n.startsWith('passagesV9')), [], 'le passage quotidien n’écrit rien par la chaîne du moteur v1');
