@@ -70,3 +70,25 @@ export function actionsTrame(posees: SeanceEnvoyee[], voulus: Map<string, Voulu>
   for (const [jourId, voulu] of restant) actions.push({ quoi: 'poser', jourId, voulu });
   return actions;
 }
+
+// Un texte en clair, en HTML, comme Nolio le garde (un paragraphe, les retours à la ligne gardés).
+const enHtml = (t: string) => `<p>${t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>')}</p>`;
+
+// Ce que l'app réécrit d'une séance (tous les champs qu'elle pose, pour que rien de l'ancienne version ne reste),
+// d'une note ou d'un bandeau.
+export function corpsPatch(corps: Record<string, unknown>, genre: Genre) {
+  if (genre === 'note') {
+    const { name, date_start, note_type, color, description } = corps;
+    return { name, date_start, note_type: note_type ?? null, color: color ?? null, description: description ?? '' };
+  }
+  if (genre === 'cycle') {
+    const { name, date_start, date_end, color, description } = corps;
+    // Sa description (le moteur 9.0.1 en écrit une) : la réécriture ne l'envoyait pas et l'ancienne restait (26/11/2026). En HTML, car sur un bandeau qui en a déjà une, Nolio refuse le texte en
+    // clair (spécification de son API : « plain text is refused once a description exists »). Un bandeau sans description n'envoie rien : Nolio ne dit pas comment l'effacer.
+    const texte = typeof description === 'string' ? description.trim() : '';
+    return { name, date_start, date_end, color: color ?? null, ...(texte ? { description_html: enHtml(texte) } : {}) };
+  }
+  const { sport, name, date_start, duration, rpe, show_rpe, color, description, workout } = corps;
+  return { sport, name, date_start, duration: duration ?? null, rpe: rpe ?? null, show_rpe: show_rpe ?? false,
+    color: color ?? null, description: description ?? '', workout: workout ?? null };
+}

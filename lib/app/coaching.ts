@@ -10,7 +10,7 @@ import { API_URL } from '@/lib/plan';
 import { enTetesMoteur } from './cleMoteur';
 import { corpsNolioSeances, lireSeancesNolio } from './moteurV9';
 import { moteurEstV9 } from './moteurEnLigne';
-import { actionsTrame, dateDe, empreinte, empreinteSeance, type Voulu } from './trameNolio';
+import { actionsTrame, corpsPatch, dateDe, empreinte, empreinteSeance, type Voulu } from './trameNolio';
 import { noteFicheCourse } from './ficheCourse';
 import { ajouterJours, jMoins, joursEntre, type Plan, type Semaine } from './plan';
 import { qualitesDuBloc } from './tableau';
@@ -647,22 +647,6 @@ export async function realignerTrame(c: Cible, cle: string, aujourdhui: string):
 export type BilanMiseAJour = {
   remplacees: number; ajoutees: number; retirees: number; notes: number; bandeau: string | null; gardees: string[];
 };
-
-// Ce que l'app réécrit d'une séance (tous les champs qu'elle pose, pour que rien de l'ancienne version ne reste),
-// d'une note ou d'un bandeau.
-function corpsPatch(corps: Record<string, unknown>, genre: Genre) {
-  if (genre === 'note') {
-    const { name, date_start, note_type, color, description } = corps;
-    return { name, date_start, note_type: note_type ?? null, color: color ?? null, description: description ?? '' };
-  }
-  if (genre === 'cycle') {
-    const { name, date_start, date_end, color } = corps;
-    return { name, date_start, date_end, color: color ?? null };
-  }
-  const { sport, name, date_start, duration, rpe, show_rpe, color, description, workout } = corps;
-  return { sport, name, date_start, duration: duration ?? null, rpe: rpe ?? null, show_rpe: show_rpe ?? false,
-    color: color ?? null, description: description ?? '', workout: workout ?? null };
-}
 
 // V4 (décision coach du 13/10/2026) : mettre à jour une semaine envoyée. Ce que le coach n'a pas touché dans Nolio
 // (même version qu'à l'envoi) est remplacé, ce que la semaine n'a plus est supprimé, le nouveau créé ; ce qu'il a
