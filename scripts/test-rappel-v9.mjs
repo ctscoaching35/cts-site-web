@@ -214,6 +214,18 @@ test('sous le 9.1 : une séance de course non remontée rappelle aussi, avec la 
   assert.deepEqual((await avecInterrupteur('oui', () => passages.rappelDuDimancheV9(240_000, A_13H))).comptes, []);
 });
 
+test('plusieurs séances non remontées : toutes comptent, dites au pluriel, dans l’ordre, chaque jour une fois', async () => {
+  const seance = (id, j) => ({ id, date_start: jour(LUNDI_1, j), sport: 'spt_course', duration: { value: 3600 } });
+  const pluriel = (jours) => `Tes séances de ${jours} ne sont pas remontées : si tu les as faites, synchronise ta montre ou ajoute-les à la main dans Nolio, avant ce soir.`;
+  situation({ plans: [{ planId: 'p1', usr: 'usr_1' }, { planId: 'p2', usr: 'usr_2' }, { planId: 'p3', usr: 'usr_3' }], resultats: { usr_1: [reponse('usr_1')], usr_2: [reponse('usr_2')], usr_3: [reponse('usr_3')] } });
+  globalThis.__v91 = true;
+  // Rendues en désordre par Nolio.
+  globalThis.__prevues = { usr_1: [seance('b', 3), seance('a', 1)], usr_2: [seance('e', 6), seance('c', 1), seance('d', 3)], usr_3: [seance('f', 1), seance('g', 1)] };
+  await avecInterrupteur('oui', () => passages.rappelDuDimancheV9(240_000, A_13H));
+  assert.deepEqual(messages().map((m) => m.description), [pluriel('mardi et jeudi'), pluriel('mardi, jeudi et dimanche'), pluriel('mardi')]);
+  assert.ok(!/coach|écris|contacte|échange|réponds-moi|dis-moi/i.test(pluriel('mardi')), 'rien n’invite à échanger avec le coach');
+});
+
 test('un seul rappel par athlète, même avec deux plans', async () => {
   situation({ plans: [{ planId: 'p1', usr: 'usr_1' }, { planId: 'p2', usr: 'usr_1' }] });
   await avecInterrupteur('oui', () => passages.rappelDuDimancheV9(240_000, A_13H));
