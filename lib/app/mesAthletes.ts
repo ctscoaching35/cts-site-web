@@ -26,6 +26,7 @@ import { estUneSaisonDeFond, reessayerPossible } from './reessayerDeSaison';
 import { motsDuCoach, pointEnMotsDuCoach } from './motsDuCoach';
 import { lireLesMots, type LigneDUnMot } from './motsDesCoaches';
 import { attendLeCoach } from './unMot';
+import { arretsDitsAuPoint, pointDArret } from './lectureDuPoint';
 import { apresLePassage, HEURE_PASSAGE_UTC, lundiQuiVient, semainesDuDimanche, type SemainesDuDimanche } from './semainesDuDimanche';
 import { clientService } from './supabase';
 
@@ -166,12 +167,15 @@ export async function espaceDuCoach(coachId: string, membres: Set<string> | null
   // Le dimanche après le passage : les semaines du lundi qui vient pas encore parties attendent les reprises de 20 h et
   // 22 h (lundi, ce qui manque encore est le point « semaine » d'« À regarder », avec « Réessayer »).
   const ceSoir = rangDuJour(jour) === 6 && apresLePassage(undefined, v9);
+  // L'arrêt dit au point du dimanche (sous la 9.x, lib/app/lectureDuPoint.ts) : de la santé, avant tout le reste.
+  const arrets = v9 ? await arretsDitsAuPoint(clientService(), vue.athletes, jour).catch(() => new Map()) : new Map();
   const lignes = vue.athletes.map((a): EtatAthlete => {
     const g = a.usr && a.accord && a.coache ? gardes?.get(a.usr) ?? null : null;
     // Sous la 9.x (décision 220 du coach, 24/11/2026 : les mots du coach remplacent le jargon ; lib/app/motsDuCoach.ts), la phrase de ce que le moteur prévoit n'a plus « la même marche ».
     const p: Prevision = g ? prevision({ prevues: g.prevues, faites: g.faites, hooper: g.hooper, signaux: g.signaux.map((x) => ({ ...x, seance: '' })) }, juge, motsDuCoach(v9).prevision)
       : { niveau: 'rien', pourquoi: '', prevoit: '' };
-    const sante = g && a.usr ? santeDesSignaux(a.nom, a.usr, g, jour).filter((x) => !reglees.has(x.cle)) : [];
+    const arret = arrets.get(a.id);
+    const sante = [...(arret ? [pointDArret(a, arret)] : []), ...(g && a.usr ? santeDesSignaux(a.nom, a.usr, g, jour) : [])].filter((x) => !reglees.has(x.cle));
     // Sous la 9.x, ni le point ni la promesse d'un « Réessayer » lundi pour une ancienne saison de fond de la 8.x : il ne pourrait pas réussir (lib/app/reessayerDeSaison.ts, décision 220 du coach, 24/11/2026, suite).
     const pasParties: Point[] = ceSoir ? dimanche.ecrites.filter(({ a: f, o, plan }) => f.id === a.id && !dimanche.partis.has(o.plan_id)
         && a.objectif?.suivante?.partie !== true && reessayerPossible(v9, estUneSaisonDeFond(plan.parametres)))
