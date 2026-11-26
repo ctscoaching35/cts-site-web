@@ -47,8 +47,12 @@ export function prevision(suivi: Suivi, depuis: string, textes: TextesPrevision 
     return { niveau: 'orange', pourquoi: `${suivi.faites} séance${suivi.faites > 1 ? 's' : ''} sur ${suivi.prevues}`,
       prevoit: textes.sousSoixante };
   }
-  if (signaux.some((s) => s.genre === 'plus_dur')) {
-    return { niveau: 'orange', pourquoi: 'plus dur que prévu', prevoit: textes.plusDur };
+  // La pastille dit la séance (272) : « Seuil 2 de mardi : RPE 7 pour 5 prévu », la plus récente, et les autres comptées.
+  const durs = signaux.filter((s) => s.genre === 'plus_dur').sort((a, b) => b.jour.localeCompare(a.jour));
+  if (durs.length) {
+    const jour = new Date(`${durs[0].jour.slice(0, 10)}T12:00:00Z`).toLocaleDateString('fr-FR', { weekday: 'long', timeZone: 'UTC' });
+    const autres = durs.length - 1;
+    return { niveau: 'orange', pourquoi: `${durs[0].type ?? 'Séance'} de ${jour} : ${durs[0].detail}${autres ? `, et ${autres} autre${autres > 1 ? 's' : ''}` : ''}`, prevoit: textes.plusDur };
   }
   return { niveau: 'vert', pourquoi: '', prevoit: 'Semaine normale' };
 }

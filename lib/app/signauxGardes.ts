@@ -2,13 +2,13 @@
  * LES SIGNAUX DE LA SEMAINE, GARDÉS (EC2, audit de l'app coach du 03/11/2026 ; décision coach du 04/11/2026, « A ») :
  * calculés chaque soir par le passage quotidien (lib/app/ecriture.ts, fatigueDuJour), avec ce qu'il lit déjà dans Nolio,
  * et gardés en base (table signaux_suivi), pour l'accueil « Cette semaine » et le dimanche, sans appel de plus à Nolio.
- * Les drapeaux seulement (signauxSuivi.ts : genre, jour, détail chiffré), jamais le contenu d'une séance ni le texte
+ * Les drapeaux seulement (signauxSuivi.ts : genre, jour, détail chiffré, et le genre de la séance d'un « plus dur », « Seuil 2 », 272), jamais le contenu d'une séance ni le texte
  * d'un commentaire ; « Relire maintenant » les refait pour un athlète. Ils s'effacent avec son accord. Côté serveur.
  */
 import { clientService } from './supabase';
 import type { GenreSignal, Suivi } from './signauxSuivi';
 
-export type SignalGarde = { genre: GenreSignal; jour: string; detail: string };
+export type SignalGarde = { genre: GenreSignal; jour: string; detail: string; type?: string };
 export type SignauxGardes = {
   calcule_le: string; prevues: number; faites: number; hooper: Suivi['hooper']; signaux: SignalGarde[];
   derniere_activite: string | null;
@@ -20,7 +20,7 @@ export const SILENCE_JOURS = 5;
 export async function garderLesSignaux(coachId: string, usr: string, suivi: Suivi, derniereActivite: string | null): Promise<void> {
   const { error } = await clientService().from('signaux_suivi').upsert({
     coach_id: coachId, nolio_athlete_id: usr, calcule_le: new Date().toISOString(), prevues: suivi.prevues, faites: suivi.faites,
-    hooper: suivi.hooper, signaux: suivi.signaux.map(({ genre, jour, detail }) => ({ genre, jour, detail })),
+    hooper: suivi.hooper, signaux: suivi.signaux.map(({ genre, jour, detail, type }) => ({ genre, jour, detail, ...(type ? { type } : {}) })),
     derniere_activite: derniereActivite,
   });
   // Sans la migration du 04/11/2026, rien n'est gardé : l'accueil le dit.

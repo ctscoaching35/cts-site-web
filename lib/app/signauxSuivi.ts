@@ -14,6 +14,15 @@ export type Seuils = { jours: number; rpe_au_dessus: number; rpe_au_dessus_sl?: 
 const SORTIE_LONGUE = new RegExp(`^SL\\b|${MOTIF_WEEK_END_CHOC.source}|sortie longue`, 'i');
 // Le détail d'une sortie longue prévue sans réalisé rattaché (gardé avec le signal, signauxGardes).
 export const DETAIL_SORTIE_LONGUE = 'sortie longue, aucune séance réalisée rattachée';
+// LE RESSENTI DÉCIDE (décision 272 du coach, 26/11/2026) : un RPE à +2 (+3 pour la sortie longue) avec un ressenti à 4 ou 5/5 n'est rien, ni un signal de fatigue ni une pastille ; certains calibrent mal leur RPE.
+export const RESSENTI_BON = 4;
+export const bonRessenti = (feeling: number | null | undefined): boolean => typeof feeling === 'number' && feeling >= RESSENTI_BON;
+// Le genre d'une séance prévue, pour la pastille (« Seuil 2 de mardi : … », 272) : la tête de son titre (les titres du moteur, ceux de la 8.x et « SL »), jamais le titre lui-même ; sans genre reconnu, « Séance ».
+const GENRES_DE_SEANCE: [RegExp, string][] = [
+  [new RegExp(MOTIF_WEEK_END_CHOC.source, 'i'), 'Week-end choc'], [/^(seuil 1|s1)\b/i, 'Seuil 1'], [/^(tempo|t)\b/i, 'Tempo'], [/^(seuil 2|s2[cl]?)\b/i, 'Seuil 2'], [/^(vo2max|vo2[cl]?)\b/i, 'VO2max'],
+  [/^(mécanique|nav|myo|tapis)(?![a-zà-ÿ])/i, 'Mécanique'], [SORTIE_LONGUE, 'Sortie longue'], [/^(endurance|ef)\b/i, 'Endurance'], [/^test\b/i, 'Test'],
+];
+export const genreDeSeance = (titre: string | null | undefined): string => GENRES_DE_SEANCE.find(([motif]) => motif.test(String(titre ?? '').trim()))?.[1] ?? 'Séance';
 // Le renfo, souvent fait sans le lecteur de Nolio (décision coach du 22/10/2026 : « pas forcément besoin de me dire
 // manqué ») : jamais « séance manquée », hors du compte des séances faites. « Renforcement musculaire » dans Nolio, le
 // sport des séances du moteur (cts_renfo.SPORT_RENFO) comme de celles du coach.
@@ -25,7 +34,8 @@ export type Realisee = {
 };
 export type ValeurHooper = { id: string; date_start: string; value: number | null };
 export type GenreSignal = 'manquee' | 'plus_dur' | 'sensations' | 'hooper' | 'commentaire';
-export type Signal = { genre: GenreSignal; jour: string; seance: string; detail: string };
+// type : le genre de la séance prévue d'un « plus dur » (genreDeSeance), pour la pastille.
+export type Signal = { genre: GenreSignal; jour: string; seance: string; detail: string; type?: string };
 export type Suivi = {
   prevues: number; faites: number; signaux: Signal[];
   hooper: { valeur: number; jour: string; moyenne: number | null } | null;
@@ -55,8 +65,8 @@ export function signaux(prevues: Prevue[], realisees: Realisee[], hooper: Valeur
     const d = r.debrief ?? {};
     const prevue = r.planned ? prevueDe.get(r.planned) : undefined;
     const ecart = prevue && SORTIE_LONGUE.test(prevue.name ?? '') ? (s.rpe_au_dessus_sl ?? 3) : s.rpe_au_dessus;
-    if (prevue?.rpe != null && d.rpe != null && d.rpe >= prevue.rpe + ecart)
-      liste.push({ genre: 'plus_dur', jour: r.date_start, seance: r.name, detail: `RPE ${d.rpe} pour ${prevue.rpe} prévu` });
+    if (prevue?.rpe != null && d.rpe != null && d.rpe >= prevue.rpe + ecart && !bonRessenti(d.feeling))
+      liste.push({ genre: 'plus_dur', jour: r.date_start, seance: r.name, detail: `RPE ${d.rpe} pour ${prevue.rpe} prévu`, type: genreDeSeance(prevue.name) });
     if (d.feeling != null && d.feeling <= s.sensations_max)
       liste.push({ genre: 'sensations', jour: r.date_start, seance: r.name, detail: `sensations ${d.feeling}/5` });
     if (d.comment?.trim())

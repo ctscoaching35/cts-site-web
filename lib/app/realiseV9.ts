@@ -7,13 +7,14 @@
  * dire quelles séances sont les siennes, et lesquelles sont clés.
  * UNE SÉANCE EST FAITE quand une activité y est reliée par Nolio ; une activité reliée à rien l'est à la séance prévue non faite la plus proche, en jour puis en durée, à ±25 % (A2).
  * UNE SÉANCE CLÉ EST RÉUSSIE quand elle est faite sans écart (199) : ni tenue en partie ou pas du tout (262, sa réponse à « Séance tenue ? »), ni cochée « pas faite » au point du dimanche, ni écourtée (moins de la moitié de sa durée), ni trop dure (un RPE donné au moins 2 au-dessus
- * du prévu, 3 pour la sortie longue ; jamais au-delà de 10). Écourtée ou trop dure, elle compte comme faite, pas comme réussie.
+ * du prévu, 3 pour la sortie longue ; jamais au-delà de 10), sauf avec un ressenti à 4 ou 5/5 (272 : le ressenti décide). Écourtée ou trop dure, elle compte comme faite, pas comme réussie.
  * LA CHARGE (RPE × minutes) prend le RPE donné, sinon le RPE prévu de la séance reliée (`rpe_lu` dit si un seul a été donné) ; `charge_tenue` compte chaque séance prévue au plus à sa charge prévue.
  */
 import { FAMILLES_CLES } from './dimancheV9';
 import type { Realise } from './ecriture';
 import type { Prevue, Reelle } from './resumeSemaine';
 import { tenueDeLaSeance } from './seanceTenue';
+import { bonRessenti } from './signauxSuivi';
 
 export const ECOURTEE_SOUS = 0.5;
 export const TROP_DUR_RPE = 2;
@@ -79,7 +80,7 @@ export function realiseDeLaSemaineV9({ numero, lundi, type, prevues, reelles, id
     if (minutes(r.duration) < ECOURTEE_SOUS * minutes(x.duration)) return false;
     const rpe = r.debrief?.rpe;
     const ecart = LONGUES.includes(familleDeLaPrevue(x)) ? TROP_DUR_RPE_SL : TROP_DUR_RPE;
-    return !(nombre(rpe) && nombre(x.rpe) && rpe >= Math.min(x.rpe + ecart, 10));
+    return !(nombre(rpe) && nombre(x.rpe) && rpe >= Math.min(x.rpe + ecart, 10) && !bonRessenti(r.debrief?.feeling));
   };
   const dplus = reelles.filter((r) => nombre(r.elevation_gain?.value));
 
