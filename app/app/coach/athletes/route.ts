@@ -3,7 +3,9 @@ import { API_URL } from '@/lib/plan';
 import type { Plan } from '@/lib/app/plan';
 import { planAchete } from '@/lib/app/acheteurs';
 import { quitterLAttenteDuProfil } from '@/lib/app/coaching';
-import { reprogrammerSortie } from '@/lib/app/ecriture';
+import { objectifEcrit, reprogrammerSortie } from '@/lib/app/ecriture';
+import { parametresDuObjectifV9 } from '@/lib/app/parametresPlanV9';
+import { parametresDuPlanV9 } from '@/lib/app/passeUnPlanV9';
 import { avecLeGpx } from '@/lib/app/gpxV9';
 import { avecLesEntreesGardees } from '@/lib/app/entreesGardees';
 import { moteurEstV9 } from '@/lib/app/moteurEnLigne';
@@ -12,6 +14,16 @@ import { lireLaTraceV9 } from '@/lib/app/traceV9';
 import { coachConnecte } from '@/lib/app/nolio';
 import { clientService } from '@/lib/app/supabase';
 import { enTetesMoteur } from '@/lib/app/cleMoteur';
+
+// CE QUE POST /v1/trame LIT D'UN OBJECTIF REFAIT, AVANT DE L'ENREGISTRER. Sous la 9.x, des paramètres à plat, ceux du passage du dimanche (lib/app/parametresPlanV9.ts), et non la forme rangée avec le plan
+// (`champs`) : sans cela, le moteur refusait tout objectif modifié (vu le 26/11/2026). Ce qui est rangé ne change pas. Sous la 8.x, la forme rangée, comme avant.
+async function pourLeMoteur(planId: string, parametres: Record<string, unknown>, plan: Plan, coache: boolean): Promise<Record<string, unknown>> {
+  if (!(await moteurEstV9())) return parametres;
+  const o = await objectifEcrit(planId);
+  if (o) return parametresDuObjectifV9({ ...o, parametres, plan });
+  // Un objectif envoyé en entier (avant le 19/10/2026) n'avait pas de paramètres, ni d'objectif écrit à relire : ceux qu'on vient de recevoir, sans sa fiche.
+  return parametresDuPlanV9({ parametres, profil: {}, coache, accordLecture: false, premierLundi: plan.semaines.find((s) => s.lundi)?.lundi ?? null }, null);
+}
 
 // « Ajouter un athlète » et « Nouvel objectif » (CTS_NOLIO_CADRAGE.md, N1, N2, N5, N9) : le questionnaire rempli
 // par le coach part au moteur avec le code du coach (CTS_CLE_COACH), sans paiement ; le plan est rangé dans le compte
@@ -115,7 +127,7 @@ export async function POST(request: NextRequest) {
     // Sous la 9.x, un objectif déjà parti garde ce que le site a posé dans ses réponses (son entrée, sa course d'avant, ce qu'il courait au départ) : lib/app/entreesGardees.ts.
     const gardes = ancien.demarre_le && (await moteurEstV9()) ? avecLesEntreesGardees(parametres, anciensParametres) : parametres;
     const r3 = await fetch(`${API_URL}/v1/trame`, {
-      method: 'POST', headers: enTetesMoteur({ 'Content-Type': 'application/json' }), body: JSON.stringify({ parametres: gardes }), cache: 'no-store',
+      method: 'POST', headers: enTetesMoteur({ 'Content-Type': 'application/json' }), body: JSON.stringify({ parametres: await pourLeMoteur(ancien.id, gardes, donnees, true) }), cache: 'no-store',
     });
     if (!r3.ok) {
       const c3 = await r3.json().catch(() => null);
@@ -144,7 +156,7 @@ export async function POST(request: NextRequest) {
       bande_majeure: nouveaux.bande_majeure ?? anciensParametres.bande_majeure ?? null,
     }, gpxV9, anciensParametres);
     const r3 = await fetch(`${API_URL}/v1/trame`, {
-      method: 'POST', headers: enTetesMoteur({ 'Content-Type': 'application/json' }), body: JSON.stringify({ parametres }), cache: 'no-store',
+      method: 'POST', headers: enTetesMoteur({ 'Content-Type': 'application/json' }), body: JSON.stringify({ parametres: await pourLeMoteur(achete.id, parametres, donnees, false) }), cache: 'no-store',
     });
     if (!r3.ok) {
       const c3 = await r3.json().catch(() => null);
