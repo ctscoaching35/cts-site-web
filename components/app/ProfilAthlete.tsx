@@ -8,7 +8,6 @@ import { ANCIENNETES, ENTRAINEMENTS, niveauDesFaits } from '@/lib/app/niveau';
 import { ACCENTS } from '@/lib/app/accentFond';
 import ChoixPointsTrail from './ChoixPointsTrail';
 import { pointsTrail, TEXTES_TRAIL } from '@/lib/app/pointsTrail';
-import { COTE_MAX_MIN } from '@/lib/cote';
 import { CRITERES, REPONSES_CRITERE, SANS_CRITERE, TITRE_CRITERES_FICHE } from '@/lib/criteres';
 import { motsDuQuestionnaire } from '@/lib/app/motsDuQuestionnaire';
 import { textes } from '@/lib/plan';
@@ -100,7 +99,7 @@ export default function ProfilAthlete({ athleteId, profil, pourMoi = false, rafr
       <fieldset className="space-y-1.5">
         <legend className="text-xs font-semibold text-indigo leading-relaxed">{moi ? textes.cote.question : textes.cote.sa}</legend>
         <div className="flex items-center gap-2">
-          <input name="cote_min" type="number" inputMode="decimal" step="any" min="0" max={COTE_MAX_MIN} aria-label={textes.cote.sa}
+          <input name="cote_min" type="text" inputMode="decimal" aria-label={textes.cote.sa}
             defaultValue={String(profil.cote_min ?? '')} required className={`${champ} !mt-0 !w-24`} />
           <span className="text-xs text-indigo">{textes.cote.unite}</span>
         </div>

@@ -42,17 +42,29 @@ export const TEXTES_COTE = {
   illisibleSa: 'Écris sa plus longue côte en minutes, par exemple 12.',
 };
 
+// Des minutes et des secondes (vu en ligne le 26/11/2026 : « 1min30 » comptait comme une côte absente) : « 1min30 », « 1 min 30 », « 1'30 », « 1’30" » (un ou deux chiffres de secondes) et « 1:30 »
+// (deux). « 1m30 » ne se lit pas (m : des mètres ?).
+const MINUTES_SECONDES = /^(\d+)\s*(?:minutes?|min|mn|'|’|′)\s*(\d{1,2})\s*(?:secondes?|sec|s|"|''|’’|”|″|»)?$/;
+const DEUX_POINTS = /^(\d+)\s*:\s*(\d{2})\s*(?:minutes?|min)?$/;
+
 /**
  * Ce que dit la réponse : un nombre de minutes, au dixième, d'au moins 1 (une réponse plus courte, 0 compris, vaut 1 : le plancher du
- * moteur) et d'au plus 240 ; null si elle ne se lit pas ou manque. Lit « 12 », « 12,5 », « 12 min » et un nombre déjà lu.
+ * moteur) et d'au plus 240 ; null si elle ne se lit pas ou manque. Lit « 12 », « 12,5 », « 12 min », des minutes et des secondes (« 1min30 », « 1:30 ») et un nombre déjà lu.
  */
 export function lireCote(v: unknown): number | null {
   let n: number;
   if (typeof v === 'number') n = v;
   else {
-    const m = /^(\d+(?:[.,]\d+)?)\s*(?:min|minutes?)?$/.exec(String(v ?? '').trim().toLowerCase());
-    if (!m) return null;
-    n = Number(m[1].replace(',', '.'));
+    const texte = String(v ?? '').trim().toLowerCase();
+    const ms = MINUTES_SECONDES.exec(texte) ?? DEUX_POINTS.exec(texte);
+    if (ms) {
+      if (Number(ms[2]) > 59) return null;
+      n = Number(ms[1]) + Number(ms[2]) / 60;
+    } else {
+      const m = /^(\d+(?:[.,]\d+)?)\s*(?:min|minutes?)?$/.exec(texte);
+      if (!m) return null;
+      n = Number(m[1].replace(',', '.'));
+    }
   }
   if (!Number.isFinite(n) || n < 0 || n > COTE_MAX_MIN) return null;
   return Math.max(COTE_PLANCHER_MIN, Math.round(n * 10) / 10);

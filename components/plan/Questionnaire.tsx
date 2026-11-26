@@ -5,7 +5,7 @@ import { compterEtape, porteDuRefus } from '@/lib/mesure';
 import clsx from 'clsx';
 import ApercuPlan from './ApercuPlan';
 import CriteresEntree from './CriteresEntree';
-import { COTE_MAX_MIN, coteEnClair } from '@/lib/cote';
+import { coteEnClair, lireCote } from '@/lib/cote';
 import { CRITERES_BRANCHES, criteresDe, TITRE_SECTION_CRITERES, titreReponse } from '@/lib/criteres';
 import { type Apercu, type ApercuGarde, apercuGardeValide, apercuPourCeParcours, CLE_CACHE_APERCU, classerReponse, empreinteApercu, jourParis, MESSAGE_APERCU_INDISPONIBLE, PHRASE_AUTRE_JOUR, type ResultatApercu, retirerIdentite } from '@/lib/apercu';
 import { etatDeLaVente, lirePrerequisDeLAchat, messagesDesPrerequis, type PrerequisAchat } from '@/lib/prerequis';
@@ -163,6 +163,8 @@ export default function Questionnaire({
   const [dmoinsOuvert, setDmoinsOuvert] = useState(false);
   // « Vérifier mes réponses » cliqué une fois : ce qui manque à « Ta semaine » se dit dessous (P5).
   const [tente, setTente] = useState(false);
+  // La côte écrite qui ne se lit pas : dite sous le champ une fois quitté, ou au clic ; le navigateur n'envoie pas le formulaire.
+  const [coteQuittee, setCoteQuittee] = useState(false);
   // L'attestation sur l'honneur du format (doctrine du 19/11/2026) : le format qu'elle couvre. Cochée pour un format, elle ne
   // vaut pas pour un autre (une distance changée la redemande) ; jamais envoyée au moteur, jamais gardée dans le brouillon.
   const [attestePour, setAttestePour] = useState('');
@@ -1053,14 +1055,16 @@ export default function Questionnaire({
 
       {!court && !route && <Section numero={numero('terrain')} titre="Ton terrain d’entraînement">
         {/* La côte en minutes (décision du coach du 23/11/2026, entrée 188), à la place des quatre cases : toujours un nombre, sans
-            « pas de côte » (24/11/2026) ; une réponse sous 1 min vaut 1 min (lib/cote.ts), elle n'est pas refusée. */}
+            « pas de côte » (24/11/2026) ; une réponse sous 1 min vaut 1 min (lib/cote.ts), elle n'est pas refusée. Un champ de texte (26/11/2026) : un champ numérique vidait « 1min30 » sans rien dire. */}
         <div role="group" aria-labelledby="cote-titre">
           <p id="cote-titre" className="font-bold text-indigo mb-3 leading-relaxed">{textes.cote.question}</p>
           <div className="flex items-center gap-2">
-            <input type="number" id="cote" inputMode="decimal" step="any" min="0" max={COTE_MAX_MIN} aria-labelledby="cote-titre" aria-describedby="cote-aide"
-              className={clsx(inputCls, '!w-28')} required value={c.cote_min} onChange={(e) => maj('cote_min')(e.target.value)} />
+            <input type="text" id="cote" inputMode="decimal" aria-labelledby="cote-titre" aria-describedby="cote-aide"
+              className={clsx(inputCls, '!w-28')} required value={c.cote_min} onChange={(e) => maj('cote_min')(e.target.value)} onBlur={() => setCoteQuittee(true)}
+              ref={(el) => el?.setCustomValidity(c.cote_min.trim() && lireCote(c.cote_min) === null ? textes.cote.illisible : '')} />
             <span className="text-indigo">{textes.cote.unite}</span>
           </div>
+          {(coteQuittee || tente) && c.cote_min.trim() && lireCote(c.cote_min) === null && <p role="alert" className="mt-2 text-sm text-[#8A5E10]">{textes.cote.illisible}</p>}
           <p id="cote-aide" className={aideCls}>{textes.cote.aide}</p>
         </div>
         {/* Le tapis qui monte (FT3-1, décision coach du 01/11/2026) : facultatif, posé à tous (23/11/2026), plus seulement avec une

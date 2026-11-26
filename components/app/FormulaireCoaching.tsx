@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useState } from 'react';
 import clsx from 'clsx';
 import { envoyerDemandeCoaching } from '@/lib/app/actionsDemandesCoaching';
-import { COTE_MAX_MIN } from '@/lib/cote';
 import { JOURS, PLAGES, QUESTIONS_COACHING as Q, type ReponsesCoaching } from '@/lib/app/coachingRegles';
 import { EXPERIENCES, PHRASE_SOUS_LA_GRILLE, type Experience } from '@/lib/app/profilGratuit';
 import { BOUTON, BOUTON_SECONDAIRE, CHAMP, Carte, Surtitre } from './Ui';
@@ -115,7 +114,7 @@ function Cote({ valeur, onChange }: { valeur: string; onChange: (v: string) => v
     <fieldset>
       <legend className={`${etiquette} leading-relaxed`}>{Q.terrain.cote.question}</legend>
       <div className="flex items-center gap-2">
-        <input type="number" inputMode="decimal" step="any" min="0" max={COTE_MAX_MIN} aria-label={Q.terrain.cote.unite}
+        <input type="text" inputMode="decimal" aria-label={Q.terrain.cote.unite}
           value={valeur} onChange={(e) => onChange(e.target.value)} className={`${CHAMP} !w-24`} />
         <span className="text-sm text-indigo">{Q.terrain.cote.unite}</span>
       </div>
