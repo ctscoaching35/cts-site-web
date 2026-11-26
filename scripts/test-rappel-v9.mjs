@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * LE RAPPEL DU DIMANCHE SOUS LE MOTEUR v1 (décision 206 du coach, 24/11/2026 ; lib/app/rappelDimancheV9.ts, lib/app/passeUnPlanV9.ts `pointSansReponse`, lib/app/passagesV9.ts
- * `rappelDuDimancheV9`) : un seul rappel vers 19 h (Paris, décision 211), seulement à qui n'a pas répondu à son « point du dimanche » ; plus de rappel pour les séances non remontées ; le même
+ * `rappelDuDimancheV9`) : un seul rappel vers 19 h (Paris, décision 211), à qui n'a pas répondu à son « point du dimanche » et, sous le 9.1 seulement (261, 270), à qui a une séance de course non remontée ; le même
  * interrupteur `CTS_RAPPEL_DIMANCHE` qu'avant. Nolio et la base sont de fausses pièces qui notent chaque appel ; la trame est celle du moteur enregistré (athlète fictif).
  * Aucun réseau, aucune donnée d'athlète.
  *
@@ -28,6 +28,8 @@ export const listeNolio = async (chemin) => {
   globalThis.__lectures.push(chemin);
   const usr = /athlete=(usr_\\w+)/.exec(chemin)?.[1];
   if (globalThis.__panne === usr) throw new Error('Nolio ne répond pas');
+  if (chemin.startsWith('planned/trainings/')) return structuredClone(globalThis.__prevues?.[usr] ?? []);
+  if (chemin.startsWith('real/trainings/')) return structuredClone(globalThis.__reelles?.[usr] ?? []);
   return chemin.startsWith('real/quiz_results/') ? structuredClone(globalThis.__resultats[usr] ?? []) : [];
 };
 export const appelNolio = async (methode, chemin, corps) => { globalThis.__appels.push([methode, chemin, corps]); return { statut: globalThis.__statut ?? 201, corps: { id: 'msg_1' } }; };`,
@@ -44,6 +46,7 @@ export const lireLaDerniereSemaine = async (_s, planId) => structuredClone(globa
 export const garderLEtat = async () => {}; export const garderLeQuestionnairePose = async () => {}; export const garderLesReponsesLues = async () => {};
 export const garderUneEcriture = async () => {}; export const lireLeQuestionnairePose = async () => null;`,
   '/lib/app/parametresPlanV9.ts': 'export const parametresDuObjectifV9 = async () => globalThis.__parametres;',
+  '/lib/app/moteurEnLigne.ts': 'export const moteurEstV9 = async () => true; export const moteurAuMoins91 = async () => globalThis.__v91 === true;',
 };
 registerHooks({
   resolve(specifier, context, nextResolve) {
@@ -79,7 +82,7 @@ const objectif = (planId, usr, coache) => ({ planId, coache, coachId: 'c1', noli
 const SEMAINE_1 = (usr, nolio = true) => ({ numero: 1, lundi: LUNDI_1, semaine: { numero: 1, lundi: LUNDI_1, jours: [] }, reponsesLues: null,
   questionnaire: nolio ? { version: 'normale', cles: [], nolio_id: `pqz_${usr}`, pose_le: `${DIMANCHE}T08:00:00Z` } : null });
 const situation = ({ plans = [], resultats = {}, panne = null, prises = [], statut = 201 } = {}) => {
-  Object.assign(globalThis, { __bd: [], __prises: new Set(prises), __lectures: [], __appels: [], __resultats: resultats, __panne: panne, __statut: statut, __jour: DIMANCHE,
+  Object.assign(globalThis, { __bd: [], __prises: new Set(prises), __lectures: [], __appels: [], __resultats: resultats, __panne: panne, __statut: statut, __jour: DIMANCHE, __v91: false, __prevues: {}, __reelles: {},
     __trame: TRAME, __parametres: PARAMETRES, __objectifs: {}, __etats: {}, __dernieres: {} });
   for (const { planId, usr, coache = true, ecrite = true, etat = ecrite, nolio = true } of plans) {
     globalThis.__objectifs[planId] = objectif(planId, usr, coache);
@@ -165,7 +168,7 @@ test('un coaché et un acheteur sans réponse : chacun son texte, un message pro
     { description: ACHETEUR, date_start: DIMANCHE, hour_start: '19:00', show_to_the_athlete: false, athletes: ['usr_2'] },
   ]);
   assert.deepEqual(r.comptes.map((c) => [c.plan, c.quoi, c.coache]), [['p1', 'rappel programmé à 19:00', true], ['p2', 'rappel programmé à 19:00', false]]);
-  assert.ok(globalThis.__lectures.every((l) => l.startsWith('real/quiz_results/')), 'seules les réponses du point sont lues : plus de séances non remontées');
+  assert.ok(globalThis.__lectures.every((l) => l.startsWith('real/quiz_results/')), 'sous le 9.0, seules les réponses du point sont lues');
 });
 
 test('un seul rappel par dimanche : une clé prise avant l’envoi ; un nouvel appel du même dimanche n’envoie rien de plus', async () => {
@@ -189,6 +192,32 @@ test('une lecture de Nolio qui échoue ne rappelle personne ; un message que Nol
   assert.match(refus.comptes[0].erreur, /refus de Nolio/);
   assert.equal(refus.comptes[0].quoi, 'rappel non programmé');
   assert.deepEqual(globalThis.__bd.filter(([quoi]) => quoi === 'cle libérée'), [['cle libérée', `rappel:${DIMANCHE}`]], 'un nouvel appel pourra le refaire');
+});
+
+test('sous le 9.1 : une séance de course non remontée rappelle aussi, avec la phrase du coach ; les deux manques font les deux phrases ; le renfo et une activité saisie à la main ne comptent pas', async () => {
+  const MARDI = jour(LUNDI_1, 1);
+  const seance = (id, sport = 'spt_course') => ({ id, date_start: MARDI, sport, duration: { value: 3600 } });
+  const phrase = (j) => `Ta séance de ${j} n’est pas remontée : si tu l’as faite, synchronise ta montre ou ajoute-la à la main dans Nolio, avant ce soir.`;
+  situation({ plans: [{ planId: 'p1', usr: 'usr_1' }, { planId: 'p2', usr: 'usr_2', coache: false }, { planId: 'p3', usr: 'usr_3' }, { planId: 'p4', usr: 'usr_4' }],
+    resultats: { usr_1: [reponse('usr_1')], usr_3: [reponse('usr_3')], usr_4: [reponse('usr_4')] } });
+  globalThis.__v91 = true;
+  globalThis.__prevues = { usr_1: [seance('a')], usr_2: [seance('b')], usr_3: [seance('c')], usr_4: [seance('d', 'spt_renfo')] };
+  // usr_3 : saisie à la main, reliée à rien, à 10 % de la durée prévue.
+  globalThis.__reelles = { usr_3: [{ id: 'r', date_start: jour(LUNDI_1, 2), sport: 'spt_course', duration: { value: 3300 }, planned: null }] };
+  const r = await avecInterrupteur('oui', () => passages.rappelDuDimancheV9(240_000, A_13H));
+  assert.ok(r.comptes.every((c) => !c.erreur), JSON.stringify(r.comptes));
+  assert.deepEqual(messages().map((m) => [m.athletes[0], m.description]), [['usr_1', phrase('mardi')], ['usr_2', `${ACHETEUR}\n${phrase('mardi')}`]]);
+  assert.ok(!/coach|écris|contacte|échange|réponds-moi|dis-moi/i.test(phrase('mardi')), 'rien n’invite à échanger avec le coach');
+  // Sous le 9.0, la même semaine : rien pour une séance non remontée.
+  situation({ plans: [{ planId: 'p1', usr: 'usr_1' }], resultats: { usr_1: [reponse('usr_1')] } });
+  globalThis.__prevues = { usr_1: [seance('a')] };
+  assert.deepEqual((await avecInterrupteur('oui', () => passages.rappelDuDimancheV9(240_000, A_13H))).comptes, []);
+});
+
+test('un seul rappel par athlète, même avec deux plans', async () => {
+  situation({ plans: [{ planId: 'p1', usr: 'usr_1' }, { planId: 'p2', usr: 'usr_1' }] });
+  await avecInterrupteur('oui', () => passages.rappelDuDimancheV9(240_000, A_13H));
+  assert.equal(messages().length, 1);
 });
 
 test('le rappel de la 8.x ne bouge pas : ses trois textes et son calcul sont ceux d’avant, la 9.x ne les lit pas', () => {
