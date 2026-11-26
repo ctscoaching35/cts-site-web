@@ -272,8 +272,8 @@ export default async function Confidentialite() {
             mois ;
           </li>
           <li>
-            chaque dimanche, sauf séances préparées à la main, tes séances de la semaine suivante sont préparées d’après ta
-            semaine écoulée, avec les mêmes lectures. Nous la suivons et la corrigeons dans Nolio. Nous gardons un résumé chiffré de chaque semaine (charge, séances
+            {v9 ? 'chaque dimanche, ' : 'chaque dimanche, sauf séances préparées à la main, '}tes séances de la semaine suivante sont préparées d’après ta
+            semaine écoulée, avec les mêmes lectures. Nous la suivons et la corrigeons dans Nolio.{v9 ? ' Si tes séances sont préparées à la main, « Ton point du dimanche » t’est posé aussi ; nous lisons tes réponses dans Nolio sans les garder.' : ''} Nous gardons un résumé chiffré de chaque semaine (charge, séances
             faites, plus longue sortie, dénivelé, Hooper), celles que nous écrivons à la main comprises, relevées chaque nuit
             dans Nolio, pour ajuster tes séances et afficher tes graphiques dans ton espace CTS ;
           </li>
