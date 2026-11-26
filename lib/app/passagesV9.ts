@@ -24,6 +24,7 @@ import {
   ecrireLaSemaineDuLundi, ecrireOuReprendre, passeDuLundiSurUnPlan, pointSansReponse, poserLeQuestionnaireDuDimanche, type ContextePlan, type Resultat, type SortDeLaSemaine,
 } from './passeUnPlanV9';
 import { rappelActif } from './rappelDimanche';
+import { poserLesPointsALaMain, rappelerLesALaMain } from './pointALaMain';
 import { moteurAuMoins91 } from './moteurEnLigne';
 import { seanceTenueActive } from './seanceTenue';
 import { heureDuRappelV9, joursDesSeancesNonRemontees, messageDuRappelV9, TEXTE_RAPPEL_V9_VALIDE } from './rappelDimancheV9';
@@ -223,8 +224,9 @@ export const passageDuLundiV9 = (budgetMs = 240_000, jour = aujourdhuiParis()): 
   jourDeLaSemaine(jour) === 1 ? passer(budgetMs, 'passe du lundi en échec', async (c, o) => (await saisonPrise(o, jour) ? ARRETEE : passeDuLundiSurUnPlan(c, jour))) : Promise.resolve([]);
 
 // Le dimanche matin : le questionnaire de la semaine écrite, posé dans Nolio pour 12 h. Ni un autre jour.
-export const questionnaireDuMatinV9 = (budgetMs = 120_000, jour = aujourdhuiParis()): Promise<Compte[]> =>
-  jourDeLaSemaine(jour) === 0 ? passer(budgetMs, 'questionnaire non posé', (c) => poserLeQuestionnaireDuDimanche(c, jour)) : Promise.resolve([]);
+// Et celui des coachés à la main, qui n'ont pas de plan écrit (lib/app/pointALaMain.ts).
+export const questionnaireDuMatinV9 = async (budgetMs = 120_000, jour = aujourdhuiParis()): Promise<Compte[]> =>
+  jourDeLaSemaine(jour) === 0 ? [...await passer(budgetMs, 'questionnaire non posé', (c) => poserLeQuestionnaireDuDimanche(c, jour)), ...await poserLesPointsALaMain(jour)] : [];
 
 // Les jours des séances de course de la semaine non remontées (261, 270) ; aucun sans séance manquante, ou si Nolio ne se lit pas (« une lecture qui échoue ne rappelle personne »).
 async function joursSansActivite(usr: string, jour: string): Promise<string[]> {
@@ -292,6 +294,8 @@ export async function rappelDuDimancheV9(budgetMs = 240_000, maintenant = new Da
       comptes.push({ plan: planId, quoi: 'rappel non programmé', erreur: e instanceof Error ? e.message : String(e), coache });
     }
   }
+  // Les coachés à la main : le rappel de leur point seulement, jamais d'une séance non remontée (rien n'est écrit pour eux).
+  comptes.push(...await rappelerLesALaMain(jour, heure));
   return { actif: true, texteValide: TEXTE_RAPPEL_V9_VALIDE, comptes };
 }
 

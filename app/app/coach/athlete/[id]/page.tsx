@@ -18,6 +18,8 @@ import { parametresDuPlanV9 } from '@/lib/app/passeUnPlanV9';
 import { lireLesSemainesRecentes } from '@/lib/app/stockageV9';
 import { ANCRE_DU_GESTE, TEXTES_TESTS, testsASaisir } from '@/lib/app/testsASaisir';
 import PointsPourLui, { PointsAVenir } from '@/components/app/PointsPourLui';
+import PointDuDimancheALaMain from '@/components/app/PointDuDimancheALaMain';
+import { estALaMain, lireLePointALaMain } from '@/lib/app/pointALaMain';
 import ProfilAthlete from '@/components/app/ProfilAthlete';
 import SemainesQuiArrivent from '@/components/app/SemaineQuiArrive';
 import { Geste, Regle } from '@/components/app/PointsCoach';
@@ -191,6 +193,9 @@ export default async function PageAthlete({ params, searchParams }: {
   // elle se lit comme programmée à la main ; la bascule de programmation ne s'offre pas.
   const ancienPlan = a.mode === 'plan';
   const aLaMain = a.programmation === 'main' || ancienPlan;
+  // Un coaché à la main : sa dernière réponse à son point du dimanche, lue dans Nolio sans être gardée (lib/app/pointALaMain.ts).
+  const pointALaMain = v9 && estALaMain(a)
+    ? await lireLePointALaMain(String(a.nolio_athlete_id), Boolean(accord), a.questionnaires?.point?.nolio_id).catch(() => 'illisible' as const) : undefined;
   const entree = entreeDe({
     athleteId: a.id, nolio: Boolean(a.nolio_athlete_id), accord: Boolean(accord), programmation: aLaMain ? 'main' : 'auto',
     objectif: prochain ? { plan_id: prochain, ecrit: Boolean(pp?.parametres), demarre: Boolean(pp?.demarre_le),
@@ -599,6 +604,7 @@ export default async function PageAthlete({ params, searchParams }: {
           {/* La vue d'ensemble, en lecture (241) : son profil et ses courses sur une ligne de temps. */}
           {carte && <VueDEnsemble coureur={vueDuCoureur(carte.savoir.valeurs, reperes, profilCoureur(profilZones))} courses={ligneDeTemps(objectifsLus, jour)} />}
           <PointsPourLui lignes={lignesAFaire} accordRecu={donnerLAccord} attend={espace.mots.some((m) => m.id === a.id && attendLeCoach(m.un))} />
+          {pointALaMain !== undefined && <PointDuDimancheALaMain point={pointALaMain} usr={String(a.nolio_athlete_id)} />}
           {carte && <CarteSavoir key={`${a.id}:${carte.lancer.planId}`} {...carte.savoir} zonesEtStyle={zonesEtStyle}
             courses={<ObjectifsAVerifier athleteId={a.id} lignes={lignesObjectifs} jour={jour} plat />} />}
           {carte && <LancerSaPreparation {...carte.lancer} />}

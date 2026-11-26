@@ -3,6 +3,7 @@ import { effacerLesDemandesEchues } from '@/lib/app/demandesCoaching';
 import { programmerLesDimanches } from '@/lib/app/dimanchesCoaches';
 import { selonLeMoteur } from '@/lib/app/chaineDuMoteur';
 import { saisonsDuJour, saisonsDuV1 } from '@/lib/app/fond';
+import { signauxDesALaMain } from '@/lib/app/pointALaMain';
 import { passageQuotidienLeger, passageQuotidienLong, retirerLaTrameAuDela } from '@/lib/app/ecriture';
 import { envoyerRelancesDues } from '@/lib/app/relance';
 import { effacerLesAchatsEchus, renvoyerLesConfirmations } from '@/lib/app/rangement';
@@ -46,11 +47,13 @@ export async function GET(request: Request) {
   // Le week-end de chaque coaché (décision coach du 21/10/2026), en temps compté : le reste, le soir suivant. Sous la 9.x, le Hooper seul (décision 52 du coach, 20/11/2026 : sans lui
   // l'alerte fatigue ne part jamais) : « Ton point du dimanche » remplace le questionnaire du samedi, pas le Hooper du dimanche 8 h.
   const dimanches = await selonLeMoteur({ avant: () => programmerLesDimanches(), v1: () => programmerLesDimanches(120_000, { seulementLeHooper: true }) }).catch((e) => [{ plan: '', quoi: 'dimanches en échec', erreur: e instanceof Error ? e.message : String(e) }]);
+  // Les coachés à la main n'ont pas de semaine écrite : leurs signaux du soir se lisent ici, avec leur accord (demande du coach du 26/11/2026).
+  const aLaMain = await selonLeMoteur({ avant: async () => [], v1: () => signauxDesALaMain(40_000) }).catch((e) => [{ plan: '', quoi: 'signaux à la main en échec', erreur: e instanceof Error ? e.message : String(e) }]);
   // Une semaine à la fois (décision coach du 23/10/2026) : les bandeaux posés d'avance, au-delà de la semaine qui vient.
   const trames = await retirerLaTrameAuDela().catch((e) => [{ plan: '', quoi: 'trames en échec', erreur: e instanceof Error ? e.message : String(e) }]);
   // La fatigue du jour et les tests, dans le temps qui reste ; le résumé au coach.
   const reste = Math.max(20_000, BUDGET_MS - (Date.now() - debut));
   const long = await passageQuotidienLong(reste).catch((e) => [{ plan: '', quoi: 'passage en échec', erreur: e instanceof Error ? e.message : String(e) }]);
   return Response.json({ envoyees, comptes_inactifs: comptesInactifs, demandes_coaching_effacees: demandesEchues,
-    ecriture: [...confirmations, ...achats, ...leger, ...dimanches, ...saisons, ...trames, ...long].map(({ plan, quoi, erreur }) => ({ plan, quoi, erreur: erreur ?? null })) });
+    ecriture: [...confirmations, ...achats, ...leger, ...dimanches, ...saisons, ...aLaMain, ...trames, ...long].map(({ plan, quoi, erreur }) => ({ plan, quoi, erreur: erreur ?? null })) });
 }

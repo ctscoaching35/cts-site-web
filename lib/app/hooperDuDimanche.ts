@@ -17,7 +17,9 @@ export const dimancheApres = (iso: string): string => ajouterJours(iso, 7 - ((ne
 export const jourDeParis = (instant: string): string => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date(instant));
 
 // Ce que la fiche d'un coaché garde de son dimanche (`athletes_coaches.questionnaires`).
-export type DimanchesCoache = { dimanche?: string; semaine?: string | null; hooper?: string | null; jusqua?: string; mot_le?: string | null; mot_note?: string | null };
+// point, rappel : « Ton point du dimanche » d'un coaché à la main et le jour de son rappel (lib/app/pointALaMain.ts), gardés d'un passage à l'autre.
+export type DimanchesCoache = { dimanche?: string; semaine?: string | null; hooper?: string | null; jusqua?: string; mot_le?: string | null; mot_note?: string | null;
+  point?: { jour: string; nolio_id: string | null }; rappel?: string | null };
 
 /**
  * La fiche après la pose du dimanche. Sous la 8.x (seulementLeHooper faux) : le dimanche posé, son questionnaire du samedi et son Hooper. Sous la 9.x : le Hooper et le dimanche ;
@@ -32,6 +34,7 @@ export function suiteDeLaFiche(avant: DimanchesCoache | null, r: { dimanche: str
     semaine: seulementLeHooper ? (memeWeekEnd ? avant?.semaine ?? null : null) : r.semaine,
     hooper: r.hooper,
     mot_le: avant?.mot_le ?? null, mot_note: avant?.mot_note ?? null,
+    ...(avant?.point ? { point: avant.point } : {}), ...(avant?.rappel ? { rappel: avant.rappel } : {}),
   };
 }
 
