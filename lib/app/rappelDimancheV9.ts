@@ -10,8 +10,15 @@ import { relier } from './realiseV9';
 import type { Prevue, Reelle } from './resumeSemaine';
 
 export const TEXTE_RAPPEL_V9_VALIDE = true;
-// La séance non remontée, les mots du coach (270, 26/11/2026), pour le coaché comme pour l'acheteur.
-export const texteSeanceNonRemontee = (jour: string): string => `Ta séance de ${jour} n’est pas remontée : si tu l’as faite, synchronise ta montre ou ajoute-la à la main dans Nolio, avant ce soir.`;
+// Les séances non remontées, pour le coaché comme pour l'acheteur : une, les mots du coach (270, 26/11/2026) ; plusieurs, toutes comptent manquées, au pluriel (la phrase du pilote du Moteur, 26/11, à valider par le coach).
+// `jours` : le jour de chacune, dans l'ordre ; un jour ne se dit qu'une fois (« mardi et jeudi »).
+export function texteSeancesNonRemontees(jours: string[]): string | null {
+  if (!jours.length) return null;
+  if (jours.length === 1) return `Ta séance de ${jours[0]} n’est pas remontée : si tu l’as faite, synchronise ta montre ou ajoute-la à la main dans Nolio, avant ce soir.`;
+  const dits = [...new Set(jours)];
+  const liste = dits.length === 1 ? dits[0] : `${dits.slice(0, -1).join(', ')} et ${dits[dits.length - 1]}`;
+  return `Tes séances de ${liste} ne sont pas remontées : si tu les as faites, synchronise ta montre ou ajoute-les à la main dans Nolio, avant ce soir.`;
+}
 export const TEXTES_RAPPEL_V9 = {
   coache: 'Petit rappel : réponds à ton point du dimanche avant ce soir, pour que je prépare ta semaine au plus juste.',
   acheteur: 'Petit rappel : réponds à ton point du dimanche avant ce soir, pour que ta semaine colle à ce que tu as fait.',
@@ -31,18 +38,18 @@ export function heureDuRappelV9(maintenant: Date = new Date()): string | null {
   return hhmm > HEURE_LIMITE_RAPPEL_V9 ? null : hhmm;
 }
 
-// Le message du dimanche soir : la phrase du point s'il manque, puis celle de la séance non remontée ; null quand ni l'un ni l'autre.
-export const messageDuRappelV9 = ({ coache, sansReponse, jourNonRemonte }: { coache: boolean; sansReponse: boolean; jourNonRemonte: string | null }): string | null =>
-  [sansReponse ? texteDuRappelV9(coache) : null, jourNonRemonte ? texteSeanceNonRemontee(jourNonRemonte) : null].filter(Boolean).join('\n') || null;
+// Le message du dimanche soir : la phrase du point s'il manque, puis celle des séances non remontées ; null quand ni l'un ni l'autre.
+export const messageDuRappelV9 = ({ coache, sansReponse, joursNonRemontes }: { coache: boolean; sansReponse: boolean; joursNonRemontes: string[] }): string | null =>
+  [sansReponse ? texteDuRappelV9(coache) : null, texteSeancesNonRemontees(joursNonRemontes)].filter(Boolean).join('\n') || null;
 
-// Le jour (« mardi ») de la plus récente séance de course de la semaine, jusqu'à aujourd'hui, qui n'est pas remontée (261 : dehors, tapis, côte ; jamais le renfo) ; null sinon. Remontée : reliée par Nolio,
+// Le jour (« mardi ») de chaque séance de course de la semaine, jusqu'à aujourd'hui, qui n'est pas remontée (261 : dehors, tapis, côte ; jamais le renfo), dans l'ordre. Remontée : reliée par Nolio,
 // sinon par le site à la séance la plus proche, en jour puis en durée, à ±25 % (A2, comme le résumé du réalisé).
-export function jourDeLaSeanceNonRemontee({ lundi, jour, planifiees, reelles, sportsDeCourse }: {
+export function joursDesSeancesNonRemontees({ lundi, jour, planifiees, reelles, sportsDeCourse }: {
   lundi: string; jour: string; planifiees: Prevue[]; reelles: Reelle[]; sportsDeCourse: readonly string[];
-}): string | null {
+}): string[] {
   const course = (x: { sport?: string | null }) => sportsDeCourse.includes(String(x.sport));
   const prevues = planifiees.filter((p) => course(p) && p.date_start.slice(0, 10) >= lundi && p.date_start.slice(0, 10) <= jour);
   const faites = relier(prevues, reelles.filter((r) => r.planned || course(r)));
-  const manquee = prevues.filter((p) => !faites.has(p.id)).sort((a, b) => b.date_start.localeCompare(a.date_start))[0];
-  return manquee ? new Date(`${manquee.date_start.slice(0, 10)}T12:00:00Z`).toLocaleDateString('fr-FR', { weekday: 'long', timeZone: 'UTC' }) : null;
+  return prevues.filter((p) => !faites.has(p.id)).sort((a, b) => a.date_start.localeCompare(b.date_start))
+    .map((p) => new Date(`${p.date_start.slice(0, 10)}T12:00:00Z`).toLocaleDateString('fr-FR', { weekday: 'long', timeZone: 'UTC' }));
 }

@@ -26,7 +26,7 @@ import {
 import { rappelActif } from './rappelDimanche';
 import { moteurAuMoins91 } from './moteurEnLigne';
 import { seanceTenueActive } from './seanceTenue';
-import { heureDuRappelV9, jourDeLaSeanceNonRemontee, messageDuRappelV9, TEXTE_RAPPEL_V9_VALIDE } from './rappelDimancheV9';
+import { heureDuRappelV9, joursDesSeancesNonRemontees, messageDuRappelV9, TEXTE_RAPPEL_V9_VALIDE } from './rappelDimancheV9';
 import type { Semaine } from './plan';
 import type { Prevue, Reelle } from './resumeSemaine';
 
@@ -226,18 +226,18 @@ export const passageDuLundiV9 = (budgetMs = 240_000, jour = aujourdhuiParis()): 
 export const questionnaireDuMatinV9 = (budgetMs = 120_000, jour = aujourdhuiParis()): Promise<Compte[]> =>
   jourDeLaSemaine(jour) === 0 ? passer(budgetMs, 'questionnaire non posé', (c) => poserLeQuestionnaireDuDimanche(c, jour)) : Promise.resolve([]);
 
-// La plus récente séance de course de la semaine non remontée (261, 270), son jour ; null sans séance manquante, ou si Nolio ne se lit pas (« une lecture qui échoue ne rappelle personne »).
-async function seanceNonRemontee(usr: string, jour: string): Promise<string | null> {
+// Les jours des séances de course de la semaine non remontées (261, 270) ; aucun sans séance manquante, ou si Nolio ne se lit pas (« une lecture qui échoue ne rappelle personne »).
+async function joursSansActivite(usr: string, jour: string): Promise<string[]> {
   try {
     const d = await destinataire(usr);
     const qui = d.moi ? '' : `&athlete=${d.usr}`;
     const lundi = ajouterJours(jour, -6);
     const planifiees = await listeNolio<Prevue>(`planned/trainings/?date_from=${lundi}&date_to=${jour}${qui}`);
     const reelles = await listeNolio<Reelle>(`real/trainings/?date_from=${lundi}&date_to=${jour}&fields=id,date_start,sport,duration,planned${qui}`);
-    return jourDeLaSeanceNonRemontee({ lundi, jour, planifiees, reelles, sportsDeCourse: SPORTS_COURSE });
+    return joursDesSeancesNonRemontees({ lundi, jour, planifiees, reelles, sportsDeCourse: SPORTS_COURSE });
   } catch (e) {
     console.error('Séances de la semaine non lues pour le rappel :', e instanceof Error ? e.message : e);
-    return null;
+    return [];
   }
 }
 
@@ -271,7 +271,7 @@ export async function rappelDuDimancheV9(budgetMs = 240_000, maintenant = new Da
       const usr = String(cx.o.nolioAthlete);
       if (rappeles.has(usr)) continue;
       const sansReponse = await pointSansReponse(cx.c, jour);
-      const message = messageDuRappelV9({ coache: cx.o.coache, sansReponse, jourNonRemonte: avecLesSeances ? await seanceNonRemontee(usr, jour) : null });
+      const message = messageDuRappelV9({ coache: cx.o.coache, sansReponse, joursNonRemontes: avecLesSeances ? await joursSansActivite(usr, jour) : [] });
       if (!message) continue;
       // Un seul par dimanche : la clé se prend avant l'envoi.
       cle = `rappel:${jour}`;
