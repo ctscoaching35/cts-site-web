@@ -197,7 +197,7 @@ export default async function Confidentialite() {
             )}
             <li>
               <strong>Avec ton accord de lecture</strong> (une case facultative, recommandée), nous consultons aussi ton effort
-              ressenti (RPE), ton ressenti, ton Hooper (fatigue, sommeil, stress, courbatures) et la trace de tes séances
+              ressenti (RPE), ton ressenti,{v9 ? ' ta réponse à « Séance tenue ? » après chaque séance,' : ''} ton Hooper (fatigue, sommeil, stress, courbatures) et la trace de tes séances
               test (distance, fréquence cardiaque), pour ajuster ta semaine à ta fatigue et en tirer tes repères. Ce sont des
               données liées à ta santé : nous ne les consultons qu’avec cet accord exprès (ton consentement explicite), que tu
               retires quand tu veux.
@@ -259,7 +259,7 @@ export default async function Confidentialite() {
             séances dans ton calendrier Nolio ;
           </li>
           <li>
-            notre suivi consulte dans Nolio tes séances prévues et réalisées, avec ton effort ressenti, tes sensations,
+            notre suivi consulte dans Nolio tes séances prévues et réalisées, avec ton effort ressenti, tes sensations,{v9 ? ' ta réponse à « Séance tenue ? » après chaque séance,' : ''}{' '}
             tes commentaires et ton questionnaire Hooper ; chaque soir, nous en gardons seulement des signaux pour ton suivi
             (une séance manquée, un effort plus dur que prévu, de mauvaises sensations ou une fatigue qui monte, un
             commentaire à lire, le jour de ta dernière activité), jamais le contenu d’une séance ni le texte d’un
