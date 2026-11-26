@@ -37,6 +37,7 @@ registerHooks({
 });
 const charge = (f) => import(pathToFileURL(`${RACINE}lib/app/${f}.ts`).href);
 const m = await charge('pointALaMain');
+const { lireSonPoint } = await charge('lectureDuPoint');
 const { suiteDeLaFiche } = await charge('hooperDuDimanche');
 const { texteDuRappelV9 } = await charge('rappelDimancheV9');
 
@@ -99,11 +100,11 @@ test('sa page : sa dernière réponse, l’arrêt, ses jours ; la cause avec l�
   const repondu = q.map((i) => ({ question: i.question, value: /arrêter|arrêté/i.test(i.question) && i.choices?.choices.includes('Quelques jours') ? 'Quelques jours'
     : i.choices?.choices.includes('Blessure') ? 'Blessure' : i.question === QUESTION_OUVERTE ? 'Mon genou tire un peu' : i.type === 'number' ? 3 : i.type === 'multiple_choices' ? ['Mardi', 'Jeudi'] : i.choices?.choices.includes('Jeudi') ? 'Jeudi' : null }));
   monde({ resultats: { usr_a: [{ id: 'r', name: 'Ton point du dimanche', quiz_planned: 'pqz_usr_a', date_start: `${DIMANCHE}T15:00:00`, items: repondu }] } });
-  const lu = await m.lireLePointALaMain('usr_a', true, 'pqz_usr_a', DIMANCHE);
+  const lu = await lireSonPoint('usr_a', true, 'pqz_usr_a', DIMANCHE);
   assert.deepEqual([lu.date, lu.reponses.arret, lu.reponses.cause, lu.reponses.nb_seances, lu.reponses.jour_sl, lu.mot], [DIMANCHE, 'quelques_jours', 'blessure', 3, 'jeudi', true]);
   assert.ok(!JSON.stringify(lu).includes('genou'), 'le texte du mot se lit dans Nolio');
-  assert.equal((await m.lireLePointALaMain('usr_a', false, 'pqz_usr_a', DIMANCHE)).reponses.cause, undefined);
-  assert.equal(await m.lireLePointALaMain('usr_z', true, null, DIMANCHE), null);
+  assert.equal((await lireSonPoint('usr_a', false, 'pqz_usr_a', DIMANCHE)).reponses.cause, undefined);
+  assert.equal(await lireSonPoint('usr_z', true, null, DIMANCHE), null);
 });
 
 test('le passage du Hooper garde le point posé et le rappel', () => {

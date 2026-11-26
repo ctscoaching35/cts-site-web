@@ -647,6 +647,7 @@ const ANCRES_DE_LA_PAGE_ATHLETE = {
   'semaine-qui-arrive': 'haut', // SemaineQuiArrive.tsx : « Réessayer » du dimanche soir, la revue
   'son-profil': 'haut', // CarteSavoir.tsx : « Son profil › », la revue
   'a-faire': 'haut', // PointsPourLui.tsx : la revue (« Ses messages »)
+  'point-du-dimanche': 'haut', // SonPointDuDimanche.tsx : « Arrêt signalé » dit à son point (Mes athlètes, lib/app/lectureDuPoint.ts)
   'geste-profil': 'haut', // CarteSavoir.tsx : « Modifier son profil » de « Ses objectifs » (ObjectifsAVerifier.tsx) mène à sa côte, son tapis, ses critères
   'geste-test-vc': 'haut', // CarteSavoir.tsx : « Saisir le résultat de son test de vitesse critique » (À faire pour lui, lib/app/testsASaisir.ts)
   'geste-reperes': 'haut', // CarteSavoir.tsx : « Saisir le résultat de son test de fréquence cardiaque »
@@ -679,7 +680,7 @@ test('la liste fermée des ancres : chaque lien du code mène à une ancre connu
   for (const a of Object.keys(ANCRES_DE_LA_PAGE_ATHLETE)) assert.ok(liens.has(a), `#${a} n’est lié nulle part`);
   // Les ids que la page de l'athlète pose sous la 9.x : la page, ses composants du haut, la semaine qui arrive, la carte d'entrée.
   const ids = (texte) => [...sansCommentaires(texte).matchAll(/\bid=(?:"([a-z-]+)"|\{[^}]*'([a-z-]+)'[^}]*\})/g)].map((m) => m[1] ?? m[2]);
-  const composants = ['PointsPourLui', 'CarteSavoir', 'LancerSaPreparation', 'ObjectifsAVerifier', 'CarteEntree', 'SemaineQuiArrive'].map((n) => source(`components/app/${n}.tsx`)).join('\n');
+  const composants = ['PointsPourLui', 'SonPointDuDimanche', 'CarteSavoir', 'LancerSaPreparation', 'ObjectifsAVerifier', 'CarteEntree', 'SemaineQuiArrive'].map((n) => source(`components/app/${n}.tsx`)).join('\n');
   const posees = new Set([...ids(page), ...ids(composants)]);
   for (const a of Object.keys(ANCRES_DE_LA_PAGE_ATHLETE)) assert.ok(posees.has(a), `#${a} : pas d’id correspondant sous la 9.x`);
 });
@@ -699,7 +700,7 @@ test('chaque ancre de « Réglages » est posée dans le `details` « Réglages 
   const i9 = page.indexOf('      {v9 ? (\n        <>\n');
   const i8 = page.indexOf('      ) : (\n        <>\n', i9);
   const dehors = idsDe(page.slice(0, i8).replace(plus, ''));
-  const hautDePage = new Set([...idsDe(source('components/app/PointsPourLui.tsx')), ...idsDe(source('components/app/CarteSavoir.tsx')), ...idsDe(source('components/app/LancerSaPreparation.tsx')), ...idsDe(source('components/app/SemaineQuiArrive.tsx')),
+  const hautDePage = new Set([...idsDe(source('components/app/PointsPourLui.tsx')), ...idsDe(source('components/app/CarteSavoir.tsx')), ...idsDe(source('components/app/LancerSaPreparation.tsx')), ...idsDe(source('components/app/SemaineQuiArrive.tsx')), ...idsDe(source('components/app/SonPointDuDimanche.tsx')),
     ...[...sansCommentaires(source('components/app/PointsPourLui.tsx')).matchAll(/'(son-entree)'/g)].map((m) => m[1])]);
   for (const [a, ou] of Object.entries(ANCRES_DE_LA_PAGE_ATHLETE)) {
     if (ou === 'reglages') {

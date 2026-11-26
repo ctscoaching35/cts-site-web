@@ -101,9 +101,9 @@ test('la page 9.x suit cet ordre : (a), (b), (c), (d), puis « Réglages » ; ri
   const sesNoms = { PointsPourLui: 'a_faire', CarteSavoir: 'carte', LancerSaPreparation: 'carte', ObjectifsAVerifier: 'objectifs', semaine: 'semaine_qui_arrive' };
   assert.deepEqual([...new Set(ordre.filter((o) => o !== 'VueDEnsemble').map((o) => sesNoms[o]))], ORDRE_9X.slice(0, 4));
   // Aucun autre bloc dans la branche : pas de carte à part, pas de revue, pas de semaine passée, pas d'entrée.
-  assert.deepEqual([...branche9.matchAll(/<([A-Z][A-Za-z]*)\b/g)].map((m) => m[1]), ['VueDEnsemble', 'PointsPourLui', 'PointDuDimancheALaMain', 'CarteSavoir', 'ObjectifsAVerifier', 'LancerSaPreparation']);
-  // La carte du point du dimanche : d'un coaché à la main seulement (demande du coach du 26/11/2026).
-  assert.ok(branche9.includes('{pointALaMain !== undefined && <PointDuDimancheALaMain point={pointALaMain}'));
+  assert.deepEqual([...branche9.matchAll(/<([A-Z][A-Za-z]*)\b/g)].map((m) => m[1]), ['VueDEnsemble', 'PointsPourLui', 'SonPointDuDimanche', 'CarteSavoir', 'ObjectifsAVerifier', 'LancerSaPreparation']);
+  // Son point du dimanche, en automatique comme à la main (26/11/2026), d'un coaché relié à Nolio.
+  assert.ok(branche9.includes('{sonPoint !== undefined && <SonPointDuDimanche point={sonPoint}'));
   for (const interdit of ['Carte ', 'CarteEntree', 'TableauZones', 'StyleCoureur', 'ProfilAthlete', 'contenuRevue', 'contenuSemainePassee', 'contenuCoursesNolio']) {
     assert.ok(!branche9.includes(interdit), `${interdit} n’est pas en tête sous la 9.x`);
   }

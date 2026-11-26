@@ -462,7 +462,8 @@ test('branché seulement derrière la garde de version : hors de la chaîne du m
     // La page de l'athlète du coach lit les semaines que la v1 a écrites (stockageV9, lireLesSemainesRecentes) pour « Saisir le résultat de son test » (25/11/2026, lib/app/testsASaisir.ts), derrière `v9`.
     // « Mes athlètes » (un mot par coaché, 241, lib/app/motsDesCoaches.ts) lit aussi les semaines écrites, derrière `v9`.
     // La nuit, le réalisé des semaines de la v1 (198, 199, lib/app/realiseDuV1.ts), qui ne fait rien sous la 8.x (scripts/test-realise-v9.mjs).
-    const autorises = nom === 'stockageV9' ? [...famille, 'app/app/coach/athlete/[id]/page.tsx', 'lib/app/motsDesCoaches.ts', 'lib/app/realiseDuV1.ts'] : famille;
+    // L'arrêt dit au point du dimanche (26/11/2026, lib/app/lectureDuPoint.ts), lu par « Mes athlètes » derrière `v9`.
+    const autorises = nom === 'stockageV9' ? [...famille, 'app/app/coach/athlete/[id]/page.tsx', 'lib/app/motsDesCoaches.ts', 'lib/app/realiseDuV1.ts', 'lib/app/lectureDuPoint.ts'] : famille;
     assert.deepEqual(lecteurs.filter((f) => !autorises.includes(f)), [], nom);
   }
 });
