@@ -16,6 +16,7 @@ import {
   etiquettes, groupeUrgent, type DecisionMoteur, type Etiquette, type GroupeUrgent, type LigneUrgente, type Point,
 } from './espaceParAthlete';
 import { lireLesSeriesDuSamedi, TEXTES_SERIES } from './seriesDuSamedi';
+import { lireLesSeriesEncoreEnPlace } from './seriesDuSamediNolio';
 
 // ─── Les textes (pour le coach seul) ──────────────────────────────────────────────────────────────────────────────
 
@@ -66,9 +67,9 @@ export const nombreAFaire = (lignes: LigneUrgente[], series: number): number => 
 // La ligne des séries du samedi (le texte de la carte d'« Urgent », validé avec l'écran « Séries du samedi », le 28/11/2026).
 export const texteDesSeries = (n: number): string => TEXTES_SERIES.carte(n);
 
-// Les séries du samedi à retirer de Nolio (lib/app/seriesDuSamedi.ts, entrée 198 : lues dans la base du site, jamais dans Nolio) : combien, sous la 9.x
+// Les séries du samedi à retirer de Nolio (lib/app/seriesDuSamedi.ts, entrée 198 ; celles que Nolio n'a plus partent, lib/app/seriesDuSamediNolio.ts) : combien, sous la 9.x
 // seulement ; 0 sous la 8.x et quand la base ne se lit pas. `lire` et `aujourdhui` : pour les essais.
-export async function lesSeriesAFaire(coachId: string, v9: boolean, lire: typeof lireLesSeriesDuSamedi = lireLesSeriesDuSamedi,
+export async function lesSeriesAFaire(coachId: string, v9: boolean, lire: typeof lireLesSeriesDuSamedi = lireLesSeriesEncoreEnPlace,
   aujourdhui = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date())): Promise<number> {
   if (!v9) return 0;
   try {

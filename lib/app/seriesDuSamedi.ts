@@ -7,7 +7,7 @@
  *   - un acheteur : `nolio_envois` (semaine « questionnaires », la ligne `questionnaire:semaine`, avec le jour où elle a été posée).
  * Une ligne par athlète, avec le week-end où la série tombe. Le Hooper n'est pas dans cette liste : il reste en place.
  *
- * Ce que la base ne sait pas : si le coach l'a déjà retirée (la liste ne s'en vide qu'une fois le week-end passé) ni, pour une série posée le samedi
+ * Ce que la base ne sait pas : si le coach l'a déjà retirée (lib/app/seriesDuSamediNolio.ts le relit dans Nolio, depuis le 26/11/2026 ; sans cela, la liste ne s'en vide qu'une fois le week-end passé) ni, pour une série posée le samedi
  * même, si elle est au samedi ou au dimanche : la ligne dit les deux jours.
  *
  * La construction est pure (seriesARetirer) ; la lecture de la base, côté serveur, est à part (lireLesSeriesDuSamedi).

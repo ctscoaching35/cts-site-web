@@ -7,6 +7,7 @@ import { moteurEstV9 } from '@/lib/app/moteurEnLigne';
 import { exigerCoach } from '@/lib/app/nolio';
 import { dateLongue } from '@/lib/app/plan';
 import { lireLesSeriesDuSamedi, TEXTES_SERIES as T } from '@/lib/app/seriesDuSamedi';
+import { lireLesSeriesEncoreEnPlace } from '@/lib/app/seriesDuSamediNolio';
 import { motsDuCoach } from '@/lib/app/motsDuCoach';
 import { espaceCoachOuvert } from '@/lib/app/supabase';
 
@@ -16,15 +17,13 @@ export const dynamic = 'force-dynamic';
 const aujourdhuiParis = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
 
 // « SÉRIES DU SAMEDI À RETIRER » (entrée 198 du coach, 24/11/2026) : une ligne par athlète dont « Ta semaine prochaine » est encore en place dans Nolio,
-// construite par la base du site seule (lib/app/seriesDuSamedi.ts) : le site ne lit pas Nolio et n'y retire rien, c'est le coach qui retire. Les textes de
+// construite par la base du site (lib/app/seriesDuSamedi.ts) ; sous la 9.x, celles que Nolio n'a plus en partent à l'ouverture (lib/app/seriesDuSamediNolio.ts). Le site n'y retire rien, c'est le coach qui retire. Les textes de
 // cet écran sont NOUVEAUX : le coach les valide en le regardant, le 28/11/2026.
 export default async function SeriesDuSamedi() {
   if (!espaceCoachOuvert()) notFound();
   const coach = await exigerCoach();
-  const [series, enLigne] = await Promise.all([
-    lireLesSeriesDuSamedi(coach.compteId, aujourdhuiParis()).catch(() => null),
-    moteurEstV9().catch(() => false),
-  ]);
+  const enLigne = await moteurEstV9().catch(() => false);
+  const series = await (enLigne ? lireLesSeriesEncoreEnPlace : lireLesSeriesDuSamedi)(coach.compteId, aujourdhuiParis()).catch(() => null);
   return (
     <CadreCoach actif="urgent">
       <div>

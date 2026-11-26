@@ -7,7 +7,7 @@ import { nombreAFaire, TEXTES_A_FAIRE, texteDesSeries } from '@/lib/app/espaceCo
 // « À FAIRE », EN HAUT DE « MES ATHLÈTES », SOUS LA 9.x SEULEMENT (décision 220 du coach, 24/11/2026 : « un seul endroit pour ce qui est à faire ») :
 // « Urgent » est fondu ici. Les mêmes points (espace.urgent), les mêmes gestes (Geste) et le même « Réglé » (Regle) qu'avant, une ligne par point,
 // à la suite, sans les quatre groupes ; le nom ouvre la page de l'athlète. La ligne des séries du samedi à retirer de Nolio (entrée 198, lues par
-// lib/app/espaceCoachSimple.ts) est la première quand il y en a : elle n'a pas de « Réglé », elle s'en va d'elle-même le week-end passé. Rien à faire : une ligne qui le dit.
+// lib/app/espaceCoachSimple.ts) est la première quand il y en a : elle n'a pas de « Réglé », elle s'en va d'elle-même, retirée dans Nolio ou le week-end passé. Rien à faire : une ligne qui le dit.
 // Un point n'est dit qu'ici : la colonne « Ce qui l'attend » du tableau, le bandeau du dimanche et le menu ne le redisent pas. Pour le téléphone d'abord.
 export default function AFaire({ lignes, series }: { lignes: LigneUrgente[]; series: number }) {
   const n = nombreAFaire(lignes, series);
