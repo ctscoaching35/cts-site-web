@@ -4,6 +4,7 @@
  * retrait efface la colonne. Rien n'est réécrit dans Nolio et rien ne part au moteur. Sous la 8.x : rien. Côté serveur seulement.
  */
 import { destinataire } from './coaching';
+import { seanceTenueActive } from './seanceTenue';
 import { indiceHooper, objectifEcrit, type Compte } from './ecriture';
 import { moteurEstV9 } from './moteurEnLigne';
 import { listeNolio, nolioConfigure, sansVitesseImpossible, SPORTS_COURSE } from './nolio';
@@ -66,7 +67,8 @@ export async function resumerLesSemainesDuV1(budgetMs = 120_000): Promise<Compte
           : [];
         const hooper = valeurs.filter((v) => typeof v.value === 'number').sort((x, y) => x.date_start.localeCompare(y.date_start)).at(-1)?.value ?? null;
         const familleDe = new Map((l.donnees?.jours ?? []).flatMap((j) => (j.seance?.id && j.seance.famille ? [[j.seance.id, j.seance.famille] as const] : [])));
-        const realise = realiseDeLaSemaineV9({ numero: l.numero, lundi: du, type: typeDeLaSemaineV9(l.donnees ?? {}) || null, prevues, reelles, idDuMoteur, familleDe, pasFaites, hooper });
+        const realise = realiseDeLaSemaineV9({ numero: l.numero, lundi: du, type: typeDeLaSemaineV9(l.donnees ?? {}) || null, prevues, reelles, idDuMoteur, familleDe, pasFaites, hooper,
+          lireTenue: d.moi || seanceTenueActive() });
         const { error: ecriture } = await service.from('semaines_ecrites').update({ realise }).eq('plan_id', planId).eq('numero', l.numero);
         if (ecriture) throw new Error(ecriture.message);
         resumees += 1;

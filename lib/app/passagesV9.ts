@@ -24,8 +24,11 @@ import {
   ecrireLaSemaineDuLundi, ecrireOuReprendre, passeDuLundiSurUnPlan, pointSansReponse, poserLeQuestionnaireDuDimanche, type ContextePlan, type Resultat, type SortDeLaSemaine,
 } from './passeUnPlanV9';
 import { rappelActif } from './rappelDimanche';
-import { heureDuRappelV9, TEXTE_RAPPEL_V9_VALIDE, texteDuRappelV9 } from './rappelDimancheV9';
+import { moteurAuMoins91 } from './moteurEnLigne';
+import { seanceTenueActive } from './seanceTenue';
+import { heureDuRappelV9, jourDeLaSeanceNonRemontee, messageDuRappelV9, TEXTE_RAPPEL_V9_VALIDE } from './rappelDimancheV9';
 import type { Semaine } from './plan';
+import type { Prevue, Reelle } from './resumeSemaine';
 
 const ajouterJours = (iso: string, n: number) => new Date(Date.parse(`${iso}T12:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
 const jourDeLaSemaine = (iso: string) => new Date(`${iso}T12:00:00Z`).getUTCDay(); // 0 : dimanche, 1 : lundi
@@ -86,7 +89,9 @@ async function contextePlan(planId: string): Promise<{ c: ContextePlan; o: Objec
           const r = await appelNolio('GET', `planned/trainings/${id}/${detail}`);
           return { statut: r.statut, workout: (r.corps as { workout?: NoeudPlanifie[] } | null)?.workout };
         });
-        const vu = nolioDepuisNolio({ lundis, planifiees: completes, reelles, hooper, parNolio, accordLecture: o.accordLecture, sportsDeCourse: SPORTS_COURSE, joursDeCourse });
+        // « Séance tenue ? » (262) : à l'essai sur « (toi) » seulement (`q` vide), puis partout quand CTS_SEANCE_TENUE vaut « oui ».
+        const vu = nolioDepuisNolio({ lundis, planifiees: completes, reelles, hooper, parNolio, accordLecture: o.accordLecture, sportsDeCourse: SPORTS_COURSE, joursDeCourse,
+          relierSansLien: await moteurAuMoins91(), lireTenue: !q || seanceTenueActive() });
         // Au premier passage, sans les semaines sans séance (vueDuDepart).
         return depart ? vueDuDepart(vu) : vu;
       } catch (e) {
@@ -221,8 +226,23 @@ export const passageDuLundiV9 = (budgetMs = 240_000, jour = aujourdhuiParis()): 
 export const questionnaireDuMatinV9 = (budgetMs = 120_000, jour = aujourdhuiParis()): Promise<Compte[]> =>
   jourDeLaSemaine(jour) === 0 ? passer(budgetMs, 'questionnaire non posé', (c) => poserLeQuestionnaireDuDimanche(c, jour)) : Promise.resolve([]);
 
-// Le rappel du dimanche (décision 206 du coach, 24/11/2026 ; vers 19 h, Paris, par la décision 211) : un seul message Nolio programmé par athlète et par dimanche, seulement à qui n'a pas répondu à son
-// point du dimanche posé à midi ; plus de rappel pour les séances non remontées. Même interrupteur que sous la 8.x (CTS_RAPPEL_DIMANCHE : coupé, aucune lecture ni aucun appel),
+// La plus récente séance de course de la semaine non remontée (261, 270), son jour ; null sans séance manquante, ou si Nolio ne se lit pas (« une lecture qui échoue ne rappelle personne »).
+async function seanceNonRemontee(usr: string, jour: string): Promise<string | null> {
+  try {
+    const d = await destinataire(usr);
+    const qui = d.moi ? '' : `&athlete=${d.usr}`;
+    const lundi = ajouterJours(jour, -6);
+    const planifiees = await listeNolio<Prevue>(`planned/trainings/?date_from=${lundi}&date_to=${jour}${qui}`);
+    const reelles = await listeNolio<Reelle>(`real/trainings/?date_from=${lundi}&date_to=${jour}&fields=id,date_start,sport,duration,planned${qui}`);
+    return jourDeLaSeanceNonRemontee({ lundi, jour, planifiees, reelles, sportsDeCourse: SPORTS_COURSE });
+  } catch (e) {
+    console.error('Séances de la semaine non lues pour le rappel :', e instanceof Error ? e.message : e);
+    return null;
+  }
+}
+
+// Le rappel du dimanche (décision 206 du coach, 24/11/2026 ; vers 19 h, Paris, par la décision 211) : un seul message Nolio programmé par athlète et par dimanche, à qui n'a pas répondu à son
+// point du dimanche posé à midi et, sous le 9.1 (261, 270), à qui a une séance de course non remontée. Même interrupteur que sous la 8.x (CTS_RAPPEL_DIMANCHE : coupé, aucune lecture ni aucun appel),
 // même clé « rappel:<dimanche> » (nolio_envois : un seul par dimanche, aussi après un retour à la 8.x), même programmation du message. Une lecture de Nolio qui échoue ne rappelle personne.
 export async function rappelDuDimancheV9(budgetMs = 240_000, maintenant = new Date()): Promise<{ actif: boolean; texteValide: boolean; comptes: Compte[] }> {
   if (!rappelActif()) return { actif: false, texteValide: TEXTE_RAPPEL_V9_VALIDE, comptes: [] };
@@ -233,6 +253,10 @@ export async function rappelDuDimancheV9(budgetMs = 240_000, maintenant = new Da
   if (!heure) return { actif: true, texteValide: TEXTE_RAPPEL_V9_VALIDE, comptes: [{ plan: '', quoi: 'rappel non envoyé : trop tard dans l’après-midi' }] };
   const service = clientService();
   const debut = Date.now();
+  // 261 et le 9.1 partent ensemble : sous le 9.0, une séance non remontée compte comme faite, rien n'en est dit.
+  const avecLesSeances = await moteurAuMoins91();
+  // Un seul rappel par athlète et par dimanche, même avec deux plans.
+  const rappeles = new Set<string>();
   for (const planId of await plansAPasser()) {
     if (Date.now() - debut > budgetMs) {
       comptes.push({ plan: planId, quoi: 'rappel remis : temps épuisé' });
@@ -244,18 +268,23 @@ export async function rappelDuDimancheV9(budgetMs = 240_000, maintenant = new Da
       const cx = await contextePlan(planId);
       if (!cx) continue;
       coache = cx.o.coache;
-      if (!(await pointSansReponse(cx.c, jour))) continue;
+      const usr = String(cx.o.nolioAthlete);
+      if (rappeles.has(usr)) continue;
+      const sansReponse = await pointSansReponse(cx.c, jour);
+      const message = messageDuRappelV9({ coache: cx.o.coache, sansReponse, jourNonRemonte: avecLesSeances ? await seanceNonRemontee(usr, jour) : null });
+      if (!message) continue;
       // Un seul par dimanche : la clé se prend avant l'envoi.
       cle = `rappel:${jour}`;
       const { data: prise } = await service.from('nolio_envois')
         .upsert({ plan_id: planId, semaine: cle, coach_id: cx.o.coachId, seances: [] }, { onConflict: 'plan_id,semaine', ignoreDuplicates: true }).select('plan_id');
-      if (!prise?.length) { cle = null; continue; }
+      if (!prise?.length) { cle = null; rappeles.add(usr); continue; }
       const d = await destinataire(cx.o.nolioAthlete);
       const r = await appelNolio('POST', 'planned/messages/', {
-        description: texteDuRappelV9(cx.o.coache), date_start: jour, hour_start: heure, show_to_the_athlete: false, ...(d.moi ? {} : { athletes: [d.usr] }),
+        description: message, date_start: jour, hour_start: heure, show_to_the_athlete: false, ...(d.moi ? {} : { athletes: [d.usr] }),
       });
       if (r.statut !== 201 && r.statut !== 200) throw new Error(refusNolio(r, 'le rappel du dimanche'));
       cle = null;
+      rappeles.add(usr);
       comptes.push({ plan: planId, quoi: `rappel programmé à ${heure}`, coache });
     } catch (e) {
       // Rien d'envoyé : la clé se libère, un nouvel appel peut le refaire.

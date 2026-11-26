@@ -2,12 +2,13 @@
  * Le résumé d'une semaine lue dans Nolio (semainesNolio.ts ; décision coach du 20/10/2026, « tableau de bord
  * complet »), dans la forme de semaines_ecrites.realise. Sans appel : une fonction pure.
  */
+import type { QuestionDeDebrief } from './seanceTenue';
 import type { Realise } from './ecriture';
 
 export type Prevue = { id: string; date_start: string; sport?: string | null; duration?: { value?: number } | null; rpe?: number | null };
 export type Reelle = {
   id: string; date_start: string; sport?: string | null; duration?: { value?: number } | null; elevation_gain?: { value?: number } | null;
-  distance?: { value?: number; unit?: string } | number | null; planned?: string | null; debrief?: { rpe?: number | null } | null;
+  distance?: { value?: number; unit?: string } | number | null; planned?: string | null; debrief?: { rpe?: number | null; questions?: QuestionDeDebrief[] | null } | null;
 };
 
 const minutes = (d: { value?: number } | null | undefined) => (typeof d?.value === 'number' ? Math.round(d.value / 60) : null);

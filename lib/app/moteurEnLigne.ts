@@ -11,10 +11,10 @@
  */
 import { API_URL } from '@/lib/plan';
 import { enTetesMoteur } from './cleMoteur';
-import { estMoteurV9 } from './versionDuMoteur';
+import { estAuMoins91, estMoteurV9 } from './versionDuMoteur';
 
 const VALIDITE_MS = 5 * 60_000;
-let gardee: { le: number; v9: boolean } | null = null;
+let gardee: { le: number; v9: boolean; v91: boolean } | null = null;
 
 async function lireLaVersion(): Promise<unknown> {
   // Un délai : le menu de l'espace coach lit la version à chaque page (décision 220) ; un moteur muet ne doit pas la bloquer. Sans réponse à temps : la dernière lecture, sinon une 8.x (ci-dessous).
@@ -34,8 +34,14 @@ export async function moteurEstV9(lire: () => Promise<unknown> = lireLaVersion, 
   // Sans version lisible (réseau, réponse sans `version_moteur`) : la dernière lecture, sinon une 8.x ; rien n'est retenu.
   if (typeof version !== 'string' || !version.trim()) return gardee?.v9 ?? false;
   const v9 = estMoteurV9(version);
-  gardee = { le: maintenant, v9 };
+  gardee = { le: maintenant, v9, v91: estAuMoins91(version) };
   return v9;
+}
+
+// Le moteur en ligne est-il la 9.1 ou après ? La même lecture, gardée avec elle ; sans version lue : non.
+export async function moteurAuMoins91(lire: () => Promise<unknown> = lireLaVersion, maintenant = Date.now()): Promise<boolean> {
+  await moteurEstV9(lire, maintenant);
+  return gardee?.v91 ?? false;
 }
 
 export const oublierLaVersionDuMoteur = () => { gardee = null; };

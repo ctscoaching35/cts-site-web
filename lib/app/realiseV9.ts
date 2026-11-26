@@ -6,13 +6,14 @@
  * NOLIO FAIT FOI : le prévu est ce que Nolio montre cette semaine-là (une séance que le coach retire ou change compte comme il l'a laissée, une séance qu'il ajoute compte). La semaine du moteur ne sert qu'à
  * dire quelles séances sont les siennes, et lesquelles sont clés.
  * UNE SÉANCE EST FAITE quand une activité y est reliée par Nolio ; une activité reliée à rien l'est à la séance prévue non faite la plus proche, en jour puis en durée, à ±25 % (A2).
- * UNE SÉANCE CLÉ EST RÉUSSIE quand elle est faite sans écart (199) : ni cochée « pas faite » au point du dimanche, ni écourtée (moins de la moitié de sa durée), ni trop dure (un RPE donné au moins 2 au-dessus
+ * UNE SÉANCE CLÉ EST RÉUSSIE quand elle est faite sans écart (199) : ni tenue en partie ou pas du tout (262, sa réponse à « Séance tenue ? »), ni cochée « pas faite » au point du dimanche, ni écourtée (moins de la moitié de sa durée), ni trop dure (un RPE donné au moins 2 au-dessus
  * du prévu, 3 pour la sortie longue ; jamais au-delà de 10). Écourtée ou trop dure, elle compte comme faite, pas comme réussie.
  * LA CHARGE (RPE × minutes) prend le RPE donné, sinon le RPE prévu de la séance reliée (`rpe_lu` dit si un seul a été donné) ; `charge_tenue` compte chaque séance prévue au plus à sa charge prévue.
  */
 import { FAMILLES_CLES } from './dimancheV9';
 import type { Realise } from './ecriture';
 import type { Prevue, Reelle } from './resumeSemaine';
+import { tenueDeLaSeance } from './seanceTenue';
 
 export const ECOURTEE_SOUS = 0.5;
 export const TROP_DUR_RPE = 2;
@@ -27,8 +28,8 @@ const somme = (liste: number[]) => liste.reduce((n, x) => n + x, 0);
 const jour = (iso: string) => Date.parse(`${iso.slice(0, 10)}T12:00:00Z`);
 
 // Quelle activité a fait quelle séance prévue : le lien de Nolio d'abord (la plus longue s'il y en a deux), puis, pour une activité reliée à rien, la séance prévue encore sans activité la plus proche.
-export function relier(prevues: Prevue[], reelles: Reelle[]): Map<string, Reelle> {
-  const faites = new Map<string, Reelle>();
+export function relier<R extends Reelle>(prevues: Prevue[], reelles: R[]): Map<string, R> {
+  const faites = new Map<string, R>();
   const connues = new Set(prevues.map((p) => p.id));
   for (const r of reelles) {
     if (!r.planned || !connues.has(r.planned)) continue;
@@ -47,7 +48,7 @@ export function relier(prevues: Prevue[], reelles: Reelle[]): Map<string, Reelle
   return faites;
 }
 
-export function realiseDeLaSemaineV9({ numero, lundi, type, prevues, reelles, idDuMoteur, familleDe, pasFaites, hooper }: {
+export function realiseDeLaSemaineV9({ numero, lundi, type, prevues, reelles, idDuMoteur, familleDe, pasFaites, hooper, lireTenue = false }: {
   numero: string; lundi: string; type: string | null;
   // La course à pied et le trail seulement, prévus et réalisés (la même mesure que les autres résumés).
   prevues: Prevue[]; reelles: Reelle[];
@@ -55,6 +56,8 @@ export function realiseDeLaSemaineV9({ numero, lundi, type, prevues, reelles, id
   idDuMoteur: ReadonlyMap<string, string>; familleDe: ReadonlyMap<string, string>;
   // Les séances clés cochées « pas faite » à un point du dimanche (leurs ids).
   pasFaites: ReadonlySet<string>; hooper: number | null;
+  // « Séance tenue ? » (262), à l'essai sur « (toi) » puis partout (lib/app/seanceTenue.ts).
+  lireTenue?: boolean;
 }): Realise {
   const p = prevues.filter((x) => minutes(x.duration) > 0);
   const faites = relier(p, reelles);
@@ -71,6 +74,8 @@ export function realiseDeLaSemaineV9({ numero, lundi, type, prevues, reelles, id
   const reussie = (x: Prevue) => {
     const r = faites.get(x.id);
     if (!r || pasFaites.has(idDuMoteur.get(x.id) ?? '')) return false;
+    const tenue = lireTenue ? tenueDeLaSeance(r.debrief?.questions) : null;
+    if (tenue && tenue !== 'entierement') return false;
     if (minutes(r.duration) < ECOURTEE_SOUS * minutes(x.duration)) return false;
     const rpe = r.debrief?.rpe;
     const ecart = LONGUES.includes(familleDeLaPrevue(x)) ? TROP_DUR_RPE_SL : TROP_DUR_RPE;

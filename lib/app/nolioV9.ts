@@ -1,4 +1,4 @@
-// Fonctions pures, sans réseau ni base : PRÉPARÉ, PAS BRANCHÉ (rien ne les lit encore ; scripts/test-nolio-v9.mjs).
+// Fonctions pures, sans réseau ni base (scripts/test-nolio-v9.mjs).
 /**
  * CE QUE NOLIO MONTRE, POUR LE MOTEUR v1 (CONTRAT_API_CTS.md, « MOTEUR v1 », entrée `nolio` de `POST /v1/semaine`, `/v1/questionnaire` et
  * `/v1/reponse-tardive`) : jusqu'à 13 semaines, de la plus ancienne à la plus récente, chacune avec ses séances (identifiant posé par le
@@ -14,8 +14,12 @@
  *   - `faite` : vrai quand une activité est reliée à la séance ; jamais `false` (confirmé par le moteur v1, 24/11/2026 : c'est permis ; une séance non
  *     lue compte comme faite, R5 ; « pas faite » vient de `reponses.cles_pas_faites` et de /v1/reponse-tardive) ; sinon `null` ;
  *   - le RPE et le ressenti ne se lisent qu'avec l'accord de lecture ; la durée faite, sans.
+ * SOUS LE 9.1 (261 et 262, 26/11/2026) : une séance de course qui ne remonte pas est manquée, le moteur le lit lui-même ; une activité que Nolio n'a reliée à rien est donc reliée ici à la séance prévue sans
+ * activité la plus proche (A2). Et la réponse à « Séance tenue ? » part en `tenue` (lib/app/seanceTenue.ts), avec l'accord de lecture.
  */
 import { nolioPourLeMoteur, SEMAINES_LUES_AU_PLUS, type EtapeAPlat, type NolioVu, type SeanceVue, type SemaineVue } from './moteurV9';
+import { relier } from './realiseV9';
+import { tenueDeLaSeance, type QuestionDeDebrief } from './seanceTenue';
 
 export type NoeudPlanifie = {
   kind?: string; intensity?: string; duration?: { value?: number; unit?: string } | null;
@@ -26,7 +30,7 @@ export type PlanifieeLue = {
 };
 export type ReelleLue = {
   id: string; date_start: string; planned?: string | null; sport?: string | null; duration?: { value?: number } | null;
-  debrief?: { rpe?: number | null; feeling?: number | null } | null;
+  debrief?: { rpe?: number | null; feeling?: number | null; questions?: QuestionDeDebrief[] | null } | null;
 };
 export type HooperLu = { date_start: string; value: number | null };
 
@@ -99,17 +103,20 @@ const ajouterJours = (iso: string, n: number) => new Date(Date.parse(`${iso}T12:
  * hooper : tout ce qui a été lu sur leur fenêtre ; parNolio : l'identifiant Nolio d'une séance du moteur vers son id (« S9-mardi ») ;
  * sportsDeCourse : les sports qui comptent comme de la course ; joursDeCourse : les dates des courses.
  */
-export function nolioDepuisNolio({ lundis, planifiees, reelles, hooper = [], parNolio, accordLecture, sportsDeCourse, joursDeCourse = new Set() }: {
+export function nolioDepuisNolio({ lundis, planifiees, reelles, hooper = [], parNolio, accordLecture, sportsDeCourse, joursDeCourse = new Set(), relierSansLien = false, lireTenue = false }: {
   lundis: string[]; planifiees: PlanifieeLue[]; reelles: ReelleLue[]; hooper?: HooperLu[]; parNolio: Map<string, string>;
   accordLecture: boolean; sportsDeCourse: readonly string[]; joursDeCourse?: Set<string>;
+  // relierSansLien : sous le 9.1 (261). lireTenue : « Séance tenue ? » (262), à l'essai sur « (toi) » puis partout.
+  relierSansLien?: boolean; lireTenue?: boolean;
 }): NolioVu {
   const dansLaSemaine = (iso: string, lundi: string) => JOUR(iso) >= lundi && JOUR(iso) <= ajouterJours(lundi, 6);
   const semaines: SemaineVue[] = [...new Set(lundis)].map((lundi) => {
     const reellesDeLaSemaine = reelles.filter((r) => dansLaSemaine(r.date_start, lundi));
-    const seances: SeanceVue[] = planifiees
-      .filter((p) => estEnvoyee(p, [lundi], parNolio, sportsDeCourse))
+    const prevues = planifiees.filter((p) => estEnvoyee(p, [lundi], parNolio, sportsDeCourse));
+    const reliees = relierSansLien ? relier(prevues, reellesDeLaSemaine.filter((r) => r.planned || sportsDeCourse.includes(String(r.sport)))) : null;
+    const seances: SeanceVue[] = prevues
       .map((p) => {
-        const reelle = reellesDeLaSemaine.find((r) => r.planned === p.id);
+        const reelle = reliees ? reliees.get(p.id) : reellesDeLaSemaine.find((r) => r.planned === p.id);
         const rpe = accordLecture ? reelle?.debrief?.rpe : null;
         const ressenti = accordLecture ? reelle?.debrief?.feeling : null;
         return {
@@ -118,6 +125,7 @@ export function nolioDepuisNolio({ lundis, planifiees, reelles, hooper = [], par
           faite: reelle ? true : null, duree_faite_min: reelle ? minutes(reelle.duration) : null,
           rpe: typeof rpe === 'number' ? rpe : null, ressenti: typeof ressenti === 'number' ? ressenti : null,
           course: joursDeCourse.has(JOUR(p.date_start)),
+          ...(lireTenue && accordLecture && tenueDeLaSeance(reelle?.debrief?.questions) ? { tenue: tenueDeLaSeance(reelle?.debrief?.questions)! } : {}),
         };
       });
     return {

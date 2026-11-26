@@ -15,6 +15,7 @@
  * `GET /v1/config` rend (`version_moteur`).
  */
 import { lireCote, TERRAIN_DE_COTE } from '../cote';
+import type { Tenue } from './seanceTenue';
 import type { ReponsesDimanche, VersionDimanche } from './dimancheV9';
 import { lireGpx } from './gpxV9';
 import { estMoteurV9 } from './versionDuMoteur';
@@ -134,6 +135,8 @@ export type EtapeAPlat = { s: number; rpe: number | null; type: 'warmup' | 'work
 export type SeanceVue = {
   id?: string | null; date: string; titre: string; duree_min: number | null; etapes: EtapeAPlat[]; faite: boolean | null;
   duree_faite_min: number | null; rpe: number | null; ressenti: number | null; course: boolean;
+  // Sa réponse à « Séance tenue ? » (262, lue par le 9.1 ; absente : entièrement).
+  tenue?: Tenue;
 };
 export type SemaineVue = { lundi: string; seances: SeanceVue[]; hooper: { date: string; valeur: number }[]; activites_vues: number };
 export type NolioVu = { semaines: SemaineVue[] };

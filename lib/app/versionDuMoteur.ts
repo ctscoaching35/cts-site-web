@@ -4,3 +4,9 @@
  * Une 8.x, ou une valeur qui ne se lit pas, n'en est pas une.
  */
 export const estMoteurV9 = (versionMoteur: unknown): boolean => typeof versionMoteur === 'string' && /^9(\.|$)/.test(versionMoteur.trim());
+
+// La 9.1 et après (261 et 262 : une séance de course non remontée est manquée, « Séance tenue ? ») ; une valeur qui ne se lit pas n'en est pas une.
+export const estAuMoins91 = (versionMoteur: unknown): boolean => {
+  const m = /^(\d+)\.(\d+)/.exec(typeof versionMoteur === 'string' ? versionMoteur.trim() : '');
+  return Boolean(m) && (Number(m![1]) > 9 || (Number(m![1]) === 9 && Number(m![2]) >= 1));
+};
