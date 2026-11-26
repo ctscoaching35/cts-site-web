@@ -79,6 +79,16 @@ test('le dimanche matin : le même point, pour ceux à la main seulement ; la ca
   assert.equal(poses('planned/quizzes/').length, 2, 'une fois');
 });
 
+test('le texte du point : à la main, sans « dimanche soir » (choix « B » du coach) ; en automatique, il reste', async () => {
+  monde();
+  await m.poserLesPointsALaMain(DIMANCHE);
+  const description = poses('planned/quizzes/')[0].description;
+  assert.ok(description.endsWith('Une minute, d’ici dimanche 21 h : je prépare tes séances de la semaine prochaine à partir de tes réponses.'));
+  assert.ok(!description.includes('dimanche soir'));
+  const { questionnaireDuDimanche } = await charge('dimancheV9');
+  assert.ok(questionnaireDuDimanche({ version: 'normale', coache: true }).description.includes('je prépare tes séances de la semaine prochaine dimanche soir à partir de tes réponses.'));
+});
+
 test('à 19 h : le même rappel à qui n’a pas répondu, une fois ; jamais de rappel de séance', async () => {
   monde({ resultats: { usr_a: [{ id: 'r', name: 'Ton point du dimanche', quiz_planned: 'pqz_usr_a', date_start: DIMANCHE }] } });
   await m.poserLesPointsALaMain(DIMANCHE);
