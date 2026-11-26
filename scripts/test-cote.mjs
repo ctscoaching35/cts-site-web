@@ -37,6 +37,7 @@ const plan = await import(`${RACINE}lib/plan.ts`);
 const profil = await import(`${RACINE}lib/app/profilEntrainement.ts`);
 const regles = await import(`${RACINE}lib/app/coachingRegles.ts`);
 const moteurV9 = await import(`${RACINE}lib/app/moteurV9.ts`);
+const carteSavoir = await import(`${RACINE}lib/app/carteSavoir.ts`);
 
 const lire = (chemin) => readFileSync(`${RACINE}${chemin}`, 'utf8');
 
@@ -55,6 +56,18 @@ test('lireCote : le plancher est 1 min, comme le moteur (24/11/2026) : une répo
 test('lireCote : ce qui ne se lit pas n’est pas deviné, et « pas de côte » n’est plus une réponse', () => {
   for (const brut of ['', '   ', null, undefined, 'abc', 'douze', '-3', -3, '241', 241, NaN, Infinity, '1,2,3', '12 h', '12 km', '1m30', 'aucune', 'Aucune', 'pas de côte', {}, [], true])
     assert.equal(cote.lireCote(brut), null, JSON.stringify(brut));
+});
+
+test('lireCote : des minutes et des secondes, au dixième (vu en ligne le 26/11/2026 : « 1min30 » comptait comme une côte absente)', () => {
+  for (const brut of ['1min30', '1 min 30', '1 min 30 s', '1minute30', '1 mn 30', '1:30', '1 : 30', '1:30 min', "1'30", '1’30', '1’30"', "1'30''", '1′30', '1′30″', ' 1MIN30 ', '1\u00a0min\u00a030'])
+    assert.equal(cote.lireCote(brut), 1.5, brut);
+  assert.equal(cote.lireCote('2:20'), 2.3);
+  assert.equal(cote.lireCote("12'45"), 12.8);
+  assert.equal(cote.lireCote('0:45'), 1, 'sous 1 min, le plancher');
+  assert.equal(cote.coteMaxDe('1min30'), '1m30');
+  assert.equal(cote.coteEnClair('1:30'), '1,5 min');
+  for (const brut of ['1:75', '1min90', '1:3', '1,5min30', '1 30', '1:30:00', '300:00', 'min30', '1h30', '1m30'])
+    assert.equal(cote.lireCote(brut), null, brut);
 });
 
 // ─── Les tranches et l'ancien terrain ───────────────────────────────────────────────────────────────
@@ -189,6 +202,33 @@ test('fiche : sans nombre lu, la phrase de ce qui manque ; les quatre cases d’
 test('fiche : le tapis reste facultatif', () => {
   assert.equal(profilLu({ cote_min: '12', tapis: 'oui' }).profil.tapis, 'oui');
   assert.equal(profilLu({ cote_min: '12' }).profil.tapis, 'non');
+});
+
+test('fiche, carte du coach, demande : « 1min30 » s’enregistre en 1,5 ; ce qui ne se lit pas est dit, jamais enregistré', () => {
+  const r = profilLu({ cote_min: '1min30' });
+  assert.deepEqual([r.profil.cote_min, r.profil.terrain], ['1.5', 'vallonne']);
+  const carte = (cote_min) => carteSavoir.profilAvecLaCarte({}, carteSavoir.lireSaisieCoureur(formulaire({ cote_min })));
+  assert.equal(carte("1'30").profil.cote_min, '1.5');
+  assert.equal(carte('1 min trente').erreur, cote.TEXTES_COTE.illisibleSa);
+  assert.equal(carteSavoir.erreurDeLaCarte({ cote_min: '1:30' }, null), null);
+  assert.equal(carteSavoir.erreurDeLaCarte({ cote_min: '1m30' }, null), cote.TEXTES_COTE.illisibleSa);
+  assert.equal(demande({ cote_min: '1:30' }).demande.reponses.cote_min, '1.5');
+});
+
+test('les champs de la côte sont des champs de texte : un champ numérique vidait « 1min30 » sans rien dire', () => {
+  for (const [fichier, repere] of [['components/plan/Questionnaire.tsx', 'id="cote"'], ['components/app/ProfilAthlete.tsx', 'name="cote_min"'],
+    ['components/app/FormulaireCoaching.tsx', 'aria-label={Q.terrain.cote.unite}']]) {
+    const ligne = lire(fichier).split('\n').find((l) => l.includes(repere) && l.includes('<input'));
+    assert.ok(ligne?.includes('type="text"') && ligne.includes('inputMode="decimal"'), fichier);
+  }
+  // L'achat : la côte illisible bloque l'envoi et se dit, sous le champ aussi.
+  const q = lire('components/plan/Questionnaire.tsx');
+  assert.ok(q.includes("ref={(el) => el?.setCustomValidity(c.cote_min.trim() && lireCote(c.cote_min) === null ? textes.cote.illisible : '')}"));
+  assert.ok(q.includes('{(coteQuittee || tente) && c.cote_min.trim() && lireCote(c.cote_min) === null && <p role="alert"'));
+  // La carte du coach et les deux formulaires disent le refus.
+  assert.ok(lire('components/app/CarteSavoir.tsx').includes('const erreur = erreurDeLaCarte(apres, modifiable);'));
+  assert.ok(lire('components/app/ProfilAthlete.tsx').includes('{etat?.message && <p'));
+  assert.ok(lire('components/app/FormulaireCoaching.tsx').includes('{erreur && <p role="alert"'));
 });
 
 test('fiche : le profil se relit en clair, ses minutes ou, à défaut, sa réponse d’avant', () => {
