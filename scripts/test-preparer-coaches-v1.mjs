@@ -111,7 +111,10 @@ test('la route de « Modifier » : seulement pour un objectif parti, derrière l
   const route = source('app/app/coach/athletes/route.ts');
   assert.equal((route.match(/avecLesEntreesGardees\(/g) ?? []).length, 1);
   assert.match(route, /const gardes = ancien\.demarre_le && \(await moteurEstV9\(\)\) \? avecLesEntreesGardees\(parametres, anciensParametres\) : parametres;/);
-  assert.match(route, /body: JSON\.stringify\(\{ parametres: gardes \}\)/, 'le moteur reçoit ce qui sera gardé');
+  // Le moteur reçoit ce qui sera gardé : sous la 9.x, mis à plat comme au dimanche (scripts/test-modifier-objectif-v9.mjs).
+  assert.match(route, /body: JSON\.stringify\(\{ parametres: await pourLeMoteur\(ancien\.id, gardes, donnees, true\) \}\)/);
+  assert.match(route, /body: JSON\.stringify\(\{ parametres: await pourLeMoteur\(achete\.id, parametres, donnees, false\) \}\)/);
+  assert.match(route, /if \(!\(await moteurEstV9\(\)\)\) return parametres;/, 'sous la 8.x, la forme rangée');
   assert.match(route, /intake: c2\.intake \?\? \{\}, parametres: gardes, trame: null,/, 'et c’est cela qui est gardé');
   assert.match(route, /import \{ avecLesEntreesGardees \} from '@\/lib\/app\/entreesGardees';/);
 });
