@@ -2,17 +2,16 @@
  * LE COACHÉ PROGRAMMÉ À LA MAIN REÇOIT LUI AUSSI SON POINT DU DIMANCHE (demande du coach du 26/11/2026 : « comme mes athlètes route, j'aimerais qu'ils reçoivent quand même leur Hooper et leur questionnaire de fin
  * de semaine du dimanche ; je m'appuie dessus pour leur programmation »), sous la 9.x. Le même « Ton point du dimanche » (version normale, sans question de séances clés : rien n'est écrit pour lui), posé le dimanche
  * matin pour midi, et le même rappel de 19 h s'il n'a pas répondu. Le moteur n'écrit toujours rien pour lui, et le rappel d'une séance non remontée ne le concerne pas. Le Hooper, lui, était déjà posé
- * (lib/app/dimanchesCoaches.ts). Ses réponses se lisent dans Nolio à l'ouverture de sa page, sans être gardées (la cause d'un arrêt avec son accord de lecture seulement) ; ses signaux du soir (fatigue, sensations,
+ * (lib/app/dimanchesCoaches.ts). Ses réponses se lisent dans Nolio (lib/app/lectureDuPoint.ts), sans être gardées ; ses signaux du soir (fatigue, sensations,
  * effort) se gardent comme ceux des autres, avec son accord. La base ne garde que le questionnaire posé et le jour du rappel (athletes_coaches.questionnaires). Côté serveur.
  */
 import { enAttenteDeProfil, estAncien } from './anciens';
 import { destinataire } from './coaching';
-import { HEURE_D_ENVOI, lireReponsesDimanche, NOM_DU_QUESTIONNAIRE, questionnaireDuDimanche, type ItemRepondu, type ReponsesDimanche } from './dimancheV9';
+import { HEURE_D_ENVOI, questionnaireDuDimanche } from './dimancheV9';
 import type { Compte } from './ecriture';
 import type { DimanchesCoache } from './hooperDuDimanche';
-import { appelNolio, listeNolio, refusNolio } from './nolio';
-import { ajouterJours } from './plan';
-import { QUESTION_OUVERTE } from './questionnaireSamedi';
+import { reponsesAuPoint } from './lectureDuPoint';
+import { appelNolio, refusNolio } from './nolio';
 import { texteDuRappelV9 } from './rappelDimancheV9';
 import { relireEtGarder, seuilsSuivi } from './suivi';
 import { clientService } from './supabase';
@@ -79,19 +78,11 @@ export const poserLesPointsALaMain = (jour: string, budgetMs = 60_000): Promise<
   return 'point du dimanche posé';
 });
 
-type Resultat = { id: string; name?: string; date_start: string; quiz_planned?: string; items?: ItemRepondu[] };
-async function reponsesPosees(usr: string, du: string, au: string, nolioId?: string | null): Promise<Resultat[]> {
-  const d = await destinataire(usr);
-  const resultats = await listeNolio<Resultat>(`real/quiz_results/?date_from=${du}&date_to=${au}${d.moi ? '' : `&athlete=${d.usr}`}`);
-  return resultats.filter((r) => (nolioId && r.quiz_planned === nolioId) || String(r.name ?? '').trim().toLowerCase() === NOM_DU_QUESTIONNAIRE.toLowerCase())
-    .sort((a, b) => b.date_start.localeCompare(a.date_start));
-}
-
 // Le dimanche vers 19 h : le même rappel, à qui n'a pas répondu à son point posé ce matin ; un seul par dimanche (le jour se note avant l'envoi).
 export const rappelerLesALaMain = (jour: string, heure: string, budgetMs = 60_000): Promise<Compte[]> => pourChacun(budgetMs, 'rappel à la main non programmé', async (f) => {
   const pose = f.questionnaires?.point;
   if (pose?.jour !== jour || f.questionnaires?.rappel === jour) return null;
-  if ((await reponsesPosees(f.nolio_athlete_id, jour, jour, pose.nolio_id)).length) return null;
+  if ((await reponsesAuPoint(f.nolio_athlete_id, jour, jour, pose.nolio_id)).length) return null;
   const d = await destinataire(f.nolio_athlete_id);
   await garder(f, { rappel: jour });
   const r = await appelNolio('POST', 'planned/messages/', { description: texteDuRappelV9(true), date_start: jour, hour_start: heure, show_to_the_athlete: false, ...(d.moi ? {} : { athletes: [d.usr] }) });
@@ -116,18 +107,4 @@ export async function signauxDesALaMain(budgetMs = 40_000, aujourdhui = new Intl
     await relireEtGarder(f.coach_id, f.nolio_athlete_id, d.moi, seuils, aujourdhui);
     return 'signaux lus';
   });
-}
-
-// Ce que sa page montre : sa dernière réponse des 10 derniers jours, lue dans Nolio sans être gardée ; null sans réponse. `mot` : il a écrit à la question ouverte (le texte se lit dans Nolio).
-export type PointLu = { date: string; reponses: ReponsesDimanche; mot: boolean };
-export async function lireLePointALaMain(usr: string, accord: boolean, nolioId: string | null | undefined,
-  aujourdhui = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date())): Promise<PointLu | null> {
-  const [dernier] = await reponsesPosees(usr, ajouterJours(aujourdhui, -10), aujourdhui, nolioId);
-  if (!dernier) return null;
-  const items = dernier.items ?? [];
-  return {
-    date: dernier.date_start.slice(0, 10),
-    reponses: lireReponsesDimanche(items, { version: 'normale', accord }).reponses,
-    mot: items.some((i) => i.question === QUESTION_OUVERTE && typeof i.value === 'string' && i.value.trim() !== ''),
-  };
 }
