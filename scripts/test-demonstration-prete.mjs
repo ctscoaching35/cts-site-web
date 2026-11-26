@@ -95,17 +95,18 @@ test('en démonstration seulement, les liens qui sortent vers les vrais sites so
   assert.ok(lire('lib/app/ficheCourse.ts').includes('export const lienFicheCourse = (planId: string) => `${site.url}/fiche-course/'), 'la fiche de course : l’adresse du site en ligne');
 });
 
-test('en démonstration, le nom du coaché ouvre toujours sa page dans « Mes athlètes » ; seul un mot qui sort est fermé ; hors démonstration, la ligne ne change pas', () => {
+test('le nom du coaché ouvre toujours sa page dans « Mes athlètes », en démonstration comme en vrai ; quand le geste est ailleurs, le mot seul y mène (et, s’il sort, la démonstration le ferme)', () => {
   const liste = readFileSync(`${RACINE}components/app/ListeSimple.tsx`, 'utf8');
   assert.ok(liste.includes('const page = `/app/coach/athlete/${l.id}`;'));
-  const i = liste.indexOf('if (demonstrationCoachOuverte() && !l.un.href.startsWith(page)) {');
+  const i = liste.indexOf('if (!l.un.href.startsWith(page)) {');
   assert.ok(i > 0, 'une ligne qui mène ailleurs que sa page : un vrai site, ou sa demande');
   const branche = liste.slice(i, liste.indexOf('\n          return (', i + 10));
   assert.ok(branche.includes('<li key={l.id} className={classe}>'));
   assert.ok(branche.includes('<Link href={page} className="min-w-0 flex-1 min-h-11 flex items-center">{nom}</Link>'), 'le nom ouvre sa page');
   assert.ok(branche.includes('{l.un.externe ? <a href={l.un.href} target="_blank" rel="noopener" className={classeDuMot}>{mot}</a> : <Link href={l.un.href} className={classeDuMot}>{mot}</Link>}'), 'le mot seul mène à son geste');
-  // Hors démonstration : toute la ligne ouvre le geste, comme avant.
+  // Un geste sur sa page : toute la ligne y mène, comme avant.
   assert.ok(liste.includes('{l.un.externe ? <a href={l.un.href} target="_blank" rel="noopener" className={classe}>{contenu}</a> : <Link href={l.un.href} className={classe}>{contenu}</Link>}'));
   assert.ok(liste.includes('const contenu = <>{nom}{mot}{fleche}</>;'));
-  assert.ok(liste.includes("from '@/lib/app/demonstrationCoachPorte';"), 'la porte seule, fermée en production');
+  // La liste n'a plus rien de propre à la démonstration.
+  assert.ok(!liste.includes('demonstration'), 'la même liste en démonstration et en vrai');
 });
