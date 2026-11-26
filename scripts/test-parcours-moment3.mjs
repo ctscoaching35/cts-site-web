@@ -24,7 +24,9 @@ registerHooks({
   },
 });
 const charge = (f) => import(pathToFileURL(`${RACINE}lib/app/${f}.ts`).href);
-const { unMot, rangerLesMots, TEXTES_UN_MOT } = await charge('unMot');
+const { unMot, TEXTES_UN_MOT } = await charge('unMot');
+const { lireLesMots } = await charge('motsDesCoaches');
+const { ordonner } = await charge('espaceParAthlete');
 const stockage = await charge('stockageV9');
 const source = (f) => readFileSync(`${RACINE}${f}`, 'utf8');
 
@@ -72,10 +74,18 @@ test('le clic ouvre le bon geste : la fiche pour la côte et les critères, l’
   assert.deepEqual([m.href, m.externe], ['https://nolio/x', true]);
 });
 
-test('la liste : le plus urgent en tête, puis ceux qui n’attendent rien ; à égalité, par leur nom', () => {
-  const l = (nom, changement) => ({ nom, un: mot(changement) });
-  const r = rangerLesMots([l('Zoé', {}), l('Ana', { objectif: null }), l('Bob', { accord: false }), l('Léa', { points: [P('arret', 'sante')] }), l('Max', {})]);
-  assert.deepEqual(r.map((x) => x.nom), ['Léa', 'Bob', 'Ana', 'Max', 'Zoé']);
+test('la liste : dans l’ordre de Nolio (le prénom), quel que soit ce qui attend le coach (demande du coach du 26/11/2026)', async () => {
+  // Des athlètes inventés ; le plus urgent est le dernier par le prénom.
+  const ligne = (id, nom, a = {}, points = []) => ({ id, nom, groupe: 6, points, a: { nolio: true, accord: true, coache: true, aLaMain: false, objectif: null, ...a } });
+  const lignes = ordonner([ligne('z', 'Zoé Essai', {}, [P('arret', 'sante')]), ligne('e', 'Émile Essai', { accord: false }), ligne('a', 'Ana Zèbre', { aLaMain: true }), ligne('b', 'Bao Abel')]);
+  const vide = () => { const q = { select: () => q, eq: () => q, in: () => q, gte: () => q, then: (oui, non) => Promise.resolve({ data: [], error: null }).then(oui, non) }; return q; };
+  const mots = await lireLesMots({ from: vide }, 'coach-1', lignes, '2026-11-26');
+  assert.deepEqual(mots.map((m) => m.nom), ['Ana Zèbre', 'Bao Abel', 'Émile Essai', 'Zoé Essai']);
+  assert.ok(mots[3].un.rang < mots[0].un.rang, 'le plus urgent reste à sa place dans la liste');
+  // La page les montre tels quels, « À faire » au-dessus.
+  const p = source('app/app/coach/page.tsx');
+  assert.ok(p.indexOf('<AFaire lignes={[]} series={series} />') < p.indexOf('<ListeSimple lignes={mots} />'));
+  assert.ok(source('lib/app/mesAthletes.ts').includes('const ordonnees = ordonner(lignes);'));
 });
 
 test('les mots : un seul par ligne, courts, apostrophe typographique, sans jargon', () => {
