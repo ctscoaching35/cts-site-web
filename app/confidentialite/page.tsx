@@ -261,9 +261,9 @@ export default async function Confidentialite() {
           <li>
             notre suivi consulte dans Nolio tes séances prévues et réalisées, avec ton effort ressenti, tes sensations,{v9 ? ' ta réponse à « Séance tenue ? » après chaque séance,' : ''}{' '}
             tes commentaires et ton questionnaire Hooper ; chaque soir, nous en gardons seulement des signaux pour ton suivi
-            (une séance manquée, un effort plus dur que prévu, de mauvaises sensations ou une fatigue qui monte, un
-            commentaire à lire, le jour de ta dernière activité), jamais le contenu d’une séance ni le texte d’un
-            commentaire, remplacés le soir suivant ;
+            (une séance manquée, un effort plus dur que prévu et le genre de la séance concernée, par exemple « Seuil 2 », de
+            mauvaises sensations ou une fatigue qui monte, un commentaire à lire, le jour de ta dernière activité), jamais le
+            contenu d’une séance ni le texte d’un commentaire, remplacés le soir suivant ;
           </li>
           <li>ton espace CTS t’affiche ta semaine telle qu’elle est dans Nolio, relevée au moment où tu l’ouvres, sans en garder de copie ;</li>
           <li>
