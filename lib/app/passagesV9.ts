@@ -224,9 +224,13 @@ export const passageDuLundiV9 = (budgetMs = 240_000, jour = aujourdhuiParis()): 
   jourDeLaSemaine(jour) === 1 ? passer(budgetMs, 'passe du lundi en échec', async (c, o) => (await saisonPrise(o, jour) ? ARRETEE : passeDuLundiSurUnPlan(c, jour))) : Promise.resolve([]);
 
 // Le dimanche matin : le questionnaire de la semaine écrite, posé dans Nolio pour 12 h. Ni un autre jour.
-// Et celui des coachés à la main, qui n'ont pas de plan écrit (lib/app/pointALaMain.ts).
-export const questionnaireDuMatinV9 = async (budgetMs = 120_000, jour = aujourdhuiParis()): Promise<Compte[]> =>
-  jourDeLaSemaine(jour) === 0 ? [...await passer(budgetMs, 'questionnaire non posé', (c) => poserLeQuestionnaireDuDimanche(c, jour)), ...await poserLesPointsALaMain(jour)] : [];
+// Et celui des coachés à la main, qui n'ont pas de plan écrit (lib/app/pointALaMain.ts) : d'abord, ils sont peu et leur pose est courte ; le reste du temps aux plans (la tâche a 300 s).
+export async function questionnaireDuMatinV9(budgetMs = 120_000, jour = aujourdhuiParis()): Promise<Compte[]> {
+  if (jourDeLaSemaine(jour) !== 0) return [];
+  const debut = Date.now();
+  const aLaMain = await poserLesPointsALaMain(jour, Math.min(60_000, budgetMs));
+  return [...await passer(Math.max(0, budgetMs - (Date.now() - debut)), 'questionnaire non posé', (c) => poserLeQuestionnaireDuDimanche(c, jour)), ...aLaMain];
+}
 
 // Les jours des séances de course de la semaine non remontées (261, 270) ; aucun sans séance manquante, ou si Nolio ne se lit pas (« une lecture qui échoue ne rappelle personne »).
 async function joursSansActivite(usr: string, jour: string): Promise<string[]> {
@@ -295,7 +299,7 @@ export async function rappelDuDimancheV9(budgetMs = 240_000, maintenant = new Da
     }
   }
   // Les coachés à la main : le rappel de leur point seulement, jamais d'une séance non remontée (rien n'est écrit pour eux).
-  comptes.push(...await rappelerLesALaMain(jour, heure));
+  comptes.push(...await rappelerLesALaMain(jour, heure, Math.max(20_000, budgetMs + 30_000 - (Date.now() - debut))));
   return { actif: true, texteValide: TEXTE_RAPPEL_V9_VALIDE, comptes };
 }
 
