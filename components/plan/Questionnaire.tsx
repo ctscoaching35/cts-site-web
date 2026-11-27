@@ -939,7 +939,7 @@ export default function Questionnaire({
             {infoRoute ? `Son chrono visé sur ${infoRoute.court} : il fixe l’allure de ses séances spécifiques. Écris-le en heures et minutes (${infoRoute.exemple}).${chronoEstime ? ` Laissé vide, l’estimation d’après sa vitesse critique (${chronoEstime}) le remplace.` : ''}`
               : <>
                 {textes.tempsCible}
-                {c.format && config.temps_max_par_format[c.format] !== undefined && ` Sur ce format, le temps cible ne peut pas dépasser ${config.temps_max_par_format[c.format]}h.`}
+                {c.format && config.temps_max_par_format?.[c.format] !== undefined && ` Sur ce format, le temps cible ne peut pas dépasser ${config.temps_max_par_format[c.format]}h.`}
               </>}
           </p>
         </div>

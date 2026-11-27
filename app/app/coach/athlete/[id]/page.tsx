@@ -523,7 +523,7 @@ export default async function PageAthlete({ params, searchParams }: {
                       <div className="mt-3"><AjouterCourse planId={pourSecondaire.plan_id} initial={{ nom: c.nom, date: c.date, distance_km: c.distance_km, dplus_m: c.dplus_m, chrono: c.chrono }} sansMode /></div>
                     </>
                   ) : (
-                    <p className="mt-3 text-[0.8125rem] text-[#4A4866]">{c.date < lundiProchain ? 'Elle tombe cette semaine, déjà préparée.' : 'Une course secondaire se place avant un objectif principal : crée d’abord l’objectif qui la suit.'}</p>
+                    <p className="mt-3 rounded-[10px] border border-[#E2C48A] bg-[#FBF1DC] p-3 text-sm font-semibold text-[#6B4A0E]">{c.date < lundiProchain ? 'Elle tombe cette semaine, déjà préparée.' : 'Une course secondaire se place avant un objectif principal : crée d’abord l’objectif qui la suit.'}</p>
                   )}
                 </details>
               </div>

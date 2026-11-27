@@ -26,8 +26,8 @@ export type ConfigPlan = {
   freq_min_km_effort_seuil?: number;
   freq_min_au_dela_du_seuil?: number;
   freq_max_par_niveau?: Record<string, number>;
-  temps_max_par_format: Record<string, number>;
-  reperes_km_effort_h: Record<string, [number, number, number]>;
+  temps_max_par_format?: Record<string, number>;
+  reperes_km_effort_h?: Record<string, [number, number, number]>;
   sortie_longue_min?: { h: number; message: string };
   // Les bornes du temps cible : elles règlent les durées possibles, plus aucune phrase à la saisie (22/10/2026).
   bandes_temps_cible?: { bornes_h: number[]; libelles: string[]; phrases_bornes: string[]; marge_min: number };
@@ -218,7 +218,8 @@ export function reperesChrono(c: Champs, config: ConfigPlan, coach = false): Rep
   if (!c.format || !(ke > 0)) return null;
   // Un repère au-delà du plafond du format le dit, au lieu de proposer un chrono que le formulaire refusera ensuite
   // (audit du 27/09/2026, C21 ; décision coach du 28/09/2026 : « dire la vérité au bon endroit »).
-  const plafond = config.temps_max_par_format[c.format];
+  // Le moteur 9 ne donne plus les plafonds de temps dans /v1/config : les repères se disent alors sans plafond (le 27/11/2026, la page de création d'objectif plantait ici).
+  const plafond = config.temps_max_par_format?.[c.format];
   const [p10, p30, p60, p85] = COUPURES.map((k) => ke / (k * vitesseMediane(ke)));
   // Une borne qui s'affiche au plafond (à 5 min près, l'arrondi de heuresMinutes) se dit au plafond : une bande qui y
   // commence est au-delà (« plus de 7h »), une qui y finit s'arrête à « 7h » ; deux bornes qui se confondent, une seule
