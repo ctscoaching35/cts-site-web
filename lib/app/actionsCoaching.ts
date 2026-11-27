@@ -110,6 +110,16 @@ export async function creerCoache(_e: EtatCoach, form: FormData): Promise<EtatCo
   redirect(`/app/coach/athlete/${id}`);
 }
 
+// Son nom, corrigé par le coach (27/11/2026 : « j’ai des athlètes dont tu as mis le nom en premier, ils ne sont donc pas bien classés ») : Nolio envoie le nom en un seul bloc, la liste se classe sur
+// ce qui est écrit ici. Rien ne change dans Nolio.
+export async function renommerAthlete(athleteId: string, form: FormData): Promise<void> {
+  const coach = await coachConnecte();
+  const nom = String(form.get('nom') ?? '').replace(/\s+/g, ' ').trim().slice(0, 80);
+  if (!coach || !nom) return;
+  await clientService().from('athletes_coaches').update({ nom }).eq('id', athleteId).eq('coach_id', coach.compteId);
+  revalidatePath('/app/coach', 'layout');
+}
+
 export async function associerNolio(athleteId: string, form: FormData): Promise<void> {
   const coach = await coachConnecte();
   // L'identifiant d'un athlète dans l'API v2 de Nolio : « usr_… ».

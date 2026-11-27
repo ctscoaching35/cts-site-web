@@ -28,7 +28,7 @@ import { StyleCoureur, TableauZones } from '@/components/app/ZonesEtStyle';
 import { lignesDuProfil } from '@/lib/app/profilEntrainement';
 import TestVcCoach from '@/components/app/TestVcCoach';
 import { Carte, PastilleDate, Surtitre } from '@/components/app/Ui';
-import { associerNolio, changerProgrammation, retirerAcces, retirerAthlete } from '@/lib/app/actionsCoaching';
+import { associerNolio, changerProgrammation, renommerAthlete, retirerAcces, retirerAthlete } from '@/lib/app/actionsCoaching';
 import { accordRecu, relireMaintenant, retirerAccord } from '@/lib/app/actionsSuivi';
 import { adresseDuCompte } from '@/lib/app/espaceAthlete';
 import { ficheAthlete } from '@/lib/app/coaching';
@@ -595,6 +595,15 @@ export default async function PageAthlete({ params, searchParams }: {
         <span className="w-14 h-14 rounded-full bg-[#E1EFEA] text-teal-dark flex items-center justify-center text-lg font-extrabold">{initiales(a.nom)}</span>
         <div className="flex-[1_1_240px]">
           <h1 className="text-[1.75rem] font-extrabold tracking-tight">{a.nom}</h1>
+          <details className="mt-0.5">
+            <summary className="inline-flex items-center min-h-8 cursor-pointer text-[0.78rem] font-bold text-teal list-none">Corriger son nom</summary>
+            <form action={renommerAthlete.bind(null, a.id)} className="mt-1 flex flex-wrap items-center gap-2">
+              <input name="nom" key={a.nom} defaultValue={a.nom} maxLength={80} required aria-label="Son prénom puis son nom"
+                className="min-h-10 flex-[1_1_200px] rounded-[10px] border border-indigo/20 bg-white px-3 text-sm text-indigo" />
+              <button type="submit" className="min-h-10 rounded-[10px] bg-teal px-4 text-[0.8125rem] font-bold text-white">Enregistrer</button>
+              <p className="basis-full text-[0.75rem] text-[#5E5C78]">Écris le prénom d’abord : la liste se classe par prénom. Rien ne change dans Nolio.</p>
+            </form>
+          </details>
           {sousLeNom && <p className="mt-0.5 text-sm text-[#4A4866]">{sousLeNom}</p>}
           <div className="mt-2 flex flex-wrap gap-2">
             {etat && (
