@@ -484,12 +484,17 @@ export default async function PageAthlete({ params, searchParams }: {
       )}
     </div>
   );
+  const BOUTON_COURSE = 'inline-flex items-center min-h-10 px-3 rounded-[10px] border border-teal text-teal text-[0.8125rem] font-bold whitespace-nowrap';
   const contenuCoursesNolio = (
     <>
       <Surtitre>Ses courses dans Nolio</Surtitre>
       <p className="text-[0.8125rem] leading-relaxed text-[#4A4866]">Celles posées dans Nolio, par toi ou par l’athlète, et pas encore ici.</p>
       {coursesNolio.map((c) => {
         const preparation = enPreparation(c);
+        const lienObjectif = `/app/coach/nouveau?athlete=${a.id}&course=${c.id}${formatRouteDe(c.distance_km, c.dplus_m) ? '&discipline=route' : ''}`;
+        // La course secondaire va à l'objectif qui la suit, s'il s'écrit semaine par semaine, et à partir de lundi prochain (les règles d'enregistrerCourse).
+        const suivant = [...objectifs].filter((o) => o.course_date > c.date).sort((x, y) => x.course_date.localeCompare(y.course_date))[0];
+        const pourSecondaire = suivant && c.date >= lundiProchain && parPlan.get(suivant.plan_id)?.parametres ? suivant : null;
         return (
           <div key={c.id} className="flex flex-wrap items-center gap-3 p-3 rounded-xl border border-indigo/[0.12]">
             <PastilleDate iso={c.date} />
@@ -500,19 +505,28 @@ export default async function PageAthlete({ params, searchParams }: {
                   c.distance_km ? `${c.distance_km} km` : 'distance à saisir', c.dplus_m ? mots.dplus(String(c.dplus_m)) : null].filter(Boolean).join(' · ')}
               </span>
             </span>
-            {/* Sous la 9.x, une course sans priorité dans Nolio, avant l'objectif, offre les deux gestes. */}
-            {(!preparation || !v9) && (
-              <Link href={preparation ? `/app/coach/plan/${prochain}?course=${c.id}#ajouter-course` : `/app/coach/nouveau?athlete=${a.id}&course=${c.id}${formatRouteDe(c.distance_km, c.dplus_m) ? '&discipline=route' : ''}`}
-                className="inline-flex items-center min-h-10 px-3 rounded-[10px] border border-teal text-teal text-[0.8125rem] font-bold whitespace-nowrap">
+            {!v9 && (
+              <Link href={preparation ? `/app/coach/plan/${prochain}?course=${c.id}#ajouter-course` : lienObjectif}
+                className={BOUTON_COURSE}>
                 {preparation ? 'En préparation ›' : 'Créer l’objectif ›'}
               </Link>
             )}
-            {v9 && (preparation || (c.type === null && enPreparation({ ...c, type: 'b' }))) && (
-              <details className="basis-full">
-                <summary className="inline-flex items-center min-h-10 px-3 rounded-[10px] border border-teal text-teal text-[0.8125rem] font-bold whitespace-nowrap cursor-pointer list-none">En préparation ›</summary>
-                <p className="mt-3 text-[0.8125rem] text-[#4A4866]">Reprise de Nolio : relis la distance, le D+ et le chrono visé.</p>
-                <div className="mt-3"><AjouterCourse planId={String(prochain)} initial={{ nom: c.nom, date: c.date, distance_km: c.distance_km, dplus_m: c.dplus_m, chrono: c.chrono }} sansMode /></div>
-              </details>
+            {/* Sous la 9.x, pour chaque course, le coach choisit (27/11/2026 : « tu dois me laisser le choix entre objectif principal ou secondaire »). */}
+            {v9 && (
+              <div className="basis-full flex flex-wrap items-start gap-2">
+                <Link href={lienObjectif} className={BOUTON_COURSE}>Objectif principal ›</Link>
+                <details className="open:basis-full">
+                  <summary className={clsx(BOUTON_COURSE, 'cursor-pointer list-none')}>Course secondaire ›</summary>
+                  {pourSecondaire ? (
+                    <>
+                      <p className="mt-3 text-[0.8125rem] text-[#4A4866]">Elle s’ajoute avant « {pourSecondaire.course_nom} ». Reprise de Nolio : relis la distance, le D+ et le chrono visé.</p>
+                      <div className="mt-3"><AjouterCourse planId={pourSecondaire.plan_id} initial={{ nom: c.nom, date: c.date, distance_km: c.distance_km, dplus_m: c.dplus_m, chrono: c.chrono }} sansMode /></div>
+                    </>
+                  ) : (
+                    <p className="mt-3 text-[0.8125rem] text-[#4A4866]">{c.date < lundiProchain ? 'Elle tombe cette semaine, déjà préparée.' : 'Une course secondaire se place avant un objectif principal : crée d’abord l’objectif qui la suit.'}</p>
+                  )}
+                </details>
+              </div>
             )}
           </div>
         );
