@@ -12,9 +12,11 @@ import test from 'node:test';
 const RACINE = new URL('..', import.meta.url).pathname;
 const lire = (f) => readFileSync(`${RACINE}${f}`, 'utf8');
 
-test('la liste porte la saison de chaque coaché et la dit sans la répéter', () => {
-  assert.ok(lire('lib/app/motsDesCoaches.ts').includes('return { id: l.id, nom: l.nom, un: unMot(entree), saison };'));
-  assert.ok(lire('components/app/ListeSimple.tsx').includes("{l.saison && l.un.mot !== 'Saison de fond' && "));
+test('la liste : à côté du nom la saison de fond ou la prochaine course ; au bout, ce qui attend, sinon « Rien à faire pour le moment » (27/11/2026)', () => {
+  assert.ok(lire('lib/app/motsDesCoaches.ts').includes("tag: saison ? 'Saison de fond' : course, aLaMain: l.a.aLaMain"));
+  const liste = lire('components/app/ListeSimple.tsx');
+  assert.ok(liste.includes("const l: LigneDUnMot = attendLeCoach(ligne.un) ? ligne : { ...ligne, un: { ...ligne.un, mot: 'Rien à faire pour le moment'"));
+  assert.ok(liste.includes('{l.tag && <span className={puce}>{l.tag}</span>}') && liste.includes('{l.aLaMain && <span className={puce}>à la main</span>}'));
 });
 
 test('sa page la dit sous son nom, avec l’objectif qui suit', () => {
