@@ -2,6 +2,7 @@ import Link from 'next/link';
 import clsx from 'clsx';
 import { Carte } from './Ui';
 import type { LigneDUnMot } from '@/lib/app/motsDesCoaches';
+import { attendLeCoach } from '@/lib/app/unMot';
 
 // « MES ATHLÈTES » SOUS LA 9.x (décision 241 du coach, 25/11/2026, moment 3) : une ligne par coaché, son nom et un seul mot à droite. Le nom ouvre toujours la page de l'athlète, le mot ouvre son geste (la
 // page, à l'ancre du formulaire à remplir, ou l'endroit du point : Nolio, sa demande…) ; quand le geste est sur sa page, toute la ligne y mène. Les mots : lib/app/unMot.ts ; la liste garde l'ordre de Nolio (le prénom).
@@ -14,11 +15,15 @@ export default function ListeSimple({ lignes }: { lignes: LigneDUnMot[] }) {
   return (
     <Carte className="!p-0 overflow-hidden">
       <ul className="divide-y divide-indigo/[0.07]">
-        {lignes.map((l) => {
+        {lignes.map((ligne) => {
+          // Le coach (27/11/2026) : à côté du nom, la saison de fond ou la prochaine course ; au bout de la ligne, seulement ce qui l'attend en priorité, sinon « Rien à faire pour le moment ». Le reste est sur sa page.
+          const l: LigneDUnMot = attendLeCoach(ligne.un) ? ligne : { ...ligne, un: { ...ligne.un, mot: 'Rien à faire pour le moment', ton: 'neutre', href: `/app/coach/athlete/${ligne.id}`, externe: false } };
+          const puce = 'whitespace-nowrap rounded-full border border-indigo/15 px-2 py-0.5 text-[0.72rem] font-semibold text-[#5E5C78]';
           const nom = (
-            <span className="min-w-0 flex-1 text-[0.9375rem] font-bold text-indigo">
+            <span className="min-w-0 flex-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.9375rem] font-bold text-indigo">
               {l.nom}
-              {l.saison && l.un.mot !== 'Saison de fond' && <span className="ml-2 whitespace-nowrap rounded-full border border-indigo/15 px-2 py-0.5 text-[0.72rem] font-semibold text-[#5E5C78]">Saison de fond</span>}
+              {l.tag && <span className={puce}>{l.tag}</span>}
+              {l.aLaMain && <span className={puce}>à la main</span>}
             </span>
           );
           const mot = <span className={clsx('shrink-0 text-[0.8125rem] font-bold px-3 py-1.5 rounded-full', TONS[l.un.ton])}>{l.un.mot}</span>;

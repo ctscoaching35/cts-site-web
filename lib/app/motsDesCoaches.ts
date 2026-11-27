@@ -36,7 +36,8 @@ async function objectifsDates(service: SupabaseClient, athletes: string[], jour:
 const lundiDe = (jour: string) => new Date(Date.parse(`${jour}T12:00:00Z`) - ((new Date(`${jour}T12:00:00Z`).getUTCDay() + 6) % 7) * 86_400_000).toISOString().slice(0, 10);
 
 // saison : en saison de fond, dit à côté de son nom même quand un autre mot passe devant (le coach, 27/11/2026).
-export type LigneDUnMot = { id: string; nom: string; un: UnMot; saison?: boolean };
+// tag : à côté de son nom, la saison de fond ou sa prochaine course ; aLaMain : programmé à la main (la liste claire, le coach, 27/11/2026).
+export type LigneDUnMot = { id: string; nom: string; un: UnMot; tag?: string | null; aLaMain?: boolean };
 
 // `lignes` : dans l'ordre de Nolio (lib/app/espaceParAthlete.ts, ordonner), que la liste garde (demande du coach du 26/11/2026 ; ce qui l'attend ne change plus l'ordre).
 export async function lireLesMots(service: SupabaseClient, coachId: string, lignes: EtatAthlete[], jour: string): Promise<LigneDUnMot[]> {
@@ -71,6 +72,7 @@ export async function lireLesMots(service: SupabaseClient, coachId: string, lign
       manque: verif?.manque[0] ?? null, gesteDuManque: verif ? gestesDeLObjectif(verif)[0] ?? null : null, test,
       sansReponse: planId ? sansReponseAuPoint(reponses, planId, lundiDe(jour)) : false,
     };
-    return { id: l.id, nom: l.nom, un: unMot(entree), saison };
+    const course = l.a.objectif && l.a.objectif.course_date >= jour ? l.a.objectif.course_nom : null;
+    return { id: l.id, nom: l.nom, un: unMot(entree), tag: saison ? 'Saison de fond' : course, aLaMain: l.a.aLaMain };
   });
 }
