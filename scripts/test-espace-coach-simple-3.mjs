@@ -271,7 +271,7 @@ test('la carte « Sa semaine qui arrive » d’avant le passage : sans « Voir c
 
 // ─── (b) les courses de préparation ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-test('sous la 9.x, toutes ses courses de Nolio se voient, et « En préparation » ouvre le formulaire déjà rempli (le coach, 27/11/2026)', () => {
+test('sous la 9.x, toutes ses courses de Nolio se voient, et chacune laisse le choix : objectif principal ou course secondaire (le coach, 27/11/2026)', () => {
   const contexte = { prochain: 'p1', ecrit: true, lundiProchain: '2026-11-30', dateProchain: '2027-03-14' };
   const bDedans = { id: 'b1', type: 'b', date: '2027-01-17' };
   const courses = [{ id: 'a', type: 'a', date: '2027-03-14' }, bDedans, { id: 'b2', type: 'b', date: '2026-11-28' }, { id: 'c', type: null, date: '2027-01-10' }];
@@ -279,12 +279,17 @@ test('sous la 9.x, toutes ses courses de Nolio se voient, et « En préparation 
   assert.equal(estUneCourseEnPreparation(bDedans, { ...contexte, prochain: null }), false, 'sans objectif en cours');
   assert.equal(estUneCourseEnPreparation(bDedans, { ...contexte, ecrit: false }), false, 'un objectif envoyé en entier n’a pas de préparation à enrichir');
   assert.equal(estUneCourseEnPreparation({ ...bDedans, date: '2027-03-14' }, contexte), false, 'le jour de la course, plus de préparation');
-  // Plus aucune course écartée.
+  // Plus aucune course écartée ; sous la 8.x, le lien d'avant.
   assert.ok(athlete.includes('const coursesNolio = coursesPosees;'));
   assert.ok(athlete.includes('const preparation = enPreparation(c);'));
-  assert.ok(athlete.includes('{(!preparation || !v9) && ('), 'sous la 8.x, le lien d’avant');
-  assert.ok(athlete.includes("{v9 && (preparation || (c.type === null && enPreparation({ ...c, type: 'b' }))) && ("), 'une course sans priorité, avant l’objectif, offre aussi la préparation');
-  assert.ok(athlete.includes('<AjouterCourse planId={String(prochain)} initial={{ nom: c.nom, date: c.date, distance_km: c.distance_km, dplus_m: c.dplus_m, chrono: c.chrono }} sansMode />'));
+  assert.ok(athlete.includes('{!v9 && (') && athlete.includes("{preparation ? 'En préparation ›' : 'Créer l’objectif ›'}"));
+  // Sous la 9.x, les deux choix sur chaque course, sans condition de type.
+  assert.match(athlete, /\{v9 && \(\n\s+<div className="basis-full flex flex-wrap items-start gap-2">\n\s+<Link href=\{lienObjectif\} className=\{BOUTON_COURSE\}>Objectif principal ›<\/Link>/);
+  assert.ok(athlete.includes('Course secondaire ›</summary>'));
+  // La secondaire : avant l'objectif qui la suit, écrit semaine par semaine, à partir de lundi prochain ; sinon, dite avec sa raison.
+  assert.ok(athlete.includes("const pourSecondaire = suivant && c.date >= lundiProchain && parPlan.get(suivant.plan_id)?.parametres ? suivant : null;"));
+  assert.ok(athlete.includes('<AjouterCourse planId={pourSecondaire.plan_id} initial={{ nom: c.nom, date: c.date, distance_km: c.distance_km, dplus_m: c.dplus_m, chrono: c.chrono }} sansMode />'));
+  assert.ok(athlete.includes('Une course secondaire se place avant un objectif principal : crée d’abord l’objectif qui la suit.'));
   assert.match(athlete, /const courseA = coursesPosees\.find\(\(c\) => c\.type === 'a'\) \?\? null;/);
 });
 
