@@ -58,12 +58,6 @@ export function estUneCourseEnPreparation(c: { type: 'a' | 'b' | null; date: str
   return c.type === 'b' && Boolean(prochain) && ecrit && c.date >= lundiProchain && c.date < dateProchain;
 }
 
-// Ses courses dans Nolio, celles qui ont un geste : sous la 9.x, sans celles qui n'avaient pour geste que « En préparation » (ajouter une course de préparation). Les autres gardent
-// « Créer l'objectif ».
-export function coursesNolioVisibles<T>(courses: T[], enPreparation: (c: T) => boolean, v9: boolean): T[] {
-  return v9 ? courses.filter((c) => !enPreparation(c)) : courses;
-}
-
 // ─── (c) La saison de fond ────────────────────────────────────────────────────────────────────────────────────────────────
 
 // Une saison de fond n'est pas un objectif sous la 9.x (la v1 les écrit depuis le 25/11/2026 : elles sont dites « Saison de fond », jamais comme un objectif) : la ligne d'un athlète dont le prochain « objectif » est une saison se lit comme celle d'un

@@ -101,7 +101,7 @@ export type BlocHaut9x = (typeof ORDRE_9X)[number];
 // Dans « Réglages » : ce qui y est déjà sous la 8.x (le bloc `details` qui existe), puis ce qui s'y ajoute sous la 9.x, « Retirer cet athlète » toujours en dernier.
 export const ORDRE_DES_REGLAGES_8X = ['programmation', 'app', 'nolio', 'accord', 'retirer'] as const;
 export const ORDRE_DES_REGLAGES_9X = [
-  'etat', 'programmation', 'app', 'nolio', 'accord', 'a_venir', 'revue', 'semaine_passee', 'courses_nolio', 'anciens_objectifs', 'demande', 'entree', 'retirer',
+  'etat', 'programmation', 'app', 'nolio', 'accord', 'a_venir', 'revue', 'semaine_passee', 'anciens_objectifs', 'demande', 'entree', 'retirer',
 ] as const;
 export type SectionDesReglages = (typeof ORDRE_DES_REGLAGES_9X)[number];
 
@@ -121,7 +121,8 @@ export const PLACE_EN_9X: Record<Bloc8x, readonly (BlocHaut9x | SectionDesReglag
   semaine_qui_arrive: ['semaine_qui_arrive'],
   semaine_passee: ['semaine_passee'],
   objectifs: ['objectifs', 'anciens_objectifs'],
-  courses_nolio: ['courses_nolio'],
+  // Ses courses dans Nolio, sous ses objectifs quand il y en a à reprendre (le coach, 27/11/2026).
+  courses_nolio: ['objectifs'],
   reperes: ['carte'],
   zones: ['carte'],
   style: ['carte'],

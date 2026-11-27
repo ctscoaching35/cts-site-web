@@ -10,6 +10,7 @@ import FormulaireValeurs from '@/components/app/FormulaireValeurs';
 import InvitationApp from '@/components/app/InvitationApp';
 import LancerSaPreparation from '@/components/app/LancerSaPreparation';
 import ObjectifsAVerifier, { type LigneObjectif } from '@/components/app/ObjectifsAVerifier';
+import { AjouterCourse } from '@/components/app/GestesEcriture';
 import type { CourseDePreparation } from '@/components/app/CoursesDePreparation';
 import VueDEnsemble from '@/components/app/VueDEnsemble';
 import { detailsDeLaCourse, ligneDeTemps, rangerSesCourses, vueDuCoureur } from '@/lib/app/sesCourses';
@@ -40,7 +41,7 @@ import {
 import { reponsesReprises, valeursDeLaCarte } from '@/lib/app/carteSavoir';
 import { lireGpx } from '@/lib/app/gpxV9';
 import { coursesDansNolio, pasEncoreIci, type CourseNolio } from '@/lib/app/coursesNolio';
-import { coursesNolioVisibles, estUneCourseEnPreparation, TEXTES_CACHES, testsLusDisponibles } from '@/lib/app/cacherSousLaV1';
+import { estUneCourseEnPreparation, TEXTES_CACHES, testsLusDisponibles } from '@/lib/app/cacherSousLaV1';
 import { semainesSansSaisonPasPartie } from '@/lib/app/reessayerDeSaison';
 import { espaceDuCoach } from '@/lib/app/mesAthletes';
 import { montrerLInfra, pointsDeSaPage, semainesDansSesPoints, TEXTES_A_FAIRE } from '@/lib/app/espaceCoachSimple';
@@ -205,9 +206,9 @@ export default async function PageAthlete({ params, searchParams }: {
   // Une course B devient une préparation de son objectif en cours, à partir de lundi prochain et avant sa course.
   const lundiProchain = ajouterJours(jour, 7 - ((new Date(`${jour}T12:00:00Z`).getUTCDay() + 6) % 7));
   const dateProchain = objectifs.find((o) => o.plan_id === prochain)?.course_date ?? '';
-  // Sous la 9.x, une course B de Nolio n'a plus « En préparation » pour geste (la course de préparation n'est pas portée) : elle n'est pas proposée (lib/app/cacherSousLaV1.ts).
+  // Sous la 9.x, la course de préparation se saisit ici (C5, 25/11/2026) : toutes ses courses de Nolio se voient, et « En préparation » ouvre le formulaire déjà rempli (le coach, 27/11/2026 : « je perds du temps si je dois tout rentrer à la main »).
   const enPreparation = (c: CourseNolio) => estUneCourseEnPreparation(c, { prochain, ecrit: Boolean(pp?.parametres), lundiProchain, dateProchain });
-  const coursesNolio = coursesNolioVisibles(coursesPosees, enPreparation, v9);
+  const coursesNolio = coursesPosees;
   const pastilles: [string, boolean][] = [
     [a.nolio_athlete_id ? 'Nolio relié' : 'Nolio à associer', Boolean(a.nolio_athlete_id)],
     [accord ? 'Accord de lecture reçu' : 'Sans accord de lecture', Boolean(accord)],
@@ -486,7 +487,7 @@ export default async function PageAthlete({ params, searchParams }: {
   const contenuCoursesNolio = (
     <>
       <Surtitre>Ses courses dans Nolio</Surtitre>
-      <p className="text-[0.8125rem] leading-relaxed text-[#4A4866]">Celles que tu as posées dans Nolio et qui ne sont pas encore ici.</p>
+      <p className="text-[0.8125rem] leading-relaxed text-[#4A4866]">Celles posées dans Nolio, par toi ou par l’athlète, et pas encore ici.</p>
       {coursesNolio.map((c) => {
         const preparation = enPreparation(c);
         return (
@@ -499,10 +500,20 @@ export default async function PageAthlete({ params, searchParams }: {
                   c.distance_km ? `${c.distance_km} km` : 'distance à saisir', c.dplus_m ? mots.dplus(String(c.dplus_m)) : null].filter(Boolean).join(' · ')}
               </span>
             </span>
-            <Link href={preparation ? `/app/coach/plan/${prochain}?course=${c.id}#ajouter-course` : `/app/coach/nouveau?athlete=${a.id}&course=${c.id}${formatRouteDe(c.distance_km, c.dplus_m) ? '&discipline=route' : ''}`}
-              className="inline-flex items-center min-h-10 px-3 rounded-[10px] border border-teal text-teal text-[0.8125rem] font-bold whitespace-nowrap">
-              {preparation ? 'En préparation ›' : 'Créer l’objectif ›'}
-            </Link>
+            {/* Sous la 9.x, une course sans priorité dans Nolio, avant l'objectif, offre les deux gestes. */}
+            {(!preparation || !v9) && (
+              <Link href={preparation ? `/app/coach/plan/${prochain}?course=${c.id}#ajouter-course` : `/app/coach/nouveau?athlete=${a.id}&course=${c.id}${formatRouteDe(c.distance_km, c.dplus_m) ? '&discipline=route' : ''}`}
+                className="inline-flex items-center min-h-10 px-3 rounded-[10px] border border-teal text-teal text-[0.8125rem] font-bold whitespace-nowrap">
+                {preparation ? 'En préparation ›' : 'Créer l’objectif ›'}
+              </Link>
+            )}
+            {v9 && (preparation || (c.type === null && enPreparation({ ...c, type: 'b' }))) && (
+              <details className="basis-full">
+                <summary className="inline-flex items-center min-h-10 px-3 rounded-[10px] border border-teal text-teal text-[0.8125rem] font-bold whitespace-nowrap cursor-pointer list-none">En préparation ›</summary>
+                <p className="mt-3 text-[0.8125rem] text-[#4A4866]">Reprise de Nolio : relis la distance, le D+ et le chrono visé.</p>
+                <div className="mt-3"><AjouterCourse planId={String(prochain)} initial={{ nom: c.nom, date: c.date, distance_km: c.distance_km, dplus_m: c.dplus_m, chrono: c.chrono }} sansMode /></div>
+              </details>
+            )}
           </div>
         );
       })}
@@ -543,7 +554,6 @@ export default async function PageAthlete({ params, searchParams }: {
       <PointsAVenir points={pointsAVenir(points)} />
       <section id="revue" className="py-4">{contenuRevue}</section>
       {(aUneSemaine || septJoursAffiches) && <section id="sa-semaine-passee" className="py-4 scroll-mt-6">{contenuSemainePassee}</section>}
-      {coursesNolio.length > 0 && <section id="courses-nolio" className="py-4 space-y-3 scroll-mt-6">{contenuCoursesNolio}</section>}
       {objectifsPasses.length > 0 && (
         <section className="py-4 space-y-2">
           <h3 className="text-sm font-bold">{TEXTES_PAGE_ATHLETE.anciensObjectifs}</h3>
@@ -607,6 +617,8 @@ export default async function PageAthlete({ params, searchParams }: {
           {sonPoint !== undefined && <SonPointDuDimanche point={sonPoint} usr={String(a.nolio_athlete_id)} />}
           {carte && <CarteSavoir key={`${a.id}:${carte.lancer.planId}`} {...carte.savoir} zonesEtStyle={zonesEtStyle}
             courses={<ObjectifsAVerifier athleteId={a.id} lignes={lignesObjectifs} jour={jour} plat />} />}
+          {/* Ses courses dans Nolio, sous ses objectifs, bien en vue (le coach, 27/11/2026). */}
+          {coursesNolio.length > 0 && <Carte id="courses-nolio" className="!p-5 space-y-3 scroll-mt-6">{contenuCoursesNolio}</Carte>}
           {carte && <LancerSaPreparation {...carte.lancer} />}
           {semaine}
         </>
