@@ -12,7 +12,7 @@
  */
 export type MembreNolio = { id: string; name: string };
 export type FicheEquipe = {
-  id: string; coach_id: string; nom?: string; nolio_athlete_id: string | null; ancien_le?: string | null;
+  id: string; coach_id: string; nom?: string; nolio_athlete_id: string | null; ancien_le?: string | null; questionnaires?: unknown;
 };
 export type Rapprochement = { creer: MembreNolio[]; partis: string[]; revenus: string[] };
 
@@ -43,7 +43,7 @@ export function rapprocherEquipe({ equipe, fiches, acheteurs, coachId }: {
   return {
     creer,
     partis: siennes.filter((f) => !f.ancien_le && !dans.has(String(f.nolio_athlete_id))).map((f) => f.id),
-    revenus: siennes.filter((f) => f.ancien_le && dans.has(String(f.nolio_athlete_id))).map((f) => f.id),
+    revenus: siennes.filter((f) => f.ancien_le && !retiree(f) && dans.has(String(f.nolio_athlete_id))).map((f) => f.id),
   };
 }
 
@@ -51,6 +51,10 @@ export function rapprocherEquipe({ equipe, fiches, acheteurs, coachId }: {
 // questionnaire du samedi, ni Hooper, ni saison de fond tentée, tant que le coach n'a pas rempli son profil (ou créé son
 // premier objectif) ; ensuite, le chemin habituel (lib/app/coaching.ts, quitterLAttenteDuProfil).
 export const enAttenteDeProfil = (f: { en_attente_profil?: unknown }) => f.en_attente_profil === true;
+
+// Retiré par le coach (27/11/2026 : « je retire un athlète car je ne le suis plus et il reste quand même dans l'app ») : encore dans son équipe Nolio, sa fiche se recréait aussitôt. Une ligne vide, rangée
+// dans les anciens, l'en empêche ; elle ne revient que si le coach le rajoute lui-même.
+export const retiree = (f: { questionnaires?: unknown }) => (f.questionnaires as { retire?: unknown } | null | undefined)?.retire === true;
 
 // Un ancien athlète : sorti de l'équipe Nolio (la colonne de la migration du 12/11/2026 ; sans elle, personne).
 export const estAncien = (f: { ancien_le?: unknown }) => Boolean(f.ancien_le);

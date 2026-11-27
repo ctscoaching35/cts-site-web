@@ -9,8 +9,9 @@ import { redirect } from 'next/navigation';
 import { accordDeLAthlete, envoyerSemaine, ficheAthlete, marquerTestsLus, mettreAJourSemaine, objectifCoache, quitterLAttenteDuProfil } from './coaching';
 import { fermerEspace, ouvrirEspace } from './espaceAthlete';
 import { objectifEcrit, retirerDeNolio, zonesDeLaFicheVersNolio, zonesVersNolio } from './ecriture';
-import { athletesNolio, coachConnecte } from './nolio';
+import { athletesNolio, coachConnecte, moiNolio } from './nolio';
 import { usrAcheteurs } from './acheteurs';
+import { retiree } from './anciens';
 import { retirerFiche, supprimerPlans } from './retrait';
 import { allureDepuisVitesse, lireAllure } from './allureCoach';
 import { lireSaisieCoureur, profilAvecLaCarte } from './carteSavoir';
@@ -73,7 +74,7 @@ export async function creerFicheDepuisNolio(nolioId: string): Promise<void> {
       return;
     }
     id = data.id as string;
-  }
+  } else await reprendreSiRetiree(coach.compteId, id);
   revalidatePath('/app/coach');
   redirect(`/app/coach/athlete/${id}`);
 }
@@ -92,6 +93,7 @@ export async function creerCoache(_e: EtatCoach, form: FormData): Promise<EtatCo
   const { data: deja } = nolioId ? await service.from('athletes_coaches').select('id').eq('coach_id', coach.compteId).eq('nolio_athlete_id', nolioId).maybeSingle() : { data: null };
   let id = deja?.id as string | undefined;
   if (id) {
+    await reprendreSiRetiree(coach.compteId, id);
     await service.from('athletes_coaches').update({ nom: complet }).eq('id', id).eq('coach_id', coach.compteId);
   } else {
     const { data, error } = await service.from('athletes_coaches').insert({ coach_id: coach.compteId, nom: complet, ...(nolioId ? { nolio_athlete_id: nolioId } : {}) }).select('id').single();
@@ -318,8 +320,21 @@ export async function retirerAthlete(athleteId: string): Promise<void> {
   const a = await ficheAthlete(coach.compteId, athleteId);
   if (!a) return;
   await retirerFiche(coach.compteId, athleteId, a.objectifs.map((o) => o.plan_id));
+  // Encore dans son équipe Nolio, il reviendrait de lui-même (lib/app/anciens.ts, retiree). Pas pour le coach lui-même, sa fiche de test.
+  const usr = String(a.nolio_athlete_id ?? '');
+  if (/^usr_/.test(usr) && usr !== (await moiNolio().catch(() => null))?.id) {
+    const { error } = await clientService().from('athletes_coaches')
+      .insert({ coach_id: coach.compteId, nom: a.nom, nolio_athlete_id: usr, programmation: 'main', ancien_le: new Date().toISOString(), questionnaires: { retire: true } });
+    if (error) console.error(`Athlète retiré, non gardé hors de la liste (${athleteId}) :`, error.message);
+  }
   revalidatePath('/app/coach');
   redirect('/app/coach');
+}
+
+// Le coach le rajoute : la ligne d'un athlète retiré redevient sa fiche.
+async function reprendreSiRetiree(coachId: string, ficheId: string) {
+  const { data } = await clientService().from('athletes_coaches').select('questionnaires').eq('id', ficheId).eq('coach_id', coachId).maybeSingle();
+  if (retiree((data ?? {}) as { questionnaires?: unknown })) await clientService().from('athletes_coaches').update({ ancien_le: null, questionnaires: null }).eq('id', ficheId).eq('coach_id', coachId);
 }
 
 // PO1 (décision coach du 19/10/2026) : le profil d'un athlète coaché, modifié à part de ses objectifs, sur sa fiche ;
