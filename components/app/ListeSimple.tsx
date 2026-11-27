@@ -15,7 +15,12 @@ export default function ListeSimple({ lignes }: { lignes: LigneDUnMot[] }) {
     <Carte className="!p-0 overflow-hidden">
       <ul className="divide-y divide-indigo/[0.07]">
         {lignes.map((l) => {
-          const nom = <span className="min-w-0 flex-1 text-[0.9375rem] font-bold text-indigo">{l.nom}</span>;
+          const nom = (
+            <span className="min-w-0 flex-1 text-[0.9375rem] font-bold text-indigo">
+              {l.nom}
+              {l.saison && l.un.mot !== 'Saison de fond' && <span className="ml-2 whitespace-nowrap rounded-full border border-indigo/15 px-2 py-0.5 text-[0.72rem] font-semibold text-[#5E5C78]">Saison de fond</span>}
+            </span>
+          );
           const mot = <span className={clsx('shrink-0 text-[0.8125rem] font-bold px-3 py-1.5 rounded-full', TONS[l.un.ton])}>{l.un.mot}</span>;
           const fleche = <span aria-hidden className="text-[#8B89A3]">›</span>;
           const contenu = <>{nom}{mot}{fleche}</>;

@@ -277,9 +277,10 @@ export default async function PageAthlete({ params, searchParams }: {
     // Sans « Sa semaine passée » (9.x, aucun réalisé), pas de ligne « Sa semaine passée : rien de lu » dans la revue, ni de lien vers une section qui n'existe pas.
   ].filter((x) => aUneSemaine || x.ancre !== '#sa-semaine-passee');
   // Son prochain objectif, sous son nom ; sinon sa saison en cours.
-  const sousLeNom = objectifApres ? `${objectifApres.course_nom} · ${dateLongue(objectifApres.course_date, true)} · ${jMoins(jour, objectifApres.course_date)}`
-    // Sous la 9.x, la saison de fond de la v1 est sans fin : ses mots seuls.
-    : saisonEnCours ? v9 ? TEXTES_UN_MOT.saison : `${saisonEnCours.course_nom} · jusqu’au ${dateLongue(saisonEnCours.course_date, true)}` : null;
+  const prochaineCourse = objectifApres ? `${objectifApres.course_nom} · ${dateLongue(objectifApres.course_date, true)} · ${jMoins(jour, objectifApres.course_date)}` : null;
+  // Sous la 9.x, la saison de fond de la v1 est sans fin : ses mots seuls, dits aussi quand un objectif la suit (le coach, 27/11/2026).
+  const sousLeNom = v9 && saisonEnCours ? [TEXTES_UN_MOT.saison, prochaineCourse].filter(Boolean).join(' · puis ')
+    : prochaineCourse ?? (saisonEnCours ? `${saisonEnCours.course_nom} · jusqu’au ${dateLongue(saisonEnCours.course_date, true)}` : null);
   const couleur = etat?.prevision.niveau ?? 'rien';
   // Sous la 9.x, « la migration du 04/11/2026 est à passer » n'est plus dite au coach : pas de « Ses 7 jours » vide, une ligne au journal.
   const septJoursVisibles = !(gardesManquent && !montrerLInfra(v9, 'Ses signaux ne sont pas encore gardés : la migration du 04/11/2026 est à passer dans Supabase.'));
