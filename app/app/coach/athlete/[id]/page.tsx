@@ -491,7 +491,7 @@ export default async function PageAthlete({ params, searchParams }: {
       <p className="text-[0.8125rem] leading-relaxed text-[#4A4866]">Celles posées dans Nolio, par toi ou par l’athlète, et pas encore ici.</p>
       {coursesNolio.map((c) => {
         const preparation = enPreparation(c);
-        const lienObjectif = `/app/coach/nouveau?athlete=${a.id}&course=${c.id}${formatRouteDe(c.distance_km, c.dplus_m) ? '&discipline=route' : ''}`;
+        const lienObjectif = `/app/coach/nouveau?athlete=${a.id}&course=${c.id}${formatRouteDe(c.distance_km, c.dplus_m, c.nom) ? '&discipline=route' : ''}`;
         // La course secondaire va à l'objectif qui la suit, s'il s'écrit semaine par semaine, et à partir de lundi prochain (les règles d'enregistrerCourse).
         const suivant = [...objectifs].filter((o) => o.course_date > c.date).sort((x, y) => x.course_date.localeCompare(y.course_date))[0];
         const pourSecondaire = suivant && c.date >= lundiProchain && parPlan.get(suivant.plan_id)?.parametres ? suivant : null;

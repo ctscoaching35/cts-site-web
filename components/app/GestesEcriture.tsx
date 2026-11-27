@@ -95,7 +95,7 @@ export function AjouterCourse({ planId, initial, ancienne, sansMode = false }: {
     ancienne ? modifierCourse.bind(null, planId, ancienne) : ajouterCourse.bind(null, planId), null);
   // Trail ou route (décision coach du 23/10/2026) ; une course de Nolio qui ressemble à la route s'ouvre en route.
   const [route, setRoute] = useState(initial?.discipline ? initial.discipline === 'route'
-    : Boolean(initial && formatRouteDe(initial.distance_km, initial.dplus_m)));
+    : Boolean(initial && formatRouteDe(initial.distance_km, initial.dplus_m, initial.nom)));
   // En gestion par défaut ; à fond seulement loin de l'objectif, jamais un ultra (CP1, décision coach du 01/11/2026) : le
   // moteur le vérifie.
   const [aFond, setAFond] = useState(initial?.mode === 'a_fond');

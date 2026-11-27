@@ -68,7 +68,9 @@ export function estimerChrono(format: unknown, vcMs: number | null | undefined):
 
 // Une course de ton calendrier Nolio qui ressemble à la route (décision coach du 23/10/2026, « deux entrées ») : 10, 21
 // ou 42 km à peu près, moins de 15 m de D+ par km. Son format, ou null.
-export function formatRouteDe(distanceKm: number | null | undefined, dplusM: number | null | undefined): string | null {
+export function formatRouteDe(distanceKm: number | null | undefined, dplusM: number | null | undefined, nom?: string | null): string | null {
+  // Une course qui s'appelle « trail » n'est pas devinée sur route, même sans D+ saisi dans Nolio (le coach, 27/11/2026 : « l’athlète prépare un trail et ça me propose la route »).
+  if (/trail/i.test(nom ?? '')) return null;
   const d = Number(distanceKm ?? 0);
   if (!(d > 0) || Number(dplusM ?? 0) / d > 15) return null;
   if (Math.abs(d - 10) <= 0.6) return 'R10';

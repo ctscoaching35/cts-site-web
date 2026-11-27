@@ -61,8 +61,10 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
   // modifié, de la demande, de la course de Nolio (10, 21 ou 42 km presque sans dénivelé).
   const formatConnu = String((aModifier ? { ...(aModifier.intake as Record<string, unknown>), ...((pm?.champs as Record<string, unknown>) ?? {}) }
     : demande?.champs ?? {})?.format ?? '');
-  const routeNolio = c ? formatRouteDe(c.distance_km, c.dplus_m) : null;
-  const route = r.discipline === 'route' || formatConnu.startsWith('R') || Boolean(routeNolio);
+  const routeNolio = c ? formatRouteDe(c.distance_km, c.dplus_m, c.nom) : null;
+  // Le choix du coach l'emporte (« il faut que je puisse choisir route ou trail », 27/11/2026) ; sans choix, ce que la course ou la fiche disent.
+  const route = r.discipline !== 'trail' && (r.discipline === 'route' || formatConnu.startsWith('R') || Boolean(routeNolio));
+  const lienDiscipline = (d: 'trail' | 'route') => `/app/coach/nouveau?athlete=${suite?.athlete.id}${typeof r.course === 'string' ? `&course=${r.course}` : ''}&discipline=${d}`;
   const discipline: 'trail' | 'route' = route ? 'route' : 'trail';
   const jour = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
   const enCours = suite?.athlete.objectifs.find((o) => o.course_date >= jour) ?? null;
@@ -102,6 +104,16 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
               ? 'Son profil de coureur d’abord, une seule fois : son niveau et sa semaine habituelle. Sa course ensuite.'
               : 'Remplis le questionnaire avec ses réponses. L’objectif se crée sans paiement et rejoint ton espace coach.'}
           </p>
+          {suite && !aModifier && !demande && (
+            <div role="group" aria-label="Trail ou route" className="mt-4 inline-flex p-1 rounded-xl bg-[#F2EFE8] gap-1">
+              {(['trail', 'route'] as const).map((d) => (
+                <Link key={d} href={lienDiscipline(d)} aria-current={discipline === d ? 'true' : undefined}
+                  className={`inline-flex items-center min-h-11 px-5 rounded-[9px] text-sm ${discipline === d ? 'bg-white text-indigo font-bold shadow-sm' : 'text-[#4A4866] font-semibold'}`}>
+                  {d === 'trail' ? 'Trail' : 'Route'}
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
         {court && !aModifier && !demande && preparationsDisponibles(v9) && (
           <div role="group" aria-label="Genre d’objectif" className="inline-flex mb-6 p-1 rounded-xl bg-sand-dark gap-1">
@@ -137,7 +149,7 @@ export default async function NouvelAthlete({ searchParams }: { searchParams: Re
             <ProfilAthlete athleteId={suite.athlete.id} rafraichir pointDuDimanche={v9}
               profil={demande ? Object.fromEntries(Object.entries(demande.champs).filter(([k]) => ['terrain', 'jours_disponibles', 'jour_sl', 'freq_hebdo'].includes(k))) as Record<string, string | string[]> : {}} />
           </div>
-        ) : <Questionnaire key={JSON.stringify(suite?.profil ?? {})} coach court={court} emailCoach={coach.email} athleteId={suite?.athlete.id} demandeId={demande?.id}
+        ) : <Questionnaire key={`${discipline}:${JSON.stringify(suite?.profil ?? {})}`} coach court={court} emailCoach={coach.email} athleteId={suite?.athlete.id} demandeId={demande?.id}
           modification={aModifier ? { planId: String(aModifier.id), trace: traceDonnee } : undefined}
           vcMs={suite?.athlete.vc_ms ?? null} discipline={discipline} noteCharge={aModifier ? null : suite?.noteCharge ?? null}
           initial={achete ? { ...reponsesDe(achete.intake), ...reponsesDe(pm?.champs), nom: achete.nom || String(achete.intake.nom ?? '') }
