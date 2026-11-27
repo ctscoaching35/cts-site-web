@@ -656,7 +656,7 @@ const ANCRES_DE_LA_PAGE_ATHLETE = {
   'lancer-sa-preparation': 'haut', // LancerSaPreparation.tsx : « Son objectif n'a pas démarré » (À faire pour lui) et « À lancer » (Mes athlètes)
   'son-entree': 'haut', // PointsPourLui.tsx (la ligne « accord ») ; CarteEntree.tsx dans « Réglages » quand l'entrée est faite (les deux s'excluent)
   'sa-semaine-passee': 'reglages', // la revue, quand il y a un réalisé
-  'courses-nolio': 'reglages', // la revue, quand il y a des courses dans Nolio
+  'courses-nolio': 'haut', // la revue, quand il y a des courses dans Nolio : la carte est sous ses objectifs (27/11/2026)
   'son-nolio': 'reglages', // « Associer › » (entree.ts), la revue sans Nolio associé
   retirer: 'reglages', // « Retirer › » (espaceCoach.ts)
 };
@@ -700,7 +700,8 @@ test('chaque ancre de « Réglages » est posée dans le `details` « Réglages 
   const i9 = page.indexOf('      {v9 ? (\n        <>\n');
   const i8 = page.indexOf('      ) : (\n        <>\n', i9);
   const dehors = idsDe(page.slice(0, i8).replace(plus, ''));
-  const hautDePage = new Set([...idsDe(source('components/app/PointsPourLui.tsx')), ...idsDe(source('components/app/CarteSavoir.tsx')), ...idsDe(source('components/app/LancerSaPreparation.tsx')), ...idsDe(source('components/app/SemaineQuiArrive.tsx')), ...idsDe(source('components/app/SonPointDuDimanche.tsx')),
+  // En haut, aussi ce que la page pose elle-même dans sa branche 9.x (ses courses dans Nolio, 27/11/2026).
+  const hautDePage = new Set([...idsDe(page.slice(i9, i8)), ...idsDe(source('components/app/PointsPourLui.tsx')), ...idsDe(source('components/app/CarteSavoir.tsx')), ...idsDe(source('components/app/LancerSaPreparation.tsx')), ...idsDe(source('components/app/SemaineQuiArrive.tsx')), ...idsDe(source('components/app/SonPointDuDimanche.tsx')),
     ...[...sansCommentaires(source('components/app/PointsPourLui.tsx')).matchAll(/'(son-entree)'/g)].map((m) => m[1])]);
   for (const [a, ou] of Object.entries(ANCRES_DE_LA_PAGE_ATHLETE)) {
     if (ou === 'reglages') {
@@ -712,7 +713,7 @@ test('chaque ancre de « Réglages » est posée dans le `details` « Réglages 
   }
   // Les sections de « Réglages » qui ne se rendent pas toujours le disent par leur condition : une ancre absente n'est jamais proposée par un lien (la revue le filtre).
   assert.ok(plus.includes('{(aUneSemaine || septJoursAffiches) && <section id="sa-semaine-passee"'));
-  assert.ok(plus.includes('{coursesNolio.length > 0 && <section id="courses-nolio"'));
+  assert.ok(page.slice(i9, i8).includes('{coursesNolio.length > 0 && <Carte id="courses-nolio"'));
   assert.ok(page.includes("ancre: v9 && !a.nolio_athlete_id ? '#son-nolio' : '#courses-nolio',"), 'sans Nolio associé, la revue lie « Son compte Nolio » (une ancre qui existe)');
   // « son-entree » : la ligne « accord » du haut et la carte de « Réglages » ne sont jamais là ensemble (essai de la deuxième étape).
   assert.ok(dansReglages.has('son-entree') === false && plus.includes('entreeDansLesReglages(entree) && <CarteEntree entree={entree} plat />'));

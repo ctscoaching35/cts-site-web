@@ -40,7 +40,7 @@ const grep = (motif, ...dossiers) => {
 };
 const lib = await import(`${RACINE}lib/app/cacherSousLaV1.ts`);
 const {
-  GENRES_CACHES_9X, TEXTES_CACHES, ajustementsAnnulesVisibles, ajustementsSansAllegees, apercuDisponible, carteAvantVisible, coursesNolioVisibles, estUneCourseEnPreparation,
+  GENRES_CACHES_9X, TEXTES_CACHES, ajustementsAnnulesVisibles, ajustementsSansAllegees, apercuDisponible, carteAvantVisible, estUneCourseEnPreparation,
   objectifSansSaison, passeDuLundiVisible, pointsSousLaV1, preparationsDisponibles, testsLusDisponibles,
 } = lib;
 const { SIGNAL, etiquettes, groupeUrgent, urgentDe, athletesUrgents } = await import(`${RACINE}lib/app/espaceParAthlete.ts`);
@@ -90,8 +90,6 @@ const JOURNAL = [
     /ecriture\?\.parametres && preparationsDisponibles\(v9\) \? await fichesDePreparation\(id\)/, [PLAN, 'fichesDePreparation']],
   ['Page d’un objectif', 'la course de Nolio qui préremplit le formulaire (?course=, non lue)', PLAN,
     /courseId && preparationsDisponibles\(v9\) \? await courseNolio\(nolio, courseId\)/, [PLAN, 'Reprise de Nolio : relis la distance, le D+ et le chrono visé.']],
-  ['Page d’un athlète › Ses courses dans Nolio', 'le lien « En préparation › » (la course B n’est plus proposée)', ATHLETE,
-    /const coursesNolio = coursesNolioVisibles\(coursesPosees, enPreparation, v9\);/, [ATHLETE, 'En préparation ›']],
   ['Nouvel objectif', 'l’onglet « Course de préparation »', NOUVEAU,
     /\{court && !aModifier && !demande && preparationsDisponibles\(v9\) && \(\s*<div role="group" aria-label="Genre d’objectif"/, [NOUVEAU, 'Course de préparation']],
   // (c) la saison de fond
@@ -273,29 +271,21 @@ test('la carte « Sa semaine qui arrive » d’avant le passage : sans « Voir c
 
 // ─── (b) les courses de préparation ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-test('une course de Nolio qui n’avait que « En préparation » pour geste n’est plus proposée sous la 9.x ; les autres gardent « Créer l’objectif »', () => {
+test('sous la 9.x, toutes ses courses de Nolio se voient, et « En préparation » ouvre le formulaire déjà rempli (le coach, 27/11/2026)', () => {
   const contexte = { prochain: 'p1', ecrit: true, lundiProchain: '2026-11-30', dateProchain: '2027-03-14' };
-  const a = { id: 'a', type: 'a', date: '2027-03-14' };
   const bDedans = { id: 'b1', type: 'b', date: '2027-01-17' };
-  const bAvant = { id: 'b2', type: 'b', date: '2026-11-28' };
-  const bApres = { id: 'b3', type: 'b', date: '2027-05-02' };
-  const sansType = { id: 'c', type: null, date: '2027-01-10' };
-  const courses = [a, bDedans, bAvant, bApres, sansType];
-  const enPreparation = (c) => estUneCourseEnPreparation(c, contexte);
-  assert.deepEqual(courses.filter(enPreparation).map((c) => c.id), ['b1']);
+  const courses = [{ id: 'a', type: 'a', date: '2027-03-14' }, bDedans, { id: 'b2', type: 'b', date: '2026-11-28' }, { id: 'c', type: null, date: '2027-01-10' }];
+  assert.deepEqual(courses.filter((c) => estUneCourseEnPreparation(c, contexte)).map((c) => c.id), ['b1']);
   assert.equal(estUneCourseEnPreparation(bDedans, { ...contexte, prochain: null }), false, 'sans objectif en cours');
   assert.equal(estUneCourseEnPreparation(bDedans, { ...contexte, ecrit: false }), false, 'un objectif envoyé en entier n’a pas de préparation à enrichir');
   assert.equal(estUneCourseEnPreparation({ ...bDedans, date: '2027-03-14' }, contexte), false, 'le jour de la course, plus de préparation');
-  assert.equal(coursesNolioVisibles(courses, enPreparation, false), courses, 'sous la 8.x, la même liste');
-  assert.deepEqual(coursesNolioVisibles(courses, enPreparation, true).map((c) => c.id), ['a', 'b2', 'b3', 'c']);
-  assert.deepEqual(coursesNolioVisibles([bDedans], enPreparation, true), [], 'sans course, la liste est vide : la carte entière ne s’affiche pas (coursesNolio.length > 0)');
-  // La page : la même règle choisit « En préparation › » et ce que la 9.x ôte ; la carte n'a pas de titre vide.
-  assert.match(athlete, /const enPreparation = \(c: CourseNolio\) => estUneCourseEnPreparation\(c, \{ prochain, ecrit: Boolean\(pp\?\.parametres\), lundiProchain, dateProchain \}\);/);
+  // Plus aucune course écartée.
+  assert.ok(athlete.includes('const coursesNolio = coursesPosees;'));
   assert.ok(athlete.includes('const preparation = enPreparation(c);'));
-  assert.ok(!/const preparation = c\.type === 'b'/.test(athlete), 'la règle n’est écrite qu’une fois');
-  assert.ok(athlete.includes('{coursesNolio.length > 0 && ('), 'la carte « Ses courses dans Nolio » n’est rendue que s’il y a une course');
-  assert.ok(athlete.includes('{coursesNolio.length > 0 && <section id="courses-nolio"'), '… et sa section de « Réglages » aussi');
-  assert.match(athlete, /const courseA = coursesPosees\.find\(\(c\) => c\.type === 'a'\) \?\? null;/, 'la course A (« Créer l’objectif ») ne dépend pas du filtre');
+  assert.ok(athlete.includes('{(!preparation || !v9) && ('), 'sous la 8.x, le lien d’avant');
+  assert.ok(athlete.includes("{v9 && (preparation || (c.type === null && enPreparation({ ...c, type: 'b' }))) && ("), 'une course sans priorité, avant l’objectif, offre aussi la préparation');
+  assert.ok(athlete.includes('<AjouterCourse planId={String(prochain)} initial={{ nom: c.nom, date: c.date, distance_km: c.distance_km, dplus_m: c.dplus_m, chrono: c.chrono }} sansMode />'));
+  assert.match(athlete, /const courseA = coursesPosees\.find\(\(c\) => c\.type === 'a'\) \?\? null;/);
 });
 
 test('les courses de préparation : la section de la page de l’objectif, ses liens et l’onglet restent cachés sous la 9.x ; leur saisie est dans « Ses objectifs » (C5, 25/11/2026)', () => {

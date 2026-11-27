@@ -83,8 +83,10 @@ test('rien ne disparaît : chaque bloc d’avant a sa place sous la 9.x, en haut
   for (const s of ORDRE_DES_REGLAGES_8X) assert.ok(sections.has(s), s);
   // Les quatre blocs d'avant (repères, profil, zones, style) deviennent une seule carte.
   for (const b of ['reperes', 'profil', 'zones', 'style']) assert.deepEqual([...PLACE_EN_9X[b]], ['carte']);
-  // Ce qui est en haut sous la 9.x : ni la semaine passée ni ses 7 jours, ni ses courses dans Nolio, ni la revue du dimanche, ni une entrée complète.
-  for (const b of ['semaine_passee', 'courses_nolio']) assert.ok(!PLACE_EN_9X[b].some((p) => hauts.has(p)), b);
+  // Ce qui est en haut sous la 9.x : ni la semaine passée ni ses 7 jours, ni la revue du dimanche, ni une entrée complète.
+  assert.ok(!PLACE_EN_9X.semaine_passee.some((p) => hauts.has(p)), 'semaine_passee');
+  // Ses courses dans Nolio remontent avec ses objectifs (le coach, 27/11/2026 : « tu ne me proposes pas les courses qu’il a déjà rentré dans nolio »).
+  assert.deepEqual([...PLACE_EN_9X.courses_nolio], ['objectifs']);
   assert.deepEqual([...PLACE_EN_9X.a_faire], ['a_faire', 'a_venir', 'revue']);
   assert.deepEqual([...PLACE_EN_9X.entree], ['a_faire', 'entree']);
   // Aucune place ne reste sans bloc d'avant : chaque morceau de la 9.x vient de quelque part (sauf l'état, que les pastilles de l'en-tête d'avant donnaient).
@@ -101,10 +103,12 @@ test('la page 9.x suit cet ordre : (a), (b), (c), (d), puis « Réglages » ; ri
   const sesNoms = { PointsPourLui: 'a_faire', CarteSavoir: 'carte', LancerSaPreparation: 'carte', ObjectifsAVerifier: 'objectifs', semaine: 'semaine_qui_arrive' };
   assert.deepEqual([...new Set(ordre.filter((o) => o !== 'VueDEnsemble').map((o) => sesNoms[o]))], ORDRE_9X.slice(0, 4));
   // Aucun autre bloc dans la branche : pas de carte à part, pas de revue, pas de semaine passée, pas d'entrée.
-  assert.deepEqual([...branche9.matchAll(/<([A-Z][A-Za-z]*)\b/g)].map((m) => m[1]), ['VueDEnsemble', 'PointsPourLui', 'SonPointDuDimanche', 'CarteSavoir', 'ObjectifsAVerifier', 'LancerSaPreparation']);
+  assert.deepEqual([...branche9.matchAll(/<([A-Z][A-Za-z]*)\b/g)].map((m) => m[1]), ['VueDEnsemble', 'PointsPourLui', 'SonPointDuDimanche', 'CarteSavoir', 'ObjectifsAVerifier', 'Carte', 'LancerSaPreparation']);
   // Son point du dimanche, en automatique comme à la main (26/11/2026), d'un coaché relié à Nolio.
   assert.ok(branche9.includes('{sonPoint !== undefined && <SonPointDuDimanche point={sonPoint}'));
-  for (const interdit of ['Carte ', 'CarteEntree', 'TableauZones', 'StyleCoureur', 'ProfilAthlete', 'contenuRevue', 'contenuSemainePassee', 'contenuCoursesNolio']) {
+  // La seule carte ajoutée en tête : ses courses dans Nolio, quand il y en a à reprendre.
+  assert.ok(branche9.includes('{coursesNolio.length > 0 && <Carte id="courses-nolio"'));
+  for (const interdit of ['CarteEntree', 'TableauZones', 'StyleCoureur', 'ProfilAthlete', 'contenuRevue', 'contenuSemainePassee']) {
     assert.ok(!branche9.includes(interdit), `${interdit} n’est pas en tête sous la 9.x`);
   }
   // L'en-tête (le nom) est avant, « Réglages » après, la barre « Athlète suivant » en dernier.
@@ -127,13 +131,13 @@ test('« Réglages » sous la 9.x : les sections dans l’ordre de ORDRE_DES_REG
   for (const [cle, p] of positions) assert.ok(p > 0, `${cle} est dans « Réglages »`);
   const attendu = ORDRE_DES_REGLAGES_9X.filter((s) => s in marques);
   assert.deepEqual(positions.sort((x, y) => x[1] - y[1]).map(([cle]) => cle), attendu);
-  // Ce qui s'ajoute, dans l'ordre : ce qui arrive, la revue, la semaine passée, les courses dans Nolio, les objectifs passés, la demande, l'entrée. (Les courses de préparation n'y sont plus :
+  // Ce qui s'ajoute, dans l'ordre : ce qui arrive, la revue, la semaine passée, les objectifs passés, la demande, l'entrée. (Les courses de préparation n'y sont plus :
   // la 9.x ne les porte pas, troisième simplification, scripts/test-espace-coach-simple-3.mjs.)
   const iPlus = page.indexOf('  const sectionsEnPlus = (');
   const plus = page.slice(iPlus, page.indexOf('  return (\n    <CadreCoach', iPlus));
   const ordreEnPlus = [
     ['a_venir', '<PointsAVenir points={pointsAVenir(points)} />'], ['revue', '<section id="revue"'], ['semaine_passee', '<section id="sa-semaine-passee"'],
-    ['courses_nolio', '<section id="courses-nolio"'], ['anciens_objectifs', 'TEXTES_PAGE_ATHLETE.anciensObjectifs'],
+    ['anciens_objectifs', 'TEXTES_PAGE_ATHLETE.anciensObjectifs'],
     ['demande', 'Sa demande de coaching, du'], ['entree', '<CarteEntree entree={entree} plat />'],
   ].map(([cle, m]) => { assert.ok(plus.includes(m), cle); return [cle, plus.indexOf(m)]; });
   assert.deepEqual(ordreEnPlus.sort((x, y) => x[1] - y[1]).map(([cle]) => cle), ORDRE_DES_REGLAGES_9X.slice(ORDRE_DES_REGLAGES_9X.indexOf('a_venir'), ORDRE_DES_REGLAGES_9X.indexOf('retirer')));
